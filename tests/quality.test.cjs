@@ -72,6 +72,16 @@ test('تحميل الحفظ القديم واستيراده يطبّعان ال�
   assert.match(app, /data\.version!==1/);
 });
 
+test('كتالوج الوظائف يعرض المسارات المقفولة ويوضح شروط القبول', () => {
+  assert.match(app, /function jobRequirements\(job\)/);
+  assert.match(app, /function jobAcceptanceChance\(\)/);
+  assert.match(app, /function jobRequirementsMenu\(job,requirements\)/);
+  assert.match(app, /function showCareer\(\)[\s\S]*?const opts=jobs\.map\(j=>[\s\S]*?jobRequirementsMenu\(j,missing\)/);
+  assert.match(app, /فرصة القبول التقديرية/);
+  assert.match(app, /data\.performance=clamp\(Number\.isFinite\(Number\(data\.performance\)\)\?Number\(data\.performance\):50\)/);
+  assert.match(css, /\.locked-choice/);
+});
+
 test('الرسائل المالية تستخدم عملة بلد الشخصية بدل افتراض الجنيه المصري', () => {
   const relationship = functionSource('relationshipAction', 'addFriend');
   const activity = functionSource('activity', 'importSave');
