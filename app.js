@@ -2819,7 +2819,7 @@ function cultMembersMenu(){
  closeModal();const c=state.cult;if(!c||!c.founded){cultMenu();return;}
  const opts=[
   choice('➕','تجنيد عضو واحد','التكلفة 2,000 '+state.place.unit+'.',()=>recruitCultMembers(1),'2,000 '+state.place.unit),
-  choice('👥','تجنيد 3 أعضاء','التكلفة 5,000 '+state.place.unit.',()=>recruitCultMembers(3),'5,000 '+state.place.unit),
+  choice('👥','تجنيد 3 أعضاء','التكلفة 5,000 '+state.place.unit+'.',()=>recruitCultMembers(3),'5,000 '+state.place.unit),
   choice('👥','تجنيد 5 أعضاء','التكلفة 8,000 '+state.place.unit+'.',()=>recruitCultMembers(5),'8,000 '+state.place.unit)
  ];
  c.members.forEach((m,i)=>opts.push(choice('🧑',m.name+' · '+m.role,'الولاء '+m.loyalty+'% · الحالة '+m.status+'.',()=>cultFollowerMenu(i),m.loyalty+'%',m.loyalty)));
