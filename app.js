@@ -2513,7 +2513,7 @@ function specialCareers(){
   {id:'musician',title:'Musician',emoji:'🎤',min:14,looks:25,income:11000,desc:'Train, release music and book performances.'},
   {id:'influencer',title:'Influencer',emoji:'📱',min:13,looks:30,income:7000,desc:'Post consistently and grow your audience.'},
   {id:'athlete',title:'Pro Athlete',emoji:'🏅',min:15,looks:0,income:18000,desc:'Fitness, training and championship competition.',packId:'proAthletePack'},
-  {id:'esports',title:'Esports Player',emoji:'🎮',min:16,looks:0,income:8500,desc:'Competitive events and sponsorships depend on practice.'},
+  {id:'esports',title:'الرياضات الإلكترونية',emoji:'🎮',min:16,looks:0,income:8500,desc:'بطولات تنافسية ورعايات تعتمد على المهارة والتدريب.'},
   {id:'fighter',title:'Professional Fighter',emoji:'🥊',min:18,looks:0,income:22000,desc:'Training, tactics and high-risk competitions.',packId:'fighterPack'},
   {id:'writer',title:'Writer & Publisher',emoji:'✍️',min:16,looks:0,income:5000,desc:'Build an audience through published work.'},
   {id:'director',title:'Movie Director',emoji:'🎥',min:25,looks:0,income:26000,desc:'Lead film productions and creative projects.',packId:'movieDirectorPack'},
