@@ -464,7 +464,7 @@ const exportContext = {
     querySelectorAll(selector) { if (selector === '[data-panel]' || selector === '.navbtn') return exportPanels; return []; },
     createElement(tag) {
       const el = new FakeElement(tag);
-      if (tag === 'a') el.click = () => { exportClicked = true; };
+      if (tag === 'a') { el.style = {}; el.click = () => { exportClicked = true; }; }
       return el;
     }
   },
