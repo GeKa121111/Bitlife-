@@ -29,6 +29,31 @@ assert.match(app, /timeMachineDeathBtn/, 'the end-of-life panel should offer a r
 assert.match(app, /function editCharacterTraits\(\)/, 'player traits editor should exist');
 assert.match(app, /function editNpcMenu\(\)/, 'NPC trait editor should exist');
 assert.match(app, /function specialCareerHistoryMenu\(\)/, 'specialist career history should be accessible');
+
+assert.match(app, /const combatMoveCatalog=\[/, 'combat moves should have an explicit style catalog');
+assert.match(app, /const combatCoachCatalog=\[/, 'combat coach options should be catalog-driven');
+assert.match(app, /const combatOpponentTypes=\[/, 'combat opponents should vary by fighting style');
+assert.match(app, /function createCombatCareer\(\)/, 'new fighter careers should initialize a dedicated profile');
+assert.match(app, /function ensureCombatCareer\(\)/, 'old fighter saves should migrate safely');
+assert.match(app, /function combatCareerMenu\(\)/, 'fighter career hub should be available');
+assert.match(app, /function combatTrainingMenu\(\)/, 'fighter attributes should have dedicated training');
+assert.match(app, /function learnCombatMove\(\)/, 'players should unlock moves as they rank up');
+assert.match(app, /function hireCombatCoach\(\)/, 'coaches should be recruitable');
+assert.match(app, /function startCombatBout\(mode\)/, 'street and league fights should have separate entry rules');
+assert.match(app, /function resolveCombatBout\(mode,opponent,moveId\)/, 'bouts should resolve using player stats and move matchups');
+assert.match(app, /function recoverCombatInjury\(\)/, 'combat injuries should have a recovery system');
+assert.match(app, /function combatBoutHistory\(\)/, 'recent fight results should be inspectable');
+assert.match(app, /state\.combatCareer=c\.id==='fighter'\?createCombatCareer\(\):null/, 'changing to the fighter career should initialize the dedicated profile');
+assert.match(app, /c\.streetCred\+=12/, 'street wins should build street credibility');
+assert.match(app, /Losing a street fight does not remove street credibility/, 'street losses should not remove credibility');
+assert.match(app, /probability=clamp\(50\+\(playerScore-opponentScore\)\*1\.65\+counterBonus,12,88\)/, 'combat outcomes should use stats and counter bonuses with bounded odds');
+assert.match(app, /if\(cc\.coach&&cc\.coach\.yearsLeft>0\)/, 'coach contracts should be accounted for over time');
+assert.match(app, /combatProfile:state\.specialCareer\.id==='fighter'\?JSON\.parse\(JSON\.stringify\(state\.combatCareer\|\|null\)\):null/, 'switching career paths should archive the fighter profile');
+const combatMoveBlock = app.match(/const combatMoveCatalog=\[([\s\S]*?)\n\];/);
+assert.ok(combatMoveBlock && (combatMoveBlock[1].match(/\{id:'/g) || []).length >= 10, 'combat move catalog should contain at least 10 moves');
+const coachBlock = app.match(/const combatCoachCatalog=\[([\s\S]*?)\n\];/);
+assert.ok(coachBlock && (coachBlock[1].match(/\{id:'/g) || []).length >= 3, 'combat should offer three coach tiers');
+
 assert.match(app, /c\.record\.attempts=\(c\.record\.attempts\|\|0\)\+1/, 'each career activity should be recorded');
 assert.match(app, /c\.record\.totalEarnings=\(c\.record\.totalEarnings\|\|0\)\+\(success\?gain:0\)/, 'career earnings should accumulate');
 assert.match(app, /specialCareerHistory\.unshift\(Object\.assign\(\{\},state\.specialCareer/, 'switching career paths should retain the previous career');
