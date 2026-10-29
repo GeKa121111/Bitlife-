@@ -1864,3 +1864,6 @@ function init(){
 }
 init();
 })();
+if(typeof window!=='undefined'&&typeof navigator!=='undefined'&&navigator.serviceWorker){
+ window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));
+}
