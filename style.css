@@ -22,7 +22,7 @@ button:disabled{opacity:.4;cursor:not-allowed}
 .wealthlabel{font-size:11px;color:#53645c;font-weight:750}.wealthnum{font-size:19px;font-weight:950;letter-spacing:-.5px;color:#27845b;direction:ltr;text-align:right;overflow-wrap:anywhere}.wealthnum.negative{color:var(--red)}.wealthsmall{font-size:10px;color:var(--muted);margin-top:3px}
 .sectionhead{display:flex;align-items:center;justify-content:space-between;padding:11px 15px 6px;background:#fff}
 .sectiontitle{font-size:13px;font-weight:900;color:#354a40}.sectionmeta{font-size:10px;color:var(--muted)}
-.feed{padding:0 14px 18px;display:flex;flex-direction:column;gap:0;background:#fff;overflow-y:auto}
+.feed{padding:0 14px 18px;display:flex;flex-direction:column;gap:0;background:#fff;overflow-y:auto;max-height:calc(100dvh - 405px);min-height:150px;overscroll-behavior:contain;scrollbar-width:thin}
 .agegroup{display:flex;align-items:center;gap:8px;color:#66786e;font-size:11px;font-weight:850;padding:13px 1px 6px;margin:0}
 .agegroup:after{content:"";height:1px;background:#e7ece9;flex:1}
 .logcard{border:0;border-bottom:1px solid #edf0ee;background:white;border-radius:0;padding:10px 1px;display:flex;gap:10px;animation:rise .2s ease both}
