@@ -75,6 +75,21 @@ assert.match(app, /reaction=clamp\(28\+generosity\*\.42\+\(100-money\)\*\.12-pet
 assert.match(app, /const stability=clamp\(36\+loyalty\*\.22\+reliability\*\.20\+generosity\*\.12-petulance\*\.16-jealousy\*\.10/, 'yearly partner stability should depend on relationship traits');
 assert.match(app, /state\.partner\.relationshipLevel<45&&chance\(\.12\)/, 'high jealousy should sometimes trigger a relationship misunderstanding');
 assert.match(app, /function editNpcTraits\(n\)/);
+assert.match(app, /function eligibleChildrenForCoParent\(ex\)/, 'custody plans should only attach eligible minor children to the appropriate parent');
+assert.match(app, /function custodyChoiceMenu\(ex\)/, 'divorce should offer parenting arrangements for eligible minor children');
+assert.match(app, /function createCoParentingPlan\(ex,mode\)/, 'custody agreements should be stored with the life');
+assert.match(app, /function coParentingMenu\(\)/, 'saved custody agreements should be manageable later');
+assert.match(app, /function coParentingPlanDetails\(plan\)/, 'custody agreements should have an editable details screen');
+assert.match(app, /function setCoParentingSupport\(plan\)/, 'annual child support should be adjustable');
+assert.match(app, /function applyCoParentingAnnualEffects\(\)/, 'annual support and arrears should be processed');
+assert.match(app, /if\(plan\.mode==='shared'\)return sum\+Math\.round\(base\*\.6\)/, 'shared custody should split child care costs');
+assert.match(app, /if\(plan\.mode==='other'\)return sum\+Math\.round\(base\*\.2\)/, 'other-parent custody should reduce direct child-care costs');
+assert.match(app, /const perChild=clamp\(plan\.supportPerChild\?\?2200,0,10000\),due=perChild\*minors\.length/, 'other-parent custody should create support obligations');
+assert.match(app, /x\.coParentingPlans\.forEach\(p=>/, 'legacy custody plans should be normalized on load');
+assert.match(app, /data\.coParentingPlans\.forEach\(p=>/, 'imported custody plans should be normalized');
+assert.match(app, /choice\('👪','رعاية الأبناء بعد الانفصال'/, 'family menu should expose custody management');
+assert.match(app, /child\.otherParentId=state\.partner\.id\|\|null/, 'newborns should remember the other parent');
+
 
 assert.match(app, /state\.filmStudio=c\.id==='director'\?createFilmStudio\(\):null/, 'starting a directing career should initialize a studio');
 assert.match(app, /filmProfile:state\.specialCareer\.id==='director'\?JSON\.parse\(JSON\.stringify\(state\.filmStudio\|\|null\)\):null/, 'leaving the directing career should archive studio results');

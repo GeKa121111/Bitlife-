@@ -419,7 +419,7 @@ function newLife(){
  const father=makePerson('male','الأب','👨',28+Math.floor(Math.random()*12),68+Math.floor(Math.random()*28));
  const mother=makePerson('female','الأم','👩',25+Math.floor(Math.random()*12),72+Math.floor(Math.random()*26));
  const sibling=makePerson(gender,'الأخ/الأخت','🧒',Math.floor(Math.random()*8),55+Math.floor(Math.random()*35));
- return {version:1,lifeId:Date.now()+Math.random(),cemeterySaved:false,name:pick(names[gender])+' '+pick(names.family),gender,age:0,place,bank:place.start,stats:{happiness:65+Math.floor(Math.random()*26),health:76+Math.floor(Math.random()*22),smart:35+Math.floor(Math.random()*41),looks:35+Math.floor(Math.random()*51)},education:{level:0,school:'لم تبدأ الدراسة',major:null,yearsLeft:0,tuition:0},job:null,jobHistory:[],specialCareer:null,specialCareerHistory:[],combatCareer:null,filmStudio:null,performance:50,assets:[],investments:[],business:null,family:[father,mother,sibling],friends:[],partner:null,married:false,children:[],pets:[],hobbies:[],fame:0,followers:0,socialMediaAccount:false,socialMediaPosts:0,reputation:50,crimeRecord:0,prison:null,debt:0,willDistribution:'الأسرة بالتساوي',heirlooms:[],dailyRewardDate:null,dailyChallenges:null,timeMachineSnapshots:[],legacy:{name:null,inheritance:0,heirloom:null},driversLicense:false,travelHistory:[],log:[],accomplishments:['بدأت رحلة الحياة'],status:'حي',cause:null,retired:false,yearCount:0,wealthPeak:place.start};
+ return {version:1,lifeId:Date.now()+Math.random(),cemeterySaved:false,name:pick(names[gender])+' '+pick(names.family),gender,age:0,place,bank:place.start,stats:{happiness:65+Math.floor(Math.random()*26),health:76+Math.floor(Math.random()*22),smart:35+Math.floor(Math.random()*41),looks:35+Math.floor(Math.random()*51)},education:{level:0,school:'لم تبدأ الدراسة',major:null,yearsLeft:0,tuition:0},job:null,jobHistory:[],specialCareer:null,specialCareerHistory:[],combatCareer:null,filmStudio:null,performance:50,assets:[],investments:[],business:null,family:[father,mother,sibling],friends:[],partner:null,married:false,children:[],coParentingPlans:[],pets:[],hobbies:[],fame:0,followers:0,socialMediaAccount:false,socialMediaPosts:0,reputation:50,crimeRecord:0,prison:null,debt:0,willDistribution:'الأسرة بالتساوي',heirlooms:[],dailyRewardDate:null,dailyChallenges:null,timeMachineSnapshots:[],legacy:{name:null,inheritance:0,heirloom:null},driversLicense:false,travelHistory:[],log:[],accomplishments:['بدأت رحلة الحياة'],status:'حي',cause:null,retired:false,yearCount:0,wealthPeak:place.start};
 }
 function save(){
  try{localStorage.setItem(KEY,JSON.stringify(state));$('saveStatus').textContent='● محفوظة';}
@@ -448,9 +448,9 @@ function normalizeCoreState(data){
 function load(){
  try{const x=JSON.parse(localStorage.getItem(KEY)||'null');if(x&&x.version===1&&x.stats&&typeof x.stats==='object'&&!Array.isArray(x.stats)&&Array.isArray(x.log)){
   normalizeCoreState(x);
-  const defaults={lifeId:Date.now()+Math.random(),cemeterySaved:false,jobHistory:[],specialCareer:null,specialCareerHistory:[],combatCareer:null,filmStudio:null,investments:[],business:null,married:false,children:[],pets:[],hobbies:[],fame:0,followers:0,socialMediaAccount:false,socialMediaPosts:0,reputation:50,crimeRecord:0,prison:null,debt:0,willDistribution:'الأسرة بالتساوي',heirlooms:[],dailyRewardDate:null,dailyChallenges:null,timeMachineSnapshots:[],legacy:{name:null,inheritance:0,heirloom:null},driversLicense:false,travelHistory:[]};
+  const defaults={lifeId:Date.now()+Math.random(),cemeterySaved:false,jobHistory:[],specialCareer:null,specialCareerHistory:[],combatCareer:null,filmStudio:null,investments:[],business:null,married:false,children:[],coParentingPlans:[],pets:[],hobbies:[],fame:0,followers:0,socialMediaAccount:false,socialMediaPosts:0,reputation:50,crimeRecord:0,prison:null,debt:0,willDistribution:'الأسرة بالتساوي',heirlooms:[],dailyRewardDate:null,dailyChallenges:null,timeMachineSnapshots:[],legacy:{name:null,inheritance:0,heirloom:null},driversLicense:false,travelHistory:[]};
   Object.keys(defaults).forEach(k=>{if(x[k]===undefined||x[k]===null)x[k]=defaults[k];});
-  if(!Array.isArray(x.family))x.family=[];if(!Array.isArray(x.friends))x.friends=[];if(!Array.isArray(x.assets))x.assets=[];if(!Array.isArray(x.timeMachineSnapshots))x.timeMachineSnapshots=[];
+  if(!Array.isArray(x.family))x.family=[];if(!Array.isArray(x.friends))x.friends=[];if(!Array.isArray(x.assets))x.assets=[];if(!Array.isArray(x.timeMachineSnapshots))x.timeMachineSnapshots=[];if(!Array.isArray(x.coParentingPlans))x.coParentingPlans=[];x.coParentingPlans.forEach(p=>{if(p&&typeof p==='object'){if(!Array.isArray(p.childIds))p.childIds=[];if(!Array.isArray(p.history))p.history=[];if(!Number.isFinite(Number(p.supportPerChild)))p.supportPerChild=2200;if(!Number.isFinite(Number(p.arrears)))p.arrears=0;}});
   if(!x.education||typeof x.education!=='object')x.education={level:0,school:'لم تبدأ الدراسة',major:null,yearsLeft:0,tuition:0};
   x.education.clubs=Array.isArray(x.education.clubs)?x.education.clubs:[];
   x.assets.forEach(a=>{if((a.kind==='car'||a.kind==='property')&&!Number.isFinite(Number(a.condition)))a.condition=100;});
@@ -663,7 +663,7 @@ function advanceAge(){
    const living=Math.round(9000+state.age*180);state.bank-=living;flash('-'+cash(living),true);
    log('🧾','مصاريف المعيشة','دفعت '+cash(living)+' لمصاريف السنة من أكل ومواصلات واحتياجات أساسية.');
  }
- const childCosts=(state.children||[]).reduce((sum,c)=>sum+((c.age||0)<6?4500:((c.age||0)<18?7500:0)),0);if(childCosts>0){state.bank-=childCosts;log('🧸','مصاريف الأبناء','احتياجات وتعليم ورعاية الأبناء كلّفتك '+cash(childCosts)+' هذا العام.','bad');}
+ const childCosts=(state.children||[]).reduce((sum,c)=>{const base=(c.age||0)<6?4500:((c.age||0)<18?7500:0);if(!base)return sum;const plan=(state.coParentingPlans||[]).find(p=>p&&p.active!==false&&(p.childIds||[]).includes(c.id||c.name));if(!plan)return sum+base;if(plan.mode==='shared')return sum+Math.round(base*.6);if(plan.mode==='other')return sum+Math.round(base*.2);return sum+base;},0);if(childCosts>0){state.bank-=childCosts;log('🧸','مصاريف الأبناء','احتياجات وتعليم ورعاية الأبناء كلّفتك '+cash(childCosts)+' هذا العام بعد احتساب ترتيبات الرعاية.','bad');}applyCoParentingAnnualEffects();
  if(assetUpkeep){state.bank-=assetUpkeep;flash('-'+cash(assetUpkeep),true);log('🔧','صيانة الأصول','صيانة ممتلكاتك كلّفتك '+cash(assetUpkeep)+'.','bad');}
  const rentIncome=(state.assets||[]).filter(a=>a.kind==='property'&&a.rented).reduce((total,a)=>total+Math.round((a.value||0)*.045),0);if(rentIncome>0){state.bank+=rentIncome;log('🏠','دخل إيجار سنوي','دخل لك '+cash(rentIncome)+' من تأجير العقارات.','good');}
  if(state.debt>0){const interest=Math.max(100,Math.round(state.debt*.08));state.debt+=interest;log('🏦','فوائد الديون','زادت ديونك بمقدار '+cash(interest)+' بسبب الفوائد. إجمالي الدين '+cash(state.debt)+'.','bad');}
@@ -960,6 +960,112 @@ function relations(){
  opts.push(choice('📜','شجرة العائلة والإرث','استعرض أفراد الأسرة، الأبناء وخيارات الوصية.',willMenu));
  modal('💞','العلاقات والأسرة','العلاقات تتغير بمرور السنين. اهتم بالناس القريبين منك، لأن اختياراتك بتأثر على قوة العلاقة.',opts);
 }
+
+function custodyModeLabel(mode){
+ return mode==='shared'?'رعاية مشتركة':mode==='other'?'الإقامة الأساسية مع الطرف الآخر':'الإقامة الأساسية معك';
+}
+function eligibleChildrenForCoParent(ex){
+ const assigned=new Set((state.coParentingPlans||[]).filter(p=>p&&p.active!==false).flatMap(p=>Array.isArray(p.childIds)?p.childIds:[]));
+ return (state.children||[]).filter((child,index)=>{
+  if(!child.id)child.id='child-'+String(child.name||index)+'-'+Date.now()+'-'+index;
+  const key=child.id||child.name;
+  return (child.age||0)<18&&!assigned.has(key)&&(!child.otherParentId||child.otherParentId===ex.id);
+ });
+}
+function childrenForCustodyPlan(plan){
+ const ids=Array.isArray(plan.childIds)?plan.childIds:[];
+ return (state.children||[]).filter(c=>ids.includes(c.id||c.name));
+}
+function recordCustody(plan,action,details){
+ if(!Array.isArray(plan.history))plan.history=[];
+ plan.history.push({age:state.age,action,details:String(details||'')});
+ if(plan.history.length>20)plan.history.shift();
+}
+function createCoParentingPlan(ex,mode){
+ const eligible=eligibleChildrenForCoParent(ex);
+ if(!eligible.length){closeModal();save();render();info('👪','لا توجد حضانة جديدة','مفيش أبناء قاصرين مشمولين باتفاق جديد مع الطرف الآخر ده.');return;}
+ if(!Array.isArray(state.coParentingPlans))state.coParentingPlans=[];
+ eligible.forEach(child=>{child.otherParentId=ex.id;child.otherParentName=ex.name;});
+ const plan={id:'custody-'+Date.now()+'-'+Math.random().toString(36).slice(2,7),otherParent:{...ex},otherParentName:ex.name,mode,childIds:eligible.map(c=>c.id||c.name),supportPerChild:2200,arrears:0,active:true,createdAge:state.age,history:[]};
+ recordCustody(plan,'إنشاء الخطة','تم الاتفاق على '+custodyModeLabel(mode)+' لـ '+eligible.length+' أبناء قاصرين.');
+ state.coParentingPlans.push(plan);
+ log('👪','اتفاق رعاية الأبناء','بعد الانفصال، اتفقت مع '+ex.name+' على '+custodyModeLabel(mode)+'. طريقة الرعاية هتأثر على مصاريف الأبناء والنفقة السنوية.','special');
+ save();render();
+ info('👪','اتفاق رعاية الأبناء','اتفقتم على '+custodyModeLabel(mode)+'. تقدر تغيّر طريقة الرعاية أو النفقة من قائمة الزواج والأسرة.',[choice('👪','إدارة الاتفاق','',()=>{closeModal();coParentingMenu();}),choice('✓','تمام','',closeModal)]);
+}
+function custodyChoiceMenu(ex){
+ if(!eligibleChildrenForCoParent(ex).length){closeModal();save();render();info('👪','لا توجد حضانة جديدة','الأبناء القاصرون الموجودون مشمولون بالفعل في اتفاق سابق أو مش تابعين للطرف الآخر ده.');return;}
+ modal('👪','اتفاق رعاية الأبناء','اختاروا ترتيبًا مبدئيًا لرعاية الأبناء القاصرين بعد الانفصال. القرار بيغيّر مصاريف الرعاية ونفقة الأبناء ومتابعة العلاقة.',[
+  choice('🏡','الإقامة الأساسية معايا','أنت مسؤول عن أغلب مصاريف الرعاية، والزيارات مستمرة.',()=>createCoParentingPlan(ex,'primary')),
+  choice('🤝','رعاية مشتركة','تقسيم الوقت والمصاريف بين الطرفين.',()=>createCoParentingPlan(ex,'shared')),
+  choice('🏠','الإقامة الأساسية مع الطرف الآخر','تتحمل نفقة سنوية وتتابع علاقتك بالأبناء بالزيارات.',()=>createCoParentingPlan(ex,'other')),
+  choice('↩️','رجوع','',()=>{closeModal();familyMenu();})
+ ]);
+}
+function coParentingMenu(){
+ const plans=Array.isArray(state.coParentingPlans)?state.coParentingPlans:[];
+ const opts=plans.filter(p=>p&&p.active!==false).map(p=>{
+  const children=childrenForCustodyPlan(p),minor=children.filter(c=>(c.age||0)<18).length;
+  return choice(p.mode==='shared'?'🤝':p.mode==='other'?'🏠':'🏡',(p.otherParentName||p.otherParent?.name||'الطرف الآخر')+' · '+custodyModeLabel(p.mode),'الأبناء ضمن الاتفاق '+children.length+' · القاصرون '+minor+' · النفقة لكل ابن '+cash(p.supportPerChild||0)+' · متأخرات '+cash(p.arrears||0)+'.',()=>coParentingPlanDetails(p),'',minor?75:35);
+ });
+ if(!opts.length)opts.push(choice('👪','لا توجد اتفاقات رعاية','تظهر هنا خطط الرعاية بعد الانفصال مع وجود أبناء قاصرين.',closeModal));
+ opts.push(choice('↩️','رجوع للزواج والأسرة','',familyMenu));
+ modal('👪','رعاية الأبناء بعد الانفصال','راجع طريقة الرعاية والنفقة السنوية لكل اتفاق. تظل قادرًا على التفاعل مع أبنائك من قائمة العلاقات.',opts);
+}
+function coParentingPlanDetails(plan){
+ if(!state.coParentingPlans||!state.coParentingPlans.includes(plan)){closeModal();coParentingMenu();return;}
+ const children=childrenForCustodyPlan(plan),minor=children.filter(c=>(c.age||0)<18).length;
+ const modeChoices=[
+  choice('🏡','الإقامة الأساسية معايا','مصاريف الرعاية الكاملة للأبناء المشمولين بالخطة.',()=>setCoParentingMode(plan,'primary')),
+  choice('🤝','رعاية مشتركة','تقسيم مصاريف الرعاية بين الطرفين.',()=>setCoParentingMode(plan,'shared')),
+  choice('🏠','الإقامة الأساسية مع الطرف الآخر','نفقة سنوية ومصاريف رعاية أقل داخل ميزانيتك.',()=>setCoParentingMode(plan,'other'))
+ ];
+ const opts=[
+  choice('📋','تفاصيل الاتفاق',custodyModeLabel(plan.mode)+' · '+children.map(c=>c.name).join('، ')+'.',()=>{closeModal();info('📋','تفاصيل الرعاية','طريقة الرعاية: '+custodyModeLabel(plan.mode)+' · الأبناء '+children.length+' · القاصرون '+minor+' · النفقة لكل ابن '+cash(plan.supportPerChild||0)+' · المتأخرات '+cash(plan.arrears||0)+'.');}),
+  ...modeChoices,
+  choice('💵','تعديل قيمة النفقة','القيمة الحالية '+cash(plan.supportPerChild||0)+' لكل ابن في السنة عند الإقامة الأساسية مع الطرف الآخر.',()=>setCoParentingSupport(plan)),
+  choice('📜','سجل الاتفاق','راجع تغييرات طريقة الرعاية والنفقة.',()=>coParentingHistory(plan)),
+  choice('↩️','رجوع للاتفاقات','',coParentingMenu)
+ ];
+ modal('👪','إدارة اتفاق الرعاية','الطرف الآخر: '+(plan.otherParentName||plan.otherParent?.name||'غير محدد')+' · '+custodyModeLabel(plan.mode)+'.',opts);
+}
+function setCoParentingMode(plan,mode){
+ if(!['primary','shared','other'].includes(mode))return;
+ closeModal();const previous=plan.mode;plan.mode=mode;recordCustody(plan,'تغيير طريقة الرعاية',custodyModeLabel(previous)+' ← '+custodyModeLabel(mode));
+ log('👪','تعديل اتفاق الرعاية','غيّرت ترتيب رعاية الأبناء مع '+(plan.otherParentName||'الطرف الآخر')+' إلى '+custodyModeLabel(mode)+'.','special');
+ save();render();coParentingPlanDetails(plan);
+}
+function setCoParentingSupport(plan){
+ const options=[1000,2200,4000,6500].map(amount=>choice('💵',cash(amount)+' لكل ابن سنويًا','تحديد النفقة السنوية إذا كانت الإقامة الأساسية مع الطرف الآخر.',()=>{closeModal();const old=plan.supportPerChild||0;plan.supportPerChild=amount;recordCustody(plan,'تعديل النفقة',cash(old)+' ← '+cash(amount));log('💵','تعديل نفقة الأبناء','أصبحت النفقة السنوية '+cash(amount)+' لكل ابن في الخطة.','good');save();render();coParentingPlanDetails(plan);}));
+ options.push(choice('↩️','رجوع لتفاصيل الاتفاق','',()=>{closeModal();coParentingPlanDetails(plan);}));
+ modal('💵','تحديد النفقة','القيمة تؤثر على المصروفات السنوية إذا كانت الإقامة الأساسية مع الطرف الآخر.',options);
+}
+function coParentingHistory(plan){
+ const history=(plan.history||[]).slice().reverse();
+ const labels={'إنشاء الخطة':'إنشاء الاتفاق','تغيير طريقة الرعاية':'تغيير طريقة الرعاية','تعديل النفقة':'تعديل قيمة النفقة'};
+ const opts=history.map(h=>choice('📜',(labels[h.action]||h.action)+' · عمر '+fmt(h.age||0),h.details||'تغيير مسجل في الاتفاق.',()=>{closeModal();info('📜',labels[h.action]||h.action,(h.details||'تم تسجيل تغيير في اتفاق الرعاية.')+' · العمر '+fmt(h.age||0)+'.');}));
+ if(!opts.length)opts.push(choice('📜','لا توجد تغييرات بعد','سجل الاتفاق سيعرض التغييرات التالية.',closeModal));
+ opts.push(choice('↩️','رجوع للتفاصيل','',()=>{closeModal();coParentingPlanDetails(plan);}));
+ modal('📜','سجل اتفاق الرعاية','آخر تغييرات الرعاية والنفقة المحفوظة.',opts);
+}
+function applyCoParentingAnnualEffects(){
+ const plans=(state.coParentingPlans||[]).filter(p=>p&&p.active!==false);
+ plans.forEach(plan=>{
+  const minors=childrenForCustodyPlan(plan).filter(c=>(c.age||0)<18);
+  if(!minors.length)return;
+  const mode=plan.mode||'primary';
+  if(mode==='other'){
+   const perChild=clamp(plan.supportPerChild??2200,0,10000),due=perChild*minors.length,paid=Math.min(Math.max(0,state.bank||0),due);
+   state.bank-=paid;
+   if(paid<due)plan.arrears=Math.max(0,Number(plan.arrears)||0)+(due-paid);
+   else if((plan.arrears||0)>0){const extra=Math.min(Number(plan.arrears)||0,Math.max(0,state.bank)*.15);state.bank-=extra;plan.arrears-=extra;}
+   if(paid>0)log('💵','نفقة الأبناء','دفعت '+cash(paid)+' نفقة سنوية لأبنائك من ترتيب الرعاية.','good');
+   if(paid<due)log('⚖️','متأخرات نفقة','لم يكن الرصيد كافيًا لسداد النفقة كاملة. المتبقي '+cash((plan.arrears||0))+'.','bad');
+   minors.forEach(child=>{child.relationshipLevel=clamp((child.relationshipLevel||50)+(paid===due?0:-1));});
+  }else if(mode==='shared'){minors.forEach(child=>{child.relationshipLevel=clamp((child.relationshipLevel||50)+1);});}
+ });
+}
+
 function familyMenu(){
  const opts=[];
  if(state.partner&&state.age>=18&&!state.married)opts.push(choice('💍','الزواج','تقدروا تتجوزوا لو العلاقة مستقرة ومعاكم تكلفة البداية.',marry,'4,500 '+state.place.unit));
@@ -968,6 +1074,7 @@ function familyMenu(){
  if(state.partner&&state.age>=20&&(state.married||state.partner.relationshipLevel>=70))opts.push(choice('👶','إنجاب طفل','إضافة فرد جديد للعائلة مع تكاليف تربية سنوية.',haveChild,'8,000 '+state.place.unit));
  if(state.age>=21&&state.children.length<6)opts.push(choice('🧸','تبنّي طفل','توسيع الأسرة من خلال التبنّي، مع مصاريف بداية ورعاية مستمرة.',adoptChild,'12,000 '+state.place.unit));
  if((state.children||[]).length)opts.push(choice('🧒','أبنائي','الاطمئنان على الأبناء والتفاعل معاهم.',()=>{closeModal();relations();}));
+ if((state.coParentingPlans||[]).some(p=>p&&p.active!==false))opts.push(choice('👪','رعاية الأبناء بعد الانفصال','إدارة ترتيب الرعاية والنفقة وسجل الاتفاق.',coParentingMenu));
  if(!state.partner)opts.push(choice('💞','التعرف على شريك','ابدأ بعلاقة قبل الزواج وتكوين الأسرة.',()=>{closeModal();meetPartner();}));
  opts.push(choice('📜','ترتيب الوصية','حدد تصورك لتوزيع الإرث عند نهاية الحياة.',willMenu));
  opts.push(choice('↩️','رجوع للعلاقات','',relations));
@@ -989,7 +1096,7 @@ function haveChild(){
  if(state.bank<8000){info('💳','جهّز الميزانية','بداية تكاليف الطفل حوالي 8,000 '+state.place.unit+'.');return;}
  state.bank-=8000;
  const gender=pick(['male','female']),child=makePerson(gender,gender==='male'?'ابن':'ابنة',gender==='male'?'👶🏻':'👶🏻',0,78);
- child.gender=gender;child.job='طفل';child.generosity=50+Math.floor(Math.random()*30);child.bornAt=state.age;
+ child.gender=gender;child.job='طفل';child.generosity=50+Math.floor(Math.random()*30);child.bornAt=state.age;child.otherParentId=state.partner.id||null;child.otherParentName=state.partner.name;
  state.children.push(child);state.partner.relationshipLevel=clamp(state.partner.relationshipLevel+4);stat('happiness',7);achievement('إنجاب طفل');
  log('👶','فرد جديد في الأسرة','اتولد '+child.name+'، وبدأ فصل جديد من حياتكم. تربية الأطفال لها مصاريف ووقت ومسؤولية.','special');
  render();info('🎉','مبروك المولود الجديد','اتضاف '+child.name+' لشجرة العائلة. احتياجاته وتعليمه وعلاقتك بيه هتتغير مع العمر.');
@@ -998,15 +1105,23 @@ function adoptChild(){
  closeModal();if(state.age<21){info('🔒','لسه بدري','التبنّي متاح من سن 21 داخل اللعبة.');return;}
  if(state.children.length>=6){info('👪','الأسرة كبيرة بالفعل','النسخة الحالية تدعم حتى ستة أبناء لكل حياة.');return;}
  if(state.bank<12000){info('💳','الرصيد مش كفاية','تكاليف بداية التبنّي 12,000 '+state.place.unit+'.');return;}
- state.bank-=12000;const gender=pick(['male','female']);const child=makePerson(gender,gender==='male'?'ابن بالتبنّي':'ابنة بالتبنّي','🧒',0,72+Math.floor(Math.random()*22));child.gender=gender;child.job='طفل بالتبنّي';child.adopted=true;child.bornAt=state.age;state.children.push(child);state.stats.happiness=clamp(state.stats.happiness+6);achievement('توسيع الأسرة بالتبنّي');log('🧸','أصبحت أسرة بالتبنّي','رحبت بـ'+child.name+' في الأسرة. محتاج وقت واهتمام عشان يبقى جزءًا من البيت.','special');render();info('🧸','أهلًا بفرد جديد','أُضيف '+child.name+' إلى أبنائك. مصاريف رعايته هتتغير مع العمر.');
+ state.bank-=12000;const gender=pick(['male','female']);const child=makePerson(gender,gender==='male'?'ابن بالتبنّي':'ابنة بالتبنّي','🧒',0,72+Math.floor(Math.random()*22));child.gender=gender;child.job='طفل بالتبنّي';child.adopted=true;child.bornAt=state.age;child.otherParentId=state.partner?state.partner.id||null:null;child.otherParentName=state.partner?state.partner.name:null;state.children.push(child);state.stats.happiness=clamp(state.stats.happiness+6);achievement('توسيع الأسرة بالتبنّي');log('🧸','أصبحت أسرة بالتبنّي','رحبت بـ'+child.name+' في الأسرة. محتاج وقت واهتمام عشان يبقى جزءًا من البيت.','special');render();info('🧸','أهلًا بفرد جديد','أُضيف '+child.name+' إلى أبنائك. مصاريف رعايته هتتغير مع العمر.');
 }
 function divorce(){
  closeModal();
  if(!state.partner||!state.married){info('💔','لا يوجد زواج حالي','مفيش زواج قائم يحتاج إنهاء.');return;}
  modal('💔','تأكيد الطلاق','قرار كبير هيغيّر الأسرة والحالة المالية والعاطفية.',[
-  choice('💔','أنهي الزواج','الانفصال بشكل نهائي.',()=>{closeModal();const ex={...state.partner,relation:'شريك سابق',relationshipLevel:clamp(state.partner.relationshipLevel-25)};state.friends.push(ex);state.partner=null;state.married=false;state.stats.happiness=clamp(state.stats.happiness-10);log('💔','انتهى الزواج','انفصلت عن '+ex.name+'. هتفضل مسؤوليتكم المشتركة تجاه الأبناء قائمة.','bad');render();}),
+  choice('💔','أنهي الزواج','بعد إنهاء الزواج، لو فيه أبناء قاصرين هتختاروا ترتيب الرعاية.',()=>finalizeDivorce()),
   choice('↩️','أراجع قراري','أرجع لقائمة الأسرة.',()=>{closeModal();familyMenu();})
  ]);
+}
+function finalizeDivorce(){
+ closeModal();if(!state.partner||!state.married){familyMenu();return;}
+ const ex={...state.partner,id:state.partner.id||'parent-'+Date.now(),relation:'شريك سابق',relationshipLevel:clamp(state.partner.relationshipLevel-25)};
+ state.friends.push(ex);state.partner=null;state.married=false;state.stats.happiness=clamp(state.stats.happiness-10);
+ log('💔','انتهى الزواج','انفصلت عن '+ex.name+'. دلوقتي اختاروا طريقة رعاية الأبناء القاصرين إن وُجدوا.','bad');
+ if(eligibleChildrenForCoParent(ex).length){custodyChoiceMenu(ex);return;}
+ save();render();info('💔','انتهى الزواج','انفصلت عن '+ex.name+'. لا توجد أبناء قاصرين مشمولون باتفاق رعاية جديد.');
 }
 function breakUp(){
  closeModal();if(!state.partner||state.married){familyMenu();return;}
@@ -1988,9 +2103,9 @@ function importSave(){
     const data=JSON.parse(String(reader.result||''));
     if(!data||typeof data!=='object'||Array.isArray(data)||data.version!==1||!data.stats||typeof data.stats!=='object'||Array.isArray(data.stats)||!Array.isArray(data.log)||!Array.isArray(data.family)||!data.place||typeof data.place!=='object'||Array.isArray(data.place))throw new Error('invalid');
     normalizeCoreState(data);
-    const defaults={lifeId:Date.now()+Math.random(),cemeterySaved:false,jobHistory:[],specialCareer:null,specialCareerHistory:[],combatCareer:null,filmStudio:null,investments:[],business:null,married:false,children:[],pets:[],hobbies:[],fame:0,followers:0,socialMediaAccount:false,socialMediaPosts:0,reputation:50,crimeRecord:0,prison:null,debt:0,willDistribution:'الأسرة بالتساوي',heirlooms:[],dailyRewardDate:null,dailyChallenges:null,timeMachineSnapshots:[],legacy:{name:null,inheritance:0,heirloom:null},driversLicense:false,travelHistory:[],retired:false,yearCount:data.age||0,assets:[],friends:[],accomplishments:[],status:'حي'};
+    const defaults={lifeId:Date.now()+Math.random(),cemeterySaved:false,jobHistory:[],specialCareer:null,specialCareerHistory:[],combatCareer:null,filmStudio:null,investments:[],business:null,married:false,children:[],coParentingPlans:[],pets:[],hobbies:[],fame:0,followers:0,socialMediaAccount:false,socialMediaPosts:0,reputation:50,crimeRecord:0,prison:null,debt:0,willDistribution:'الأسرة بالتساوي',heirlooms:[],dailyRewardDate:null,dailyChallenges:null,timeMachineSnapshots:[],legacy:{name:null,inheritance:0,heirloom:null},driversLicense:false,travelHistory:[],retired:false,yearCount:data.age||0,assets:[],friends:[],accomplishments:[],status:'حي'};
     Object.keys(defaults).forEach(k=>{if(data[k]===undefined||data[k]===null)data[k]=defaults[k];});
-    if(!Array.isArray(data.assets))data.assets=[];if(!Array.isArray(data.timeMachineSnapshots))data.timeMachineSnapshots=[];data.assets.forEach(a=>{if((a.kind==='car'||a.kind==='property')&&!Number.isFinite(Number(a.condition)))a.condition=100;});
+    if(!Array.isArray(data.assets))data.assets=[];if(!Array.isArray(data.timeMachineSnapshots))data.timeMachineSnapshots=[];if(!Array.isArray(data.coParentingPlans))data.coParentingPlans=[];data.coParentingPlans.forEach(p=>{if(p&&typeof p==='object'){if(!Array.isArray(p.childIds))p.childIds=[];if(!Array.isArray(p.history))p.history=[];if(!Number.isFinite(Number(p.supportPerChild)))p.supportPerChild=2200;if(!Number.isFinite(Number(p.arrears)))p.arrears=0;}});data.assets.forEach(a=>{if((a.kind==='car'||a.kind==='property')&&!Number.isFinite(Number(a.condition)))a.condition=100;});
     if(!data.education||typeof data.education!=='object')data.education={level:0,school:'لم تبدأ الدراسة',major:null,yearsLeft:0,tuition:0};data.education.clubs=Array.isArray(data.education.clubs)?data.education.clubs:[];
     const npcDefaults=n=>{if(!n||typeof n!=='object')return;if(!Number.isFinite(Number(n.generosity)))n.generosity=50;if(!Number.isFinite(Number(n.craziness)))n.craziness=50;if(!Number.isFinite(Number(n.money)))n.money=50;if(!Number.isFinite(Number(n.petulance)))n.petulance=50;if(!Number.isFinite(Number(n.loyalty)))n.loyalty=55;if(!Number.isFinite(Number(n.jealousy)))n.jealousy=40;if(!Number.isFinite(Number(n.reliability)))n.reliability=55;if(!Array.isArray(n.interactions))n.interactions=[];};if(!Array.isArray(data.specialCareerHistory))data.specialCareerHistory=[];const careerDefaults=c=>{if(!c||typeof c!=='object')return;if(!c.record||typeof c.record!=='object')c.record={attempts:0,wins:0,losses:0,projects:0,totalEarnings:0,bestLevel:clamp(c.level||1)};if(!Array.isArray(c.history))c.history=[];};careerDefaults(data.specialCareer);data.specialCareerHistory.forEach(careerDefaults);(data.family||[]).forEach(npcDefaults);(data.friends||[]).forEach(npcDefaults);(data.children||[]).forEach(npcDefaults);npcDefaults(data.partner);
     state=data;dead=state.status==='متوفى';save();render();if(dead)death(state.cause||'نهاية رحلة الحياة');else info('📥','تم استيراد الحفظ','تم تحميل '+state.name+' · العمر '+state.age+' سنة.');
