@@ -480,7 +480,7 @@ function modal(icon,title,desc,choices,closable=true,extra=''){
    '<span class="choiceico">'+(c.icon||'›')+'</span>'+
    '<span class="ctext"><span class="ctitle">'+esc(c.title||c.label||'اختيار')+'</span>'+
    (c.desc?'<span class="cdesc">'+esc(c.desc)+'</span>':'')+
-   (Number.isFinite(Number(c.progress))?'<span class="choice-progress"><span style="width:'+clamp(c.progress)+'%"></span></span>':'')+
+   (c.progress!==null&&c.progress!==undefined&&Number.isFinite(Number(c.progress))?'<span class="choice-progress"><span style="width:'+clamp(c.progress)+'%"></span></span>':'')+
    '</span>'+(c.price?'<span class="price">'+esc(c.price)+'</span>':'')+
    (isDrawer?'<span class="choice-chevron" aria-hidden="true">‹</span>':'')+
   '</button>').join('');
@@ -656,7 +656,7 @@ function schoolHub(){
  const clubs=Array.isArray(education.clubs)?education.clubs:[];
  const options=[
   choice('📚','ذاكر بجد','جلسة مذاكرة ترفع الذكاء والمستوى الدراسي، لكنها تحتاج مجهود.',()=>{
-   closeModal();education.studyScore=clamp((education.studyScore||50)+12);stat('smart',4);stat('happiness',-1);
+   closeModal();if(education.droppedOut){info('🚪','تركت الدراسة','ارجع لمسار التعليم الأول عشان تقدر تستخدم المذاكرة المدرسية.');return;}education.studyScore=clamp((education.studyScore||50)+12);stat('smart',4);stat('happiness',-1);
    log('📚','ذاكرت بجد','خصصت وقتًا للمذاكرة، وارتفع تقييمك الدراسي إلى '+education.studyScore+'%.','good');render();
    info('📚','مجهودك فرق','الذكاء اتحسن وتقييمك الدراسي بقى '+education.studyScore+'%.');
   }),
@@ -678,7 +678,7 @@ function schoolHub(){
  modal('🎓', 'الدراسة والشغل',stage+' · المستوى الدراسي '+(education.level||0)+' · تقييم المذاكرة '+score+'%.',options,true,'<div class="school-progress"><div class="muted">التقييم الدراسي</div><div class="progressline"><div style="width:'+score+'%"></div></div><div class="muted">'+clubs.length+' نشاط طلابي</div></div>');
 }
 function schoolClubs(){
- closeModal();
+ closeModal();if(state.education&&state.education.droppedOut){info('🚪','الأنشطة الطلابية غير متاحة','ارجع لمسار التعليم عشان تنضم للأندية والأنشطة.');return;}
  const catalog=[
   {id:'sports',name:'النادي الرياضي',icon:'⚽',effect:'الصحة والروح الرياضية'},
   {id:'science',name:'نادي العلوم',icon:'🔬',effect:'التعلم والفضول'},
