@@ -2680,6 +2680,15 @@ function premiumPerksMenu(){
   {id:'billionairesBundle',title:'باقة الملياردير',emoji:'💼',cost:160000,desc:'تفتح حزم الأعمال وإدارة العقارات والمستثمر: شركات متعددة، مستأجرون، أسهم وسندات وعملات رقمية.'},
   {id:'crimePaysBundle',title:'باقة عالم الجريمة',emoji:'🕶️',cost:145000,desc:'تفتح مسار المافيا، والسوق السوداء والمتحف، ونصل المهام الخاصة الخيالية.'},
   {id:'partyAnimalBundle',title:'باقة الحيوان الحفّال',emoji:'🦁',cost:175000,desc:'تفتح حديقة الحيوان وبطاقة الخروج من السجن ووضع النجومية الذهبي.'},
+  {id:'businessPack',title:'حزمة الأعمال',emoji:'📈',cost:60000,desc:'تملك شركات إضافية وتوسع محفظتك وتتابع أرباح كل شركة.'},
+  {id:'landlordPack',title:'توسعة العقارات والملاك',emoji:'🏘️',cost:55000,desc:'عقارات متطورة ومرافق فاخرة وعقود إيجار وتفاوض وإخلاء مستأجرين.'},
+  {id:'investorPack',title:'حزمة المستثمر',emoji:'📊',cost:55000,desc:'أسهم وسندات وعملات رقمية ومستشار مالي ونصائح من الأصدقاء والصحف.'},
+  {id:'cultPack',title:'توسعة الطائفة والمجتمع',emoji:'🛕',cost:72000,desc:'أسّس مجتمعك، اجمع الأتباع، ضع القواعد، ونظّم المراسم والانضباط داخل محاكاة خيالية.'},
+  {id:'casinoPack',title:'توسعة الكازينو',emoji:'🎰',cost:95000,desc:'امتلك كازينو، ثبّت الألعاب والمرافق، استضف مشاهير وافتح إكسسوارات للفوز داخل اللعبة.'},
+  {id:'godMode',title:'وضع الإله',emoji:'⚡',cost:110000,desc:'خصص بداية الحيوات، ابدأ حياة ملكية، حرر الشخصيات وسمات المواهب، واستكمل حياة أحد الأبناء.'},
+  {id:'bitizenship',title:'عضوية المواطن Bitizen',emoji:'🌟',cost:85000,desc:'افتح وصولًا مميزًا لمحرر الشخصيات والأجيال والأنشطة والمظهر؛ لا توجد إعلانات قسرية أو مدفوعات حقيقية في هذه النسخة.'},
+  {id:'movieDirectorPack',title:'حزمة مخرج الأفلام',emoji:'🎥',cost:65000,desc:'استوديو أفلام مع 11 نوعًا سينمائيًا واختبارات أداء ودراما الممثلين والجوائز والمهرجانات.'},
+  {id:'dealerPack',title:'حزمة التاجر',emoji:'🃏',cost:70000,desc:'ابدأ مسار تاجر خيالي وتدرج إلى قيادة شبكة داخل عالم اللعبة مع أرباح ومخاطر قانونية مجردة.'},
   {id:'challengeVault',title:'خزنة التحديات',emoji:'🗄️',cost:22000,desc:'حفظ تحديات الأيام السابقة وإتاحة مكافأة استرجاع غير مستلمة.'},
   {id:'goldTheme',title:'الطابع الذهبي',emoji:'⭐',cost:16000,desc:'افتح مظهرًا ذهبيًا أصليًا ويمكنك تشغيله أو إيقافه.'},
   {id:'streakSaver',title:'حماة السلسلة ×5',emoji:'🛡️',cost:8000,desc:'حزمة من 5 وسائل حماية للسلسلة عند تفويت يوم واحد.'},
@@ -2707,7 +2716,7 @@ function premiumPerksMenu(){
   if(item.id==='streakSaver')return choice(item.emoji,item.title+' · المتبقي '+(permanentPerks.streakSavers||0),item.desc+' التكلفة '+cash(item.cost)+'.',()=>buyPremiumPerk(item.id),cash(item.cost));
   if(perkOwned(item.id)){
    if(PERK_TOGGLE_IDS.includes(item.id))return choice(perkEnabled(item.id)?'🟢':'⚪',item.title+(perkEnabled(item.id)?' · مفعّل':' · متوقف'),item.desc,()=>togglePremiumPerk(item.id));
-   const actions={challengeVault:challengeVaultMenu,expandedTime:timeMachineMenu,actorPack:actorPackMenu,bossMode:bossModeMenu,superstarMode:()=>togglePremiumPerk('goldTheme'),zooExpansionPack:zooMenu,mafiaPack:mafiaMenu,blackMarketPack:blackMarketMenu,assassinsBlade:assassinBladeMission,goldenDiploma:goldenDiplomaMenu};
+   const actions={challengeVault:challengeVaultMenu,expandedTime:timeMachineMenu,actorPack:actorPackMenu,bossMode:bossModeMenu,superstarMode:()=>togglePremiumPerk('goldTheme'),zooExpansionPack:zooMenu,mafiaPack:mafiaMenu,blackMarketPack:blackMarketMenu,assassinsBlade:assassinBladeMission,goldenDiploma:goldenDiplomaMenu,businessPack:companyPortfolioMenu,landlordPack:landlordPortfolioMenu,investorPack:investingMenu,cultPack:cultMenu,casinoPack:casinoMenu,godMode:godModeMenu,bitizenship:bitizenshipMenu,movieDirectorPack:movieDirectorMenu,dealerPack:dealerMenu};
    return choice('✅',item.title+' · مفتوح',item.desc,actions[item.id]||(()=>info(item.emoji,item.title,item.desc)));
   }
   return choice(item.emoji,item.title,item.desc+' شراء مرة واحدة من رصيد اللعبة: '+cash(item.cost)+'.',()=>buyPremiumPerk(item.id),cash(item.cost));
@@ -2718,7 +2727,7 @@ function premiumPerksMenu(){
 function buyPremiumPerk(id){
  const catalog={
   fameFortuneBundle:{cost:135000,title:'باقة الشهرة والثروة'},billionairesBundle:{cost:160000,title:'باقة الملياردير'},crimePaysBundle:{cost:145000,title:'باقة عالم الجريمة'},partyAnimalBundle:{cost:175000,title:'باقة الحيوان الحفّال'},
-  challengeVault:{cost:22000,title:'خزنة التحديات'},goldTheme:{cost:16000,title:'الطابع الذهبي'},streakSaver:{cost:8000,title:'حماة السلسلة'},expandedTime:{cost:30000,title:'ذاكرة الزمن الموسّعة'},
+  challengeVault:{cost:22000,title:'خزنة التحديات'},goldTheme:{cost:16000,title:'الطابع الذهبي'},streakSaver:{cost:8000,title:'حماة السلسلة'},expandedTime:{cost:30000,title:'ذاكرة الزمن الموسّعة'},businessPack:{cost:60000,title:'حزمة الأعمال'},landlordPack:{cost:55000,title:'توسعة العقارات والملاك'},investorPack:{cost:55000,title:'حزمة المستثمر'},cultPack:{cost:72000,title:'توسعة الطائفة والمجتمع'},casinoPack:{cost:95000,title:'توسعة الكازينو'},godMode:{cost:110000,title:'وضع الإله'},bitizenship:{cost:85000,title:'عضوية المواطن Bitizen'},movieDirectorPack:{cost:65000,title:'حزمة مخرج الأفلام'},dealerPack:{cost:70000,title:'حزمة التاجر'},
   actorPack:{cost:25000,title:'حزمة التمثيل الاحترافية'},bossMode:{cost:45000,title:'مركز المهن الشامل'},healthShield:{cost:18000,title:'درع العافية'},goldenWrench:{cost:20000,title:'الورشة الذهبية'},
   goldenPassport:{cost:30000,title:'جواز العالم'},goldenPiggyBank:{cost:75000,title:'حصالة المليون'},goldenNeko:{cost:55000,title:'تميمة الازدهار'},hollywoodStar:{cost:60000,title:'نجم هوليوود'},
   goldenResume:{cost:48000,title:'السيرة الذاتية الذهبية'},goldenDiploma:{cost:38000,title:'الشهادة الذهبية'},friendshipBracelet:{cost:28000,title:'سوار الصداقة'},goldenPacifier:{cost:52000,title:'اللهاية الذهبية'},
@@ -2742,6 +2751,8 @@ function buyPremiumPerk(id){
   if(id==='hollywoodStar'){permanentPerks.enabled.hollywoodStar=true;if(state.job||state.specialCareer)state.fame=100;}
   if(id==='goldenResume')permanentPerks.enabled.goldenResume=true;
   if(id==='goldenPacifier')permanentPerks.enabled.goldenPacifier=true;
+  if(id==='godMode')permanentPerks.enabled.godMode=true;
+  if(id==='bitizenship')permanentPerks.enabled.bitizenship=true;
   if(id==='goldenWrench')state.assets.forEach(a=>{if(a.kind==='car')a.condition=100;});
   persistPermanentPerks();log('✨','ميزة جديدة: '+item.title,'فتحت '+item.title+' من رصيد اللعبة. تقدر تدير المزايا من المتجر والقائمة الرئيسية.','special');
  }
@@ -2750,7 +2761,7 @@ function buyPremiumPerk(id){
 
 function perkAction(id){
  if(id==='challengeVault'){challengeVaultMenu();return;}if(id==='expandedTime'){timeMachineMenu();return;}if(id==='actorPack'){actorPackMenu();return;}if(id==='bossMode'){bossModeMenu();return;}
- if(id==='goldenDiploma'){goldenDiplomaMenu();return;}if(id==='zooExpansionPack'){zooMenu();return;}if(id==='mafiaPack'){mafiaMenu();return;}if(id==='blackMarketPack'){blackMarketMenu();return;}if(id==='assassinsBlade'){assassinBladeMission();return;}if(id==='superstarMode'){togglePremiumPerk('goldTheme');return;}
+ if(id==='goldenDiploma'){goldenDiplomaMenu();return;}if(id==='zooExpansionPack'){zooMenu();return;}if(id==='mafiaPack'){mafiaMenu();return;}if(id==='blackMarketPack'){blackMarketMenu();return;}if(id==='assassinsBlade'){assassinBladeMission();return;}if(id==='superstarMode'){togglePremiumPerk('goldTheme');return;}if(id==='businessPack'){companyPortfolioMenu();return;}if(id==='landlordPack'){landlordPortfolioMenu();return;}if(id==='investorPack'){investingMenu();return;}if(id==='cultPack'){cultMenu();return;}if(id==='casinoPack'){casinoMenu();return;}if(id==='godMode'){godModeMenu();return;}if(id==='bitizenship'){bitizenshipMenu();return;}if(id==='movieDirectorPack'){movieDirectorMenu();return;}if(id==='dealerPack'){dealerMenu();return;}
  if(PERK_TOGGLE_IDS.includes(id)){togglePremiumPerk(id);return;}
  const details={goldenPassport:'جواز العالم يلغي رسوم الهجرة للوجهات المتاحة داخل اللعبة.',goldenPiggyBank:'كل حياة جديدة تبدأ بمليون من عملة بلد الشخصية، بما فيها حياة الوارث.',friendshipBracelet:'كل صديق جديد يبدأ بعلاقة قوية مضمونة.',jailCard:'تقدر استخدام البطاقة مرة واحدة عند وجودك في السجن.',goldenNeko:'علاوة الراتب تزيد بنسبة 20% عند التفعيل.',businessPack:'تقدر فتح وإدارة شركات إضافية من قائمة الأصول.',landlordPack:'إدارة عقود المستأجرين متاحة من تفاصيل العقارات.',investorPack:'أسهم وسندات وعملات رقمية متاحة من قائمة الاستثمارات.'};
  closeModal();info('✅','ميزة مملوكة',details[id]||'الميزة مفعّلة على هذا المتصفح.');
