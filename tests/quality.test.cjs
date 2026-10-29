@@ -368,7 +368,10 @@ test('واجهة الهاتف الجديدة تطابق تخطيط الصفحا�
   assert.match(app, /function auraRingMenu\(\)/);
   assert.match(app, /section\('Parents'\)/);
   assert.match(app, /section\('Premium Activities'\)/);
-  assert.match(app, /section\('Premium Assets'\)/);
+  assert.match(app, /section\('الأصول المميزة'\)/);
+  assert.match(app, /id="majorSelect"/);
+  assert.match(app, /function startDrivingTest\(\)/);
+  assert.match(app, /function finishDrivingTest\(passed\)/);
   assert.match(app, /auraRing:\{cost:32000,title:'خاتم الهالة'\}/);
   assert.match(css, /--blue:#075a9b/);
   assert.match(css, /\.drawer-body \.choice\.locked-choice/);
