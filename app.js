@@ -393,6 +393,7 @@ function title(){
  if(state.age<15)return 'طالب إعدادي';
  if(state.age<18)return 'طالب ثانوي';
  if(state.job)return state.job.title;
+ if(state.specialCareer)return state.specialCareer.title;
  if(state.education.yearsLeft>0)return 'طالب جامعي';
  if(state.age<23)return 'شاب';
  return 'بالغ';
@@ -498,6 +499,7 @@ function ageUp(){
  if(state.partner&&typeof state.partner.age==='number')state.partner.age++;
  if(state.prison&&state.prison.years>0){state.prison.years--;state.stats.happiness=clamp(state.stats.happiness-5);state.stats.health=clamp(state.stats.health-2);if(state.prison.years===0){log('🔓','انتهاء العقوبة','انتهت مدة العقوبة وعُدت لحياتك خارج السجن.','special');state.prison=null;}}
  const assetUpkeep=state.assets.reduce((s,a)=>s+a.upkeep,0);
+ state.assets.forEach(a=>{const before=a.value||0;if(a.kind==='property')a.value=Math.round(before*1.025);else if(a.kind==='car')a.value=Math.round(before*.91);else if(a.kind==='business')a.value=Math.round(before*1.03);});
  if(state.job&&!state.retired){
    const salary=Math.round(state.job.salary*state.performance/100);state.bank+=salary;flash('+'+cash(salary));
    log('💼','دخل سنوي','استلمت '+cash(salary)+' من شغلك في '+state.job.title+'.','good');
@@ -562,7 +564,7 @@ function age18Choice(){
 }
 function death(cause){
  dead=true;state.status='متوفى';state.cause=cause;save();render();
- const assetValue=state.assets.reduce((sum,a)=>sum+a.value,0),net=state.bank+assetValue;
+ const assetValue=state.assets.reduce((sum,a)=>sum+a.value,0),investmentValue=(state.investments||[]).reduce((sum,a)=>sum+(a.value||0),0),net=state.bank+assetValue+investmentValue-(state.debt||0);
  const achievements=state.accomplishments.length?state.accomplishments.map(a=>'• '+esc(a)).join('<br>'):'لسه مفيش إنجازات مسجلة، بس كل حياة ليها حكايتها.';
  $('modalRoot').innerHTML='<div class="overlay"><section class="modal"><div class="death"><div class="tomb">🪦</div><div class="deathtitle">انتهت حكاية '+esc(state.name)+'</div><div class="deathsub">عشت '+fmt(state.age)+' سنة.<br>سبب الوفاة: '+esc(cause)+'.<br>شريط حياتك: '+esc(lifeRibbon())+'.<br>كل قرار ساب أثر، وكل سنة كانت فصل من قصتك.</div><div class="summarygrid"><div class="summarycell"><div class="summarylabel">الثروة النهائية</div><div class="summaryvalue">'+cash(net)+'</div></div><div class="summarycell"><div class="summarylabel">العمر</div><div class="summaryvalue">'+fmt(state.age)+' سنة</div></div><div class="summarycell"><div class="summarylabel">إنجازات</div><div class="summaryvalue">'+fmt(state.accomplishments.length)+'</div></div><div class="summarycell"><div class="summarylabel">الأصول</div><div class="summaryvalue">'+fmt(state.assets.length)+'</div></div></div><div class="listitem" style="text-align:right"><div class="listtitle">محطات من حياتك</div><div class="muted" style="margin-top:8px;line-height:2">'+achievements+'</div></div><button class="primarybtn" id="newLifeBtn">🌱 حياة جديدة</button>'+(state.children.length?'<div class="muted" style="margin:8px 0">كمّل إرث العائلة:</div>'+state.children.map((c,i)=>'<button class="smallbtn" data-heir="'+i+'" style="width:100%;margin:4px 0">🌳 استكمل كـ '+esc(c.name)+'</button>').join(''):'')+'<button class="smallbtn" id="reviewBtn" style="width:100%;margin-top:9px">راجع دفتر حياتك</button></div></section></div>';
  $('newLifeBtn').addEventListener('click',()=>{closeModal();if(confirm('تبدأ حياة جديدة وتستبدل الحفظ الحالي؟'))startNew();});
@@ -625,10 +627,10 @@ function assets(){
 function buyAsset(a){
  closeModal();if(state.age<18){info('🔒','الشراء مش متاح دلوقتي','تقدر تشتري أصولك بعد سن 18.');return;}
  if(state.bank<a.value){info('💳','الرصيد مش كفاية','معاك '+cash(state.bank)+'، وسعر الأصل '+cash(a.value)+'.');return;}
- state.bank-=a.value;flash('-'+cash(a.value),true);state.assets.push({id:Date.now()+Math.random(),title:a.title,emoji:a.emoji,kind:a.kind,value:a.value,upkeep:a.upkeep,bought:state.age});stat('happiness',6);log(a.emoji,'اشتريت '+a.title,'دفعت '+cash(a.value)+'. خلي بالك من مصاريف الصيانة كل سنة.','good');achievement('امتلاك '+a.title);render();info('🎉','مبروك الأصل الجديد','الأصل اتضاف لممتلكاتك، وتقدر تبيعه لاحقًا مقابل 80% من قيمته الأصلية.');
+ state.bank-=a.value;flash('-'+cash(a.value),true);state.assets.push({id:Date.now()+Math.random(),title:a.title,emoji:a.emoji,kind:a.kind,value:a.value,upkeep:a.upkeep,bought:state.age});if(a.kind==='business')state.business={title:a.title,value:a.value,level:1};stat('happiness',6);log(a.emoji,'اشتريت '+a.title,'دفعت '+cash(a.value)+'. خلي بالك من مصاريف الصيانة كل سنة.','good');achievement('امتلاك '+a.title);render();info('🎉','مبروك الأصل الجديد','الأصل اتضاف لممتلكاتك، وتقدر تبيعه لاحقًا مقابل 80% من قيمته الأصلية.');
 }
 function manageAssets(){
- const opts=state.assets.map((a,i)=>choice(a.emoji,a.title,'القيمة '+cash(a.value)+' · الصيانة '+cash(a.upkeep)+' سنويًا',()=>{closeModal();const sale=Math.round(a.value*.8);info('💰','بيع '+a.title,'هتبيع الأصل مقابل '+cash(sale)+'.',[choice('💵','أبيع الأصل','',()=>{closeModal();state.assets.splice(i,1);state.bank+=sale;log('💵','بيع أصل','بعت '+a.title+' مقابل '+cash(sale)+'.','good');render();}),choice('↩️','أحتفظ بيه','',closeModal)]);},cash(Math.round(a.value*.8))));
+ const opts=state.assets.map((a,i)=>choice(a.emoji,a.title,'القيمة '+cash(a.value)+' · الصيانة '+cash(a.upkeep)+' سنويًا',()=>{closeModal();const sale=Math.round(a.value*.8);info('💰','بيع '+a.title,'هتبيع الأصل مقابل '+cash(sale)+'.',[choice('💵','أبيع الأصل','',()=>{closeModal();state.assets.splice(i,1);if(a.kind==='business')state.business=null;state.bank+=sale;log('💵','بيع أصل','بعت '+a.title+' مقابل '+cash(sale)+'.','good');render();}),choice('↩️','أحتفظ بيه','',closeModal)]);},cash(Math.round(a.value*.8))));
  if(!opts.length)opts.push(choice('📦','مفيش أصول لسه','ابدأ بالشراء لما ميزانيتك تسمح.',()=>{closeModal();assets();}));
  opts.push(choice('↩️','رجوع للأصول','',()=>{closeModal();assets();}));modal('📦','إدارة الممتلكات','كل أصل له قيمة ومصاريف تشغيل.',opts);
 }
@@ -942,11 +944,11 @@ function startAsChild(index){
  const estate=Math.max(0,previous.bank)+previous.assets.reduce((sum,a)=>sum+(a.value||0),0)+previous.investments.reduce((sum,a)=>sum+(a.value||0),0);
  const cashEstate=Math.max(0,previous.bank)+previous.investments.reduce((sum,a)=>sum+(a.value||0),0);
  const share=previous.willDistribution==='الأبناء أولًا'?.9:previous.willDistribution==='الشريك أولًا'?.55:previous.willDistribution==='التبرع بجزء'?.65:.8;
- const heir=newLife();heir.name=child.name;heir.gender=child.gender||'male';heir.age=child.age||18;heir.place={...previous.place};heir.bank=Math.round(cashEstate*share);
- heir.family=[...previous.family];heir.partner=null;heir.married=false;heir.children=[];heir.legacy={name:previous.name,inheritance:estate,heirloom:(previous.heirlooms||[])[0]?.name||null};
+ const heir=newLife();heir.name=child.name;heir.gender=child.gender||'male';heir.age=typeof child.age==='number'?child.age:18;heir.place={...previous.place};heir.bank=Math.round(cashEstate*share);
+ heir.family=[...previous.family];previous.children.forEach((sibling,i)=>{if(i!==index)heir.family.push({...sibling,relation:'أخ/أخت'});});heir.partner=null;heir.married=false;heir.children=[];heir.legacy={name:previous.name,inheritance:estate,heirloom:(previous.heirlooms||[])[0]?.name||null};
  heir.heirlooms=[...(previous.heirlooms||[])];heir.accomplishments=['بدأ حياة جديدة كامتداد لعائلة '+previous.name,'ورث '+cash(estate)];
  heir.job=null;heir.assets=previous.assets.map(a=>({...a,id:Date.now()+Math.random()}));heir.investments=previous.investments.map(a=>({...a,id:Date.now()+Math.random()}));
- if(oldPartner)heir.family.push({...oldPartner,relation:'الأم/الأب'});
+ heir.family.push({id:'legacy-parent-'+Date.now(),name:previous.name,relation:'والد/والدة متوفى',emoji:previous.gender==='male'?'👨‍🦳':'👩‍🦳',age:previous.age,job:previous.job?previous.job.title:'متوفى',relationshipLevel:100,personality:'موروث عائلي'});if(oldPartner)heir.family.push({...oldPartner,relation:'الأم/الأب'});
  state=heir;dead=false;log('🌳','استمرار السلالة','بدأت حياة جديدة باسم '+state.name+'، وارثًا قصة '+previous.name+' وإرث العائلة.','special');render();closeModal();info('🌳','جيل جديد','ورثت ثروة تقديرية '+cash(estate)+' وبعض مقتنيات العائلة. تبدأ الآن مرحلة مستقلة باختياراتك.');
 }
 function activities(){
