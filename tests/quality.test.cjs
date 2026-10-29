@@ -69,6 +69,6 @@ test('تخطيط الهاتف وإمكانية الوصول ما زالا موج
 });
 
 test('توثيق الجودة لا يدّعي اختبار متصفح غير موجود', () => {
-  assert.match(readme, /node --check.*app\\.js/);
+  assert.match(readme, /node --check.*app\.js/);
   assert.match(readme, /لا تُغني عن اختبار يدوي كامل داخل متصفح الهاتف/);
 });
