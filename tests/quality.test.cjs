@@ -189,6 +189,6 @@ test('مسيرة الرياضات الإلكترونية أصلية وتحافظ
   assert.match(app, /function upgradeEsportsSetup\(\)/);
   assert.match(app, /موهبة الألعاب الإلكترونية/);
   assert.match(app, /data\.talents\.gaming=clamp\(Number\(data\.talents\.gaming\),0,100\)/);
-  assert.match(read('sw.js'), /hayah-shell-v7/);
+  assert.match(read('sw.js'), /hayah-shell-v8/);
   assert.match(functionSource('rewindToSnapshot', 'customizeMenu'), /ensureGamingTalent\(\)/, 'rewinding a pre-feature snapshot should restore a valid talent default');
 });
