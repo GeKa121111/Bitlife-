@@ -128,11 +128,12 @@ test('إعدادات العرض منفصلة عن حفظ الحياة ويمكن
 });
 
 
-test('ترتيب واجهة محاكي الحياة: الإحصائيات فوق شريط التنقل وزر السنة في المنتصف', () => {
-  assert.match(css, /\.stats\{[^}]*order:0/);
-  assert.match(css, /\.nav\{[^}]*order:1/);
-  assert.match(css, /--life-nav:#087fbd/);
-  assert.match(css, /\.agebtn\{[^}]*border-radius:50%/);
-  assert.match(css, /\.agebtn\{[^}]*background:linear-gradient\(180deg,#66bb6a 0%,#2e7d32 100%\)/);
-  assert.match(css, /body\.theme-dark\s*\{[^}]*--life-nav:#102d3c/);
+test('ترتيب واجهة محاكي الحياة: شريط التنقل فوق مؤشرات الحالة وزر السنة في المنتصف', () => {
+  const referenceUi = css.slice(css.lastIndexOf('/* BitLife reference layout pass 2'));
+  assert.match(referenceUi, /\.stats\{[^}]*order:1/);
+  assert.match(referenceUi, /\.nav\{[^}]*order:0/);
+  assert.match(referenceUi, /--life-nav:#0667a9/);
+  assert.match(referenceUi, /\.agebtn\{[^}]*border-radius:50%/);
+  assert.match(referenceUi, /\.agebtn\{[^}]*background:#09a638/);
+  assert.match(referenceUi, /body\.theme-dark \.nav\{[^}]*background:#075078/);
 });
