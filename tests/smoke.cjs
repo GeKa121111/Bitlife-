@@ -426,7 +426,7 @@ const inheritanceContext = {
   alert() {},
   console
 };
-const inheritanceTestApp = app.replace("function startAsChild(index){", "globalThis.__testStartAsChild=function(index){").replace("\\nfunction applyUiSettings(){", ";\\nfunction applyUiSettings(){");
+const inheritanceTestApp = app.replace("function startAsChild(index){", "globalThis.__testStartAsChild=function(index){").replace("\nfunction applyUiSettings(){", ";\nfunction applyUiSettings(){");
 assert.notEqual(inheritanceTestApp, app, 'test harness should expose heir succession only inside its isolated VM');
 vm.runInNewContext(inheritanceTestApp, inheritanceContext, { timeout: 3000 });
 vm.runInNewContext('globalThis.__testStartAsChild(0)', inheritanceContext, { timeout: 3000 });
