@@ -433,8 +433,13 @@ function renderFeed(){
  html+='<article class="logcard'+(x.tone==='good'?' good':x.tone==='bad'?' bad':x.tone==='special'?' special':'')+'"><div class="logicon">'+esc(x.icon)+'</div><div class="logcontent"><div class="logtitle">'+esc(x.title)+'</div><div class="logtext">'+esc(x.text)+'</div></div></article>';});
  feed.innerHTML=html;requestAnimationFrame(()=>{feed.scrollTop=feed.scrollHeight;});
 }
+function syncBusinessAsset(){
+ if(!state||!state.business)return;
+ const asset=(state.assets||[]).find(a=>a.kind==='business'&&(a.id===state.business.assetId||a.title===state.business.title));
+ if(asset){state.business.assetId=asset.id;asset.value=Math.max(1000,Math.round(Number(state.business.value)||asset.value||1000));}
+}
 function render(){
- renderHeader();renderStats();renderFeed();document.querySelectorAll('.navbtn').forEach(b=>b.classList.remove('active'));save();
+ syncBusinessAsset();renderHeader();renderStats();renderFeed();document.querySelectorAll('.navbtn').forEach(b=>b.classList.remove('active'));save();
 }
 function closeModal(){ $('modalRoot').innerHTML=''; }
 function choice(icon,title,desc,action,price=''){return {icon,title,desc,action,price};}
@@ -677,8 +682,9 @@ function businessAction(action){
 }
 function buyAsset(a){
  closeModal();if(state.age<18){info('🔒','الشراء مش متاح دلوقتي','تقدر تشتري أصولك بعد سن 18.');return;}
+ if(a.kind==='business'&&(state.business||(state.assets||[]).some(x=>x.kind==='business'))){info('🏪','عندك مشروع بالفعل','النسخة الحالية بتدعم إدارة مشروع واحد؛ طوّر مشروعك الحالي بدل شراء مشروع تاني.');return;}
  if(state.bank<a.value){info('💳','الرصيد مش كفاية','معاك '+cash(state.bank)+'، وسعر الأصل '+cash(a.value)+'.');return;}
- state.bank-=a.value;flash('-'+cash(a.value),true);state.assets.push({id:Date.now()+Math.random(),title:a.title,emoji:a.emoji,kind:a.kind,value:a.value,upkeep:a.upkeep,bought:state.age});if(a.kind==='business')state.business={title:a.title,value:a.value,level:1};stat('happiness',6);log(a.emoji,'اشتريت '+a.title,'دفعت '+cash(a.value)+'. خلي بالك من مصاريف الصيانة كل سنة.','good');achievement('امتلاك '+a.title);render();info('🎉','مبروك الأصل الجديد','الأصل اتضاف لممتلكاتك، وتقدر تبيعه لاحقًا مقابل 80% من قيمته الأصلية.');
+ const assetId=Date.now()+Math.random();state.bank-=a.value;flash('-'+cash(a.value),true);state.assets.push({id:assetId,title:a.title,emoji:a.emoji,kind:a.kind,value:a.value,upkeep:a.upkeep,bought:state.age});if(a.kind==='business')state.business={assetId,title:a.title,value:a.value,level:1};stat('happiness',6);log(a.emoji,'اشتريت '+a.title,'دفعت '+cash(a.value)+'. خلي بالك من مصاريف الصيانة كل سنة.','good');achievement('امتلاك '+a.title);render();info('🎉','مبروك الأصل الجديد','الأصل اتضاف لممتلكاتك، وتقدر تبيعه لاحقًا مقابل 80% من قيمته الأصلية.');
 }
 function manageAssets(){
  const opts=state.assets.map((a,i)=>choice(a.emoji,a.title,'القيمة '+cash(a.value)+' · الصيانة '+cash(a.upkeep)+' سنويًا'+(a.kind==='property'?(a.rented?' · مؤجّر':' · غير مؤجّر'):''),()=>{closeModal();const sale=Math.round(a.value*.8);const actions=[choice('💵','أبيع الأصل','استرداد '+cash(sale),()=>{closeModal();state.assets.splice(i,1);if(a.kind==='business')state.business=null;state.bank+=sale;log('💵','بيع أصل','بعت '+a.title+' مقابل '+cash(sale)+'.','good');render();})];if(a.kind==='property')actions.push(choice('🔑',a.rented?'إيقاف التأجير':'عرض العقار للإيجار','دخل إيجار سنوي تقديري '+cash(Math.round(a.value*.045))+'.',()=>{closeModal();a.rented=!a.rented;log('🏠',a.rented?'تأجير عقار':'إيقاف تأجير العقار',a.rented?'عرضت '+a.title+' للإيجار وبدأ احتساب دخل سنوي.':'أوقفت التأجير للعقار '+a.title+'.',a.rented?'good':'');render();manageAssets();}));actions.push(choice('↩️','أحتفظ بيه','',closeModal));info('💰','إدارة '+a.title,'اختار الإجراء اللي يناسبك.',actions);},cash(Math.round(a.value*.8))));
