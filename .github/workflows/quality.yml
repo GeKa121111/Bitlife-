@@ -22,6 +22,8 @@ jobs:
           node-version: 20
       - name: Check game JavaScript syntax
         run: node --check app.js
+      - name: Check service worker syntax
+        run: node --check sw.js
       - name: Check smoke-test syntax
         run: node --check tests/smoke.cjs
       - name: Run game smoke tests
