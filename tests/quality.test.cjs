@@ -38,7 +38,19 @@ test('مفتاح الحفظ القديم وإصدار الحفظ لم يتغير
   assert.match(app, /const KEY = 'hekayat_hayah_save_v1';/);
   assert.match(app, /const CEMETERY_KEY = 'hekayat_hayah_cemetery_v1';/);
   assert.match(app, /return \{version:1,lifeId:/);
-  assert.match(app, /function load\(\)[\s\S]*?x\.version===1/);
+  assert.match(app, /function isValidSaveData\(data\)[\s\S]*?data\.version===1/);
+  assert.match(app, /function load\(\)[\s\S]*?isValidSaveData\(x\)[\s\S]*?BACKUP_KEY/);
+});
+
+test('الحفظ يحتفظ بنقطة استعادة محلية من آخر نسخة سليمة دون تغيير صيغة v1', () => {
+  assert.match(app, /const BACKUP_KEY = 'hekayat_hayah_save_backup_v1';/);
+  assert.match(app, /function isValidSaveData\(data\)/);
+  assert.match(app, /localStorage\.setItem\(BACKUP_KEY,previousRaw\)/);
+  assert.match(app, /previous\.lifeId!==state\.lifeId\|\|Number\(previous\.age\)!==Number\(state\.age\)/);
+  assert.match(app, /saveRecovered=true/);
+  assert.match(app, /localStorage\.setItem\(KEY,backupRaw\)/);
+  assert.match(app, /const KEY = 'hekayat_hayah_save_v1';/);
+  assert.match(app, /return \{version:1,lifeId:/);
 });
 
 test('تحميل الحفظ القديم واستيراده يطبّعان البيانات الناقصة بدل كسر اللعبة', () => {
@@ -128,11 +140,14 @@ test('إعدادات العرض منفصلة عن حفظ الحياة ويمكن
 });
 
 
-test('ترتيب واجهة محاكي الحياة: الإحصائيات فوق شريط التنقل وزر السنة في المنتصف', () => {
-  assert.match(css, /\.stats\{[^}]*order:0/);
-  assert.match(css, /\.nav\{[^}]*order:1/);
-  assert.match(css, /--life-nav:#087fbd/);
-  assert.match(css, /\.agebtn\{[^}]*border-radius:50%/);
-  assert.match(css, /\.agebtn\{[^}]*background:linear-gradient\(180deg,#66bb6a 0%,#2e7d32 100%\)/);
-  assert.match(css, /body\.theme-dark\s*\{[^}]*--life-nav:#102d3c/);
+test('تخطيط الهاتف يتحقق من آخر قواعد CSS الفعلية لا من قواعد قديمة متروكة', () => {
+  const finalUi = css.slice(css.lastIndexOf('/* BitLife-like final mobile layout'));
+  assert.ok(finalUi.length > 0, 'the current mobile layout block should exist');
+  assert.match(finalUi, /--life-nav:#ffffff/);
+  assert.match(finalUi, /\.bottom-dock\s*\{[^}]*position:relative[^}]*margin-top:auto/s);
+  assert.match(finalUi, /\.statrow\s*\{[^}]*grid-template-columns:76px minmax\(0,1fr\)/s);
+  assert.match(finalUi, /\.fill\s*\{[^}]*position:absolute[^}]*right:0/s);
+  assert.match(finalUi, /\.statvalue\s*\{[^}]*position:absolute[^}]*z-index:1/s);
+  assert.match(finalUi, /body\.theme-dark \.bottom-dock/);
+  assert.match(finalUi, /body\.text-large \.logtext/);
 });
