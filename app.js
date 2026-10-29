@@ -77,8 +77,26 @@ const jobs=[
 ];
 const majors=[
  {id:'commerce',title:'تجارة وإدارة',min:35,edu:2,cost:18000,years:4,emoji:'📊',desc:'إدارة ومال وأعمال.'},
+ {id:'history',title:'التاريخ والآثار',min:30,edu:2,cost:15000,years:4,emoji:'🏺',desc:'الحضارات والآثار والبحث التاريخي.'},
+ {id:'art-history',title:'تاريخ الفن',min:33,edu:2,cost:16000,years:4,emoji:'🖼️',desc:'تاريخ الفنون وتحليل الأعمال الفنية.'},
+ {id:'english',title:'اللغة الإنجليزية والترجمة',min:38,edu:2,cost:18000,years:4,emoji:'📚',desc:'اللغة والترجمة والكتابة.'},
+ {id:'anthropology',title:'علم الإنسان',min:37,edu:2,cost:17000,years:4,emoji:'🌍',desc:'الثقافات والمجتمعات وتطور الإنسان.'},
+ {id:'psychology',title:'علم النفس',min:45,edu:2,cost:19000,years:4,emoji:'🧠',desc:'السلوك والتفكير والصحة النفسية.'},
+ {id:'media',title:'الإعلام والاتصال',min:42,edu:2,cost:19000,years:4,emoji:'🎙️',desc:'الإعلام والصحافة والإنتاج الرقمي.'},
+ {id:'design',title:'الفنون والتصميم',min:40,edu:2,cost:17500,years:4,emoji:'🎨',desc:'التصميم والإبداع والممارسة الفنية.'},
+ {id:'education',title:'التربية',min:40,edu:2,cost:17000,years:4,emoji:'🍎',desc:'التعليم وطرق التدريس والتعلم.'},
+ {id:'law',title:'الحقوق',min:50,edu:3,cost:22000,years:4,emoji:'⚖️',desc:'القانون والحقوق والأنظمة القانونية.'},
+ {id:'marketing',title:'التسويق',min:44,edu:2,cost:19000,years:4,emoji:'📣',desc:'أبحاث السوق والعلامات التجارية وسلوك العملاء.'},
  {id:'computer',title:'علوم الحاسب',min:58,edu:3,cost:26000,years:4,emoji:'💻',desc:'برمجة وأنظمة وبيانات.'},
+ {id:'chemistry',title:'الكيمياء',min:55,edu:3,cost:23000,years:4,emoji:'🧪',desc:'المواد والتفاعلات والتحليل العلمي.'},
+ {id:'biology',title:'الأحياء',min:50,edu:3,cost:21000,years:4,emoji:'🧬',desc:'الكائنات الحية والأنظمة البيولوجية.'},
+ {id:'political-science',title:'العلوم السياسية',min:52,edu:3,cost:21500,years:4,emoji:'🏛️',desc:'الحكومات والسياسات والعلاقات الدولية.'},
+ {id:'economics',title:'الاقتصاد',min:52,edu:3,cost:22000,years:4,emoji:'📈',desc:'الأسواق والموارد واتخاذ القرارات المالية.'},
+ {id:'nursing',title:'التمريض',min:55,edu:3,cost:24000,years:4,emoji:'🩹',desc:'رعاية المرضى والممارسة الصحية.'},
  {id:'engineering',title:'هندسة',min:65,edu:4,cost:30000,years:5,emoji:'🦺',desc:'تصميم وبناء وحلول تقنية.'},
+ {id:'physics',title:'الفيزياء',min:65,edu:4,cost:26000,years:4,emoji:'⚛️',desc:'القوانين الفيزيائية والتحليل التجريبي.'},
+ {id:'pharmacy',title:'الصيدلة',min:68,edu:4,cost:32000,years:5,emoji:'💊',desc:'الأدوية وعلوم العلاج والصيدلة.'},
+ {id:'dentistry',title:'طب الأسنان',min:75,edu:5,cost:36000,years:5,emoji:'🦷',desc:'صحة الفم والأسنان والتشخيص.'},
  {id:'medicine',title:'طب بشري',min:78,edu:5,cost:38000,years:6,emoji:'🩺',desc:'دراسة أطول ومهنة مؤثرة.'}
 ];
 const assetShop=[
@@ -663,7 +681,7 @@ function section(title){return {section:true,title};}
 function choice(icon,title,desc,action,price='',progress=null,locked=false){return {icon,title,desc,action,price,progress,locked};}
 function modal(icon,title,desc,choices,closable=true,extra=''){
  const root=$('modalRoot');
- const isDrawer=['الدراسة والشغل','الأصول والمشتريات','العلاقات والأسرة','الأنشطة والحياة اليومية'].includes(title);
+ const isDrawer=['الدراسة والشغل','الأصول','الأصول والمشتريات','العلاقات','العلاقات والأسرة','الأنشطة والحياة اليومية'].includes(title);
  const context=String(title||'')+' '+String(desc||'')+' '+String(extra||'');
  const symptom=/(عرض|أعراض|صداع|غثيان|حمى|حُمّى|زكام|سعال|ألم|وجع|دوخة|symptom|headache|nausea|flu|diagnosis)/i.test(context);
  const crime=/(جريمة|سرقة|سجن|مخدر|عصابة|شرطة|اختلاس|سطو|crime|robbery|prison)/i.test(context);
@@ -890,7 +908,7 @@ function advanceAge(){
      log('⚠️','تعثر دراسي','الرصيد مش كافي لدفع رسوم السنة. الدراسة اتوقفت مؤقتًا، والسنة هتفضل مستحقة لحد ما تقدر تدفع.','bad');
    }
    if(state.education.yearsLeft===0&&state.education.major){
-     state.education.level=state.education.major==='تجارة وإدارة'?2:state.education.major==='علوم الحاسب'?3:state.education.major==='هندسة'?4:5;
+     const graduatedMajor=majors.find(m=>m.title===state.education.major);state.education.level=graduatedMajor?graduatedMajor.edu:5;
      state.education.school='خريج '+state.education.major;
      log('🎓','اتخرجت من الجامعة','أنهيت دراسة '+state.education.major+'. فرص جديدة بقت متاحة ليك.','good');
      achievement('التخرج من '+state.education.major);
@@ -1086,11 +1104,11 @@ function university(from18){
 
 function assets(){
  const opts=[
-  section('Finances'),
+  section('المالية'),
   choice('💰','الحسابات والمالية','الرصيد '+cash(state.bank)+' · صافي الثروة التقديري '+cash(state.bank+(state.assets||[]).reduce((s,a)=>s+(a.value||0),0)+(state.investments||[]).reduce((s,a)=>s+(a.value||0),0)-(state.debt||0))+'.',()=>{closeModal();financeMenu();}),
   choice('📊','الاستثمارات','إدارة محفظة الأسهم والسندات والأصول المالية.',()=>{closeModal();investingMenu();}),
   choice('💎','نمط الحياة الفاخر','مشتريات وأصول تؤثر على مستوى المعيشة.',()=>{closeModal();manageAssets();}),
-  section('Premium Assets'),
+  section('الأصول المميزة'),
   choice('🔨','بيوت المزادات','اقتناء المقتنيات النادرة وعرضها.',()=>routePack('blackMarketPack',blackMarketMenu),'',null,!perkOwned('blackMarketPack')),
   choice('🎰','الكازينو','إدارة كازينو وألعاب ومرافق.',()=>routePack('casinoPack',casinoMenu),'',null,!perkOwned('casinoPack')),
   choice('🏛️','المتحف','اعرض مقتنياتك واجذب الزوار.',()=>routePack('blackMarketPack',museumMenu),'',null,!perkOwned('blackMarketPack')),
@@ -1098,17 +1116,17 @@ function assets(){
   choice('🦁','حديقة الحيوانات','شراء حيوانات وبناء الموائل وإدارة الرعاية.',()=>routePack('zooExpansionPack',zooMenu),'',null,!perkOwned('zooExpansionPack')),
   choice('🏢','محفظة الشركات','شراء شركات إضافية وإدارة أعمالك.',()=>routePack('businessPack',companyPortfolioMenu),'',null,!perkOwned('businessPack')),
   choice('🏘️','العقارات والملاك','شراء وإدارة العقارات والمستأجرين.',()=>routePack('landlordPack',landlordPortfolioMenu),'',null,!perkOwned('landlordPack')),
-  section('Collectibles'),
+  section('المقتنيات'),
   choice('🎒','ممتلكاتي','إدارة الممتلكات والأصول التي تملكها بالفعل.',manageAssets),
   choice('🐾','الحيوانات الأليفة','عرض الحيوانات الأليفة ورعايتها.',petsMenu),
-  section('Misc.'),
+  section('إضافات'),
   choice('📱','السوشيال ميديا','إدارة هويتك وحساباتك الإلكترونية.',()=>{closeModal();socialMediaMenu();}),
-  section('شراء الأصول الأساسية'),
+  section('المتجر'),
   ...assetShop.map(a=>choice(a.emoji,a.title,a.desc+' التكلفة '+cash(a.value)+'. صيانة سنوية '+cash(a.upkeep)+'.',()=>buyAsset(a),cash(a.value)))
  ];
  if(state.business)opts.splice(2,0,choice('🏪','إدارة مشروعي','قيمة المشروع '+cash(state.business.value)+' · مستوى الإدارة '+(state.business.level||1)+'.',businessMenu));
  if(state.assets.length)opts.push(choice('📦','إدارة الأصول المملوكة','بيع الأصول وصيانتها وإدارة العقارات المؤجرة.',manageAssets));
- modal('🏠','الأصول والمشتريات','إدارة المال، الأصول المميزة، المقتنيات والممتلكات التي تملكها بالفعل.',opts);
+ modal('🏠','الأصول','إدارة المال، الأصول المميزة، المقتنيات والممتلكات التي تملكها بالفعل.',opts);
 }
 
 function companyPortfolioMenu(){
@@ -1290,7 +1308,7 @@ function relations(){
  if(state.age>=16&&!state.partner)opts.push(choice('💞','التعرف على شريك','تبدأ علاقة بالتعارف والاحترام المتبادل.',()=>{closeModal();meetPartner();}));
  opts.push(choice('👪','الزواج والأسرة','الزواج، الأبناء، إدارة العلاقة وشجرة العائلة.',familyMenu));
  opts.push(choice('📜','شجرة العائلة والإرث','استعرض أفراد الأسرة، الأبناء وخيارات الوصية.',familyTreeMenu));
- modal('💞','العلاقات والأسرة','العلاقات تتغير بمرور السنين. اهتم بالناس القريبين منك، لأن اختياراتك بتأثر على قوة العلاقة.',opts);
+ modal('💞','العلاقات','العلاقات تتغير بمرور السنين. اهتم بالناس القريبين منك، لأن اختياراتك بتأثر على قوة العلاقة.',opts);
 }
 
 function custodyModeLabel(mode){
