@@ -209,9 +209,96 @@ async function run() {
       return saved && saved.age === 44 && saved.name === 'حياة مستوردة للاختبار';
     });
     assert.ok((await page.locator('#characterName').innerText()).includes('حياة مستوردة للاختبار'), 'the imported life should render without a reload');
+
+    // Exercise the actual end-of-life UI and reconcile the heir's net estate in Chromium.
+    await page.locator('.choice').filter({ hasText: 'تمام' }).last().click();
+    await page.evaluate(() => {
+      const key = 'hekayat_hayah_save_v1';
+      const saved = JSON.parse(localStorage.getItem(key));
+      saved.name = 'الوالد الاختباري';
+      saved.age = 105;
+      saved.yearCount = 105;
+      saved.status = 'حي';
+      saved.cause = null;
+      saved.bank = 100000;
+      saved.assets = [{
+        id: 'estate-property-test',
+        kind: 'property',
+        title: 'عقار اختبار الإرث',
+        value: 500000,
+        upkeep: 0,
+        condition: 100,
+        rented: false
+      }];
+      saved.investments = [{
+        id: 'estate-investment-test',
+        kind: 'low-risk',
+        title: 'استثمار اختبار الإرث',
+        value: 100000
+      }];
+      saved.debt = 100000;
+      saved.willDistribution = 'الأسرة بالتساوي';
+      saved.timeMachineSnapshots = [];
+      saved.children = [{
+        id: 'estate-heir-test',
+        name: 'وارث اختبار',
+        gender: 'male',
+        age: 25,
+        relation: 'الابن',
+        relationshipLevel: 80,
+        health: 80,
+        happiness: 70,
+        smart: 60,
+        looks: 60,
+        schoolPerformance: 70,
+        careerPotential: 75,
+        independence: 35,
+        educationStatus: 'خريج جامعي',
+        interest: 'التقنية'
+      }];
+      saved.log = [{
+        icon: '🧪',
+        title: 'نهاية اختبار الإرث',
+        text: 'اختبار محاكاة الإرث داخل المتصفح.',
+        type: 'special',
+        age: 105
+      }];
+      localStorage.setItem(key, JSON.stringify(saved));
+    });
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await page.locator('#ageUpBtn').click();
+    await page.locator('[data-heir="0"]').waitFor({ state: 'visible' });
+    await page.locator('[data-heir="0"]').click();
+    await page.waitForFunction(() => {
+      const saved = JSON.parse(localStorage.getItem('hekayat_hayah_save_v1') || 'null');
+      return saved && saved.name === 'وارث اختبار' && saved.legacy &&
+        saved.legacy.name === 'الوالد الاختباري' && saved.status === 'حي';
+    });
+    const inherited = await page.evaluate(() => {
+      const saved = JSON.parse(localStorage.getItem('hekayat_hayah_save_v1') || 'null');
+      const assets = Array.isArray(saved.assets) ? saved.assets : [];
+      const investments = Array.isArray(saved.investments) ? saved.investments : [];
+      return {
+        name: saved.name,
+        sourceName: saved.legacy.name,
+        legacyValue: saved.legacy.inheritance,
+        componentValue: Number(saved.bank || 0)
+          + assets.reduce((sum, item) => sum + Math.max(0, Number(item.value) || 0), 0)
+          + investments.reduce((sum, item) => sum + Math.max(0, Number(item.value) || 0), 0),
+        bank: saved.bank,
+        assetCount: assets.length,
+        investmentCount: investments.length,
+        debt: saved.debt
+      };
+    });
+    assert.equal(inherited.name, 'وارث اختبار');
+    assert.equal(inherited.sourceName, 'الوالد الاختباري');
+    assert.equal(inherited.legacyValue, inherited.componentValue, 'recorded inheritance should reconcile with all transferred assets');
+    assert.equal(inherited.debt, 0, 'parent debt should not be copied as debt to the new life');
+    assert.ok(inherited.bank > 0 && inherited.assetCount === 1 && inherited.investmentCount === 1, 'inheritance should include the proportional bank, property, and investments');
     assert.deepEqual(pageErrors, [], 'the browser run should complete without uncaught JavaScript errors');
 
-    console.log('PASS: mobile layout, legacy v1 load, age-up persistence, time rewind, JSON export/import, and no uncaught page errors.');
+    console.log('PASS: mobile layout, legacy v1 load, age-up persistence, rewind, JSON export/import, and estate inheritance reconciliation.');
     await context.close();
   } finally {
     if (browser) await browser.close();
