@@ -41,7 +41,7 @@ function loadPermanentPerks(){
  return defaults;
 }
 function persistPermanentPerks(){try{localStorage.setItem(PERKS_KEY,JSON.stringify(permanentPerks));}catch(e){}}
-function perkOwned(id){return !!(permanentPerks&&permanentPerks.owned&&permanentPerks.owned[id])||!!(permanentPerks&&permanentPerks.owned&&permanentPerks.owned.bossMode&&JOB_PACK_IDS.includes(id));}
+function perkOwned(id){return !!(permanentPerks&&permanentPerks.owned&&permanentPerks.owned[id])||(id==='actorPack'&&!!(permanentPerks&&permanentPerks.owned&&permanentPerks.owned.bossMode))||!!(permanentPerks&&permanentPerks.owned&&permanentPerks.owned.bossMode&&JOB_PACK_IDS.includes(id));}
 function perkEnabled(id){return perkOwned(id)&&!!(permanentPerks.enabled&&permanentPerks.enabled[id]);}
 function careerIncomeMultiplier(){return perkEnabled('goldenNeko')?1.2:1;}
 function specialCareerIncomeMultiplier(){return careerIncomeMultiplier()*(perkEnabled('bossMode')?1.1:1);}
