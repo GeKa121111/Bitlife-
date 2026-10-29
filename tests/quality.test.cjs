@@ -97,6 +97,12 @@ test('تخطيط الهاتف وإمكانية الوصول ما زالا موج
   assert.match(css, /\.brand-symbol\{/);
 });
 
+test('سجل الحياة يحافظ على موضع القراءة ولا يقفز عند مراجعة الأحداث القديمة', () => {
+  const feed = functionSource('renderFeed', 'syncBusinessAsset');
+  assert.match(feed, /const shouldFollowLatest=feed\.scrollHeight-feed\.scrollTop-feed\.clientHeight<=80/);
+  assert.match(feed, /if\(!shouldFollowLatest\)return/);
+});
+
 test('تطبيق الويب قابل للتثبيت ويحتفظ بملفات الواجهة للعمل دون اتصال', () => {
   const manifest = JSON.parse(read('manifest.webmanifest'));
   const worker = read('sw.js');
@@ -107,7 +113,7 @@ test('تطبيق الويب قابل للتثبيت ويحتفظ بملفات ا
   assert.ok(manifest.icons.some(item => item.src === './icon.svg'));
   assert.match(html, /rel="manifest" href="manifest\.webmanifest"/);
   assert.match(app, /navigator\.serviceWorker\.register\('\.\/sw\.js'\)/);
-  assert.match(worker, /const CACHE_NAME = 'hayah-shell-v15'/);
+  assert.match(worker, /const CACHE_NAME = 'hayah-shell-v16'/);
   assert.match(worker, /cache\.addAll\(APP_SHELL\)/);
   assert.match(worker, /caches\.match\(APP_SHELL\[0\]\)/);
   assert.match(icon, /حياة/);
@@ -195,7 +201,7 @@ test('مسيرة الرياضات الإلكترونية أصلية وتحافظ
   assert.match(app, /function upgradeEsportsSetup\(\)/);
   assert.match(app, /موهبة الألعاب الإلكترونية/);
   assert.match(app, /data\.talents\.gaming=clamp\(Number\(data\.talents\.gaming\),0,100\)/);
-  assert.match(read('sw.js'), /hayah-shell-v15/);
+  assert.match(read('sw.js'), /hayah-shell-v16/);
   assert.match(functionSource('rewindToSnapshot', 'customizeMenu'), /ensureGamingTalent\(\)/, 'rewinding a pre-feature snapshot should restore a valid talent default');
 });
 
