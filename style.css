@@ -408,3 +408,215 @@ body.text-large .navbtn{font-size:11px}
 body.text-large .statlabel{font-size:11px}
 body.text-large .statvalue{font-size:10px}
 body.text-large .subline{font-size:12px}
+
+
+/* واجهة حياة — إعادة ترتيب اللعب على نمط محاكيات الحياة النصية */
+:root{
+  --life-nav:#087fbd;
+  --life-nav-deep:#05669e;
+  --life-nav-active:#0a91d2;
+  --life-tab-text:#ffffff;
+  --life-stat-bg:#ffffff;
+  --life-stat-text:#455a64;
+}
+html,body{height:100%;min-height:0}
+body{overflow:hidden;background:#edf1f4}
+.app{
+  width:100%;
+  max-width:450px;
+  height:100dvh;
+  min-height:0;
+  padding:0;
+  display:flex;
+  flex-direction:column;
+  overflow:hidden;
+  background:#fff;
+  border:0;
+  box-shadow:0 0 30px #102c3b12;
+}
+.topbar{
+  height:54px;
+  min-height:54px;
+  flex:0 0 54px;
+  padding:0 8px;
+  display:grid;
+  grid-template-columns:40px minmax(0,1fr) 112px;
+  gap:5px;
+  position:relative;
+  top:auto;
+  z-index:10;
+  background:var(--brand);
+  border-bottom:2px solid var(--brand-dark);
+  box-shadow:none;
+}
+.brandlogo{font-size:17px;font-weight:1000;color:#fff;white-space:nowrap;text-align:center}
+.top-actions{display:flex;align-items:center;justify-content:flex-end;gap:4px;min-width:0}
+.top-actions .header-action{flex:0 0 32px}
+.savepill{font-size:8px;padding:0 2px;border:0;background:transparent}
+.hero{
+  height:72px;
+  min-height:72px;
+  flex:0 0 72px;
+  padding:7px 10px;
+  background:#f4f6f8;
+  border-bottom:1px solid #dce3e7;
+  display:flex;
+  flex-direction:row;
+  direction:rtl;
+  align-items:center;
+  justify-content:space-between;
+  gap:8px;
+}
+.profile{height:100%;gap:8px;min-width:0;flex:1}
+.avatar{width:48px;height:48px;flex:0 0 48px;border-radius:50%;font-size:29px;box-shadow:none}
+.identity{min-width:0;display:flex;flex-direction:column;justify-content:center;gap:2px}
+.name{font-size:16px;line-height:1.15;font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.wealth{min-width:94px;max-width:126px;padding:0;background:transparent;border:0;border-radius:0;box-shadow:none;gap:2px;align-items:flex-start;flex:0 0 auto}
+.wealthlabel{font-size:10px;font-weight:750;color:#78909c}
+.wealthnum{font-size:17px;line-height:1.12;font-weight:950;white-space:nowrap;direction:ltr;text-align:right;letter-spacing:-.3px}
+.wealthsmall{font-size:8px;line-height:1.2}
+.feed{
+  flex:1 1 auto;
+  min-height:0;
+  height:auto;
+  max-height:none;
+  padding:4px 13px 12px;
+  gap:0;
+  overflow-y:auto;
+  overscroll-behavior:contain;
+  background:#fff;
+}
+.agegroup{padding:11px 0 5px;color:#087fbd;font-size:14px;font-weight:850}
+.logcard{display:flex;align-items:flex-start;gap:7px;padding:8px 0 9px;margin:0;border:0;border-bottom:1px solid #edf0f2;border-radius:0;background:#fff;box-shadow:none;animation:none}
+.logicon{flex:0 0 23px;width:23px;height:auto;min-height:22px;padding-top:1px;place-items:start center;border:0;border-radius:0;background:transparent;font-size:17px}
+.logtitle{margin:0 0 2px;font-size:12.5px;font-weight:850;color:#263238}
+.logtext{margin:0;font-size:13px;line-height:1.62;color:#37474f;overflow-wrap:anywhere}
+.logcard.good,.logcard.bad,.logcard.special{background:#fff;border:0;border-bottom:1px solid #edf0f2}
+.logcard.good .logtitle,.logcard.good .logtext{color:#2e7d32}
+.logcard.bad .logtitle,.logcard.bad .logtext{color:#c62828}
+.logcard.special .logtitle{color:#7b1fa2}
+.logcard.special .logtext{color:#37474f}
+.logcard.good .logicon,.logcard.bad .logicon,.logcard.special .logicon{background:transparent}
+.bottom-dock{
+  position:relative;
+  inset:auto;
+  flex:0 0 auto;
+  width:100%;
+  max-width:450px;
+  padding:0 0 env(safe-area-inset-bottom);
+  margin-top:auto;
+  display:flex;
+  flex-direction:column;
+  border:0;
+  border-radius:0;
+  background:var(--life-stat-bg);
+  box-shadow:none;
+  z-index:20;
+}
+/* In the reference layout, life stats sit immediately above the bottom tabs. */
+.stats{
+  order:0;
+  display:flex;
+  flex-direction:column;
+  gap:3px;
+  margin:0;
+  padding:7px 13px 8px;
+  background:var(--life-stat-bg);
+  border:0;
+  border-top:1px solid #e5ebee;
+  border-radius:0;
+}
+.statrow{height:15px;display:flex;flex-direction:row;align-items:center;gap:8px;width:100%;min-width:0}
+.stathead{width:80px;min-width:80px;flex:0 0 80px;display:flex;align-items:center;justify-content:flex-start;margin:0;font-size:10px}
+.statlabel{font-size:10px;color:var(--life-stat-text);font-weight:850;white-space:nowrap}
+.statbar{flex:1;min-width:0}
+.track{position:relative;width:100%;height:12px;background:#e5eaed;border-radius:99px;overflow:hidden}
+.fill{height:100%;border-radius:99px;transition:width .3s ease}
+.statvalue{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:950;direction:ltr;color:#263238;text-shadow:0 1px #ffffffa0}
+.nav{
+  order:1;
+  height:60px;
+  min-height:60px;
+  flex:0 0 60px;
+  padding:0 4px;
+  gap:0;
+  grid-template-columns:1fr 1fr 80px 1fr 1fr;
+  align-items:center;
+  overflow:visible;
+  background:var(--life-nav);
+  border-top:1px solid #006da9;
+  border-bottom:0;
+}
+.navbtn{min-height:54px;padding:4px 1px 3px;color:var(--life-tab-text);background:transparent;border-radius:8px;font-size:10px;font-weight:850;gap:3px}
+.navbtn .navico{font-size:20px;line-height:1.1;filter:none;color:currentColor}
+.navbtn.active{color:#fff;background:var(--life-nav-active);box-shadow:inset 0 2px 0 #ffffff28}
+.navbtn.active .navico{filter:none}
+.agebtn{
+  position:relative;
+  z-index:3;
+  width:68px;
+  height:68px;
+  min-width:68px;
+  flex:0 0 68px;
+  margin-top:-13px;
+  border:4px solid #fff;
+  border-radius:50%;
+  background:linear-gradient(180deg,#66bb6a 0%,#2e7d32 100%);
+  color:#fff;
+  box-shadow:0 3px 8px #102c3b42;
+  font-size:11px;
+  font-weight:1000;
+  gap:0;
+}
+.agebtn span:first-child{font-size:27px;line-height:1}
+.agebtn:active{transform:scale(.96);background:linear-gradient(180deg,#4caf50,#1b5e20)}
+@media(max-width:380px){
+  .topbar{grid-template-columns:34px minmax(0,1fr) 103px;padding-inline:5px;gap:3px}
+  .brandlogo{font-size:15px}
+  .top-actions{gap:3px}
+  .top-actions .header-action{width:30px;height:30px;flex-basis:30px}
+  .savepill{display:none}
+  .hero{padding-inline:7px;gap:4px}
+  .avatar{width:43px;height:43px;flex-basis:43px}
+  .name{font-size:14px}
+  .wealth{min-width:88px}
+  .wealthnum{font-size:15px}
+  .stats{padding-inline:8px;gap:3px}
+  .stathead{width:75px;min-width:75px;flex-basis:75px}
+  .statlabel{font-size:9px}
+  .nav{grid-template-columns:1fr 1fr 72px 1fr 1fr;padding-inline:2px}
+  .navbtn{font-size:9px}
+  .agebtn{width:63px;height:63px;min-width:63px;flex-basis:63px;margin-top:-10px}
+}
+@media(max-height:680px){
+  .stats{padding-top:5px;padding-bottom:6px;gap:2px}
+  .statrow{height:13px}
+  .track{height:10px}
+  .nav{height:54px;min-height:54px;flex-basis:54px}
+  .agebtn{width:62px;height:62px;min-width:62px;flex-basis:62px}
+}
+body.theme-dark{
+  --life-stat-bg:#17232c;
+  --life-stat-text:#dce6ec;
+  --life-nav:#102d3c;
+  --life-nav-deep:#0c2230;
+  --life-nav-active:#204658;
+  --life-tab-text:#d9e8ef;
+}
+body.theme-dark .topbar{background:#c62828;border-bottom-color:#8e1818}
+body.theme-dark .hero{background:#20313b;border-color:#354651}
+body.theme-dark .wealthlabel,body.theme-dark .wealthsmall{color:#b8c9d2}
+body.theme-dark .feed,body.theme-dark .logcard,body.theme-dark .logcard.good,body.theme-dark .logcard.bad,body.theme-dark .logcard.special{background:#17232c;border-color:#354651}
+body.theme-dark .logtitle,body.theme-dark .logtext,body.theme-dark .logcard.special .logtext{color:#dce6ec}
+body.theme-dark .logcard.good .logtitle,body.theme-dark .logcard.good .logtext{color:#8cdaad}
+body.theme-dark .logcard.bad .logtitle,body.theme-dark .logcard.bad .logtext{color:#ff9ba5}
+body.theme-dark .logcard.special .logtitle{color:#d7a7f3}
+body.theme-dark .stats{background:var(--life-stat-bg);border-color:#354651}
+body.theme-dark .track{background:#344651}
+body.theme-dark .statvalue{color:#fff;text-shadow:0 1px #0009}
+body.theme-dark .nav{background:var(--life-nav);border-color:#204658}
+body.theme-dark .navbtn.active{color:#fff;background:var(--life-nav-active)}
+body.theme-dark .agebtn{border-color:#17232c}
+@media(prefers-reduced-motion:reduce){
+  .agebtn,.fill,.modal,.logcard{animation:none!important;transition:none!important}
+}
