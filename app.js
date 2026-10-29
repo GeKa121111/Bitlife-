@@ -2415,7 +2415,22 @@ function importSave(){
  input.click();
 }
 function exportSave(){
- const blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='hekayat-hayah-save.json';a.click();URL.revokeObjectURL(url);closeModal();flash('تم تجهيز ملف الحفظ');
+ if(!state){info('⚠️','لا توجد حياة للتصدير','ابدأ حياة أو حمّل ملف حفظ أولًا.');return;}
+ let url=null,anchor=null;
+ try{
+  const blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'});
+  url=URL.createObjectURL(blob);
+  anchor=document.createElement('a');anchor.href=url;anchor.download='hekayat-hayah-save.json';anchor.style.display='none';
+  document.body.appendChild(anchor);
+  anchor.click();
+ }catch(e){
+  if(anchor&&typeof anchor.remove==='function')anchor.remove();
+  if(url){try{URL.revokeObjectURL(url);}catch(_){}}
+  closeModal();info('⚠️','تعذر تصدير الحفظ','ما قدرناش نجهز الملف في المتصفح الحالي. الحفظ المحلي لم يتغير؛ جرّب متصفحًا أحدث.');return;
+ }
+ // Keep the download URL alive briefly so mobile browsers can start reading the file.
+ setTimeout(()=>{if(anchor&&typeof anchor.remove==='function')anchor.remove();try{URL.revokeObjectURL(url);}catch(e){}},1000);
+ closeModal();flash('تم تجهيز ملف الحفظ');
 }
 document.querySelectorAll('[data-panel]').forEach(btn=>btn.addEventListener('click',()=>{
  document.querySelectorAll('.navbtn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');

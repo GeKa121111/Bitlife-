@@ -166,7 +166,7 @@ assert.match(finalUi, /\.fill\s*\{[^}]*position:absolute[^}]*right:0/s, 'status 
 assert.match(finalUi, /\.statvalue\s*\{[^}]*position:absolute[^}]*z-index:1/s, 'status values should overlay the progress bars');
 assert.match(finalUi, /\.nav\{direction:ltr\}/, 'tab positions should follow the original left-to-right order');
 assert.match(finalUi, /\.fill\{left:0;right:auto\}/, 'progress fills should grow from the left edge like the reference');
-assert.match(serviceWorker, /hayah-shell-v7/, 'the app shell cache should refresh the new styles');
+assert.match(serviceWorker, /hayah-shell-v8/, 'the app shell cache should refresh the new styles');
 assert.match(app, /function schoolHub\(\)/);
 assert.match(app, /function maintainAsset\(index\)/);
 assert.match(app, /function schoolClubs\(\)/, 'student clubs should have interactive actions');
@@ -440,5 +440,61 @@ assert.equal(inherited.assets[0].upkeep, 6129, 'inherited asset upkeep should sc
 assert.equal(inherited.investments[0].value, 30643, 'investments should receive the same net inheritance share');
 assert.equal(inherited.legacy.inheritance, 214500, 'the recorded inheritance should match the transferred net estate');
 assert.equal(inherited.bank + inherited.assets.reduce((sum, item) => sum + item.value, 0) + inherited.investments.reduce((sum, item) => sum + item.value, 0), inherited.legacy.inheritance, 'transferred components should reconcile to the recorded inheritance');
+
+
+/* Behavioral regression: keep the export object URL alive until the browser has had time to start the download. */
+const exportStore = new Map(store);
+const exportElements = new Map();
+const exportGet = id => {
+  if (!exportElements.has(id)) exportElements.set(id, new FakeElement(id));
+  return exportElements.get(id);
+};
+let exportClicked = false;
+let exportBlob = null;
+let revokedExportUrl = null;
+const exportTimers = [];
+const exportBody = new FakeElement('body');
+const exportPanels = ['career','assets','relations','activities'].map(panel => {
+  const el = new FakeElement(panel + 'ExportNav'); el.dataset.panel = panel; return el;
+});
+const exportContext = {
+  document: {
+    body: exportBody,
+    getElementById: exportGet,
+    querySelectorAll(selector) { if (selector === '[data-panel]' || selector === '.navbtn') return exportPanels; return []; },
+    createElement(tag) {
+      const el = new FakeElement(tag);
+      if (tag === 'a') { el.style = {}; el.click = () => { exportClicked = true; }; }
+      return el;
+    }
+  },
+  localStorage: {
+    getItem(key) { return exportStore.has(key) ? exportStore.get(key) : null; },
+    setItem(key, value) { exportStore.set(key, String(value)); }
+  },
+  Blob: class TestBlob { constructor(parts, options) { this.parts = parts; this.type = options.type; exportBlob = this; } },
+  URL: {
+    createObjectURL() { return 'blob:hayah-export-test'; },
+    revokeObjectURL(url) { revokedExportUrl = url; }
+  },
+  setTimeout(callback, delay) { exportTimers.push({ callback, delay }); return exportTimers.length; },
+  requestAnimationFrame(cb) { cb(); },
+  confirm() { return true; },
+  alert() {},
+  console
+};
+const exportTestApp = app.replace("function exportSave(){", "globalThis.__testExportSave=function(){").replace("\ndocument.querySelectorAll('[data-panel]')", ";\ndocument.querySelectorAll('[data-panel]')");
+assert.notEqual(exportTestApp, app, 'test harness should expose export only inside its isolated VM');
+vm.runInNewContext(exportTestApp, exportContext, { timeout: 3000 });
+vm.runInNewContext('globalThis.__testExportSave()', exportContext, { timeout: 3000 });
+assert.equal(exportClicked, true, 'export should trigger a download anchor');
+assert.equal(exportBlob.type, 'application/json', 'export should create a JSON file');
+assert.match(exportBlob.parts[0], /"version":\s*1/, 'export should serialize the current life state');
+assert.equal(revokedExportUrl, null, 'export URL must not be revoked immediately after the click');
+const exportCleanup = exportTimers.find(timer => timer.delay === 1000);
+assert.ok(exportCleanup, 'export should schedule delayed cleanup');
+exportCleanup.callback();
+assert.equal(revokedExportUrl, 'blob:hayah-export-test', 'export URL should be revoked after the browser has time to start the download');
+
 
 console.log('Smoke tests passed: RTL/PWA shell, autosave recovery, legacy migration, unpaid tuition, and persisted esports tournament outcomes.');
