@@ -90,7 +90,7 @@ test('تطبيق الويب قابل للتثبيت ويحتفظ بملفات ا
   assert.ok(manifest.icons.some(item => item.src === './icon.svg'));
   assert.match(html, /rel="manifest" href="manifest\.webmanifest"/);
   assert.match(app, /navigator\.serviceWorker\.register\('\.\/sw\.js'\)/);
-  assert.match(worker, /const CACHE_NAME = 'hayah-shell-v3'/);
+  assert.match(worker, /const CACHE_NAME = 'hayah-shell-v4'/);
   assert.match(worker, /cache\.addAll\(APP_SHELL\)/);
   assert.match(worker, /caches\.match\(APP_SHELL\[0\]\)/);
   assert.match(icon, /حياة/);
@@ -140,14 +140,16 @@ test('إعدادات العرض منفصلة عن حفظ الحياة ويمكن
 });
 
 
-test('تخطيط الهاتف يتحقق من آخر قواعد CSS الفعلية لا من قواعد قديمة متروكة', () => {
-  const finalUi = css.slice(css.lastIndexOf('/* BitLife-like final mobile layout'));
-  assert.ok(finalUi.length > 0, 'the current mobile layout block should exist');
-  assert.match(finalUi, /--life-nav:#ffffff/);
-  assert.match(finalUi, /\.bottom-dock\s*\{[^}]*position:relative[^}]*margin-top:auto/s);
-  assert.match(finalUi, /\.statrow\s*\{[^}]*grid-template-columns:76px minmax\(0,1fr\)/s);
+test('تخطيط الهاتف يطابق ترتيب BitLife المرجعي: التبويبات فوق مؤشرات الحالة', () => {
+  const finalUi = css.slice(css.lastIndexOf('/* BitLife reference layout pass 2'));
+  assert.ok(finalUi.length > 0, 'the latest reference layout block should exist');
+  assert.match(finalUi, /--life-nav:#0667a9/);
+  assert.match(finalUi, /\.bottom-dock\s*\{[^}]*position:fixed[^}]*left:50%/s);
+  assert.match(finalUi, /\.nav\s*\{[^}]*order:0/s);
+  assert.match(finalUi, /\.stats\s*\{[^}]*order:1/s);
+  assert.match(finalUi, /\.statrow\s*\{[^}]*grid-template-columns:80px minmax\(0,1fr\)/s);
   assert.match(finalUi, /\.fill\s*\{[^}]*position:absolute[^}]*right:0/s);
   assert.match(finalUi, /\.statvalue\s*\{[^}]*position:absolute[^}]*z-index:1/s);
-  assert.match(finalUi, /body\.theme-dark \.bottom-dock/);
+  assert.match(finalUi, /body\.theme-dark \.nav\{[^}]*background:#075078/);
   assert.match(finalUi, /body\.text-large \.logtext/);
 });
