@@ -660,6 +660,7 @@ function render(){
 }
 function closeModal(){ $('modalRoot').innerHTML=''; }
 function choice(icon,title,desc,action,price='',progress=null){return {icon,title,desc,action,price,progress};}
+function drawerSection(title){return {section:true,title};}
 function modal(icon,title,desc,choices,closable=true,extra=''){
  const root=$('modalRoot');
  const isDrawer=['الدراسة والشغل','الأصول والمشتريات','العلاقات والأسرة','الأنشطة والحياة اليومية'].includes(title);
@@ -668,6 +669,7 @@ function modal(icon,title,desc,choices,closable=true,extra=''){
   /(شهرة|إنجاز|مقتنيات|ملك|أمير|جائزة|تاج)/.test(title)?'special':'normal';
  const labels={danger:'تنبيه مهم',success:'المهنة والمال',special:'إنجاز خاص',normal:'حدث من الحياة'};
  const list=choices.map((c,i)=>
+  c.section?'<div class="drawer-section" role="heading">'+esc(c.title)+'</div>':
   '<button class="choice" data-i="'+i+'" '+(c.disabled?'disabled':'')+'>'+
    '<span class="choiceico">'+(c.icon||'›')+'</span>'+
    '<span class="ctext"><span class="ctitle">'+esc(c.title||c.label||'اختيار')+'</span>'+
@@ -3651,6 +3653,7 @@ document.querySelectorAll('[data-panel]').forEach(btn=>btn.addEventListener('cli
 $('ageUpBtn').addEventListener('click',ageUp);
 if($('menuBtn'))$('menuBtn').addEventListener('click',()=>mainMenu());
 if($('profileBtn'))$('profileBtn').addEventListener('click',()=>achievementsMenu());
+if($('membershipBtn'))$('membershipBtn').addEventListener('click',()=>premiumPerksMenu());
 if($('characterInfoBtn'))$('characterInfoBtn').addEventListener('click',()=>{
  if(!state)return;
  const occupation=state.job?state.job.title:state.specialCareer?state.specialCareer.title:state.education.yearsLeft>0?'طالب جامعي':title();
