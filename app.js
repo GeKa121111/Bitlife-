@@ -2160,18 +2160,47 @@ function getLicense(){
  if(chance(.75)){state.driversLicense=true;stat('happiness',2);achievement('الحصول على رخصة قيادة');log('🚗','نجحت في اختبار القيادة','اجتزت الاختبار وحصلت على رخصة قيادة.','good');render();info('🚗','مبروك الرخصة','بقى عندك رخصة قيادة، وده ممكن يفتح فرص في بعض الأحداث.');}
  else{stat('happiness',-2);log('🚗','اختبار قيادة غير ناجح','ماعدّتش الاختبار المرة دي. جرّب تتدرب وتعيد المحاولة.','bad');render();info('🚗','حاول مرة أخرى','التدريب والتعلم بيرفعوا فرص النجاح.');}
 }
+function calculateInheritance(previous,share){
+ const bank=Math.max(0,Number(previous&&previous.bank)||0);
+ const assets=Array.isArray(previous&&previous.assets)?previous.assets:[];
+ const investments=Array.isArray(previous&&previous.investments)?previous.investments:[];
+ const valueOf=item=>Math.max(0,Number(item&&item.value)||0);
+ const assetValue=assets.reduce((sum,item)=>sum+valueOf(item),0);
+ const investmentValue=investments.reduce((sum,item)=>sum+valueOf(item),0);
+ const gross=bank+assetValue+investmentValue;
+ const debt=Math.max(0,Number(previous&&previous.debt)||0);
+ const net=Math.max(0,gross-debt);
+ const shareRate=Math.max(0,Math.min(1,Number(share)||0));
+ const netRate=gross>0?net/gross:0;
+ const factor=shareRate*netRate;
+ const inheritedAssets=factor>0?assets.map(item=>({
+  ...item,
+  value:Math.round(valueOf(item)*factor),
+  upkeep:Math.round(Math.max(0,Number(item&&item.upkeep)||0)*factor),
+  id:Date.now()+Math.random()
+ })):[];
+ const inheritedInvestments=factor>0?investments.map(item=>({
+  ...item,
+  value:Math.round(valueOf(item)*factor),
+  id:Date.now()+Math.random()
+ })):[];
+ const inheritedBank=Math.round(bank*factor);
+ const inheritedValue=inheritedBank
+  +inheritedAssets.reduce((sum,item)=>sum+valueOf(item),0)
+  +inheritedInvestments.reduce((sum,item)=>sum+valueOf(item),0);
+ return {value:inheritedValue,bank:inheritedBank,assets:inheritedAssets,investments:inheritedInvestments};
+}
 function startAsChild(index){
  if(!state.children[index])return;
  const previous=state,child=previous.children[index],oldPartner=previous.partner;
- const estate=Math.max(0,previous.bank)+previous.assets.reduce((sum,a)=>sum+(a.value||0),0)+previous.investments.reduce((sum,a)=>sum+(a.value||0),0);
- const cashEstate=Math.max(0,previous.bank)+previous.investments.reduce((sum,a)=>sum+(a.value||0),0);
  const share=previous.willDistribution==='الأبناء أولًا'?.9:previous.willDistribution==='الشريك أولًا'?.55:previous.willDistribution==='التبرع بجزء'?.65:.8;
- const heir=newLife();ensureChildGrowthProfile(child);heir.name=child.name;heir.gender=child.gender||'male';heir.age=typeof child.age==='number'?child.age:18;heir.place={...previous.place};heir.bank=Math.round(Math.max(0,previous.bank)*share);heir.stats={...heir.stats,health:clamp(child.health??heir.stats.health),happiness:clamp(child.happiness??heir.stats.happiness),smart:clamp(child.smart??heir.stats.smart),looks:clamp(child.looks??heir.stats.looks)};heir.reputation=clamp((Number(child.schoolPerformance)||50)*.35+(Number(child.careerPotential)||40)*.35+(Number(child.relationshipLevel)||50)*.3);
- heir.family=[...previous.family];previous.children.forEach((sibling,i)=>{if(i!==index)heir.family.push({...sibling,relation:'أخ/أخت'});});heir.partner=null;heir.married=false;heir.children=[];heir.legacy={name:previous.name,inheritance:estate,heirloom:(previous.heirlooms||[])[0]?.name||null};
- heir.heirlooms=[...(previous.heirlooms||[])];heir.accomplishments=['بدأ حياة جديدة كامتداد لعائلة '+previous.name,'ورث '+cash(estate)];
- heir.job=null;heir.assets=previous.assets.map(a=>({...a,id:Date.now()+Math.random()}));heir.investments=previous.investments.map(a=>({...a,value:Math.round((a.value||0)*share),id:Date.now()+Math.random()}));
+ const inheritance=calculateInheritance(previous,share);
+ const heir=newLife();ensureChildGrowthProfile(child);heir.name=child.name;heir.gender=child.gender||'male';heir.age=typeof child.age==='number'?child.age:18;heir.place={...previous.place};heir.bank=inheritance.bank;heir.stats={...heir.stats,health:clamp(child.health??heir.stats.health),happiness:clamp(child.happiness??heir.stats.happiness),smart:clamp(child.smart??heir.stats.smart),looks:clamp(child.looks??heir.stats.looks)};heir.reputation=clamp((Number(child.schoolPerformance)||50)*.35+(Number(child.careerPotential)||40)*.35+(Number(child.relationshipLevel)||50)*.3);
+ heir.family=[...previous.family];previous.children.forEach((sibling,i)=>{if(i!==index)heir.family.push({...sibling,relation:'أخ/أخت'});});heir.partner=null;heir.married=false;heir.children=[];heir.legacy={name:previous.name,inheritance:inheritance.value,heirloom:(previous.heirlooms||[])[0]?.name||null};
+ heir.heirlooms=[...(previous.heirlooms||[])];heir.accomplishments=['بدأ حياة جديدة كامتداد لعائلة '+previous.name,'ورث '+cash(inheritance.value)];
+ heir.job=null;heir.assets=inheritance.assets;heir.investments=inheritance.investments;
  heir.family.push({id:'legacy-parent-'+Date.now(),name:previous.name,relation:'والد/والدة متوفى',emoji:previous.gender==='male'?'👨‍🦳':'👩‍🦳',age:previous.age,job:previous.job?previous.job.title:'متوفى',relationshipLevel:100,personality:'موروث عائلي'});if(oldPartner)heir.family.push({...oldPartner,relation:'الأم/الأب'});
- state=heir;dead=false;log('🌳','استمرار السلالة','بدأت حياة جديدة باسم '+state.name+'، وارثًا قصة '+previous.name+' وإرث العائلة.','special');render();closeModal();info('🌳','جيل جديد','ورثت ثروة تقديرية '+cash(estate)+' وبعض مقتنيات العائلة. تبدأ الآن مرحلة مستقلة باختياراتك.');
+ state=heir;dead=false;log('🌳','استمرار السلالة','بدأت حياة جديدة باسم '+state.name+'، وارثًا قصة '+previous.name+' وإرث العائلة.','special');render();closeModal();info('🌳','جيل جديد','ورثت ثروة تقديرية '+cash(inheritance.value)+' بعد احتساب الوصية والالتزامات. تبدأ الآن مرحلة مستقلة باختياراتك.');
 }
 function applyUiSettings(){
  const body=document.body;
