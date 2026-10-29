@@ -664,30 +664,46 @@ function choice(icon,title,desc,action,price='',progress=null,locked=false){retu
 function modal(icon,title,desc,choices,closable=true,extra=''){
  const root=$('modalRoot');
  const isDrawer=['الدراسة والشغل','الأصول والمشتريات','العلاقات والأسرة','الأنشطة والحياة اليومية'].includes(title);
- const category=/(جريمة|سجن|طبيب|صحة|إصابة|خطر|مرض|وفاة|عقوبة)/.test(title)?'danger':
-  /(مهنة|الشغل|وظيفة|عمل|مال|بنك|استثمار|مشروع|ترقية|راتب|أصول)/.test(title)?'success':
-  /(شهرة|إنجاز|مقتنيات|ملك|أمير|جائزة|تاج)/.test(title)?'special':'normal';
- const labels={danger:'تنبيه مهم',success:'المهنة والمال',special:'إنجاز خاص',normal:'حدث من الحياة'};
+ const context=String(title||'')+' '+String(desc||'');
+ const symptom=/(عرض|أعراض|صداع|غثيان|حمى|حُمّى|زكام|سعال|ألم|وجع|دوخة)/.test(context);
+ const crime=/(جريمة|سرقة|سجن|مخدر|عصابة|شرطة|اختلاس|سطو)/.test(context);
+ const healthcare=/(طبيب|صحة|إصابة|خطر|مرض|وفاة|علاج|تشخيص|مستشفى|جراحة)/.test(context);
+ const money=/(مهنة|الشغل|وظيفة|عمل|مال|بنك|استثمار|مشروع|ترقية|راتب|أصول|دخل|ثروة|قرض)/.test(context);
+ const relations=/(صديق|صداقة|علاقة|شريك|زواج|طلاق|أب|أم|أخ|أخت|ابن|عائلة|علاقات|حبيب)/.test(context);
+ const special=/(شهرة|إنجاز|مقتنيات|ملك|أمير|جائزة|تاج|بطولة|وسام)/.test(context);
+ const category=symptom?'success':(crime||healthcare)?'danger':special?'special':'normal';
+ const labels={
+  danger:crime?'الجريمة':'الرعاية الصحية',
+  success:'الأعراض الصحية',
+  special:'إنجاز خاص',
+  normal:money?'المال والعمل':relations?'العلاقات':'موقف من الحياة'
+ };
  const list=choices.map((c,i)=>{
   if(c&&c.section)return '<div class="list-section" role="heading" aria-level="2">'+esc(c.title||'')+'</div>';
-  return '<button class="choice'+(c&&c.locked?' locked-choice':'')+'" data-i="'+i+'" '+(c.disabled?'disabled':'')+'>'+
-   '<span class="choiceico">'+(c.icon||'›')+'</span>'+
-   '<span class="ctext"><span class="ctitle">'+esc(c.title||c.label||'اختيار')+'</span>'+
-   (c.desc?'<span class="cdesc">'+esc(c.desc)+'</span>':'')+
-   (c.progress!==null&&c.progress!==undefined&&Number.isFinite(Number(c.progress))?'<span class="choice-progress"><span style="width:'+clamp(c.progress)+'%"></span></span>':'')+
-   '</span>'+(c.price?'<span class="price">'+esc(c.price)+'</span>':'')+
+  return '<button class="choice'+(c&&c.locked?' locked-choice':'')+'" data-i="'+i+'" '+(c&&c.disabled?'disabled':'')+'>'+
+   '<span class="choiceico">'+(c&&c.icon||'›')+'</span>'+
+   '<span class="ctext"><span class="ctitle">'+esc(c&& (c.title||c.label)||'اختيار')+'</span>'+
+   (c&&c.desc?'<span class="cdesc">'+esc(c.desc)+'</span>':'')+
+   (c&&c.progress!==null&&c&&c.progress!==undefined&&Number.isFinite(Number(c.progress))?'<span class="choice-progress"><span style="width:'+clamp(c.progress)+'%"></span></span>':'')+
+   '</span>'+(c&&c.price?'<span class="price">'+esc(c.price)+'</span>':'')+
    (isDrawer?'<span class="choice-chevron" aria-hidden="true">›</span>':'')+
   '</button>';
  }).join('');
+ const hasRandomChoice=choices.some(c=>c&&!c.section&&!c.disabled&&typeof c.action==='function');
  if(isDrawer){
   root.innerHTML='<div class="overlay drawer-overlay" id="overlay"><section class="modal drawer" role="dialog" aria-modal="true" aria-label="'+esc(title)+'"><div class="modalhead drawer-head"><div class="modalicon">'+icon+'</div><div class="modaltitle">'+esc(title)+'</div>'+(closable?'<button class="closebtn" id="closeModal" aria-label="إغلاق">×</button>':'')+'</div><div class="modalbody drawer-body">'+(desc?'<p class="desc">'+esc(desc)+'</p>':'')+extra+'<div class="choicegrid">'+list+'</div></div></section></div>';
  }else{
-  root.innerHTML='<div class="overlay event-overlay" id="overlay"><section class="modal event-modal" role="dialog" aria-modal="true" aria-label="'+esc(title)+'"><div class="event-banner banner-'+category+'"><span>'+labels[category]+'</span>'+(closable?'<button class="closebtn" id="closeModal" aria-label="إغلاق">×</button>':'')+'</div><div class="event-summary"><div class="event-icon">'+icon+'</div><h2 class="event-title">'+esc(title)+'</h2>'+(desc?'<p class="desc">'+esc(desc)+'</p>':'')+'</div><div class="modalbody event-body">'+extra+'<div class="choicegrid">'+list+'</div></div></section></div>';
+  root.innerHTML='<div class="overlay event-overlay" id="overlay"><section class="modal event-modal" role="dialog" aria-modal="true" aria-label="'+esc(title)+'"><div class="event-banner banner-'+category+'"><span>'+labels[category]+'</span>'+(closable?'<button class="closebtn" id="closeModal" aria-label="إغلاق">×</button>':'')+'</div><div class="event-summary"><div class="event-icon">'+icon+'</div><h2 class="event-title">'+esc(title)+'</h2>'+(desc?'<p class="desc">'+esc(desc)+'</p>':'')+'</div><div class="modalbody event-body">'+extra+'<div class="choicegrid">'+list+'</div>'+(hasRandomChoice?'<button class="surprise-choice" id="surpriseChoice" type="button"><span aria-hidden="true">🎲</span> فاجئني!</button>':'')+'</div></section></div>';
  }
  const overlay=$('overlay');
  overlay.addEventListener('click',e=>{if(e.target===overlay&&closable)closeModal();});
  if(closable&&$('closeModal'))$('closeModal').addEventListener('click',closeModal);
- root.querySelectorAll('[data-i]').forEach(b=>b.addEventListener('click',()=>{const c=choices[Number(b.dataset.i)];if(c&&c.action)c.action();}));
+ root.querySelectorAll('[data-i]').forEach(b=>b.addEventListener('click',()=>{const c=choices[Number(b.dataset.i)];if(c&&typeof c.action==='function')c.action();}));
+ const surprise=$('surpriseChoice');
+ if(surprise)surprise.addEventListener('click',()=>{
+  const available=choices.filter(c=>c&&!c.section&&!c.disabled&&typeof c.action==='function');
+  if(available.length)pick(available).action();
+ });
 }
 function info(icon,title,desc,choices=[choice('✓','تمام','',closeModal)]){modal(icon,title,desc,choices);}
 function validState(){return state&&state.status==='حي'&&!dead;}
