@@ -174,11 +174,11 @@ test('الرجوع بالزمن يستعيد سجل الأحداث الصحيح 
 
 
 test('مسيرة الرياضات الإلكترونية أصلية وتحافظ على التوافق مع الحفظ القديم', () => {
-  assert.match(app, /function createEsportsCareer\\(\\)/);
-  assert.match(app, /function enterEsportsTournament\\(\\)/);
-  assert.match(app, /function negotiateEsportsSponsorship\\(\\)/);
-  assert.match(app, /function upgradeEsportsSetup\\(\\)/);
+  assert.match(app, /function createEsportsCareer\(\)/);
+  assert.match(app, /function enterEsportsTournament\(\)/);
+  assert.match(app, /function negotiateEsportsSponsorship\(\)/);
+  assert.match(app, /function upgradeEsportsSetup\(\)/);
   assert.match(app, /موهبة الألعاب الإلكترونية/);
-  assert.match(app, /data\\.talents\\.gaming=clamp\\(Number\\(data\\.talents\\.gaming\\),0,100\\)/);
+  assert.match(app, /data\.talents\.gaming=clamp\(Number\(data\.talents\.gaming\),0,100\)/);
   assert.match(serviceWorker, /hayah-shell-v6/);
 });
