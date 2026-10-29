@@ -393,4 +393,50 @@ assert.equal(afterEsports.specialCareer.record.attempts, 1, 'a tournament should
 assert.equal(afterEsports.specialCareer.record.wins + afterEsports.specialCareer.record.losses, 1, 'a tournament should record exactly one outcome');
 assert.equal(afterEsports.talents.gaming, 95, 'the gaming talent should persist through a tournament');
 
+
+/* Behavioral regression: inheritance shares must apply consistently to cash, assets, and investments after liabilities. */
+const inheritanceStore = new Map(store);
+const inheritanceSave = JSON.parse(inheritanceStore.get('hekayat_hayah_save_v1'));
+inheritanceSave.age = 65;
+inheritanceSave.yearCount = 65;
+inheritanceSave.status = 'حي';
+inheritanceSave.bank = 100000;
+inheritanceSave.debt = 20000;
+inheritanceSave.willDistribution = 'التبرع بجزء';
+inheritanceSave.assets = [{ id: 'estate-house', title: 'بيت عائلي', emoji: '🏠', kind: 'property', value: 200000, upkeep: 10000, condition: 100, rented: true }];
+inheritanceSave.investments = [{ id: 'estate-fund', title: 'محفظة استثمارية', value: 50000 }];
+inheritanceSave.children = [{ id: 'heir-test', name: 'ليلى اختبار', gender: 'female', age: 22, health: 80, happiness: 70, smart: 75, looks: 60, schoolPerformance: 80, careerPotential: 70, independence: 75, relationshipLevel: 90 }];
+inheritanceStore.set('hekayat_hayah_save_v1', JSON.stringify(inheritanceSave));
+const inheritanceElements = new Map();
+const inheritanceGet = id => { if (!inheritanceElements.has(id)) inheritanceElements.set(id, new FakeElement(id)); return inheritanceElements.get(id); };
+const inheritancePanels = ['career','assets','relations','activities'].map(panel => { const el = new FakeElement(panel + 'InheritanceNav'); el.dataset.panel = panel; return el; });
+const inheritanceContext = {
+  document: {
+    getElementById: inheritanceGet,
+    querySelectorAll(selector) { if (selector === '[data-panel]' || selector === '.navbtn') return inheritancePanels; return []; },
+    createElement(tag) { return new FakeElement(tag); }
+  },
+  localStorage: {
+    getItem(key) { return inheritanceStore.has(key) ? inheritanceStore.get(key) : null; },
+    setItem(key, value) { inheritanceStore.set(key, String(value)); }
+  },
+  requestAnimationFrame(cb) { cb(); },
+  setTimeout(cb) { cb(); },
+  confirm() { return true; },
+  alert() {},
+  console
+};
+const inheritanceTestApp = app.replace("function startAsChild(index){", "globalThis.__testStartAsChild=function(index){").replace("\nfunction applyUiSettings(){", ";\nfunction applyUiSettings(){");
+assert.notEqual(inheritanceTestApp, app, 'test harness should expose heir succession only inside its isolated VM');
+vm.runInNewContext(inheritanceTestApp, inheritanceContext, { timeout: 3000 });
+vm.runInNewContext('globalThis.__testStartAsChild(0)', inheritanceContext, { timeout: 3000 });
+const inherited = JSON.parse(inheritanceStore.get('hekayat_hayah_save_v1'));
+assert.equal(inherited.version, 1, 'inheritance must keep the legacy save version');
+assert.equal(inherited.bank, 61286, 'will share and estate debt should both affect inherited cash');
+assert.equal(inherited.assets[0].value, 122571, 'assets should receive the same net inheritance share');
+assert.equal(inherited.assets[0].upkeep, 6129, 'inherited asset upkeep should scale with the inherited share');
+assert.equal(inherited.investments[0].value, 30643, 'investments should receive the same net inheritance share');
+assert.equal(inherited.legacy.inheritance, 214500, 'the recorded inheritance should match the transferred net estate');
+assert.equal(inherited.bank + inherited.assets.reduce((sum, item) => sum + item.value, 0) + inherited.investments.reduce((sum, item) => sum + item.value, 0), inherited.legacy.inheritance, 'transferred components should reconcile to the recorded inheritance');
+
 console.log('Smoke tests passed: RTL/PWA shell, autosave recovery, legacy migration, unpaid tuition, and persisted esports tournament outcomes.');
