@@ -68,7 +68,22 @@ test('تخطيط الهاتف وإمكانية الوصول ما زالا موج
   assert.match(css, /\.brandlogo\{[^}]*color:#fff/);
 });
 
+test('تطبيق الويب قابل للتثبيت ويحتفظ بملفات الواجهة للعمل دون اتصال', () => {
+  const manifest = JSON.parse(read('manifest.webmanifest'));
+  const worker = read('sw.js');
+  const icon = read('icon.svg');
+  assert.equal(manifest.lang, 'ar');
+  assert.equal(manifest.dir, 'rtl');
+  assert.equal(manifest.display, 'standalone');
+  assert.ok(manifest.icons.some(item => item.src === './icon.svg'));
+  assert.match(html, /rel="manifest" href="manifest\.webmanifest"/);
+  assert.match(app, /navigator\.serviceWorker\.register\('\.\/sw\.js'\)/);
+  assert.match(worker, /cache\.addAll\(APP_SHELL\)/);
+  assert.match(worker, /caches\.match\(APP_SHELL\[0\]\)/);
+  assert.match(icon, /حياة/);
+});
+
 test('توثيق الجودة لا يدّعي اختبار متصفح غير موجود', () => {
   assert.match(readme, /صياغة.*app\.js/);
-  assert.match(readme, /لا تُغني عن اختبار يدوي كامل داخل متصفح الهاتف/);
+  assert.match(readme, /اختبار يدوي كامل داخل متصفح الهاتف/);
 });
