@@ -1382,7 +1382,7 @@ body.ad-hidden .app{padding-bottom:280px}
 }
 .drawer-body .choice:active,.drawer-body .choice:hover{background:#f7f9fc;border-color:#ccd4dd}
 .drawer-body .choice .choiceico{width:34px;flex:0 0 34px;text-align:center;font-size:25px;color:#8c929a}
-.drawer-body .choice .ctext{direction:ltr;text-align:left}
+.drawer-body .choice .ctext{direction:rtl;text-align:right}
 .drawer-body .choice .ctitle{font-size:15px;color:#145b97;font-weight:950;line-height:1.25}
 .drawer-body .choice .cdesc{font-size:12px;color:#8a8e93;line-height:1.35;margin-top:3px}
 .drawer-body .choice .price{margin-left:2px;background:transparent;color:#115b92;font-size:11px;padding:0}
