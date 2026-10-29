@@ -325,6 +325,7 @@ const tuitionContext = {
     setItem(key, value) { tuitionStore.set(key, String(value)); }
   },
   requestAnimationFrame(cb) { cb(); },
+  setTimeout(cb) { cb(); },
   confirm() { return true; },
   alert() {},
   console
