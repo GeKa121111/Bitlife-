@@ -2,6 +2,7 @@
 (() => {
 const $ = id => document.getElementById(id);
 const KEY = 'hekayat_hayah_save_v1';
+const BACKUP_KEY = 'hekayat_hayah_save_backup_v1';
 const CEMETERY_KEY = 'hekayat_hayah_cemetery_v1';
 const SETTINGS_KEY = 'hayah_ui_settings_v1';
 const fmt = n => new Intl.NumberFormat('ar-EG',{maximumFractionDigits:0}).format(Math.round(Number(n)||0));
@@ -10,7 +11,7 @@ const clamp = (n,min=0,max=100) => Math.max(min,Math.min(max,Math.round(n)));
 const pick = list => list[Math.floor(Math.random()*list.length)];
 const chance = p => Math.random()<p;
 const esc = s => String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-let state, dead=false, logBatchDepth=0, logBatchDirty=false;
+let state, dead=false, logBatchDepth=0, logBatchDirty=false, saveRecovered=false;
 let uiSettings={theme:'light',textScale:'normal'};
 const names = {
  male:['آدم','يوسف','عمر','مالك','زياد','حمزة','كريم','سليم','ياسين','علي','إياد','مروان','أحمد','سيف','نوح'],
@@ -423,9 +424,26 @@ function newLife(){
  const sibling=makePerson(gender,'الأخ/الأخت','🧒',Math.floor(Math.random()*8),55+Math.floor(Math.random()*35));
  return {version:1,lifeId:Date.now()+Math.random(),cemeterySaved:false,name:pick(names[gender])+' '+pick(names.family),gender,age:0,place,bank:place.start,stats:{happiness:65+Math.floor(Math.random()*26),health:76+Math.floor(Math.random()*22),smart:35+Math.floor(Math.random()*41),looks:35+Math.floor(Math.random()*51)},education:{level:0,school:'لم تبدأ الدراسة',major:null,yearsLeft:0,tuition:0},job:null,jobHistory:[],specialCareer:null,specialCareerHistory:[],combatCareer:null,filmStudio:null,performance:50,assets:[],investments:[],business:null,family:[father,mother,sibling],friends:[],partner:null,married:false,children:[],coParentingPlans:[],pets:[],hobbies:[],fame:0,followers:0,socialMediaAccount:false,socialMediaPosts:0,reputation:50,crimeRecord:0,prison:null,debt:0,willDistribution:'الأسرة بالتساوي',heirlooms:[],dailyRewardDate:null,dailyChallenges:null,timeMachineSnapshots:[],legacy:{name:null,inheritance:0,heirloom:null},driversLicense:false,travelHistory:[],log:[],accomplishments:['بدأت رحلة الحياة'],status:'حي',cause:null,retired:false,yearCount:0,wealthPeak:place.start};
 }
+function isValidSaveData(data){
+ return !!(data&&data.version===1&&data.stats&&typeof data.stats==='object'&&!Array.isArray(data.stats)&&Array.isArray(data.log));
+}
 function save(){
- try{localStorage.setItem(KEY,JSON.stringify(state));$('saveStatus').textContent='● محفوظة';}
- catch(e){$('saveStatus').textContent='⚠ الحفظ غير متاح';}
+ try{
+  const serialized=JSON.stringify(state);
+  // Keep a last-known-good checkpoint before moving to another year or life.
+  // A failed backup write must never prevent the primary save from being attempted.
+  try{
+   const previousRaw=localStorage.getItem(KEY);
+   if(previousRaw){
+    const previous=JSON.parse(previousRaw);
+    if(isValidSaveData(previous)&&(previous.lifeId!==state.lifeId||Number(previous.age)!==Number(state.age))){
+     localStorage.setItem(BACKUP_KEY,previousRaw);
+    }
+   }
+  }catch(e){}
+  localStorage.setItem(KEY,serialized);
+  $('saveStatus').textContent='● محفوظة';
+ }catch(e){$('saveStatus').textContent='⚠ الحفظ غير متاح';}
 }
 function normalizeCoreState(data){
  const rawPlace=data.place&&typeof data.place==='object'&&!Array.isArray(data.place)?data.place:{};
@@ -448,7 +466,21 @@ function normalizeCoreState(data){
  return data;
 }
 function load(){
- try{const x=JSON.parse(localStorage.getItem(KEY)||'null');if(x&&x.version===1&&x.stats&&typeof x.stats==='object'&&!Array.isArray(x.stats)&&Array.isArray(x.log)){
+ try{
+  let x=null;
+  try{x=JSON.parse(localStorage.getItem(KEY)||'null');}catch(e){}
+  if(!isValidSaveData(x)){
+   try{
+    const backupRaw=localStorage.getItem(BACKUP_KEY);
+    const backup=JSON.parse(backupRaw||'null');
+    if(isValidSaveData(backup)){
+     x=backup;
+     saveRecovered=true;
+     try{localStorage.setItem(KEY,backupRaw);}catch(e){}
+    }
+   }catch(e){}
+  }
+  if(isValidSaveData(x)){
   normalizeCoreState(x);
   const defaults={lifeId:Date.now()+Math.random(),cemeterySaved:false,jobHistory:[],specialCareer:null,specialCareerHistory:[],combatCareer:null,filmStudio:null,investments:[],business:null,married:false,children:[],coParentingPlans:[],pets:[],hobbies:[],fame:0,followers:0,socialMediaAccount:false,socialMediaPosts:0,reputation:50,crimeRecord:0,prison:null,debt:0,willDistribution:'الأسرة بالتساوي',heirlooms:[],dailyRewardDate:null,dailyChallenges:null,timeMachineSnapshots:[],legacy:{name:null,inheritance:0,heirloom:null},driversLicense:false,travelHistory:[]};
   Object.keys(defaults).forEach(k=>{if(x[k]===undefined||x[k]===null)x[k]=defaults[k];});
@@ -2249,7 +2281,7 @@ if($('heirloomBtn'))$('heirloomBtn').addEventListener('click',()=>dailyReward())
 function init(){
  loadUiSettings();
  state=load();
- if(state){dead=state.status==='متوفى';render();if(dead)death(state.cause||'نهاية رحلة الحياة');}
+ if(state){dead=state.status==='متوفى';render();if(saveRecovered)$('saveStatus').textContent='↺ نسخة مستردة';if(dead)death(state.cause||'نهاية رحلة الحياة');}
  else{state=newLife();log('👶','أول يوم في الدنيا','اتولدت في '+state.place.city+'، '+state.place.country+'. أهلك '+state.family[0].name+' و'+state.family[1].name+' بيبدأوا معاك أول فصل في الحكاية.','special');log('🏡','البيت والعيلة','أبوك '+state.family[0].name+' شخص '+state.family[0].personality+'، وأمك '+state.family[1].name+' شخصيتها '+state.family[1].personality+'. دي أول شبكة أمان ليك.');achievement('بدأت رحلة الحياة');render();newLifeSetup();}
 }
 init();
