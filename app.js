@@ -3,6 +3,7 @@
 const $ = id => document.getElementById(id);
 const KEY = 'hekayat_hayah_save_v1';
 const CEMETERY_KEY = 'hekayat_hayah_cemetery_v1';
+const SETTINGS_KEY = 'hayah_ui_settings_v1';
 const fmt = n => new Intl.NumberFormat('ar-EG',{maximumFractionDigits:0}).format(Math.round(Number(n)||0));
 const cash = n => fmt(n)+' '+(state&&state.place?state.place.unit:'ج.م');
 const clamp = (n,min=0,max=100) => Math.max(min,Math.min(max,Math.round(n)));
@@ -10,6 +11,7 @@ const pick = list => list[Math.floor(Math.random()*list.length)];
 const chance = p => Math.random()<p;
 const esc = s => String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 let state, dead=false, logBatchDepth=0, logBatchDirty=false;
+let uiSettings={theme:'light',textScale:'normal'};
 const names = {
  male:['آدم','يوسف','عمر','مالك','زياد','حمزة','كريم','سليم','ياسين','علي','إياد','مروان','أحمد','سيف','نوح'],
  female:['مريم','ليلى','سلمى','نور','جنى','ملك','فريدة','ياسمين','هنا','تاليا','آية','دانا','لارا','مكة','ريماس'],
@@ -2021,6 +2023,45 @@ function startAsChild(index){
  heir.family.push({id:'legacy-parent-'+Date.now(),name:previous.name,relation:'والد/والدة متوفى',emoji:previous.gender==='male'?'👨‍🦳':'👩‍🦳',age:previous.age,job:previous.job?previous.job.title:'متوفى',relationshipLevel:100,personality:'موروث عائلي'});if(oldPartner)heir.family.push({...oldPartner,relation:'الأم/الأب'});
  state=heir;dead=false;log('🌳','استمرار السلالة','بدأت حياة جديدة باسم '+state.name+'، وارثًا قصة '+previous.name+' وإرث العائلة.','special');render();closeModal();info('🌳','جيل جديد','ورثت ثروة تقديرية '+cash(estate)+' وبعض مقتنيات العائلة. تبدأ الآن مرحلة مستقلة باختياراتك.');
 }
+function applyUiSettings(){
+ const body=document.body;
+ if(body&&body.classList){
+  body.classList.toggle('theme-dark',uiSettings.theme==='dark');
+  body.classList.toggle('text-large',uiSettings.textScale==='large');
+ }
+ if(typeof document.querySelector==='function'){
+  const themeMeta=document.querySelector('meta[name="theme-color"]');
+  if(themeMeta)themeMeta.setAttribute('content',uiSettings.theme==='dark'?'#17232c':'#E53935');
+ }
+}
+function loadUiSettings(){
+ try{
+  const raw=JSON.parse(localStorage.getItem(SETTINGS_KEY)||'null');
+  if(raw&&typeof raw==='object'&&!Array.isArray(raw)){
+   if(raw.theme==='dark'||raw.theme==='light')uiSettings.theme=raw.theme;
+   if(raw.textScale==='large'||raw.textScale==='normal')uiSettings.textScale=raw.textScale;
+  }
+ }catch(e){}
+ applyUiSettings();
+}
+function persistUiSettings(){
+ try{localStorage.setItem(SETTINGS_KEY,JSON.stringify(uiSettings));}catch(e){}
+ applyUiSettings();
+}
+function settingsMenu(){
+ modal('⚙️','إعدادات العرض','الإعدادات دي بتتخزن على الجهاز بشكل مستقل عن ملف حياتك، ومش بتغيّر الحفظ القديم.',[
+  choice(uiSettings.theme==='dark'?'☀️':'🌙',uiSettings.theme==='dark'?'تفعيل الوضع الفاتح':'تفعيل الوضع الداكن','المظهر الحالي: '+(uiSettings.theme==='dark'?'داكن':'فاتح')+'.',()=>{
+   uiSettings.theme=uiSettings.theme==='dark'?'light':'dark';persistUiSettings();settingsMenu();
+  }),
+  choice('🔤',uiSettings.textScale==='large'?'حجم النص: كبير':'حجم النص: عادي','كبّر نص سجل الأحداث والقرارات لسهولة القراءة.',()=>{
+   uiSettings.textScale=uiSettings.textScale==='large'?'normal':'large';persistUiSettings();settingsMenu();
+  }),
+  choice('↩️','استعادة إعدادات العرض الافتراضية','العودة للوضع الفاتح وحجم النص العادي.',()=>{
+   uiSettings={theme:'light',textScale:'normal'};persistUiSettings();settingsMenu();
+  }),
+  choice('↩️','رجوع للقائمة الرئيسية','',mainMenu)
+ ]);
+}
 function mainMenu(){
  modal('☰','القائمة الرئيسية','إدارة حياتك وحفظ تقدمك واستعراض إنجازاتك.',[
   choice('🌱','حياة جديدة','ابدأ شخصية جديدة أو خصّص بلد الميلاد.',()=>newLifeSetup()),
@@ -2029,7 +2070,8 @@ function mainMenu(){
   choice('🎯','تحديات اليوم','ثلاث مهام يومية ومكافآت إضافية عند إكمالها.',()=>dailyChallengesMenu()),
   choice('⏳','الرجوع بالزمن','استرجع نقطة حفظ سنوية سابقة.',timeMachineMenu),
   choice('🎁','المكافأة اليومية','احصل على مكافأتك اليومية إن كانت متاحة.',()=>dailyReward()),
-  choice('🪪','ملف الشخصية','تعديل الاسم وإعدادات الشخصية.',()=>customizeMenu()),
+  choice('🪪','ملف الشخصية','تعديل الاسم وبيانات الشخصية.',()=>customizeMenu()),
+  choice('⚙️','إعدادات العرض','الوضع الداكن وحجم النص، من غير تغيير بيانات حياتك.',()=>settingsMenu()),
   choice('💾','تصدير الحفظ','نزّل نسخة احتياطية من حياتك الحالية.',()=>exportSave()),
   choice('📥','تحميل حفظ','استرجع حياة من ملف JSON قمت بتصديره سابقًا.',()=>importSave()),
   choice('☰','كل الأنشطة','الصحة والهوايات والحيوانات والسفر والمال والمزيد.',()=>activities())
@@ -2205,6 +2247,7 @@ if($('menuBtn'))$('menuBtn').addEventListener('click',()=>mainMenu());
 if($('profileBtn'))$('profileBtn').addEventListener('click',()=>achievementsMenu());
 if($('heirloomBtn'))$('heirloomBtn').addEventListener('click',()=>dailyReward());
 function init(){
+ loadUiSettings();
  state=load();
  if(state){dead=state.status==='متوفى';render();if(dead)death(state.cause||'نهاية رحلة الحياة');}
  else{state=newLife();log('👶','أول يوم في الدنيا','اتولدت في '+state.place.city+'، '+state.place.country+'. أهلك '+state.family[0].name+' و'+state.family[1].name+' بيبدأوا معاك أول فصل في الحكاية.','special');log('🏡','البيت والعيلة','أبوك '+state.family[0].name+' شخص '+state.family[0].personality+'، وأمك '+state.family[1].name+' شخصيتها '+state.family[1].personality+'. دي أول شبكة أمان ليك.');achievement('بدأت رحلة الحياة');render();newLifeSetup();}
