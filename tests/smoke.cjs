@@ -15,7 +15,7 @@ assert.equal(pwaManifest.lang, 'ar');
 assert.equal(pwaManifest.dir, 'rtl');
 assert.equal(pwaManifest.display, 'standalone');
 assert.match(app, /navigator\.serviceWorker\.register\('\.\/sw\.js'\)/);
-assert.match(serviceWorker, /event\.request\.mode==='navigate'/);
+assert.match(serviceWorker, /request\.mode === 'navigate'/);
 assert.match(serviceWorker, /caches\.match\(APP_SHELL\[0\]\)/);
 assert.match(index, /id="ageUpBtn"/);
 assert.match(css, /max-width:500px/);
