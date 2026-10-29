@@ -42,7 +42,7 @@ test('مفتاح الحفظ القديم وإصدار الحفظ لم يتغير
   assert.match(app, /const KEY = 'hekayat_hayah_save_v1';/);
   assert.match(app, /const CEMETERY_KEY = 'hekayat_hayah_cemetery_v1';/);
   assert.match(app, /return \{version:1,lifeId:/);
-  assert.match(app, /function isValidSaveData\(data\)[\s\S]*?data\.version===1/);
+  assert.match(app, /function isValidSaveData\(data\)[\s\S]*?data\.version!==1/);
   assert.match(app, /function load\(\)[\s\S]*?isValidSaveData\(x\)[\s\S]*?BACKUP_KEY/);
 });
 
