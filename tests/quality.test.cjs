@@ -155,6 +155,9 @@ test('واجهة الهاتف تقرّب الشاشة الرئيسية من تر
   assert.match(finalUi, /\.navbtn:first-child \.navico\{background:#f47a20/);
   assert.match(finalUi, /\.agebtn\s*\{[^}]*border-radius:50%/s);
   assert.match(finalUi, /\.statvalue\s*\{[^}]*position:absolute[^}]*z-index:1/s);
+  assert.match(finalUi, /\.nav\{direction:ltr\}/);
+  assert.match(finalUi, /\.fill\{left:0;right:auto\}/);
+  assert.ok(app.includes("const rows=[['happiness','😄','السعادة'],['health','❤️','الصحة'],['smart','🧠','الذكاء'],['looks','😎','المظهر']];"));
   assert.match(finalUi, /body\.theme-dark \.nav\{[^}]*background:#075078/);
   assert.match(finalUi, /@media\(max-width:380px\)/);
 });
