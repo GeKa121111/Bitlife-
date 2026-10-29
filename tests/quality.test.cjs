@@ -107,7 +107,7 @@ test('تطبيق الويب قابل للتثبيت ويحتفظ بملفات ا
   assert.ok(manifest.icons.some(item => item.src === './icon.svg'));
   assert.match(html, /rel="manifest" href="manifest\.webmanifest"/);
   assert.match(app, /navigator\.serviceWorker\.register\('\.\/sw\.js'\)/);
-  assert.match(worker, /const CACHE_NAME = 'hayah-shell-v11'/);
+  assert.match(worker, /const CACHE_NAME = 'hayah-shell-v12'/);
   assert.match(worker, /cache\.addAll\(APP_SHELL\)/);
   assert.match(worker, /caches\.match\(APP_SHELL\[0\]\)/);
   assert.match(icon, /حياة/);
@@ -195,7 +195,7 @@ test('مسيرة الرياضات الإلكترونية أصلية وتحافظ
   assert.match(app, /function upgradeEsportsSetup\(\)/);
   assert.match(app, /موهبة الألعاب الإلكترونية/);
   assert.match(app, /data\.talents\.gaming=clamp\(Number\(data\.talents\.gaming\),0,100\)/);
-  assert.match(read('sw.js'), /hayah-shell-v11/);
+  assert.match(read('sw.js'), /hayah-shell-v12/);
   assert.match(functionSource('rewindToSnapshot', 'customizeMenu'), /ensureGamingTalent\(\)/, 'rewinding a pre-feature snapshot should restore a valid talent default');
 });
 
@@ -356,4 +356,21 @@ test('الأنظمة الجديدة تضيف بيانات افتراضية آم�
   assert.match(app, /if\(!data\.investmentAdvisor\|\|typeof data\.investmentAdvisor!=='object'/);
   assert.match(app, /function advanceInvestmentAdvisor\(\)/);
   assert.match(app, /function advanceZooSystem\(\)/);
+});
+
+
+test('واجهة الهاتف فيها عضوية حياة+ وشريط عمر دائري ثابت وتقسيمات القوائم', () => {
+  assert.ok(html.includes('class="membership-trigger" id="membershipBtn"'));
+  assert.ok(app.includes("if($('membershipBtn'))$('membershipBtn').addEventListener('click',()=>premiumPerksMenu())"));
+  assert.ok(css.includes('--life-nav:#075e9c'));
+  assert.ok(css.includes('.bottom-dock .nav{order:0'));
+  assert.ok(css.includes('.bottom-dock .stats{order:1'));
+  assert.ok(css.includes('.bottom-dock .agebtn{'));
+  assert.ok(css.includes('border-radius:50%'));
+  assert.ok(css.includes('.drawer-section{'));
+  assert.ok(app.includes("function drawerSection(title){return {section:true,title};}"));
+  assert.ok(app.includes("drawerSection('مسارات ومزايا إضافية')"));
+  assert.ok(app.includes("drawerSection('الشراء والاستحواذ')"));
+  assert.ok(app.includes("drawerSection('الأسرة والعلاقات القريبة')"));
+  assert.ok(app.includes("const KEY = 'hekayat_hayah_save_v1';"));
 });
