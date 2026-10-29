@@ -3704,7 +3704,7 @@ function grantLandlordStarterProperty(){
  state.assets.push({id:'landlord-starter-'+Date.now(),title:'منزل مستقبلي حصري',emoji:'🏠',kind:'property',value:950000,upkeep:22000,bought:state.age,condition:100,rented:false,tenant:null,amenities:[],futuristic:true,landlordStarter:true});
  log('🏠','هدية العقار الحصري','حصلت على منزل مستقبلي حصري مجانًا مع توسعة العقارات.','good');
 }
-function buyPremiumPerk(id,afterPurchase){
+function buyPremiumPerk(id){
  const catalog={
   fameFortuneBundle:{cost:135000,title:'باقة الشهرة والثروة'},billionairesBundle:{cost:160000,title:'باقة الملياردير'},crimePaysBundle:{cost:145000,title:'باقة عالم الجريمة'},partyAnimalBundle:{cost:175000,title:'باقة الحيوان الحفّال'},
   fighterPack:{cost:45000,title:'Ultimate Fighter Mode'},proAthletePack:{cost:35000,title:'Pro Athlete Job Pack'},politicianPack:{cost:30000,title:'Politician Job Pack'},astronautPack:{cost:50000,title:'Astronaut Job Pack'},
@@ -3740,9 +3740,13 @@ function buyPremiumPerk(id,afterPurchase){
   persistPermanentPerks();log('✨','ميزة جديدة: '+item.title,'فتحت '+item.title+' من رصيد اللعبة. تقدر تدير المزايا من المتجر والقائمة الرئيسية.','special');
  }
  save();render();
- if(typeof afterPurchase==='function'){afterPurchase();return;}
  if(JOB_PACK_PROMOS[id]||id==='bossMode'){openJobPackDestination(id);return;}
  premiumPerksMenu();
+}
+function buyPremiumPerkWithAction(id,afterPurchase){
+ const before=Number(state&&state.bank)||0,alreadyOwned=perkOwned(id);
+ buyPremiumPerk(id);
+ if(typeof afterPurchase==='function'&&!alreadyOwned&&perkOwned(id)&&(Number(state&&state.bank)||0)<before)afterPurchase();
 }
 
 function perkAction(id){
