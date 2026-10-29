@@ -180,5 +180,5 @@ test('مسيرة الرياضات الإلكترونية أصلية وتحافظ
   assert.match(app, /function upgradeEsportsSetup\(\)/);
   assert.match(app, /موهبة الألعاب الإلكترونية/);
   assert.match(app, /data\.talents\.gaming=clamp\(Number\(data\.talents\.gaming\),0,100\)/);
-  assert.match(serviceWorker, /hayah-shell-v6/);
+  assert.match(read('sw.js'), /hayah-shell-v6/);
 });
