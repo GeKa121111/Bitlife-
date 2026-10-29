@@ -567,7 +567,7 @@ function death(cause){
  const assetValue=state.assets.reduce((sum,a)=>sum+a.value,0),investmentValue=(state.investments||[]).reduce((sum,a)=>sum+(a.value||0),0),net=state.bank+assetValue+investmentValue-(state.debt||0);
  const achievements=state.accomplishments.length?state.accomplishments.map(a=>'• '+esc(a)).join('<br>'):'لسه مفيش إنجازات مسجلة، بس كل حياة ليها حكايتها.';
  $('modalRoot').innerHTML='<div class="overlay"><section class="modal"><div class="death"><div class="tomb">🪦</div><div class="deathtitle">انتهت حكاية '+esc(state.name)+'</div><div class="deathsub">عشت '+fmt(state.age)+' سنة.<br>سبب الوفاة: '+esc(cause)+'.<br>شريط حياتك: '+esc(lifeRibbon())+'.<br>كل قرار ساب أثر، وكل سنة كانت فصل من قصتك.</div><div class="summarygrid"><div class="summarycell"><div class="summarylabel">الثروة النهائية</div><div class="summaryvalue">'+cash(net)+'</div></div><div class="summarycell"><div class="summarylabel">العمر</div><div class="summaryvalue">'+fmt(state.age)+' سنة</div></div><div class="summarycell"><div class="summarylabel">إنجازات</div><div class="summaryvalue">'+fmt(state.accomplishments.length)+'</div></div><div class="summarycell"><div class="summarylabel">الأصول</div><div class="summaryvalue">'+fmt(state.assets.length)+'</div></div></div><div class="listitem" style="text-align:right"><div class="listtitle">محطات من حياتك</div><div class="muted" style="margin-top:8px;line-height:2">'+achievements+'</div></div><button class="primarybtn" id="newLifeBtn">🌱 حياة جديدة</button>'+(state.children.length?'<div class="muted" style="margin:8px 0">كمّل إرث العائلة:</div>'+state.children.map((c,i)=>'<button class="smallbtn" data-heir="'+i+'" style="width:100%;margin:4px 0">🌳 استكمل كـ '+esc(c.name)+'</button>').join(''):'')+'<button class="smallbtn" id="reviewBtn" style="width:100%;margin-top:9px">راجع دفتر حياتك</button></div></section></div>';
- $('newLifeBtn').addEventListener('click',()=>{closeModal();if(confirm('تبدأ حياة جديدة وتستبدل الحفظ الحالي؟'))startNew();});
+ $('newLifeBtn').addEventListener('click',()=>{closeModal();if(confirm('تبدأ حياة جديدة وتستبدل الحفظ الحالي؟'))newLifeSetup();});
  $('reviewBtn').addEventListener('click',closeModal);
  $('modalRoot').querySelectorAll('[data-heir]').forEach(btn=>btn.addEventListener('click',()=>startAsChild(Number(btn.dataset.heir))));
 }
@@ -922,10 +922,34 @@ function achievementsMenu(){
 function lifeRibbon(){
  if(state.fame>=80)return 'نجم مشهور';if(state.crimeRecord>=4)return 'حياة إجرامية';if(state.bank>10000000)return 'ثروة استثنائية';if(state.children.length>=4)return 'أسرة كبيرة';if(state.job&&state.education.level>=4)return 'مسار مهني ناجح';if(state.age>=85)return 'عمر مديد';if(state.stats.happiness>=80)return 'حياة سعيدة';return 'حياة عادية';
 }
+function newLifeSetup(){
+ modal('🌱','ابدأ حياة جديدة','كل حياة لها بداية مختلفة. تقدر تبدأ بشكل عشوائي أو تختار النوع وبلد الميلاد.',[
+  choice('🎲','حياة عشوائية','اسم وجنس وبلد وعائلة عشوائيين.',()=>{closeModal();startNew();}),
+  choice('🪪','تخصيص البداية','اختيار النوع وبلد الميلاد، مع إمكانية تعديل الاسم.',()=>{closeModal();chooseStartGender();}),
+  choice('↩️','أكمل حياتي الحالية','إلغاء والرجوع للحياة الحالية.',closeModal)
+ ]);
+}
+function chooseStartGender(){
+ modal('👤','اختيار الشخصية','اختار نوع الشخصية اللي تحب تبدأ بيها.',[
+  choice('👦','ذكر','اسم وشخصية ذكر.',()=>{closeModal();chooseBirthCountry('male');}),
+  choice('👧','أنثى','اسم وشخصية أنثى.',()=>{closeModal();chooseBirthCountry('female');})
+ ]);
+}
+function chooseBirthCountry(gender){
+ const opts=places.map(p=>choice(p.flag,p.country,'مدينة البداية: '+p.city+' · رصيد بداية '+fmt(p.start)+' '+p.unit,()=>createLifeConfigured(gender,p)));
+ modal('🌍','بلد الميلاد','البلد هتحدد المدينة والعملة ورصيد البداية.',opts);
+}
+function createLifeConfigured(gender,place){
+ closeModal();state=newLife();dead=false;state.gender=gender;state.name=pick(names[gender])+' '+pick(names.family);state.place={...place};state.bank=place.start;
+ if(typeof prompt==='function'){const name=prompt('اكتب اسم الشخصية (اختياري)',state.name);if(name&&name.trim())state.name=name.trim().slice(0,50);}
+ log('👶','أول يوم في الدنيا','اتولدت في '+state.place.city+'، '+state.place.country+'. بدأت حكايتك بعائلة وظروف مختلفة، وكل سنة هتفتح قدامك اختيارات جديدة.','special');
+ log('🏡','البيت والعيلة','أبوك '+state.family[0].name+' وأمك '+state.family[1].name+' هما أول شبكة أمان ليك.');achievement('بدأت رحلة الحياة');render();
+}
 function customizeMenu(){
  const opts=[
   choice('✍️','تغيير الاسم','اكتب اسم جديد للشخصية.',()=>{closeModal();if(typeof prompt!=='function'){info('✍️','تعديل الاسم','التعديل اليدوي غير متاح في بيئة الاختبار.');return;}const v=prompt('اكتب الاسم الجديد',state.name);if(v&&v.trim()){state.name=v.trim().slice(0,50);log('🪪','تغيير الاسم','أصبح اسمك '+state.name+'.','special');render();}}),
   choice('🎲','اسم عشوائي','اختيار اسم جديد من الأسماء المتاحة.',()=>{closeModal();state.name=pick(names[state.gender])+' '+pick(names.family);log('🪪','اسم جديد','اسم شخصيتك أصبح '+state.name+'.');render();}),
+  choice('👤','تغيير نوع الشخصية','تغيير الصورة الرمزية ونوع الاسم العشوائي القادم.',()=>{closeModal();modal('👤','نوع الشخصية','تأكيد تغيير النوع الظاهر للشخصية.',[choice('👦','ذكر','',()=>{closeModal();state.gender='male';render();}),choice('👧','أنثى','',()=>{closeModal();state.gender='female';render();})]);}),
   choice('🚗','رخصة قيادة','اختبار بسيط للحصول على رخصة بعد سن 16.',()=>{closeModal();getLicense();}),
   choice('🌍','السفر والهجرة','تغيير بلد الإقامة أو السفر.',travelMenu),
   choice('📤','تصدير الحفظ','نزّل نسخة JSON من تقدمك.',exportSave)
@@ -969,7 +993,7 @@ function activities(){
   choice('🏖️','خروجة أو إجازة','تكلفة 1,800 '+state.place.unit+' لتحسين المزاج.',()=>activity('vacation'),'1,800 '+state.place.unit),
   choice('🤝','مساعدة مجتمعية','نشاط مجاني لرفع السعادة والسمعة.',()=>activity('volunteer'),'مجانًا'),
   choice('💾','تصدير الحفظ','نزّل ملف JSON تحتفظ بيه.',exportSave),
-  choice('🌱','حياة جديدة','استبدل الشخصية الحالية بشخصية مختلفة.',()=>{closeModal();info('🌱','حياة جديدة','هتبدأ حياة جديدة وتستبدل الحفظ الحالي.',[choice('↻','ابدأ من جديد','',()=>{closeModal();if(confirm('تبدأ حياة جديدة وتستبدل الحفظ الحالي؟'))startNew();}),choice('رجوع','أحتفظ بالحياة الحالية','',closeModal)]);})
+  choice('🌱','حياة جديدة','ابدأ قصة جديدة مع اختيار عشوائي أو تخصيص بلد الميلاد والنوع.',()=>{closeModal();info('🌱','حياة جديدة','هتبدأ حياة جديدة وتستبدل الحفظ الحالي.',[choice('↻','تابع','',()=>{closeModal();if(confirm('تبدأ حياة جديدة وتستبدل الحفظ الحالي؟'))newLifeSetup();}),choice('رجوع','أحتفظ بالحياة الحالية','',closeModal)]);})
  ]);
 }
 function healthMenu(){
