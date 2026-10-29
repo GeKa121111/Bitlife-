@@ -20,7 +20,10 @@ assert.match(app, /dailyChallenges:null/, 'older saves should migrate to the dai
 assert.match(app, /function timeMachineMenu\(\)/, 'the player should be able to review yearly rewind snapshots');
 assert.match(app, /function rewindToSnapshot\(index\)/, 'time rewind should restore a selected prior state');
 assert.match(app, /timeMachineSnapshots:\[\]/, 'new lives should initialize the time-machine history');
-assert.match(app, /state\.timeMachineSnapshots\.push\(JSON\.stringify\(snapshot\)\)/, 'each age-up should preserve a rewind point');
+assert.match(app, /state\.timeMachineSnapshots\.push\(JSON\.stringify\(\{snapshotVersion:1,logLength,state:snapshot\}\)\)/, 'each age-up should preserve a compact rewind point');
+assert.match(app, /delete snapshot\.log/, 'rewind snapshots should omit duplicated event logs');
+assert.match(app, /restored\.log=Array\.isArray\(state\.log\)\?state\.log\.slice\(0,Math\.max\(0,Number\(parsedSnapshot\.logLength\)\|\|0\)\):\[\]/, 'rewind should restore the event log to the saved length');
+assert.match(app, /else\{restored=parsedSnapshot;\}/, 'legacy raw snapshots should remain readable');
 assert.match(app, /timeMachineDeathBtn/, 'the end-of-life panel should offer a rewind path when available');
 assert.match(app, /function editCharacterTraits\(\)/, 'player traits editor should exist');
 assert.match(app, /function editNpcMenu\(\)/, 'NPC trait editor should exist');
