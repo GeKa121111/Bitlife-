@@ -177,8 +177,8 @@ body{align-items:stretch}
 .app{width:100%;max-width:450px;height:100dvh;min-height:0;padding:0;display:flex;flex-direction:column;overflow:hidden;border:0;box-shadow:0 0 30px #0000000c}
 .topbar{height:54px;min-height:54px;flex:0 0 54px;padding:0 8px;display:grid;grid-template-columns:44px minmax(0,1fr) 112px;gap:5px;background:#E53935;border-bottom:2px solid #B71C1C;position:relative;top:auto;z-index:10;box-shadow:none;border-radius:0}
 .menu-trigger,.header-action{width:34px;height:34px;border-radius:50%;border:1px solid #ffffff55;background:#ffffff20;font-size:18px}
-.brandlogo{min-width:0;text-align:center;color:#FFD54F;font-weight:1000;font-size:17px;letter-spacing:.15px;text-shadow:0 1px 2px #7f100d;white-space:nowrap}
-.brandlogo span{color:#fff2b0}
+.brandlogo{min-width:0;text-align:center;color:#fff;font-weight:1000;font-size:17px;letter-spacing:0;text-shadow:none;white-space:nowrap}
+.brandlogo span{color:#ffe0db}
 .top-actions{display:flex;align-items:center;justify-content:flex-end;gap:4px;min-width:0}
 .top-actions .header-action{flex:0 0 34px}
 .heirloom-action{font-size:17px}
