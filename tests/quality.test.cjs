@@ -107,7 +107,7 @@ test('تطبيق الويب قابل للتثبيت ويحتفظ بملفات ا
   assert.ok(manifest.icons.some(item => item.src === './icon.svg'));
   assert.match(html, /rel="manifest" href="manifest\.webmanifest"/);
   assert.match(app, /navigator\.serviceWorker\.register\('\.\/sw\.js'\)/);
-  assert.match(worker, /const CACHE_NAME = 'hayah-shell-v8'/);
+  assert.match(worker, /const CACHE_NAME = 'hayah-shell-v9'/);
   assert.match(worker, /cache\.addAll\(APP_SHELL\)/);
   assert.match(worker, /caches\.match\(APP_SHELL\[0\]\)/);
   assert.match(icon, /حياة/);
@@ -195,6 +195,42 @@ test('مسيرة الرياضات الإلكترونية أصلية وتحافظ
   assert.match(app, /function upgradeEsportsSetup\(\)/);
   assert.match(app, /موهبة الألعاب الإلكترونية/);
   assert.match(app, /data\.talents\.gaming=clamp\(Number\(data\.talents\.gaming\),0,100\)/);
-  assert.match(read('sw.js'), /hayah-shell-v8/);
+  assert.match(read('sw.js'), /hayah-shell-v9/);
   assert.match(functionSource('rewindToSnapshot', 'customizeMenu'), /ensureGamingTalent\(\)/, 'rewinding a pre-feature snapshot should restore a valid talent default');
+});
+
+
+test('متجر مزايا حياة يحفظ المزايا بشكل مستقل ويحافظ على حفظ v1', () => {
+  assert.match(app, /const KEY = 'hekayat_hayah_save_v1';/);
+  assert.match(app, /const PERKS_KEY = 'hayah_permanent_perks_v1';/);
+  assert.match(app, /function loadPermanentPerks\(\)/);
+  assert.match(app, /function premiumPerksMenu\(\)/);
+  assert.match(app, /function buyPremiumPerk\(id\)/);
+  assert.match(app, /function togglePremiumPerk\(id\)/);
+  assert.match(app, /version:1,lifeId:/);
+  assert.match(app, /function challengeVaultMenu\(\)/);
+  assert.match(app, /function claimVaultChallenge\(date,id\)/);
+  assert.match(app, /historyLimit=perkOwned\('expandedTime'\)\?60:8/);
+  assert.match(app, /function actorPackMenu\(\)/);
+  assert.match(app, /function actorCommercialGig\(\)/);
+  assert.match(app, /freeVehicleCare=perkEnabled\('goldenWrench'\)/);
+  assert.match(app, /const cost=perkOwned\('goldenPassport'\)\?0:15000/);
+  assert.match(app, /careerIncomeMultiplier\(\)/);
+  assert.match(app, /Math.max\(1000000,place.start\)/);
+  assert.match(app, /if\(perkOwned\('goldenPiggyBank'\)\)heir\.bank\+=1000000/);
+  assert.match(app, /protectedByShield/);
+});
+
+test('الطابع الذهبي يتخزن ويعاد تحميله ويغيّر مظهر حياة فقط', () => {
+  assert.match(app, /raw\.theme==='dark'\|\|raw\.theme==='light'\|\|raw\.theme==='gold'/);
+  assert.match(app, /body\.classList\.toggle\('theme-gold',uiSettings\.theme==='gold'\)/);
+  assert.match(css, /body\.theme-gold\{/);
+  assert.match(css, /--brand:#b8861b/);
+});
+
+test('حماة سلسلة التحديات يعملون عند تفويت يوم كامل مع حد ثابت للمزايا', () => {
+  assert.match(app, /old\.lastCompletionDate===twoDaysAgo&&\(permanentPerks\.streakSavers\|\|0\)>0/);
+  assert.match(app, /permanentPerks\.streakSavers--/);
+  assert.match(app, /state\.challengeArchive=state\.challengeArchive\.slice\(0,60\)/);
+  assert.match(app, /data\.challengeArchive=data\.challengeArchive\.filter\([\s\S]*?\.slice\(0,60\)/);
 });
