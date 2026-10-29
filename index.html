@@ -3,30 +3,43 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#10151f">
-<meta name="description" content="حكاية حياة — لعبة محاكاة حياة عربية بقرارات وشخصيات وأحداث متغيرة.">
-<title>حكاية حياة | محاكي الحياة</title>
-<script src="https://cdn.tailwindcss.com"></script>
+<meta name="theme-color" content="#ff5738">
+<meta name="description" content="حياة — محاكي حياة عربي بالنص والقرارات، من الميلاد إلى نهاية الرحلة.">
+<title>حياة | محاكي الحياة</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
 <div class="app" id="app">
-  <header class="topbar"><div class="brandmark">ح</div><div class="brandcopy"><div class="brandname">حكاية حياة</div><div class="brandhint">كل قرار بيغيّر حكايتك</div></div><div id="saveStatus" class="savepill">● محفوظة</div></header>
+  <header class="topbar">
+    <button class="menu-trigger" id="menuBtn" aria-label="القائمة" type="button">☰</button>
+    <div class="brandmark">ح</div>
+    <div class="brandcopy"><div class="brandname">حياة</div><div class="brandhint">كل سنة فصل جديد</div></div>
+    <button class="header-action" id="profileBtn" type="button" aria-label="ملف الشخصية">⋮</button>
+    <div id="saveStatus" class="savepill">● محفوظة</div>
+  </header>
   <section class="hero">
-    <div class="profile"><div class="avatar" id="avatar">👶<span class="flag" id="flag">🇪🇬</span></div><div class="identity"><div class="name" id="characterName">جارٍ إنشاء الشخصية...</div><div class="subline"><span class="tag" id="ageTag">العمر 0</span><span class="tag" id="titleTag">رضيع</span><span class="tag" id="cityTag">القاهرة، مصر</span></div></div></div>
-    <div class="wealth"><div><div class="wealthlabel">💳 رصيدك البنكي</div><div class="wealthsmall" id="wealthNote">بداية حكايتك</div></div><div class="wealthnum" id="bankBalance">0 ج.م</div></div>
+    <div class="profile">
+      <div class="avatar" id="avatar">👶<span class="flag" id="flag">🇪🇬</span></div>
+      <div class="identity">
+        <div class="name" id="characterName">جارٍ إنشاء الشخصية...</div>
+        <div class="subline"><span class="tag" id="ageTag">العمر 0</span><span class="tag" id="titleTag">رضيع</span><span class="tag" id="cityTag">القاهرة، مصر</span></div>
+        <div class="subline"><span class="tiny-metric" id="fameTag">⭐ الشهرة 0%</span><span class="tiny-metric" id="familyTag">👪 الأبناء 0</span></div>
+      </div>
+    </div>
+    <div class="wealth"><div><div class="wealthlabel">💰 رصيد البنك</div><div class="wealthsmall" id="wealthNote">بداية حكايتك</div></div><div class="wealthnum" id="bankBalance">0 ج.م</div></div>
   </section>
-  <div class="sectionhead"><div class="sectiontitle">📖 دفتر حياتك</div><div class="sectionmeta" id="lifeMeta">السنة الأولى من حكايتك</div></div>
+  <div class="sectionhead"><div class="sectiontitle">📖 أحداث حياتك</div><div class="sectionmeta" id="lifeMeta">السنة الأولى</div></div>
   <main class="feed" id="lifeFeed" aria-live="polite"></main>
 </div>
 <div class="bottom-dock">
   <div class="stats" id="statsPanel"></div>
   <nav class="nav" aria-label="القائمة الرئيسية">
-    <button class="navbtn" data-panel="career"><span class="navico">🎓</span><span>الدراسة والشغل</span></button>
-    <button class="navbtn" data-panel="assets"><span class="navico">🏠</span><span>الأصول</span></button>
-    <button class="agebtn" id="ageUpBtn" aria-label="تقدم سنة"><span>＋</span><span>سنة</span></button>
-    <button class="navbtn" data-panel="relations"><span class="navico">💞</span><span>العلاقات</span></button>
-    <button class="navbtn" data-panel="activities"><span class="navico">✨</span><span>الأنشطة</span></button>
+    <button class="navbtn" data-panel="career" type="button"><span class="navico">🎓</span><span>الدراسة والعمل</span></button>
+    <button class="navbtn" data-panel="assets" type="button"><span class="navico">🏠</span><span>الأصول</span></button>
+    <button class="agebtn" id="ageUpBtn" aria-label="تقدم سنة" type="button"><span>＋</span><span>عِش سنة</span></button>
+    <button class="navbtn" data-panel="relations" type="button"><span class="navico">💞</span><span>العلاقات</span></button>
+    <button class="navbtn" data-panel="activities" type="button"><span class="navico">☰</span><span>الأنشطة</span></button>
   </nav>
 </div>
 <div id="modalRoot"></div><div id="feedbackRoot"></div>
