@@ -676,6 +676,7 @@ function renderStats(){
 function renderFeed(){
  const feed=$('lifeFeed');
  if(!state.log.length){feed.innerHTML='<div class="empty">لسه حكايتك في أولها. اضغط على زر <b>+ سنة</b> عشان تشوف إيه اللي هيحصل.</div>';return;}
+ const shouldFollowLatest=feed.scrollHeight-feed.scrollTop-feed.clientHeight<=80;
  let html='',last=null;
  state.log.forEach(x=>{
   if(x.age!==last){last=x.age;html+='<div class="agegroup"><span>العمر: '+fmt(last)+' سنة</span></div>';}
@@ -684,6 +685,7 @@ function renderFeed(){
  });
  feed.innerHTML=html;
  requestAnimationFrame(()=>{
+  if(!shouldFollowLatest)return;
   if(typeof feed.scrollTo==='function')feed.scrollTo({top:feed.scrollHeight,behavior:'smooth'});
   else feed.scrollTop=feed.scrollHeight;
  });
