@@ -1176,3 +1176,36 @@ body.text-large .navbtn{font-size:9px}
 .stathead{direction:ltr}
 .statlabel{direction:rtl;text-align:right}
 .fill{left:0;right:auto}
+
+/* حياة — الطابع الذهبي الأصلي، منفصل عن بيانات الحياة */
+body.theme-gold{
+ color-scheme:light;
+ --brand:#b8861b;
+ --brand-dark:#845c0b;
+ --brand-soft:#fff1c5;
+ --ink:#48320e;
+ --text:#604d27;
+ --muted:#8a7547;
+ --line:#ead9ad;
+ --paper:#fffdf5;
+ --page:#f6eed6;
+ --blue:#735114;
+ --blue-dark:#4e360a;
+ --green:#a27b18;
+ --green-dark:#7c5a12;
+ --gold:#e4bb4c;
+ --red:#bb4550;
+}
+body.theme-gold .topbar{background:linear-gradient(135deg,#8a5b0e,#c69a2f)}
+body.theme-gold .hero{background:linear-gradient(135deg,#fff3c9,#fffdf4 72%);border-color:#e8d29b}
+body.theme-gold .avatar{border-color:#dec477}
+body.theme-gold .wealth{border-color:#e0ce92;background:#fffaf0}
+body.theme-gold .wealthnum{color:#8a6111}
+body.theme-gold .nav,body.theme-gold .stats,body.theme-gold .bottom-dock{background:#fffaf0;border-color:#e7d49b}
+body.theme-gold .navbtn.active{color:#7d590a;background:#ffefb3}
+body.theme-gold .agebtn{background:#ba8a1d;box-shadow:0 0 0 1px #9a6d11,0 5px 13px #8a651b20}
+body.theme-gold .modalhead{background:#5b4010}
+body.theme-gold .modal{border-color:#d3b45d}
+body.theme-gold .event-banner{background:#8b6618}
+body.theme-gold .logcard.special{background:#fff8dc;border-color:#e2cd86}
+body.theme-gold .sectiontitle:before{background:#c09522}
