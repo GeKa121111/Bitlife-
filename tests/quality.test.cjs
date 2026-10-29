@@ -77,6 +77,13 @@ test('الرسائل المالية تستخدم عملة بلد الشخصية 
   assert.match(activity, /cash\(1800\)/);
 });
 
+test('هوية حياة البصرية مستقلة عن لوحة ألوان الألعاب المرجعية', () => {
+  assert.match(css, /--hayah-primary:#176b66/);
+  assert.match(css, /--hayah-navy:#1d3b53/);
+  assert.match(css, /--hayah-accent:#e5b34b/);
+  assert.doesNotMatch(css, /BitLife-like|--reference-/);
+});
+
 test('تخطيط الهاتف وإمكانية الوصول ما زالا موجودين', () => {
   assert.match(css, /@media\(max-width:380px\)/);
   assert.match(css, /@media\(prefers-reduced-motion:reduce\)/);
