@@ -160,16 +160,49 @@ async function run() {
     assert.ok(mobileGeometry.appWidth <= mobileGeometry.viewportWidth + 1, 'the main app should fit the 390px mobile viewport');
     assert.ok(mobileGeometry.ageButtonWidth > 0 && mobileGeometry.ageButtonVisible, 'the year-advance control should be visible on mobile');
 
+    // Seed a longer history so the mobile feed has a real scroll position to preserve.
+    await page.evaluate(() => {
+      const key = 'hekayat_hayah_save_v1';
+      const saved = JSON.parse(localStorage.getItem(key) || 'null');
+      saved.log = Array.from({ length: 45 }, (_, index) => ({
+        icon: '📘',
+        title: 'ذكرى اختبار ' + (index + 1),
+        text: 'حدث سابق لاختبار الاحتفاظ بموضع القراءة في سجل الحياة.',
+        tone: '',
+        age: Math.max(0, 30 - Math.floor((44 - index) / 5))
+      }));
+      localStorage.setItem(key, JSON.stringify(saved));
+    });
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await page.waitForFunction(() => document.querySelectorAll('#lifeFeed .logcard').length === 45);
+    const readingStart = await page.evaluate(() => {
+      const feed = document.querySelector('#lifeFeed');
+      feed.scrollTop = 0;
+      return { scrollHeight: feed.scrollHeight, clientHeight: feed.clientHeight };
+    });
+    assert.ok(readingStart.scrollHeight > readingStart.clientHeight, 'the seeded mobile history should be scrollable');
+
     await page.locator('#ageUpBtn').click();
     await page.waitForFunction(() => {
       const saved = JSON.parse(localStorage.getItem('hekayat_hayah_save_v1') || 'null');
       return saved && saved.age === 31 && Array.isArray(saved.timeMachineSnapshots) && saved.timeMachineSnapshots.length === 1;
     });
+    await page.waitForTimeout(450);
+    const readingAfterYear = await page.evaluate(() => {
+      const feed = document.querySelector('#lifeFeed');
+      return { scrollTop: feed.scrollTop, maxScroll: feed.scrollHeight - feed.clientHeight };
+    });
+    assert.ok(readingAfterYear.scrollTop <= 20, 'advancing a year should not yank a reader away from older events');
 
     await page.reload({ waitUntil: 'domcontentloaded' });
     await page.waitForFunction(() => {
       const saved = JSON.parse(localStorage.getItem('hekayat_hayah_save_v1') || 'null');
       return saved && saved.age === 31;
+    });
+    await page.waitForFunction(() => {
+      const feed = document.querySelector('#lifeFeed');
+      return feed && feed.scrollHeight > feed.clientHeight &&
+        feed.scrollHeight - feed.scrollTop - feed.clientHeight <= 8;
     });
     assert.ok((await page.locator('#characterName').innerText()).includes(seedSave.name), 'the player identity should persist after reload');
 
