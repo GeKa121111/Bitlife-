@@ -1162,3 +1162,17 @@ body.text-large .navbtn{font-size:9px}
 .stathead{direction:ltr}
 .statlabel{direction:rtl;text-align:right}
 .fill{left:0;right:auto}
+
+
+/* Final reference geometry: left-to-right tabs, inline identity, and left-origin status bars. */
+:root{--reference-red:#f02e12;--reference-blue:#075c98}
+.topbar{direction:ltr}
+.brandlogo{direction:rtl}
+.hero{direction:ltr}
+.profile{direction:rtl}
+.nav{direction:ltr}
+.navbtn{direction:rtl}
+.stats,.statrow{direction:ltr}
+.stathead{direction:ltr}
+.statlabel{direction:rtl;text-align:right}
+.fill{left:0;right:auto}
