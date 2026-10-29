@@ -5,14 +5,36 @@ const KEY = 'hekayat_hayah_save_v1';
 const BACKUP_KEY = 'hekayat_hayah_save_backup_v1';
 const CEMETERY_KEY = 'hekayat_hayah_cemetery_v1';
 const SETTINGS_KEY = 'hayah_ui_settings_v1';
+const PERKS_KEY = 'hayah_permanent_perks_v1';
+const PERK_IDS = ['challengeVault','goldTheme','expandedTime','actorPack','bossMode','healthShield','goldenWrench','goldenPassport','goldenPiggyBank','goldenNeko'];
+const PERK_TOGGLE_IDS = ['goldTheme','healthShield','goldenWrench','bossMode','goldenNeko'];
 const fmt = n => new Intl.NumberFormat('ar-EG',{maximumFractionDigits:0}).format(Math.round(Number(n)||0));
 const cash = n => fmt(n)+' '+(state&&state.place?state.place.unit:'ج.م');
 const clamp = (n,min=0,max=100) => Math.max(min,Math.min(max,Math.round(n)));
 const pick = list => list[Math.floor(Math.random()*list.length)];
 const chance = p => Math.random()<p;
 const esc = s => String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function defaultPermanentPerks(){
+ const owned={},enabled={};PERK_IDS.forEach(id=>owned[id]=false);PERK_TOGGLE_IDS.forEach(id=>enabled[id]=false);
+ return {owned,enabled,streakSavers:0};
+}
+function loadPermanentPerks(){
+ const defaults=defaultPermanentPerks();
+ try{const saved=JSON.parse(localStorage.getItem(PERKS_KEY)||'null');if(saved&&typeof saved==='object'){
+  PERK_IDS.forEach(id=>defaults.owned[id]=!!(saved.owned&&saved.owned[id]));
+  PERK_TOGGLE_IDS.forEach(id=>defaults.enabled[id]=!!(saved.enabled&&saved.enabled[id]));
+  defaults.streakSavers=clamp(Number(saved.streakSavers)||0,0,99);
+ }}catch(e){}
+ return defaults;
+}
+function persistPermanentPerks(){try{localStorage.setItem(PERKS_KEY,JSON.stringify(permanentPerks));}catch(e){}}
+function perkOwned(id){return !!(permanentPerks&&permanentPerks.owned&&permanentPerks.owned[id]);}
+function perkEnabled(id){return perkOwned(id)&&!!(permanentPerks.enabled&&permanentPerks.enabled[id]);}
+function careerIncomeMultiplier(){return perkEnabled('goldenNeko')?1.2:1;}
+function specialCareerIncomeMultiplier(){return careerIncomeMultiplier()*(perkEnabled('bossMode')?1.1:1);}
 let state, dead=false, logBatchDepth=0, logBatchDirty=false, saveRecovered=false;
 let uiSettings={theme:'light',textScale:'normal'};
+let permanentPerks={owned:{},enabled:{},streakSavers:0};
 const names = {
  male:['آدم','يوسف','عمر','مالك','زياد','حمزة','كريم','سليم','ياسين','علي','إياد','مروان','أحمد','سيف','نوح'],
  female:['مريم','ليلى','سلمى','نور','جنى','ملك','فريدة','ياسمين','هنا','تاليا','آية','دانا','لارا','مكة','ريماس'],
@@ -422,8 +444,9 @@ function newLife(){
  const father=makePerson('male','الأب','👨',28+Math.floor(Math.random()*12),68+Math.floor(Math.random()*28));
  const mother=makePerson('female','الأم','👩',25+Math.floor(Math.random()*12),72+Math.floor(Math.random()*26));
  const sibling=makePerson(gender,'الأخ/الأخت','🧒',Math.floor(Math.random()*8),55+Math.floor(Math.random()*35));
- return {version:1,lifeId:Date.now()+Math.random(),cemeterySaved:false,name:pick(names[gender])+' '+pick(names.family),gender,age:0,place,bank:place.start,stats:{happiness:65+Math.floor(Math.random()*26),health:76+Math.floor(Math.random()*22),smart:35+Math.floor(Math.random()*41),looks:35+Math.floor(Math.random()*51)},education:{level:0,school:'لم تبدأ الدراسة',major:null,yearsLeft:0,tuition:0},job:null,jobHistory:[],specialCareer:null,specialCareerHistory:[],combatCareer:null,filmStudio:null,esportsCareer:null,talents:{gaming:15+Math.floor(Math.random()*71)},performance:50,assets:[],investments:[],business:null,family:[father,mother,sibling],friends:[],partner:null,married:false,children:[],coParentingPlans:[],pets:[],hobbies:[],fame:0,followers:0,socialMediaAccount:false,socialMediaPosts:0,reputation:50,crimeRecord:0,prison:null,debt:0,willDistribution:'الأسرة بالتساوي',heirlooms:[],dailyRewardDate:null,dailyChallenges:null,timeMachineSnapshots:[],legacy:{name:null,inheritance:0,heirloom:null},driversLicense:false,travelHistory:[],log:[],accomplishments:['بدأت رحلة الحياة'],status:'حي',cause:null,retired:false,yearCount:0,wealthPeak:place.start};
+ return {version:1,lifeId:Date.now()+Math.random(),cemeterySaved:false,name:pick(names[gender])+' '+pick(names.family),gender,age:0,place,bank:(perkOwned('goldenPiggyBank')?Math.max(1000000,place.start):place.start),stats:{happiness:65+Math.floor(Math.random()*26),health:76+Math.floor(Math.random()*22),smart:35+Math.floor(Math.random()*41),looks:35+Math.floor(Math.random()*51)},education:{level:0,school:'لم تبدأ الدراسة',major:null,yearsLeft:0,tuition:0},job:null,jobHistory:[],specialCareer:null,specialCareerHistory:[],combatCareer:null,filmStudio:null,esportsCareer:null,talents:{gaming:15+Math.floor(Math.random()*71)},performance:50,assets:[],investments:[],business:null,family:[father,mother,sibling],friends:[],partner:null,married:false,children:[],coParentingPlans:[],pets:[],hobbies:[],fame:0,followers:0,socialMediaAccount:false,socialMediaPosts:0,reputation:50,crimeRecord:0,prison:null,debt:0,willDistribution:'الأسرة بالتساوي',heirlooms:[],dailyRewardDate:null,dailyChallenges:null,challengeArchive:[],timeMachineSnapshots:[],legacy:{name:null,inheritance:0,heirloom:null},driversLicense:false,travelHistory:[],log:[],accomplishments:['بدأت رحلة الحياة'],status:'حي',cause:null,retired:false,yearCount:0,wealthPeak:place.start};
 }
+
 function isValidSaveData(data){
  if(!data||typeof data!=='object'||Array.isArray(data)||data.version!==1)return false;
  const age=data.age;
@@ -464,6 +487,8 @@ function normalizeCoreState(data){
  if(!Number.isFinite(Number(data.talents.gaming)))data.talents.gaming=gamingHobby?clamp(25+(Number(gamingHobby.level)||1)*5,0,100):35;
  data.talents.gaming=clamp(Number(data.talents.gaming),0,100);
  if(!data.esportsCareer||typeof data.esportsCareer!=='object'||Array.isArray(data.esportsCareer))data.esportsCareer=null;
+ if(!Array.isArray(data.challengeArchive))data.challengeArchive=[];
+ data.challengeArchive=data.challengeArchive.filter(item=>item&&typeof item.date==='string'&&Array.isArray(item.ids)).slice(0,60);
  if(typeof data.name!=='string'||!data.name.trim())data.name=pick(names[data.gender==='female'?'female':'male'])+' '+pick(names.family);
  if(!['male','female'].includes(data.gender))data.gender='male';
  if(!['حي','متوفى'].includes(data.status))data.status='حي';
@@ -474,6 +499,7 @@ function normalizeCoreState(data){
  if(!Array.isArray(data.accomplishments))data.accomplishments=[];
  return data;
 }
+
 function load(){
  try{
   let x=null;
@@ -765,10 +791,11 @@ function advanceAge(){
   if(state.partner.age>=103||(partnerRisk&&chance(partnerRisk))){const departed={...state.partner,relation:state.married?'الزوج/الزوجة المتوفى':'الشريك السابق المتوفى',deceased:true};state.family.push(departed);state.partner=null;state.married=false;state.stats.happiness=clamp(state.stats.happiness-18);log('🕯️','رحيل شريك الحياة','فقدت شريك حياتك بعد سنوات من المشاركة. الذكريات والعائلة تفضل جزءًا من قصتك.','bad');}
  }
  if(state.prison&&state.prison.years>0){state.prison.years--;state.stats.happiness=clamp(state.stats.happiness-5);state.stats.health=clamp(state.stats.health-2);if(state.prison.years===0){log('🔓','انتهاء العقوبة','انتهت مدة العقوبة وعُدت لحياتك خارج السجن.','special');state.prison=null;}}
- const assetUpkeep=state.assets.reduce((s,a)=>s+(a.upkeep||0),0);
- state.assets.forEach(a=>{const before=a.value||0;if(a.kind==='property'){a.condition=clamp((a.condition??100)-2);a.value=Math.round(before*(a.condition<25?1.005:1.025));}else if(a.kind==='car'){a.condition=clamp((a.condition??100)-4);a.value=Math.round(before*.91);}else if(a.kind==='business')a.value=Math.round(before*1.03);});
+ const freeVehicleCare=perkEnabled('goldenWrench');
+ const assetUpkeep=state.assets.reduce((s,a)=>s+(freeVehicleCare&&a.kind==='car'?0:(a.upkeep||0)),0);
+ state.assets.forEach(a=>{const before=a.value||0;if(a.kind==='property'){a.condition=clamp((a.condition??100)-2);a.value=Math.round(before*(a.condition<25?1.005:1.025));}else if(a.kind==='car'){if(freeVehicleCare){a.condition=100;a.value=Math.round(before*.97);}else{a.condition=clamp((a.condition??100)-4);a.value=Math.round(before*.91);}}else if(a.kind==='business')a.value=Math.round(before*1.03);});
  if(state.job&&!state.retired){
-   const salary=Math.round(state.job.salary*state.performance/100);state.bank+=salary;flash('+'+cash(salary));
+   const salary=Math.round(state.job.salary*state.performance/100*careerIncomeMultiplier());state.bank+=salary;flash('+'+cash(salary));
    log('💼','دخل سنوي','استلمت '+cash(salary)+' من شغلك في '+state.job.title+'.','good');
    state.performance=clamp(state.performance+(chance(.58)?2:-1),20,100);
    if(state.performance>=78&&state.age<60&&chance(.09)){const raise=Math.round(state.job.salary*.14);state.job.salary+=raise;state.performance=clamp(state.performance+3);if(!state.job.title.endsWith(' أول'))state.job.title+=' أول';log('📈','ترقية مهنية','أداءك المتميز ساعدك تحصل على ترقية وزيادة سنوية '+cash(raise)+'.','good');achievement('الحصول على ترقية مهنية');}
@@ -786,8 +813,8 @@ function advanceAge(){
  if((state.pets||[]).length){const care=state.pets.length*350;state.bank-=care;state.pets.forEach(p=>{p.age=(p.age||0)+1;p.happiness=clamp((p.happiness||70)+(chance(.7)?3:-6));p.health=clamp((p.health||70)-(p.age>10?2:0)+(p.happiness>40&&chance(.5)?1:-1));});const lost=state.pets.filter(p=>(p.species==='طائر'?p.age>19:p.age>15)&&chance(.35));if(lost.length){state.pets=state.pets.filter(p=>!lost.includes(p));lost.forEach(p=>log('🐾','وداع صديق','توفي '+p.name+' بعد سنوات من الرفقة. ستفضل ذكراه جزءًا من حكايتك.','bad'));}if(state.bank<0)log('🐾','مصاريف الحيوانات','رعاية الحيوانات كلفتك '+cash(care)+' هذا العام.','bad');}
  if((state.hobbies||[]).length&&chance(.7)){state.stats.happiness=clamp(state.stats.happiness+1);if(state.hobbies.some(h=>h.id==='reading'||h.id==='writing'))state.stats.smart=clamp(state.stats.smart+1);}
  if(state.partner){const loyalty=clamp(state.partner.loyalty??55),reliability=clamp(state.partner.reliability??55),generosity=clamp(state.partner.generosity??50),petulance=clamp(state.partner.petulance??50),jealousy=clamp(state.partner.jealousy??40);const stability=clamp(36+loyalty*.22+reliability*.20+generosity*.12-petulance*.16-jealousy*.10+(state.partner.personality==='حنون'?8:0),8,92);const drift=state.partner.relationshipLevel<35?-3:(chance(stability/100)?1:-1);state.partner.relationshipLevel=clamp((state.partner.relationshipLevel||50)+drift);if(jealousy>=75&&state.partner.relationshipLevel<45&&chance(.12)){state.partner.relationshipLevel=clamp(state.partner.relationshipLevel-3);stat('happiness',-2);log('💬','غيرة وسوء تفاهم','الغيرة العالية عند '+state.partner.name+' سببت سوء تفاهم محتاج حوارًا وطمأنة.','bad');}if(state.married&&state.partner.relationshipLevel<15&&chance(clamp(10+petulance*.20+jealousy*.28,10,70)/100)){state.married=false;log('💔','أزمة زوجية','الخلافات زادت بينك وبين '+state.partner.name+'. محتاجين حوار واهتمام قبل ما العلاقة تنهار.','bad');}}
- if(state.specialCareer){const income=Math.round((state.specialCareer.income||0)*(0.6+(state.fame||0)/120));if(income>0){state.bank+=income;log('🌟','دخل من الشهرة','جالك دخل بقيمة '+cash(income)+' من مسارك في '+state.specialCareer.title+'.','good');}state.fame=clamp((state.fame||0)+(chance(.6)?2:-1));}
- if(state.specialCareer&&state.specialCareer.id==='esports'&&state.esportsCareer){const esports=ensureEsportsCareer();if(esports.sponsor&&esports.sponsorYears>0){const payout=Math.max(0,Math.round(Number(esports.sponsorAnnualIncome)||0));state.bank+=payout;esports.sponsorYears--;log('🤝','دخل رعاية الألعاب الإلكترونية','استلمت '+cash(payout)+' من عقد الرعاية مع '+esports.sponsor+'.','good');if(esports.sponsorYears===0){log('📄','انتهاء عقد الرعاية','انتهى عقد الرعاية مع '+esports.sponsor+'. تقدر تتفاوض على عقد جديد.');esports.sponsor=null;esports.sponsorAnnualIncome=0;}}}
+ if(state.specialCareer){const income=Math.round((state.specialCareer.income||0)*(0.6+(state.fame||0)/120)*specialCareerIncomeMultiplier());if(income>0){state.bank+=income;log('🌟','دخل من الشهرة','جالك دخل بقيمة '+cash(income)+' من مسارك في '+state.specialCareer.title+'.','good');}state.fame=clamp((state.fame||0)+(chance(.6)?2:-1));}
+ if(state.specialCareer&&state.specialCareer.id==='esports'&&state.esportsCareer){const esports=ensureEsportsCareer();if(esports.sponsor&&esports.sponsorYears>0){const payout=Math.max(0,Math.round((Number(esports.sponsorAnnualIncome)||0)*specialCareerIncomeMultiplier()));state.bank+=payout;esports.sponsorYears--;log('🤝','دخل رعاية الألعاب الإلكترونية','استلمت '+cash(payout)+' من عقد الرعاية مع '+esports.sponsor+'.','good');if(esports.sponsorYears===0){log('📄','انتهاء عقد الرعاية','انتهى عقد الرعاية مع '+esports.sponsor+'. تقدر تتفاوض على عقد جديد.');esports.sponsor=null;esports.sponsorAnnualIncome=0;}}}
  if(state.socialMediaAccount&&(state.socialMediaPosts||0)>0){const base=Math.round((state.followers||0)*(.025+Math.random()*.12));const organic=base+Math.floor(Math.random()*(8+Math.max(1,state.fame)*2));state.followers=Math.max(0,(state.followers||0)+organic);if(organic>0&&chance(.7))log('📱','نمو المتابعين','زاد جمهورك على السوشيال ميديا بمقدار '+fmt(organic)+' متابع.','good');if(state.followers>=10000)achievement('وصلت إلى عشرة آلاف متابع');}
  if(state.age>=18&&state.bank<0){state.debt+=Math.min(20000,Math.abs(state.bank)*.12);}
  if(state.age>=3){
@@ -833,7 +860,7 @@ function ageUp(){
  const logSnapshot=logLength>=280&&Array.isArray(state.log)?JSON.parse(JSON.stringify(state.log)):null;
  if(!Array.isArray(state.timeMachineSnapshots))state.timeMachineSnapshots=[];
  const checkpoint={snapshotVersion:1,logLength,state:snapshot};if(logSnapshot)checkpoint.logSnapshot=logSnapshot;
- state.timeMachineSnapshots.push(JSON.stringify(checkpoint));if(state.timeMachineSnapshots.length>8)state.timeMachineSnapshots.shift();
+ state.timeMachineSnapshots.push(JSON.stringify(checkpoint));const historyLimit=perkOwned('expandedTime')?60:8;if(state.timeMachineSnapshots.length>historyLimit)state.timeMachineSnapshots.splice(0,state.timeMachineSnapshots.length-historyLimit);
  logBatchDepth++;
  try{advanceAge();}
  finally{
@@ -1296,6 +1323,7 @@ function personModal(n){
   choice('💬','محادثة','اسأل عن أخباره واسمعه كويس.',()=>relationshipAction(n,'talk')),
   choice('🎁','تقديم هدية','هدية صغيرة بتكلفة 500 '+state.place.unit+'.',()=>relationshipAction(n,'gift'),'500 '+state.place.unit),
   choice('😤','شجار','الخلاف ممكن يقلل مستوى العلاقة.',()=>relationshipAction(n,'argue')),
+  ...(n===state.partner&&state.age>=18?[choice('🛡️','وقت خاص مع الشريك','اختيار بالغ داخل اللعبة؛ فيه احتمال مضاعفة صحية خيالية، ويمكن لدرع العافية تعطيل الخطر.',()=>relationshipAction(n,'intimate'))]:[]),
   choice('📜','سجل العلاقة','راجع آخر التفاعلات وأثرها على مستوى العلاقة.',()=>relationshipHistory(n))
  ],true,progress);
 }
@@ -1310,7 +1338,17 @@ function relationshipHistory(n){
 }
 
 function relationshipAction(n,act){
- closeModal();if(act==='gift'&&state.bank<500){info('💳','الرصيد مش كفاية','الهدية محتاجة '+cash(500)+'.');return;}
+ closeModal();
+ if(act==='intimate'){
+  if(state.age<18||state.partner!==n){info('🔒','الاختيار غير متاح','الاختيار ده متاح للبالغين مع الشريك الحالي فقط.');return;}
+  const protectedByShield=perkEnabled('healthShield'),complication=!protectedByShield&&chance(.14);
+  state.stats.happiness=clamp(state.stats.happiness+4);state.partner.relationshipLevel=clamp((state.partner.relationshipLevel||50)+5);
+  if(complication)state.stats.health=clamp(state.stats.health-12);
+  if(!Array.isArray(n.interactions))n.interactions=[];n.interactions.push({age:state.age,action:'intimate',delta:5,levelAfter:n.relationshipLevel});if(n.interactions.length>12)n.interactions.shift();
+  log(complication?'🩺':'🛡️',complication?'تنبيه صحي مرتبط بالعلاقة':'وقت خاص مع الشريك',complication?'قضيت وقتًا مع الشريك لكن ظهرت مضاعفة صحية داخل اللعبة، وانخفضت الصحة 12 نقطة.':'قضيت وقتًا خاصًا مع '+n.name+' وتحسّن التواصل'+(protectedByShield?'، ودرع العافية منع المضاعفات الصحية.':'. لم تظهر مضاعفات هذه المرة.'),complication?'bad':'good');
+  save();render();info(complication?'🩺':'💞',complication?'مضاعفة صحية خيالية':'تقارب ناجح',complication?'تقدر تراجع الصحة من قائمة العناية بالنفس.':(protectedByShield?'درع العافية فعّال في اللقاءات المقبلة.':'التأثير إيجابي هذه المرة، لكن المخاطرة تظل موجودة بدون درع العافية.'));return;
+ }
+ if(act==='gift'&&state.bank<500){info('💳','الرصيد مش كفاية','الهدية محتاجة '+cash(500)+'.');return;}
  const generosity=clamp(n.generosity??50),craziness=clamp(n.craziness??50),money=clamp(n.money??50),petulance=clamp(n.petulance??50),loyalty=clamp(n.loyalty??55),jealousy=clamp(n.jealousy??40),reliability=clamp(n.reliability??55),personality=n.personality||'عملي';
  let d=0,text='',tone='good',reaction;
  if(act==='time'){
@@ -1423,19 +1461,22 @@ function practiceHobby(id){
  log('🎨','تدريب على '+h.title,'خصصت وقتًا لتطوير هواية '+h.title+'. مستواك الحالي '+h.level+'.','good');render();info('⭐','مستوى الهواية '+h.level,'الممارسة المستمرة تحسن مهاراتك وتفتح فرصًا جديدة.');
 }
 function travelMenu(){
- const opts=places.filter(p=>p.country!==state.place.country).map(p=>choice(p.flag,'الهجرة إلى '+p.country,'الوجهة '+p.city+'. تكلفة الانتقال والتأسيس 15,000 '+state.place.unit+'.',()=>emigrate(p),'15,000 '+state.place.unit));
- opts.unshift(choice('🏖️','رحلة داخل البلد','إجازة قصيرة لتحسين المزاج.',()=>{closeModal();if(state.bank<2500){info('💳','الرصيد مش كفاية','الرحلة محتاجة '+cash(2500)+'.');return;}state.bank-=2500;stat('happiness',10);stat('health',2);log('🏖️','رحلة قصيرة','أخدت إجازة داخل البلد ورجعت بطاقة أحسن.','good');render();},'2,500 '+state.place.unit));
- modal('🌍','السفر والهجرة','الهجرة ممكن تفتح فرص جديدة، لكنها بتحتاج مصاريف وتغيير في الحياة.',opts);
+ const passport=perkOwned('goldenPassport');
+ const opts=places.filter(p=>p.country!==state.place.country).map(p=>choice(p.flag,'الهجرة إلى '+p.country,'الوجهة '+p.city+'. '+(passport?'جواز العالم يلغي رسوم الانتقال.':'تكلفة الانتقال والتأسيس 15,000 '+state.place.unit+'.'),()=>emigrate(p),passport?'مجانًا':cash(15000)));
+ opts.unshift(choice('🏖️','رحلة داخل البلد','إجازة قصيرة لتحسين المزاج.',()=>{closeModal();if(state.bank<2500){info('💳','الرصيد مش كفاية','الرحلة محتاجة '+cash(2500)+'.');return;}state.bank-=2500;stat('happiness',10);stat('health',2);log('🏖️','رحلة قصيرة','أخدت إجازة داخل البلد ورجعت بطاقة أحسن.','good');render();},cash(2500)));
+ modal('🌍','السفر والهجرة','الهجرة ممكن تفتح فرص جديدة، وجواز العالم يسمح بالانتقال لأي وجهة داخل اللعبة من دون رسوم.',opts);
 }
+
 function emigrate(destination){
- closeModal();const cost=15000;
+ closeModal();const cost=perkOwned('goldenPassport')?0:15000;
  if(state.age<18){info('🌍','الهجرة غير متاحة','تحتاج تكون بالغ عشان تتخذ قرار الهجرة بنفسك.');return;}
  if(state.bank<cost){info('💳','الرصيد مش كفاية','الانتقال محتاج '+cash(cost)+' قبل ما تبدأ من جديد.');return;}
  const old=state.place;state.bank-=cost;state.travelHistory.push({from:old.country,to:destination.country,age:state.age});
  state.place={...destination};state.stats.happiness=clamp(state.stats.happiness-2);
  if(state.job){state.job.salary=Math.round(state.job.salary*1.15);state.performance=clamp(state.performance-8);}
- log('🌍','بدأت حياة في بلد جديدة','انتقلت من '+old.country+' إلى '+destination.country+'. محتاج وقت تتأقلم مع المجتمع وسوق العمل.','special');achievement('الهجرة إلى '+destination.country);render();info('🌍','وصلت '+destination.city,'غيّرت بلد الإقامة. وظيفتك ومصاريفك وفرصك هتتأثر بالمكان الجديد.');
+ log('🌍','بدأت حياة في بلد جديدة','انتقلت من '+old.country+' إلى '+destination.country+'. '+(cost?'محتاج وقت تتأقلم مع المجتمع وسوق العمل.':'جواز العالم غطّى رسوم الانتقال؛ الآن ابدأ التكيّف مع المجتمع وسوق العمل.'),'special');achievement('الهجرة إلى '+destination.country);render();info('🌍','وصلت '+destination.city,'غيّرت بلد الإقامة. وظيفتك ومصاريفك وفرصك هتتأثر بالمكان الجديد.');
 }
+
 function investingMenu(){
  const opts=[];
  if(state.age<18){opts.push(choice('🔒','الاستثمار بعد 18 سنة','ابدأ بالتعلم والادخار لحد ما تقدر تستثمر قانونيًا.',()=>{closeModal();info('📊','لسه بدري','الاستثمار متاح بعد سن 18.');}));}
@@ -1852,6 +1893,8 @@ function specialCareers(){
   {id:'crimeboss',title:'العالم السفلي',emoji:'🕶️',min:21,looks:0,income:18000,desc:'مسار خيالي محفوف بالمخاطر القانونية وقد ينتهي بالسجن.'}
  ];
  const opts=catalog.map(c=>choice(c.emoji,c.title,c.desc+' الحد الأدنى للعمر '+c.min+'.',()=>startSpecialCareer(c)));
+ if(perkOwned('actorPack'))opts.unshift(choice('🎬','حزمة التمثيل الاحترافية','إعلانات مدفوعة ووكيل أعمال واختبارات أداء.',actorPackMenu));
+ if(perkOwned('bossMode'))opts.unshift(choice('🧰','مركز المهن الشامل','وصول سريع للمسارات الخاصة وعلاوة دخل قابلة للتفعيل.',bossModeMenu));
  if(state.specialCareer){const r=state.specialCareer.record||{};opts.unshift(choice('📊','سجل المسار الحالي','المستوى '+fmt(state.specialCareer.level||1)+' · نجاحات '+fmt(r.wins||0)+' · إخفاقات '+fmt(r.losses||0)+' · دخل '+cash(r.totalEarnings||0)+'.',()=>{closeModal();info('📊','سجل '+state.specialCareer.title,'عدد المحاولات '+fmt(r.attempts||0)+' · النجاح '+fmt(r.wins||0)+' · الإخفاق '+fmt(r.losses||0)+' · المشاريع/الأنشطة '+fmt(r.projects||0)+' · إجمالي الدخل المسجل '+cash(r.totalEarnings||0)+' · أفضل مستوى '+fmt(r.bestLevel||1)+'.');}));opts.unshift(choice('📚','تاريخ المهن السابقة','اعرض المسارات التي أنهيتها ونتائجها.',specialCareerHistoryMenu));if(state.specialCareer.id==='fighter'){opts.unshift(choice('🥊','إدارة مسيرة القتال','تدريب وتكتيك ومنافسات وارتقاء نحو اللقب العالمي.',combatCareerMenu));}else if(state.specialCareer.id==='director'){opts.unshift(choice('🎥','إدارة استوديو الأفلام','إنتاج أفلام، اختيار الميزانية والطاقم والتسويق، ومراجعة الإيرادات.',filmStudioMenu));opts.unshift(choice('⭐','التدريب والعمل في '+state.specialCareer.title,'الشهرة الحالية '+state.fame+'%.',()=>trainSpecialCareer()));}else if(state.specialCareer.id==='esports'){opts.unshift(choice('🎮','إدارة مسيرة الرياضات الإلكترونية','بطولات ورعايات وتجهيزات وسجل منافسات.',esportsCareerMenu));opts.unshift(choice('⭐','تدريب تنافسي','موهبة الألعاب '+clamp(state.talents&&state.talents.gaming)+'%.',()=>trainSpecialCareer()));}else{opts.unshift(choice('🎬','تنفيذ نشاط تخصصي','إنتاج عمل أو إصدار أو منافسة مرتبطة بمسارك.',()=>specialCareerActivity()));opts.unshift(choice('⭐','التدريب والعمل في '+state.specialCareer.title,'الشهرة الحالية '+state.fame+'%.',()=>trainSpecialCareer()));opts.unshift(choice('🎟️','اختبار أداء / فرصة جديدة','اختبر حظك في فرصة جديدة.',()=>tryAudition()));}}
  modal('🌟','المهن الخاصة والشهرة','المسارات دي مختلفة عن الوظيفة التقليدية؛ النجاح فيها غير مضمون وقد يحتاج سنوات.',opts);
 }
@@ -1902,7 +1945,7 @@ function specialCareerActivity(){
  }else{
   title='نشر عمل مكتوب';gain=success?Math.round(800+Math.random()*14000+state.stats.smart*90):0;fame=success?2+Math.floor(Math.random()*8):0;text=success?'العمل وصل لقراء جدد وبدأ يحقق دخلًا من المبيعات.':'العمل محتاج مراجعة وتسويق أفضل قبل الإصدار القادم.';
  }
- state.fame=clamp(state.fame+fame);const newLevel=clamp(level+(success?1:0),1,100);if(state.specialCareer)state.specialCareer.level=newLevel;
+ if(success&&gain>0)gain=Math.round(gain*specialCareerIncomeMultiplier());state.fame=clamp(state.fame+fame);const newLevel=clamp(level+(success?1:0),1,100);if(state.specialCareer)state.specialCareer.level=newLevel;
  c.record.attempts=(c.record.attempts||0)+1;c.record.wins=(c.record.wins||0)+(success?1:0);c.record.losses=(c.record.losses||0)+(success?0:1);
  if(['actor','director','musician','influencer','writer'].includes(c.id))c.record.projects=(c.record.projects||0)+1;
  c.record.totalEarnings=(c.record.totalEarnings||0)+(success?gain:0);c.record.bestLevel=Math.max(c.record.bestLevel||1,newLevel);
@@ -1913,8 +1956,8 @@ function specialCareerActivity(){
 }
 function tryAudition(){
  closeModal();if(!state.specialCareer){specialCareers();return;}if(state.specialCareer.id==='fighter'){combatCareerMenu();return;}if(state.specialCareer.id==='director'){filmStudioMenu();return;}if(state.specialCareer.id==='esports'){esportsCareerMenu();return;}
- const chanceScore=.22+(state.stats.looks/500)+(state.stats.smart/700)+(state.fame/220)+((state.specialCareer.level||1)/200);
- if(chance(Math.min(.85,chanceScore))){const fameGain=5+Math.floor(Math.random()*10),income=5000+Math.floor(Math.random()*25000);state.fame=clamp(state.fame+fameGain);state.bank+=income;state.specialCareer.level=clamp((state.specialCareer.level||1)+1);log('🌟','فرصة ناجحة','نجحت في فرصة جديدة وكسبت '+cash(income)+'. شهرتك زادت '+fameGain+' نقاط.','good');achievement('نجاح مهني في '+state.specialCareer.title);render();info('🎉','فرصة ناجحة','شهرتك الحالية '+state.fame+'%.');}
+ const agentBonus=state.specialCareer.id==='actor'&&state.specialCareer.agent?Number(state.specialCareer.agent.bonus)||.12:0;const chanceScore=.22+(state.stats.looks/500)+(state.stats.smart/700)+(state.fame/220)+((state.specialCareer.level||1)/200)+agentBonus;
+ if(chance(Math.min(.85,chanceScore))){const fameGain=5+Math.floor(Math.random()*10),income=Math.round((5000+Math.floor(Math.random()*25000))*specialCareerIncomeMultiplier());state.fame=clamp(state.fame+fameGain);state.bank+=income;state.specialCareer.level=clamp((state.specialCareer.level||1)+1);log('🌟','فرصة ناجحة','نجحت في فرصة جديدة وكسبت '+cash(income)+'. شهرتك زادت '+fameGain+' نقاط.','good');achievement('نجاح مهني في '+state.specialCareer.title);render();info('🎉','فرصة ناجحة','شهرتك الحالية '+state.fame+'%.');}
  else{state.stats.happiness=clamp(state.stats.happiness-2);log('🎟️','رفض في اختبار أداء','الفرصة دي ما ظبطتش. راجع مهاراتك وحاول مرة تانية.','bad');render();info('🎟️','المرة الجاية','الرفض جزء طبيعي من المسار؛ التدريب يزيد فرصك.');}
 }
 function crimeMenu(){
@@ -1980,14 +2023,29 @@ function ensureDailyChallengeBoard(){
  if(!state)return null;
  const now=new Date(),today=challengeDateKey(now),old=state.dailyChallenges&&typeof state.dailyChallenges==='object'?state.dailyChallenges:null;
  if(!old||old.date!==today||!Array.isArray(old.ids)||old.ids.length!==3||!Array.isArray(old.claimed)){
+  if(old&&old.date!==today&&Array.isArray(old.ids)&&perkOwned('challengeVault')){
+   if(!Array.isArray(state.challengeArchive))state.challengeArchive=[];
+   if(!state.challengeArchive.some(item=>item&&item.date===old.date)){
+    state.challengeArchive.unshift({date:old.date,ids:old.ids.slice(0,3),claimed:Array.isArray(old.claimed)?old.claimed.slice(0,3):[],vaultClaimed:[],streak:Number(old.streak)||0});
+    state.challengeArchive=state.challengeArchive.slice(0,60);
+   }
+  }
   const eligible=dailyChallengeDefs.filter(c=>c.available(state));
   for(let i=eligible.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[eligible[i],eligible[j]]=[eligible[j],eligible[i]];}
-  const streak=old&&old.lastCompletionDate===challengeYesterdayKey(now)?Number(old.streak)||0:0;
-  state.dailyChallenges={date:today,ids:eligible.slice(0,3).map(c=>c.id),claimed:[],streak,lastCompletionDate:old&&old.lastCompletionDate||null};
+  const yesterday=challengeYesterdayKey(now);
+  let streak=old&&old.lastCompletionDate===yesterday?Number(old.streak)||0:0;
+  let streakSaved=false;
+  const twoDaysAgo=challengeYesterdayKey(new Date(now.getTime()-86400000));
+  if(!streak&&old&&old.date===yesterday&&(Number(old.streak)||0)>0&&old.lastCompletionDate===twoDaysAgo&&(permanentPerks.streakSavers||0)>0){
+   streak=Number(old.streak)||0;streakSaved=true;permanentPerks.streakSavers--;persistPermanentPerks();
+  }
+  state.dailyChallenges={date:today,ids:eligible.slice(0,3).map(c=>c.id),claimed:[],streak,lastCompletionDate:old&&old.lastCompletionDate||null,streakSaved};
+  if(streakSaved)log('🛡️','حماية سلسلة الإنجاز','استخدمت حماية تلقائية واحدة للحفاظ على سلسلة '+streak+' يومًا بعد تفويت يوم واحد. المتبقي '+permanentPerks.streakSavers+'.','special');
   save();
  }
  return state.dailyChallenges;
 }
+
 function dailyChallengesMenu(){
  if(!validState())return;
  const board=ensureDailyChallengeBoard();
@@ -2003,7 +2061,8 @@ function dailyChallengesMenu(){
    claimDailyChallenge(id);
   });
  }).filter(Boolean);
- opts.unshift(choice('🔥','سلسلة الإنجاز','أكملت '+completed+' من 3 مهام اليوم. سلسلة الأيام الكاملة: '+(board.streak||0)+'.',()=>{closeModal();info('🔥','سلسلة الإنجاز','استكمل المهام الثلاث في اليوم نفسه للحفاظ على سلسلة التحديات.');}));
+ opts.unshift(choice('🔥','سلسلة الإنجاز','أكملت '+completed+' من 3 مهام اليوم. سلسلة الأيام الكاملة: '+(board.streak||0)+'. حماة السلسلة المتاحة: '+(permanentPerks.streakSavers||0)+(board.streakSaved?' · تم إنقاذها اليوم':''),()=>{closeModal();info('🔥','سلسلة الإنجاز','استكمل المهام الثلاث في اليوم نفسه. حماية السلسلة لا تعمل إلا عند تفويت يوم واحد متتالٍ. المتبقي '+(permanentPerks.streakSavers||0)+'.');}));
+ if(perkOwned('challengeVault'))opts.unshift(choice('🗄️','خزنة التحديات السابقة','راجع الأيام السابقة وأكمل شروط المهام غير المستلمة بمكافأة مخفضة.',challengeVaultMenu));
  modal('🎯','تحديات اليوم','ثلاث مهام متجددة كل يوم، بمكافآت داخل اللعبة. تقدمك يُحفظ مع الحياة الحالية.',opts);
 }
 function claimDailyChallenge(id){
@@ -2112,6 +2171,79 @@ function editNpcTraitLevel(n,key,label){
  }));
  modal('🧬',label+' · '+clamp(n[key]??50)+'%','اختار المستوى الجديد.',opts);
 }
+function challengeVaultMenu(){
+ if(!perkOwned('challengeVault')){closeModal();info('🗄️','الخزنة مقفولة','افتح خزنة التحديات من متجر مزايا حياة.');return;}
+ const archive=Array.isArray(state.challengeArchive)?state.challengeArchive:[];
+ const opts=archive.slice(0,30).map(entry=>choice('📅','تحديات '+entry.date,'مهام محفوظة: '+entry.ids.length+' · مكافآت أصلية مستلمة: '+(entry.claimed||[]).length+' · السلسلة وقتها: '+(entry.streak||0)+'.',()=>challengeArchiveDay(entry.date)));
+ if(!opts.length)opts.push(choice('🗄️','لسه مفيش أيام محفوظة','الأيام الجديدة هتظهر هنا تلقائيًا من بكرة بعد فتح الخزنة.',()=>{closeModal();info('🗄️','الخزنة جاهزة','أكمل يومًا أو أكثر، وبعد تغيّر اليوم هتلاقي التحديات القديمة هنا.');}));
+ opts.push(choice('↩️','رجوع للمزايا','',premiumPerksMenu));
+ modal('🗄️','خزنة التحديات','تحتفظ اللعبة بآخر 60 يومًا على الأكثر. يمكن استلام مكافأة استرجاع مرة واحدة لكل مهمة محفوظة، بقيمة 60% من المكافأة الأصلية.',opts);
+}
+function challengeArchiveDay(date){
+ const entry=(state.challengeArchive||[]).find(item=>item&&item.date===date);
+ if(!entry){closeModal();challengeVaultMenu();return;}
+ if(!Array.isArray(entry.vaultClaimed))entry.vaultClaimed=[];
+ const opts=(entry.ids||[]).map(id=>{
+  const c=dailyChallengeDefs.find(item=>item.id===id);if(!c)return null;
+  const original=(entry.claimed||[]).includes(id),replay=entry.vaultClaimed.includes(id),ready=!!c.done(state);
+  return choice(original||replay?'✅':ready?'🎁':'🎯',c.title,original?'استلمت مكافأتها في يومها.':replay?'استلمت مكافأة الاسترجاع بالفعل.':c.desc+' الحالة الحالية: '+(ready?'الشروط متحققة':'الشروط غير متحققة')+'. مكافأة الاسترجاع '+cash(Math.round(c.reward*.6))+'.',()=>claimVaultChallenge(date,id));
+ }).filter(Boolean);
+ opts.push(choice('↩️','رجوع للخزنة','',challengeVaultMenu));
+ modal('📅','تحديات '+date,'التحديات المحفوظة من هذا اليوم. المكافأة متاحة مرة واحدة إذا لم تكن استلمتها من قبل.',opts);
+}
+function claimVaultChallenge(date,id){
+ const entry=(state.challengeArchive||[]).find(item=>item&&item.date===date),c=dailyChallengeDefs.find(item=>item.id===id);
+ if(!entry||!c){closeModal();info('🗄️','المهمة غير موجودة','تعذر العثور على التحدي المحفوظ.');return;}
+ if(!Array.isArray(entry.vaultClaimed))entry.vaultClaimed=[];
+ if((entry.claimed||[]).includes(id)||entry.vaultClaimed.includes(id)){closeModal();info('✅','المكافأة مستلمة','المهمة دي مش متاحة لمكافأة إضافية.');return;}
+ if(!c.done(state)){closeModal();info('🎯','الشروط لسه مش متحققة',c.desc);return;}
+ const reward=Math.round(c.reward*.6);entry.vaultClaimed.push(id);state.bank+=reward;stat(c.rewardStat||'happiness',2);
+ log('🗄️','مكافأة من خزنة التحديات','استعدت مهمة «'+c.title+'» من '+date+' وحصلت على '+cash(reward)+'.','good');
+ save();render();challengeArchiveDay(date);
+}
+function actorPackMenu(){
+ if(!perkOwned('actorPack')){closeModal();info('🎬','حزمة التمثيل مقفولة','تقدر تفتحها من متجر مزايا حياة.');return;}
+ const opts=[];
+ if(state.specialCareer&&state.specialCareer.id==='actor'){
+  opts.push(choice('🎟️','اختبار أداء متقدم','اختبار فرصة تمثيل مع مكافآت خبرة وشهرة.',tryAudition));
+  opts.push(choice('📺','تصوير إعلان مدفوع','فرصة عمل إضافية في مسيرة التمثيل.',actorCommercialGig));
+  opts.push(choice('🤝',state.specialCareer.agent?'إنهاء عقد الوكيل':'تعيين وكيل أعمال',state.specialCareer.agent?'إدارة المسيرة بدون وكيل.':'وكيل الأعمال يرفع فرصة النجاح في اختبارات الأداء، بتكلفة لمرة واحدة.',actorAgent));
+ }else{
+  opts.push(choice('🎭','ابدأ مسيرة التمثيل','يتطلب عمر 16 سنة ومظهرًا 50% على الأقل.',()=>startSpecialCareer({id:'actor',title:'التمثيل',emoji:'🎬',min:16,looks:50,income:14000,desc:'اختبارات أداء وأدوار قد ترفع شهرتك.'})));
+ }
+ opts.push(choice('🌟','كل المهن الخاصة','ارجع لقائمة المسارات المهنية.',specialCareers),choice('↩️','رجوع للمزايا','',premiumPerksMenu));
+ modal('🎬','حزمة التمثيل الاحترافية','فرص إضافية أصلية لمسيرة الممثل، مع وكيل أعمال وعقود إعلانية.',opts);
+}
+function actorAgent(){
+ closeModal();if(!state.specialCareer||state.specialCareer.id!=='actor'){actorPackMenu();return;}
+ if(state.specialCareer.agent){state.specialCareer.agent=null;log('🤝','إنهاء عقد وكيل الأعمال','قررت إدارة مسيرتك الفنية بنفسك.');render();info('🎬','تم إنهاء العقد','يمكنك تعيين وكيل جديد لاحقًا.');return;}
+ const cost=5000;if(state.bank<cost){info('💳','الرصيد مش كفاية','التعاقد مع وكيل أعمال يحتاج '+cash(cost)+'.');return;}
+ state.bank-=cost;state.specialCareer.agent={signedAge:state.age,bonus:.12};
+ log('🤝','تعيين وكيل أعمال','بدأ وكيل أعمال مساعدتك في الحصول على فرص تمثيل أفضل.','good');render();info('🎬','الوكيل جاهز','سترتفع فرصة نجاح اختبارات الأداء في مسيرة التمثيل.');
+}
+function actorCommercialGig(){
+ closeModal();if(!state.specialCareer||state.specialCareer.id!=='actor'){actorPackMenu();return;}
+ const cost=2500;if(state.bank<cost){info('💳','الرصيد مش كفاية','تجهيز إعلان تجاري يحتاج '+cash(cost)+'.');return;}
+ state.bank-=cost;
+ const agentBonus=state.specialCareer.agent?.bonus||0;
+ const odds=Math.max(10,Math.min(88,Math.round(24+state.stats.looks*.34+state.stats.smart*.12+(state.fame||0)*.12+(state.specialCareer.level||1)*2+agentBonus*100)));
+ const success=chance(odds/100),gain=success?Math.round((8000+Math.random()*22000+(state.fame||0)*90)*specialCareerIncomeMultiplier()):0;
+ if(success){state.bank+=gain;state.fame=clamp((state.fame||0)+4+Math.floor(Math.random()*5));state.specialCareer.level=clamp((state.specialCareer.level||1)+1,1,100);}
+ const record=state.specialCareer.record||(state.specialCareer.record={attempts:0,wins:0,losses:0,projects:0,totalEarnings:0,bestLevel:1});
+ record.attempts=(record.attempts||0)+1;record.projects=(record.projects||0)+1;record.wins=(record.wins||0)+(success?1:0);record.losses=(record.losses||0)+(success?0:1);record.totalEarnings=(record.totalEarnings||0)+gain;record.bestLevel=Math.max(record.bestLevel||1,state.specialCareer.level||1);
+ log(success?'📺':'🎬',success?'إعلان ناجح':'إعلان لم يحقق الانتشار','دفعت '+cash(cost)+(success?'، وكسبت '+cash(gain)+' وارتفعت شهرتك.':'، لكن الإعلان لم يحقق الانتشار المتوقع. راجع مهاراتك وحاول تاني.'),success?'good':'bad');
+ save();render();info(success?'⭐':'🎬',success?'فرصة إعلانية ناجحة':'تجربة مهنية جديدة',success?'شهرتك الحالية '+state.fame+'%.':'التجارب غير الناجحة جزء من مسار المهنة.');
+}
+function bossModeMenu(){
+ if(!perkOwned('bossMode')){closeModal();info('🧰','مركز المهن مقفول','افتحه من متجر مزايا حياة.');return;}
+ const active=perkEnabled('bossMode');
+ modal('🧰','مركز المهن الشامل','وصول سريع لمسارات المهن الخاصة، مع علاوة دخل 10% لهذه المسارات عند تفعيل المركز.',[
+  choice(active?'🟢':'⚪',active?'إيقاف علاوة دخل المسارات':'تفعيل علاوة دخل المسارات','الحالة الحالية: '+(active?'مفعّلة':'متوقفة')+'.',()=>togglePremiumPerk('bossMode')),
+  choice('🌟','استعراض جميع المهن الخاصة','التمثيل والموسيقى وصناعة المحتوى والرياضة والكتابة وغيرها.',specialCareers),
+  choice('📚','تاريخ المهن السابقة','عرض المسارات التي أنهيتها ونتائجها.',specialCareerHistoryMenu),
+  choice('↩️','رجوع للمزايا','',premiumPerksMenu)
+ ]);
+}
 function timeMachineMenu(){
  if(!state||!Array.isArray(state.timeMachineSnapshots)||!state.timeMachineSnapshots.length){
   closeModal();info('⏳','الرجوع بالزمن','الميزة بتظهر بعد ما تتقدم سنة واحدة على الأقل في الحياة.');return;
@@ -2124,7 +2256,7 @@ function timeMachineMenu(){
   }catch(e){}
  }
  opts.push(choice('↩️','رجوع','العودة للحياة الحالية دون تغيير.',()=>{closeModal();if(isDead)death(state.cause||'نهاية رحلة الحياة');}));
- modal('⏳','الرجوع بالزمن','تقدر ترجع لواحدة من آخر 8 نقاط حفظ سنوية. الرجوع يستعيد المال والعلاقات والإحصائيات والسجل كما كانت في تلك السنة.',opts);
+ modal('⏳','الرجوع بالزمن',perkOwned('expandedTime')?'ذاكرة الزمن الموسّعة تحفظ حتى 60 نقطة سنوية على هذا الجهاز، بحد آمن لحجم الحفظ.':'تقدر ترجع لواحدة من آخر 8 نقاط حفظ سنوية. افتح ذاكرة الزمن الموسّعة لزيادة العدد إلى 60.',opts);
 }
 function rewindToSnapshot(index){
  const history=Array.isArray(state.timeMachineSnapshots)?state.timeMachineSnapshots:[];
@@ -2199,7 +2331,7 @@ function startAsChild(index){
  const previous=state,child=previous.children[index],oldPartner=previous.partner;
  const share=previous.willDistribution==='الأبناء أولًا'?.9:previous.willDistribution==='الشريك أولًا'?.55:previous.willDistribution==='التبرع بجزء'?.65:.8;
  const inheritance=calculateInheritance(previous,share);
- const heir=newLife();ensureChildGrowthProfile(child);heir.name=child.name;heir.gender=child.gender||'male';heir.age=typeof child.age==='number'?child.age:18;heir.place={...previous.place};heir.bank=inheritance.bank;heir.stats={...heir.stats,health:clamp(child.health??heir.stats.health),happiness:clamp(child.happiness??heir.stats.happiness),smart:clamp(child.smart??heir.stats.smart),looks:clamp(child.looks??heir.stats.looks)};heir.reputation=clamp((Number(child.schoolPerformance)||50)*.35+(Number(child.careerPotential)||40)*.35+(Number(child.relationshipLevel)||50)*.3);
+ const heir=newLife();ensureChildGrowthProfile(child);heir.name=child.name;heir.gender=child.gender||'male';heir.age=typeof child.age==='number'?child.age:18;heir.place={...previous.place};heir.bank=inheritance.bank;if(perkOwned('goldenPiggyBank'))heir.bank+=1000000;heir.stats={...heir.stats,health:clamp(child.health??heir.stats.health),happiness:clamp(child.happiness??heir.stats.happiness),smart:clamp(child.smart??heir.stats.smart),looks:clamp(child.looks??heir.stats.looks)};heir.reputation=clamp((Number(child.schoolPerformance)||50)*.35+(Number(child.careerPotential)||40)*.35+(Number(child.relationshipLevel)||50)*.3);
  heir.family=[...previous.family];previous.children.forEach((sibling,i)=>{if(i!==index)heir.family.push({...sibling,relation:'أخ/أخت'});});heir.partner=null;heir.married=false;heir.children=[];heir.legacy={name:previous.name,inheritance:inheritance.value,heirloom:(previous.heirlooms||[])[0]?.name||null};
  heir.heirlooms=[...(previous.heirlooms||[])];heir.accomplishments=['بدأ حياة جديدة كامتداد لعائلة '+previous.name,'ورث '+cash(inheritance.value)];
  heir.job=null;heir.assets=inheritance.assets;heir.investments=inheritance.investments;
@@ -2208,15 +2340,10 @@ function startAsChild(index){
 }
 function applyUiSettings(){
  const body=document.body;
- if(body&&body.classList){
-  body.classList.toggle('theme-dark',uiSettings.theme==='dark');
-  body.classList.toggle('text-large',uiSettings.textScale==='large');
- }
- if(typeof document.querySelector==='function'){
-  const themeMeta=document.querySelector('meta[name="theme-color"]');
-  if(themeMeta)themeMeta.setAttribute('content',uiSettings.theme==='dark'?'#17232c':'#E53935');
- }
+ if(body&&body.classList){body.classList.toggle('theme-dark',uiSettings.theme==='dark');body.classList.toggle('theme-gold',uiSettings.theme==='gold');body.classList.toggle('text-large',uiSettings.textScale==='large');}
+ if(typeof document.querySelector==='function'){const themeMeta=document.querySelector('meta[name="theme-color"]');if(themeMeta)themeMeta.setAttribute('content',uiSettings.theme==='dark'?'#17232c':uiSettings.theme==='gold'?'#c3982a':'#E53935');}
 }
+
 function loadUiSettings(){
  try{
   const raw=JSON.parse(localStorage.getItem(SETTINGS_KEY)||'null');
@@ -2232,18 +2359,88 @@ function persistUiSettings(){
  applyUiSettings();
 }
 function settingsMenu(){
- modal('⚙️','إعدادات العرض','الإعدادات دي بتتخزن على الجهاز بشكل مستقل عن ملف حياتك، ومش بتغيّر الحفظ القديم.',[
-  choice(uiSettings.theme==='dark'?'☀️':'🌙',uiSettings.theme==='dark'?'تفعيل الوضع الفاتح':'تفعيل الوضع الداكن','المظهر الحالي: '+(uiSettings.theme==='dark'?'داكن':'فاتح')+'.',()=>{
-   uiSettings.theme=uiSettings.theme==='dark'?'light':'dark';persistUiSettings();settingsMenu();
-  }),
-  choice('🔤',uiSettings.textScale==='large'?'حجم النص: كبير':'حجم النص: عادي','كبّر نص سجل الأحداث والقرارات لسهولة القراءة.',()=>{
-   uiSettings.textScale=uiSettings.textScale==='large'?'normal':'large';persistUiSettings();settingsMenu();
-  }),
-  choice('↩️','استعادة إعدادات العرض الافتراضية','العودة للوضع الفاتح وحجم النص العادي.',()=>{
-   uiSettings={theme:'light',textScale:'normal'};persistUiSettings();settingsMenu();
-  }),
-  choice('↩️','رجوع للقائمة الرئيسية','',mainMenu)
- ]);
+ const opts=[
+  choice(uiSettings.theme==='dark'?'☀️':'🌙',uiSettings.theme==='dark'?'تفعيل الوضع الفاتح':'تفعيل الوضع الداكن','المظهر الحالي: '+(uiSettings.theme==='dark'?'داكن':uiSettings.theme==='gold'?'ذهبي':'فاتح')+'.',()=>{uiSettings.theme=uiSettings.theme==='dark'?'light':'dark';persistUiSettings();settingsMenu();}),
+  choice('🔤',uiSettings.textScale==='large'?'حجم النص: كبير':'حجم النص: عادي','كبّر نص سجل الأحداث والقرارات لسهولة القراءة.',()=>{uiSettings.textScale=uiSettings.textScale==='large'?'normal':'large';persistUiSettings();settingsMenu();}),
+  choice('↩️','استعادة إعدادات العرض الافتراضية','العودة للوضع الفاتح وحجم النص العادي.',()=>{uiSettings={theme:'light',textScale:'normal'};persistUiSettings();settingsMenu();})
+ ];
+ if(perkOwned('goldTheme'))opts.push(choice(uiSettings.theme==='gold'?'⭐':'🌟',uiSettings.theme==='gold'?'إيقاف الطابع الذهبي':'تفعيل الطابع الذهبي','هوية لونية ذهبية أصلية للعبة حياة.',()=>togglePremiumPerk('goldTheme')));
+ else opts.push(choice('⭐','الطابع الذهبي','افتحه من متجر مزايا حياة لتفعيله من هنا.',premiumPerksMenu));
+ opts.push(choice('✨','متجر مزايا حياة','إدارة المزايا الدائمة.',premiumPerksMenu),choice('↩️','رجوع للقائمة الرئيسية','',mainMenu));
+ modal('⚙️','إعدادات العرض','الإعدادات دي بتتخزن على الجهاز بشكل مستقل عن ملف حياتك، ومش بتغيّر صيغة الحفظ القديم.',opts);
+}
+
+function premiumPerksMenu(){
+ if(!state)return;
+ const catalog=[
+  {id:'challengeVault',title:'خزنة التحديات',emoji:'🗄️',cost:22000,desc:'حفظ تحديات الأيام السابقة وإتاحة مكافأة استرجاع غير مستلمة.'},
+  {id:'goldTheme',title:'الطابع الذهبي',emoji:'⭐',cost:16000,desc:'افتح مظهرًا ذهبيًا أصليًا ويمكنك تشغيله أو إيقافه.'},
+  {id:'streakSaver',title:'حماة السلسلة ×5',emoji:'🛡️',cost:8000,desc:'حزمة من 5 مرات حماية، كل واحدة تحفظ السلسلة عند تفويت يوم واحد فقط.'},
+  {id:'expandedTime',title:'ذاكرة الزمن الموسّعة',emoji:'⏳',cost:30000,desc:'ارفع عدد نقاط الرجوع السنوية من 8 إلى 60، مع حد آمن لتخزين الهاتف.'},
+  {id:'actorPack',title:'حزمة التمثيل الاحترافية',emoji:'🎬',cost:25000,desc:'اختبارات أداء موسعة، إعلانات مدفوعة، ووكيل أعمال.'},
+  {id:'bossMode',title:'مركز المهن الشامل',emoji:'🧰',cost:45000,desc:'لوحة موحدة للمهن الخاصة وعلاوة دخل 10% عند التفعيل.'},
+  {id:'healthShield',title:'درع العافية',emoji:'🩺',cost:18000,desc:'عند تفعيله، يمنع خطر المضاعفات الصحية المرتبطة بخيار العلاقة الخاص داخل اللعبة.'},
+  {id:'goldenWrench',title:'الورشة الذهبية',emoji:'🔧',cost:20000,desc:'عند التفعيل، تبقى السيارات بحالة 100% ولا تُخصم صيانتها السنوية.'},
+  {id:'goldenPassport',title:'جواز العالم',emoji:'🌍',cost:30000,desc:'الهجرة لأي وجهة متاحة داخل اللعبة من دون رسوم انتقال.'},
+  {id:'goldenPiggyBank',title:'حصالة المليون',emoji:'🐷',cost:75000,desc:'ابدأ كل حياة جديدة، بما فيها حياة الوارث، بمليون من عملة بلدك داخل اللعبة.'},
+  {id:'goldenNeko',title:'تميمة الازدهار',emoji:'🐈',cost:55000,desc:'علاوة راتب 20% في الوظائف والمسارات المهنية عند التفعيل.'}
+ ];
+ const opts=catalog.map(item=>{
+  if(item.id==='streakSaver')return choice(item.emoji,item.title+' · المتبقي '+(permanentPerks.streakSavers||0),item.desc+' تكلفة الحزمة '+cash(item.cost)+'.',()=>buyPremiumPerk(item.id),cash(item.cost));
+  if(perkOwned(item.id)){
+   if(PERK_TOGGLE_IDS.includes(item.id))return choice(perkEnabled(item.id)?'🟢':'⚪',item.title+(perkEnabled(item.id)?' · مفعّلة':' · متوقفة'),item.desc,()=>togglePremiumPerk(item.id));
+   const actions={challengeVault:challengeVaultMenu,expandedTime:timeMachineMenu,actorPack:actorPackMenu,bossMode:bossModeMenu};
+   return choice('✅',item.title+' · مملوكة',item.desc,actions[item.id]||(()=>info(item.emoji,item.title,item.desc)));
+  }
+  return choice(item.emoji,item.title,item.desc+' شراء مرة واحدة من رصيد اللعبة: '+cash(item.cost)+'.',()=>buyPremiumPerk(item.id),cash(item.cost));
+ });
+ modal('✨','متجر مزايا حياة','مزايا دائمة تُفتح برصيد اللعبة فقط؛ لا توجد مدفوعات حقيقية أو اشتراكات. الملكيات الأساسية محفوظة على هذا المتصفح عبر الحيوات المختلفة.',opts);
+}
+function buyPremiumPerk(id){
+ const catalog={
+  challengeVault:{cost:22000,title:'خزنة التحديات'},
+  goldTheme:{cost:16000,title:'الطابع الذهبي'},
+  streakSaver:{cost:8000,title:'حماة السلسلة'},
+  expandedTime:{cost:30000,title:'ذاكرة الزمن الموسّعة'},
+  actorPack:{cost:25000,title:'حزمة التمثيل الاحترافية'},
+  bossMode:{cost:45000,title:'مركز المهن الشامل'},
+  healthShield:{cost:18000,title:'درع العافية'},
+  goldenWrench:{cost:20000,title:'الورشة الذهبية'},
+  goldenPassport:{cost:30000,title:'جواز العالم'},
+  goldenPiggyBank:{cost:75000,title:'حصالة المليون'},
+  goldenNeko:{cost:55000,title:'تميمة الازدهار'}
+ };
+ const item=catalog[id];if(!item)return;
+ if(id!=='streakSaver'&&perkOwned(id)){perkAction(id);return;}
+ if((Number(state.bank)||0)<item.cost){closeModal();info('💳','الرصيد مش كفاية','المزايا دي بتتفتح من رصيد اللعبة. محتاج '+cash(item.cost)+'، ورصيدك '+cash(state.bank)+'.');return;}
+ state.bank-=item.cost;
+ if(id==='streakSaver'){
+  permanentPerks.streakSavers=Math.min(99,(permanentPerks.streakSavers||0)+5);
+  persistPermanentPerks();log('🛡️','شراء حماة السلسلة','أضفت 5 مرات حماية لسلسلة التحديات. المتبقي '+permanentPerks.streakSavers+'.','good');
+ }else{
+  permanentPerks.owned[id]=true;if(PERK_TOGGLE_IDS.includes(id))permanentPerks.enabled[id]=true;
+  if(id==='goldTheme'){uiSettings.theme='gold';persistUiSettings();}
+  if(id==='goldenWrench')state.assets.forEach(a=>{if(a.kind==='car')a.condition=100;});
+  persistPermanentPerks();log('✨','ميزة جديدة: '+item.title,'فتحت '+item.title+' من رصيد اللعبة. تقدر تدير المزايا من متجر مزايا حياة.','special');
+ }
+ save();render();premiumPerksMenu();
+}
+function perkAction(id){
+ if(id==='challengeVault'){challengeVaultMenu();return;}if(id==='expandedTime'){timeMachineMenu();return;}if(id==='actorPack'){actorPackMenu();return;}if(id==='bossMode'){bossModeMenu();return;}
+ if(PERK_TOGGLE_IDS.includes(id)){togglePremiumPerk(id);return;}
+ const details={
+  goldenPassport:'عند تفعيل جواز العالم، الهجرة لأي وجهة متاحة داخل اللعبة لا تخصم رسوم الانتقال.',
+  goldenPiggyBank:'كل حياة جديدة تبدأ بمليون من عملة بلد الشخصية، بما فيها اختيار أحد الأبناء وريثًا.',
+  goldenNeko:'تقدر تفعيل أو إيقاف علاوة الراتب من نفس المتجر.'
+ };
+ closeModal();info('✅','ميزة مملوكة',details[id]||'الميزة مفعّلة على هذا المتصفح.');
+}
+function togglePremiumPerk(id){
+ if(!PERK_TOGGLE_IDS.includes(id)||!perkOwned(id)){closeModal();premiumPerksMenu();return;}
+ permanentPerks.enabled[id]=!permanentPerks.enabled[id];
+ if(id==='goldTheme'){if(permanentPerks.enabled[id])uiSettings.theme='gold';else if(uiSettings.theme==='gold')uiSettings.theme='light';persistUiSettings();}
+ if(id==='goldenWrench'&&permanentPerks.enabled[id])state.assets.forEach(a=>{if(a.kind==='car')a.condition=100;});
+ persistPermanentPerks();save();render();premiumPerksMenu();
 }
 function mainMenu(){
  modal('☰','القائمة الرئيسية','إدارة حياتك وحفظ تقدمك واستعراض إنجازاتك.',[
@@ -2251,6 +2448,7 @@ function mainMenu(){
   choice('🪦','مقبرة الحيوات','استعرض الشخصيات السابقة وأعمارها ونهاياتها.',()=>cemeteryMenu()),
   choice('🏆','الإنجازات والأشرطة','الأهداف التي حققتها في رحلتك.',()=>achievementsMenu()),
   choice('🎯','تحديات اليوم','ثلاث مهام يومية ومكافآت إضافية عند إكمالها.',()=>dailyChallengesMenu()),
+  choice('✨','متجر مزايا حياة','مزايا دائمة ومسارات إضافية ومكافآت داخل اللعبة.',premiumPerksMenu),
   choice('⏳','الرجوع بالزمن','استرجع نقطة حفظ سنوية سابقة.',timeMachineMenu),
   choice('🎁','المكافأة اليومية','احصل على مكافأتك اليومية إن كانت متاحة.',()=>dailyReward()),
   choice('🪪','ملف الشخصية','تعديل الاسم وبيانات الشخصية.',()=>customizeMenu()),
@@ -2271,6 +2469,7 @@ function activities(){
   choice('📊','البنك والاستثمارات','قروض، سداد ديون ومحافظ استثمار.',()=>financeMenu()),
   choice('👪','الأسرة والأبناء','إدارة العلاقة والزواج وتربية الأبناء.',()=>familyMenu()),
   choice('🏆','الإنجازات والمقتنيات','إنجازاتك، الأشرطة الختامية والمكافأة اليومية.',()=>achievementsMenu()),
+  choice('✨','متجر مزايا حياة','مزايا دائمة ومسارات إضافية ومكافآت داخل اللعبة.',premiumPerksMenu),
   choice('🪪','ملف الشخصية','تعديل الاسم ورخصة القيادة وتصدير الحفظ.',()=>customizeMenu()),
   choice('📱','السوشيال ميديا','حسابات ومحتوى ومتابعون وتعاونات.',()=>socialMediaMenu()),
   choice('💈','الصالون والمظهر','قص الشعر والملابس وتغيير الإطلالة.',()=>salonMenu()),
@@ -2454,6 +2653,7 @@ if($('characterInfoBtn'))$('characterInfoBtn').addEventListener('click',()=>{
 });
 if($('heirloomBtn'))$('heirloomBtn').addEventListener('click',()=>dailyReward());
 function init(){
+ permanentPerks=loadPermanentPerks();
  loadUiSettings();
  state=load();
  if(state){dead=state.status==='متوفى';render();if(saveRecovered)$('saveStatus').textContent='↺ نسخة مستردة';if(dead)death(state.cause||'نهاية رحلة الحياة');}
