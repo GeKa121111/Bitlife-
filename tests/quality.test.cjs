@@ -107,7 +107,7 @@ test('تطبيق الويب قابل للتثبيت ويحتفظ بملفات ا
   assert.ok(manifest.icons.some(item => item.src === './icon.svg'));
   assert.match(html, /rel="manifest" href="manifest\.webmanifest"/);
   assert.match(app, /navigator\.serviceWorker\.register\('\.\/sw\.js'\)/);
-  assert.match(worker, /const CACHE_NAME = 'hayah-shell-v10'/);
+  assert.match(worker, /const CACHE_NAME = 'hayah-shell-v11'/);
   assert.match(worker, /cache\.addAll\(APP_SHELL\)/);
   assert.match(worker, /caches\.match\(APP_SHELL\[0\]\)/);
   assert.match(icon, /حياة/);
@@ -195,7 +195,7 @@ test('مسيرة الرياضات الإلكترونية أصلية وتحافظ
   assert.match(app, /function upgradeEsportsSetup\(\)/);
   assert.match(app, /موهبة الألعاب الإلكترونية/);
   assert.match(app, /data\.talents\.gaming=clamp\(Number\(data\.talents\.gaming\),0,100\)/);
-  assert.match(read('sw.js'), /hayah-shell-v10/);
+  assert.match(read('sw.js'), /hayah-shell-v11/);
   assert.match(functionSource('rewindToSnapshot', 'customizeMenu'), /ensureGamingTalent\(\)/, 'rewinding a pre-feature snapshot should restore a valid talent default');
 });
 
@@ -287,4 +287,73 @@ test('المزايا الفردية للوظيفة والتعليم والصدا
     "if(!Array.isArray(data.companies))data.companies=[]"
   ];
   required.forEach(fragment => assert.ok(app.includes(fragment), 'missing feature: ' + fragment));
+});
+
+
+test('باقات السوق الجديدة مرتبطة بأنظمة لعب فعلية', () => {
+  const required = [
+    "id:'cultPack'",
+    "id:'casinoPack'",
+    "id:'godMode'",
+    "id:'bitizenship'",
+    "id:'movieDirectorPack'",
+    "id:'dealerPack'",
+    "id:'businessPack'",
+    "id:'landlordPack'",
+    "id:'investorPack'",
+    "function cultMenu()",
+    "function advanceCultSystem()",
+    "function casinoMenu()",
+    "const casinoGameCatalog=[",
+    "function advanceCasinoSystem()",
+    "function dealerMenu()",
+    "function advanceDealerSystem()",
+    "function godModeMenu()",
+    "function startRoyalLife()",
+    "function godModeTalentsMenu()",
+    "function bitizenshipMenu()",
+    "function bitizenshipInteractionMenu()",
+    "function movieDirectorMenu()",
+    "function financialAdvisorMenu()",
+    "function investmentTipsMenu()",
+    "function marketNewspaperMenu()",
+    "function advanceInvestmentAdvisor()",
+    "function landlordPortfolioMenu()",
+    "function customizePropertyAmenities(index)",
+    "function evictTenant(index)",
+    "function advanceZooSystem()",
+    "function zooHabitatMenu()",
+    "function zooOwnedAnimalsMenu(page=0)",
+    "function grantLandlordStarterProperty()",
+    "funds:75000,habitats:['savannah','forest','aviary']"
+  ];
+  required.forEach(fragment => assert.ok(app.includes(fragment), 'missing feature: ' + fragment));
+});
+
+test('حديقة الحيوان تدعم أكثر من 100 نوع، وحزمة المخرج تفتح 11 نوعًا سينمائيًا', () => {
+  const zooStart = app.indexOf('const zooSpeciesCatalog=[');
+  const zooEnd = app.indexOf('].map((a,i)=>', zooStart);
+  assert.notEqual(zooStart, -1);
+  assert.notEqual(zooEnd, -1);
+  const species = (app.slice(zooStart, zooEnd).match(/\['[a-z0-9-]+','/g) || []).length;
+  assert.ok(species >= 100, 'expected 100+ zoo species, found ' + species);
+
+  const filmStart = app.indexOf('const filmGenreCatalog=[');
+  const filmEnd = app.indexOf('\n];', filmStart);
+  assert.notEqual(filmStart, -1);
+  assert.notEqual(filmEnd, -1);
+  const genres = (app.slice(filmStart, filmEnd).match(/\{id:'/g) || []).length;
+  assert.equal(genres, 11, 'director expansion should expose 11 film genres');
+  assert.match(app, /genres=filmGenreCatalog\.filter\(g=>!g\.packOnly\|\|perkOwned\('movieDirectorPack'\)\)/);
+});
+
+test('الأنظمة الجديدة تضيف بيانات افتراضية آمنة للحفظ القديم ولا تمس إصدار v1', () => {
+  assert.match(app, /const KEY = 'hekayat_hayah_save_v1';/);
+  assert.match(app, /const PERK_IDS = \[[^\n]*'cultPack'[^\n]*'casinoPack'[^\n]*'godMode'[^\n]*'bitizenship'[^\n]*'movieDirectorPack'[^\n]*'dealerPack'/);
+  assert.match(app, /if\(!data\.cult\|\|typeof data\.cult!=='object'/);
+  assert.match(app, /if\(!data\.casino\|\|typeof data\.casino!=='object'/);
+  assert.match(app, /if\(!data\.dealer\|\|typeof data\.dealer!=='object'/);
+  assert.match(app, /if\(!data\.investmentAdvisor\|\|typeof data\.investmentAdvisor!=='object'/);
+  assert.match(app, /function advanceInvestmentAdvisor\(\)/);
+  assert.match(app, /function advanceZooSystem\(\)/);
 });
