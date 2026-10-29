@@ -6,8 +6,8 @@ const BACKUP_KEY = 'hekayat_hayah_save_backup_v1';
 const CEMETERY_KEY = 'hekayat_hayah_cemetery_v1';
 const SETTINGS_KEY = 'hayah_ui_settings_v1';
 const PERKS_KEY = 'hayah_permanent_perks_v1';
-const PERK_IDS = ['challengeVault','goldTheme','expandedTime','actorPack','bossMode','healthShield','goldenWrench','goldenPassport','goldenPiggyBank','goldenNeko'];
-const PERK_TOGGLE_IDS = ['goldTheme','healthShield','goldenWrench','bossMode','goldenNeko'];
+const PERK_IDS = ['challengeVault','goldTheme','expandedTime','actorPack','bossMode','healthShield','goldenWrench','goldenPassport','goldenPiggyBank','goldenNeko','fameFortuneBundle','billionairesBundle','crimePaysBundle','partyAnimalBundle','hollywoodStar','goldenResume','goldenDiploma','friendshipBracelet','goldenPacifier','jailCard','businessPack','landlordPack','investorPack','mafiaPack','blackMarketPack','assassinsBlade','zooExpansionPack','superstarMode'];
+const PERK_TOGGLE_IDS = ['goldTheme','healthShield','goldenWrench','bossMode','goldenNeko','hollywoodStar','goldenResume','goldenPacifier'];
 const fmt = n => new Intl.NumberFormat('ar-EG',{maximumFractionDigits:0}).format(Math.round(Number(n)||0));
 const cash = n => fmt(n)+' '+(state&&state.place?state.place.unit:'ج.م');
 const clamp = (n,min=0,max=100) => Math.max(min,Math.min(max,Math.round(n)));
@@ -444,7 +444,7 @@ function newLife(){
  const father=makePerson('male','الأب','👨',28+Math.floor(Math.random()*12),68+Math.floor(Math.random()*28));
  const mother=makePerson('female','الأم','👩',25+Math.floor(Math.random()*12),72+Math.floor(Math.random()*26));
  const sibling=makePerson(gender,'الأخ/الأخت','🧒',Math.floor(Math.random()*8),55+Math.floor(Math.random()*35));
- return {version:1,lifeId:Date.now()+Math.random(),cemeterySaved:false,name:pick(names[gender])+' '+pick(names.family),gender,age:0,place,bank:(perkOwned('goldenPiggyBank')?Math.max(1000000,place.start):place.start),stats:{happiness:65+Math.floor(Math.random()*26),health:76+Math.floor(Math.random()*22),smart:35+Math.floor(Math.random()*41),looks:35+Math.floor(Math.random()*51)},education:{level:0,school:'لم تبدأ الدراسة',major:null,yearsLeft:0,tuition:0},job:null,jobHistory:[],specialCareer:null,specialCareerHistory:[],combatCareer:null,filmStudio:null,esportsCareer:null,talents:{gaming:15+Math.floor(Math.random()*71)},performance:50,assets:[],investments:[],business:null,family:[father,mother,sibling],friends:[],partner:null,married:false,children:[],coParentingPlans:[],pets:[],hobbies:[],fame:0,followers:0,socialMediaAccount:false,socialMediaPosts:0,reputation:50,sti:false,crimeRecord:0,prison:null,debt:0,willDistribution:'الأسرة بالتساوي',heirlooms:[],dailyRewardDate:null,dailyChallenges:null,challengeArchive:[],timeMachineSnapshots:[],legacy:{name:null,inheritance:0,heirloom:null},driversLicense:false,travelHistory:[],log:[],accomplishments:['بدأت رحلة الحياة'],status:'حي',cause:null,retired:false,yearCount:0,wealthPeak:place.start};
+ return {version:1,lifeId:Date.now()+Math.random(),cemeterySaved:false,name:pick(names[gender])+' '+pick(names.family),gender,age:0,place,bank:(perkOwned('goldenPiggyBank')?Math.max(1000000,place.start):place.start),stats:{happiness:65+Math.floor(Math.random()*26),health:76+Math.floor(Math.random()*22),smart:35+Math.floor(Math.random()*41),looks:35+Math.floor(Math.random()*51)},education:{level:0,school:'لم تبدأ الدراسة',major:null,yearsLeft:0,tuition:0},job:null,jobHistory:[],specialCareer:null,specialCareerHistory:[],combatCareer:null,filmStudio:null,esportsCareer:null,talents:{gaming:15+Math.floor(Math.random()*71)},performance:50,assets:[],investments:[],business:null,companies:[],mafia:{joined:false,rank:0,rep:0,earnings:0},museum:{opened:false,displayed:[]},zoo:{opened:false,animals:[],rareDiscoveries:0},assassinBladeLastUsedAge:null,family:[father,mother,sibling],friends:[],partner:null,married:false,children:[],coParentingPlans:[],pets:[],hobbies:[],fame:0,followers:0,socialMediaAccount:false,socialMediaPosts:0,reputation:50,sti:false,crimeRecord:0,prison:null,debt:0,willDistribution:'الأسرة بالتساوي',heirlooms:[],dailyRewardDate:null,dailyChallenges:null,challengeArchive:[],timeMachineSnapshots:[],legacy:{name:null,inheritance:0,heirloom:null},driversLicense:false,travelHistory:[],log:[],accomplishments:['بدأت رحلة الحياة'],status:'حي',cause:null,retired:false,yearCount:0,wealthPeak:place.start};
 }
 
 function isValidSaveData(data){
@@ -483,6 +483,14 @@ function normalizeCoreState(data){
  data.age=Number.isFinite(Number(data.age))?Math.max(0,Math.min(120,Math.floor(Number(data.age)))):0;
  data.bank=Number.isFinite(Number(data.bank))?Number(data.bank):Number(data.place.start)||0;
  data.sti=typeof data.sti==='boolean'?data.sti:false;
+ if(!Array.isArray(data.companies))data.companies=[];
+ if(!data.mafia||typeof data.mafia!=='object'||Array.isArray(data.mafia))data.mafia={joined:false,rank:0,rep:0,earnings:0};
+ data.mafia.joined=!!data.mafia.joined;data.mafia.rank=clamp(Number(data.mafia.rank)||0,0,4);data.mafia.rep=clamp(Number(data.mafia.rep)||0,0,100);data.mafia.earnings=Math.max(0,Number(data.mafia.earnings)||0);
+ if(!data.museum||typeof data.museum!=='object'||Array.isArray(data.museum))data.museum={opened:false,displayed:[]};
+ data.museum.opened=!!data.museum.opened;if(!Array.isArray(data.museum.displayed))data.museum.displayed=[];
+ if(!data.zoo||typeof data.zoo!=='object'||Array.isArray(data.zoo))data.zoo={opened:false,animals:[],rareDiscoveries:0};
+ data.zoo.opened=!!data.zoo.opened;if(!Array.isArray(data.zoo.animals))data.zoo.animals=[];data.zoo.rareDiscoveries=clamp(Number(data.zoo.rareDiscoveries)||0,0,999);
+ if(data.assassinBladeLastUsedAge===undefined)data.assassinBladeLastUsedAge=null;
  if(!data.talents||typeof data.talents!=='object'||Array.isArray(data.talents))data.talents={};
  const gamingHobby=Array.isArray(data.hobbies)?data.hobbies.find(h=>h&&h.id==='gaming'):null;
  if(!Number.isFinite(Number(data.talents.gaming)))data.talents.gaming=gamingHobby?clamp(25+(Number(gamingHobby.level)||1)*5,0,100):35;
@@ -2383,75 +2391,95 @@ function settingsMenu(){
 function premiumPerksMenu(){
  if(!state)return;
  const catalog=[
+  {id:'fameFortuneBundle',title:'باقة الشهرة والثروة',emoji:'🛩️',cost:135000,desc:'تفتح حصالة المليون وجواز العالم ونجم هوليوود.'},
+  {id:'billionairesBundle',title:'باقة الملياردير',emoji:'💼',cost:160000,desc:'تفتح حزم الأعمال وإدارة العقارات والمستثمر: شركات متعددة، مستأجرون، أسهم وسندات وعملات رقمية.'},
+  {id:'crimePaysBundle',title:'باقة عالم الجريمة',emoji:'🕶️',cost:145000,desc:'تفتح مسار المافيا، والسوق السوداء والمتحف، ونصل المهام الخاصة الخيالية.'},
+  {id:'partyAnimalBundle',title:'باقة الحيوان الحفّال',emoji:'🦁',cost:175000,desc:'تفتح حديقة الحيوان وبطاقة الخروج من السجن ووضع النجومية الذهبي.'},
   {id:'challengeVault',title:'خزنة التحديات',emoji:'🗄️',cost:22000,desc:'حفظ تحديات الأيام السابقة وإتاحة مكافأة استرجاع غير مستلمة.'},
   {id:'goldTheme',title:'الطابع الذهبي',emoji:'⭐',cost:16000,desc:'افتح مظهرًا ذهبيًا أصليًا ويمكنك تشغيله أو إيقافه.'},
-  {id:'streakSaver',title:'حماة السلسلة ×5',emoji:'🛡️',cost:8000,desc:'حزمة من 5 مرات حماية، كل واحدة تحفظ السلسلة عند تفويت يوم واحد فقط.'},
-  {id:'expandedTime',title:'ذاكرة الزمن الموسّعة',emoji:'⏳',cost:30000,desc:'ارفع عدد نقاط الرجوع السنوية من 8 إلى 60، مع حد آمن لتخزين الهاتف.'},
-  {id:'actorPack',title:'حزمة التمثيل الاحترافية',emoji:'🎬',cost:25000,desc:'اختبارات أداء موسعة، إعلانات مدفوعة، ووكيل أعمال.'},
-  {id:'bossMode',title:'مركز المهن الشامل',emoji:'🧰',cost:45000,desc:'لوحة موحدة للمهن الخاصة وعلاوة دخل 10% عند التفعيل.'},
-  {id:'healthShield',title:'درع العافية',emoji:'🩺',cost:18000,desc:'عند تفعيله، يمنع عدوى منقولة جنسيًا محاكية في خيار اختياري للبالغين داخل اللعبة.'},
-  {id:'goldenWrench',title:'الورشة الذهبية',emoji:'🔧',cost:20000,desc:'عند التفعيل، تبقى السيارات بحالة 100% ولا تُخصم صيانتها السنوية.'},
-  {id:'goldenPassport',title:'جواز العالم',emoji:'🌍',cost:30000,desc:'الهجرة لأي وجهة متاحة داخل اللعبة من دون رسوم انتقال.'},
-  {id:'goldenPiggyBank',title:'حصالة المليون',emoji:'🐷',cost:75000,desc:'ابدأ كل حياة جديدة، بما فيها حياة الوارث، بمليون من عملة بلدك داخل اللعبة.'},
-  {id:'goldenNeko',title:'تميمة الازدهار',emoji:'🐈',cost:55000,desc:'علاوة راتب 20% في الوظائف والمسارات المهنية عند التفعيل.'}
+  {id:'streakSaver',title:'حماة السلسلة ×5',emoji:'🛡️',cost:8000,desc:'حزمة من 5 وسائل حماية للسلسلة عند تفويت يوم واحد.'},
+  {id:'expandedTime',title:'ذاكرة الزمن الموسّعة',emoji:'⏳',cost:30000,desc:'ارفع عدد نقاط الرجوع من 8 إلى 60.'},
+  {id:'actorPack',title:'حزمة التمثيل الاحترافية',emoji:'🎬',cost:25000,desc:'اختبارات أداء موسعة وإعلانات مدفوعة ووكيل أعمال.'},
+  {id:'bossMode',title:'مركز المهن الشامل',emoji:'🧰',cost:45000,desc:'لوحة للمهن الخاصة وعلاوة دخل 10% عند التفعيل.'},
+  {id:'healthShield',title:'درع العافية',emoji:'🩺',cost:18000,desc:'يمنع عدوى محاكية في خيار اختياري للبالغين داخل اللعبة.'},
+  {id:'goldenWrench',title:'الورشة الذهبية',emoji:'🔧',cost:20000,desc:'صيانة السيارات مجانًا مع الحفاظ على حالتها.'},
+  {id:'goldenPassport',title:'جواز العالم',emoji:'🌍',cost:30000,desc:'الهجرة لأي وجهة متاحة داخل اللعبة من دون رسوم.'},
+  {id:'goldenPiggyBank',title:'حصالة المليون',emoji:'🐷',cost:75000,desc:'ابدأ كل حياة جديدة بمليون من عملة بلد الشخصية.'},
+  {id:'goldenNeko',title:'تميمة الازدهار',emoji:'🐈',cost:55000,desc:'علاوة راتب 20% في الوظائف والمسارات المهنية.'},
+  {id:'hollywoodStar',title:'نجم هوليوود',emoji:'🌟',cost:60000,desc:'فعّل الشهرة الفورية في الوظيفة أو المهنة الخاصة، ويمكنك إيقاف التأثير من القائمة الرئيسية.'},
+  {id:'goldenResume',title:'السيرة الذاتية الذهبية',emoji:'📄',cost:48000,desc:'تضمن القبول في الوظائف المؤهل لها وتحمي الوظيفة من الفصل العشوائي.'},
+  {id:'goldenDiploma',title:'الشهادة الذهبية',emoji:'🎓',cost:38000,desc:'احصل فورًا على شهادة جامعية أو دراسات عليا في تخصص تختاره بعد سن 18.'},
+  {id:'friendshipBracelet',title:'سوار الصداقة',emoji:'🤝',cost:28000,desc:'أي صداقة جديدة تبدأ بعلاقة قوية مضمونة.'},
+  {id:'goldenPacifier',title:'اللهاية الذهبية',emoji:'🍼',cost:52000,desc:'اختر عدد الأبناء ونوعهم وموهبتهم الخاصة، مع تخطيط الولادة من سن 18.'},
+  {id:'jailCard',title:'بطاقة الخروج من السجن',emoji:'🃏',cost:25000,desc:'استخدمها مرة عند السجن للخروج فورًا ومحو السجل القانوني.'},
+  {id:'superstarMode',title:'وضع النجومية',emoji:'🌟',cost:20000,desc:'يفتح الطابع الذهبي للعبة حياة ويمكنك تشغيله من إعدادات العرض.'},
+  {id:'zooExpansionPack',title:'توسعة حديقة الحيوان',emoji:'🦓',cost:60000,desc:'افتح حديقة حيوان، اشترِ الحيوانات، ساعدها على التكاثر واكتشف أنواعًا أسطورية.'},
+  {id:'mafiaPack',title:'حزمة المافيا',emoji:'🕶️',cost:70000,desc:'انضم إلى عائلة خيالية وارتقِ من عضو إلى الأب الروحي.'},
+  {id:'blackMarketPack',title:'توسعة السوق السوداء',emoji:'🏛️',cost:65000,desc:'افتح بائعين خياليين للقطع النادرة، وأنشئ متحفًا واعرض مقتنياتك.'},
+  {id:'assassinsBlade',title:'نصل المهام الخاصة',emoji:'🗡️',cost:40000,desc:'يفتح مهمة خيالية عالية المخاطر مرة كل سنة، مع احتمال تجاوز العواقب القانونية أو الوقوع فيها.'}
  ];
  const opts=catalog.map(item=>{
-  if(item.id==='streakSaver')return choice(item.emoji,item.title+' · المتبقي '+(permanentPerks.streakSavers||0),item.desc+' تكلفة الحزمة '+cash(item.cost)+'.',()=>buyPremiumPerk(item.id),cash(item.cost));
+  if(item.id==='streakSaver')return choice(item.emoji,item.title+' · المتبقي '+(permanentPerks.streakSavers||0),item.desc+' التكلفة '+cash(item.cost)+'.',()=>buyPremiumPerk(item.id),cash(item.cost));
   if(perkOwned(item.id)){
-   if(PERK_TOGGLE_IDS.includes(item.id))return choice(perkEnabled(item.id)?'🟢':'⚪',item.title+(perkEnabled(item.id)?' · مفعّلة':' · متوقفة'),item.desc,()=>togglePremiumPerk(item.id));
-   const actions={challengeVault:challengeVaultMenu,expandedTime:timeMachineMenu,actorPack:actorPackMenu,bossMode:bossModeMenu};
-   return choice('✅',item.title+' · مملوكة',item.desc,actions[item.id]||(()=>info(item.emoji,item.title,item.desc)));
+   if(PERK_TOGGLE_IDS.includes(item.id))return choice(perkEnabled(item.id)?'🟢':'⚪',item.title+(perkEnabled(item.id)?' · مفعّل':' · متوقف'),item.desc,()=>togglePremiumPerk(item.id));
+   const actions={challengeVault:challengeVaultMenu,expandedTime:timeMachineMenu,actorPack:actorPackMenu,bossMode:bossModeMenu,superstarMode:()=>togglePremiumPerk('goldTheme'),zooExpansionPack:zooMenu,mafiaPack:mafiaMenu,blackMarketPack:blackMarketMenu,assassinsBlade:assassinBladeMission,goldenDiploma:goldenDiplomaMenu};
+   return choice('✅',item.title+' · مفتوح',item.desc,actions[item.id]||(()=>info(item.emoji,item.title,item.desc)));
   }
   return choice(item.emoji,item.title,item.desc+' شراء مرة واحدة من رصيد اللعبة: '+cash(item.cost)+'.',()=>buyPremiumPerk(item.id),cash(item.cost));
  });
- modal('✨','متجر مزايا حياة','مزايا دائمة تُفتح برصيد اللعبة فقط؛ لا توجد مدفوعات حقيقية أو اشتراكات. الملكيات الأساسية محفوظة على هذا المتصفح عبر الحيوات المختلفة.',opts);
+ modal('✨','متجر مزايا حياة','باقات ومزايا دائمة تُفتح بعملة اللعبة فقط؛ لا توجد مدفوعات حقيقية. الملكيات الأساسية محفوظة على نفس المتصفح والجهاز.',opts);
 }
+
 function buyPremiumPerk(id){
  const catalog={
-  challengeVault:{cost:22000,title:'خزنة التحديات'},
-  goldTheme:{cost:16000,title:'الطابع الذهبي'},
-  streakSaver:{cost:8000,title:'حماة السلسلة'},
-  expandedTime:{cost:30000,title:'ذاكرة الزمن الموسّعة'},
-  actorPack:{cost:25000,title:'حزمة التمثيل الاحترافية'},
-  bossMode:{cost:45000,title:'مركز المهن الشامل'},
-  healthShield:{cost:18000,title:'درع العافية'},
-  goldenWrench:{cost:20000,title:'الورشة الذهبية'},
-  goldenPassport:{cost:30000,title:'جواز العالم'},
-  goldenPiggyBank:{cost:75000,title:'حصالة المليون'},
-  goldenNeko:{cost:55000,title:'تميمة الازدهار'}
+  fameFortuneBundle:{cost:135000,title:'باقة الشهرة والثروة'},billionairesBundle:{cost:160000,title:'باقة الملياردير'},crimePaysBundle:{cost:145000,title:'باقة عالم الجريمة'},partyAnimalBundle:{cost:175000,title:'باقة الحيوان الحفّال'},
+  challengeVault:{cost:22000,title:'خزنة التحديات'},goldTheme:{cost:16000,title:'الطابع الذهبي'},streakSaver:{cost:8000,title:'حماة السلسلة'},expandedTime:{cost:30000,title:'ذاكرة الزمن الموسّعة'},
+  actorPack:{cost:25000,title:'حزمة التمثيل الاحترافية'},bossMode:{cost:45000,title:'مركز المهن الشامل'},healthShield:{cost:18000,title:'درع العافية'},goldenWrench:{cost:20000,title:'الورشة الذهبية'},
+  goldenPassport:{cost:30000,title:'جواز العالم'},goldenPiggyBank:{cost:75000,title:'حصالة المليون'},goldenNeko:{cost:55000,title:'تميمة الازدهار'},hollywoodStar:{cost:60000,title:'نجم هوليوود'},
+  goldenResume:{cost:48000,title:'السيرة الذاتية الذهبية'},goldenDiploma:{cost:38000,title:'الشهادة الذهبية'},friendshipBracelet:{cost:28000,title:'سوار الصداقة'},goldenPacifier:{cost:52000,title:'اللهاية الذهبية'},
+  jailCard:{cost:25000,title:'بطاقة الخروج من السجن'},superstarMode:{cost:20000,title:'وضع النجومية'},zooExpansionPack:{cost:60000,title:'توسعة حديقة الحيوان'},mafiaPack:{cost:70000,title:'حزمة المافيا'},blackMarketPack:{cost:65000,title:'توسعة السوق السوداء'},assassinsBlade:{cost:40000,title:'نصل المهام الخاصة'}
  };
+ const bundles={fameFortuneBundle:['goldenPiggyBank','goldenPassport','hollywoodStar'],billionairesBundle:['businessPack','landlordPack','investorPack'],crimePaysBundle:['mafiaPack','blackMarketPack','assassinsBlade'],partyAnimalBundle:['zooExpansionPack','jailCard','superstarMode','goldTheme']};
  const item=catalog[id];if(!item)return;
  if(id!=='streakSaver'&&perkOwned(id)){perkAction(id);return;}
- if((Number(state.bank)||0)<item.cost){closeModal();info('💳','الرصيد مش كفاية','المزايا دي بتتفتح من رصيد اللعبة. محتاج '+cash(item.cost)+'، ورصيدك '+cash(state.bank)+'.');return;}
+ if((Number(state.bank)||0)<item.cost){closeModal();info('💳','الرصيد مش كفاية','محتاج '+cash(item.cost)+'، ورصيدك '+cash(state.bank)+'.');return;}
  state.bank-=item.cost;
  if(id==='streakSaver'){
-  permanentPerks.streakSavers=Math.min(99,(permanentPerks.streakSavers||0)+5);
-  persistPermanentPerks();log('🛡️','شراء حماة السلسلة','أضفت 5 مرات حماية لسلسلة التحديات. المتبقي '+permanentPerks.streakSavers+'.','good');
+  permanentPerks.streakSavers=Math.min(99,(permanentPerks.streakSavers||0)+5);persistPermanentPerks();log('🛡️','شراء حماة السلسلة','أضفت 5 وسائل حماية لسلسلة التحديات. المتبقي '+permanentPerks.streakSavers+'.','good');
+ }else if(bundles[id]){
+  permanentPerks.owned[id]=true;bundles[id].forEach(perk=>{permanentPerks.owned[perk]=true;if(PERK_TOGGLE_IDS.includes(perk))permanentPerks.enabled[perk]=true;});
+  if(bundles[id].includes('superstarMode')||bundles[id].includes('goldTheme')){permanentPerks.owned.goldTheme=true;permanentPerks.enabled.goldTheme=true;uiSettings.theme='gold';persistUiSettings();}
+  if(bundles[id].includes('hollywoodStar')){permanentPerks.enabled.hollywoodStar=true;state.fame=100;}
+  persistPermanentPerks();log('🎁','تم فتح '+item.title,'اتفتحت '+bundles[id].length+' مزايا مرتبطة بالباقة. راجع الأنشطة والقائمة الرئيسية لاستخدامها.','special');
  }else{
   permanentPerks.owned[id]=true;if(PERK_TOGGLE_IDS.includes(id))permanentPerks.enabled[id]=true;
-  if(id==='goldTheme'){uiSettings.theme='gold';persistUiSettings();}
+  if(id==='goldTheme'||id==='superstarMode'){permanentPerks.owned.goldTheme=true;permanentPerks.enabled.goldTheme=true;uiSettings.theme='gold';persistUiSettings();}
+  if(id==='hollywoodStar'){permanentPerks.enabled.hollywoodStar=true;state.fame=100;}
+  if(id==='goldenResume')permanentPerks.enabled.goldenResume=true;
+  if(id==='goldenPacifier')permanentPerks.enabled.goldenPacifier=true;
   if(id==='goldenWrench')state.assets.forEach(a=>{if(a.kind==='car')a.condition=100;});
-  persistPermanentPerks();log('✨','ميزة جديدة: '+item.title,'فتحت '+item.title+' من رصيد اللعبة. تقدر تدير المزايا من متجر مزايا حياة.','special');
+  persistPermanentPerks();log('✨','ميزة جديدة: '+item.title,'فتحت '+item.title+' من رصيد اللعبة. تقدر تدير المزايا من المتجر والقائمة الرئيسية.','special');
  }
  save();render();premiumPerksMenu();
 }
+
 function perkAction(id){
  if(id==='challengeVault'){challengeVaultMenu();return;}if(id==='expandedTime'){timeMachineMenu();return;}if(id==='actorPack'){actorPackMenu();return;}if(id==='bossMode'){bossModeMenu();return;}
+ if(id==='goldenDiploma'){goldenDiplomaMenu();return;}if(id==='zooExpansionPack'){zooMenu();return;}if(id==='mafiaPack'){mafiaMenu();return;}if(id==='blackMarketPack'){blackMarketMenu();return;}if(id==='assassinsBlade'){assassinBladeMission();return;}if(id==='superstarMode'){togglePremiumPerk('goldTheme');return;}
  if(PERK_TOGGLE_IDS.includes(id)){togglePremiumPerk(id);return;}
- const details={
-  goldenPassport:'عند تفعيل جواز العالم، الهجرة لأي وجهة متاحة داخل اللعبة لا تخصم رسوم الانتقال.',
-  goldenPiggyBank:'كل حياة جديدة تبدأ بمليون من عملة بلد الشخصية، بما فيها اختيار أحد الأبناء وريثًا.',
-  goldenNeko:'تقدر تفعيل أو إيقاف علاوة الراتب من نفس المتجر.'
- };
+ const details={goldenPassport:'جواز العالم يلغي رسوم الهجرة للوجهات المتاحة داخل اللعبة.',goldenPiggyBank:'كل حياة جديدة تبدأ بمليون من عملة بلد الشخصية، بما فيها حياة الوارث.',friendshipBracelet:'كل صديق جديد يبدأ بعلاقة قوية مضمونة.',jailCard:'تقدر استخدام البطاقة مرة واحدة عند وجودك في السجن.',goldenNeko:'علاوة الراتب تزيد بنسبة 20% عند التفعيل.',businessPack:'تقدر فتح وإدارة شركات إضافية من قائمة الأصول.',landlordPack:'إدارة عقود المستأجرين متاحة من تفاصيل العقارات.',investorPack:'أسهم وسندات وعملات رقمية متاحة من قائمة الاستثمارات.'};
  closeModal();info('✅','ميزة مملوكة',details[id]||'الميزة مفعّلة على هذا المتصفح.');
 }
+
 function togglePremiumPerk(id){
  if(!PERK_TOGGLE_IDS.includes(id)||!perkOwned(id)){closeModal();premiumPerksMenu();return;}
  permanentPerks.enabled[id]=!permanentPerks.enabled[id];
  if(id==='goldTheme'){if(permanentPerks.enabled[id])uiSettings.theme='gold';else if(uiSettings.theme==='gold')uiSettings.theme='light';persistUiSettings();}
  if(id==='goldenWrench'&&permanentPerks.enabled[id])state.assets.forEach(a=>{if(a.kind==='car')a.condition=100;});
- persistPermanentPerks();save();render();premiumPerksMenu();
+ if(id==='hollywoodStar'&&permanentPerks.enabled[id]&&(state.job||state.specialCareer))state.fame=100;
+ persistPermanentPerks();save();render();if(dead)death(state.cause||'نهاية رحلة الحياة');else mainMenu();
 }
+
 function mainMenu(){
  modal('☰','القائمة الرئيسية','إدارة حياتك وحفظ تقدمك واستعراض إنجازاتك.',[
   choice('🌱','حياة جديدة','ابدأ شخصية جديدة أو خصّص بلد الميلاد.',()=>newLifeSetup()),
