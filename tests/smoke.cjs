@@ -39,6 +39,14 @@ assert.match(app, /timeMachineDeathBtn/, 'the end-of-life panel should offer a r
 assert.match(app, /function editCharacterTraits\(\)/, 'player traits editor should exist');
 assert.match(app, /function editNpcMenu\(\)/, 'NPC trait editor should exist');
 assert.match(app, /function specialCareerHistoryMenu\(\)/, 'specialist career history should be accessible');
+assert.match(app, /\{id:'esports',title:'الرياضات الإلكترونية',emoji:'🎮',min:16/, 'the original esports career should be available from age 16');
+assert.match(app, /function createEsportsCareer\(\)/, 'esports profile should have a dedicated persisted state');
+assert.match(app, /function ensureEsportsCareer\(\)/, 'esports profile should normalize older or incomplete data');
+assert.match(app, /function esportsCareerMenu\(\)/, 'esports should have a dedicated career hub');
+assert.match(app, /function enterEsportsTournament\(\)/, 'esports tournaments should resolve an outcome and prize');
+assert.match(app, /function negotiateEsportsSponsorship\(\)/, 'esports career should support sponsorship contracts');
+assert.match(app, /function upgradeEsportsSetup\(\)/, 'esports gear should affect tournament odds');
+assert.match(app, /data\.talents\.gaming=clamp\(Number\(data\.talents\.gaming\),0,100\)/, 'legacy saves should receive a bounded gaming talent');
 
 assert.match(app, /const combatMoveCatalog=\[/, 'combat moves should have an explicit style catalog');
 assert.match(app, /const combatCoachCatalog=\[/, 'combat coach options should be catalog-driven');
@@ -155,7 +163,7 @@ assert.match(finalUi, /\.fill\s*\{[^}]*position:absolute[^}]*right:0/s, 'status 
 assert.match(finalUi, /\.statvalue\s*\{[^}]*position:absolute[^}]*z-index:1/s, 'status values should overlay the progress bars');
 assert.match(finalUi, /\.nav\{direction:ltr\}/, 'tab positions should follow the original left-to-right order');
 assert.match(finalUi, /\.fill\{left:0;right:auto\}/, 'progress fills should grow from the left edge like the reference');
-assert.match(serviceWorker, /hayah-shell-v5/, 'the app shell cache should refresh the new styles');
+assert.match(serviceWorker, /hayah-shell-v6/, 'the app shell cache should refresh the new styles');
 assert.match(app, /function schoolHub\(\)/);
 assert.match(app, /function maintainAsset\(index\)/);
 assert.match(app, /function schoolClubs\(\)/, 'student clubs should have interactive actions');
@@ -293,6 +301,8 @@ tuitionSave.status = 'حي';
 tuitionSave.cause = null;
 tuitionSave.retired = false;
 tuitionSave.job = null;
+delete tuitionSave.talents;
+delete tuitionSave.esportsCareer;
 tuitionSave.education = {
   level: 2,
   school: 'طالب جامعي',
@@ -337,5 +347,47 @@ assert.equal(afterUnpaidYear.education.yearsLeft, 1, 'unpaid tuition must leave 
 assert.equal(afterUnpaidYear.education.level, 2, 'an unpaid year must not award the degree level');
 assert.equal(afterUnpaidYear.education.school, 'طالب جامعي', 'an unpaid year must not mark the character as graduated');
 assert.ok(!afterUnpaidYear.log.some(entry => entry.title === 'اتخرجت من الجامعة'), 'no graduation event should be recorded for an unpaid year');
+assert.equal(afterUnpaidYear.talents.gaming, 35, 'legacy saves without talent data should receive a stable default gaming talent');
+assert.equal(afterUnpaidYear.esportsCareer, null, 'legacy saves should initialize the new specialist profile without changing the save version');
 
-console.log('Smoke tests passed: RTL page, responsive Arabic life-sim UI, offline PWA shell, age-up, autosave, recovery from a corrupted primary save, career and relationship navigation.');
+/* Behavioral regression: an esports tournament records one result and persists its profile. */
+const esportsStore = new Map(store);
+const esportsSave = JSON.parse(esportsStore.get('hekayat_hayah_save_v1'));
+esportsSave.age = 20;
+esportsSave.yearCount = 20;
+esportsSave.bank = 50000;
+esportsSave.status = 'حي';
+esportsSave.specialCareer = { id: 'esports', title: 'الرياضات الإلكترونية', income: 8500, level: 5, startedAge: 16, record: { attempts: 0, wins: 0, losses: 0, projects: 0, totalEarnings: 0, bestLevel: 5 }, history: [] };
+esportsSave.esportsCareer = { rank: 1, tournaments: 0, wins: 0, losses: 0, sponsor: null, sponsorYears: 0, sponsorAnnualIncome: 0, equipment: 1, history: [] };
+esportsSave.talents = { gaming: 95 };
+esportsSave.hobbies = [{ id: 'gaming', title: 'الألعاب', level: 5 }];
+esportsStore.set('hekayat_hayah_save_v1', JSON.stringify(esportsSave));
+const esportsElements = new Map();
+const esportsGet = id => { if (!esportsElements.has(id)) esportsElements.set(id, new FakeElement(id)); return esportsElements.get(id); };
+const esportsPanels = ['career','assets','relations','activities'].map(panel => { const el = new FakeElement(panel + 'EsportsNav'); el.dataset.panel = panel; return el; });
+const esportsContext = {
+  document: {
+    getElementById: esportsGet,
+    querySelectorAll(selector) { if (selector === '[data-panel]' || selector === '.navbtn') return esportsPanels; return []; },
+    createElement(tag) { return new FakeElement(tag); }
+  },
+  localStorage: {
+    getItem(key) { return esportsStore.has(key) ? esportsStore.get(key) : null; },
+    setItem(key, value) { esportsStore.set(key, String(value)); }
+  },
+  requestAnimationFrame(cb) { cb(); },
+  setTimeout(cb) { cb(); },
+  confirm() { return true; },
+  alert() {},
+  console
+};
+vm.runInNewContext(app, esportsContext, { timeout: 3000 });
+vm.runInNewContext('enterEsportsTournament()', esportsContext, { timeout: 3000 });
+const afterEsports = JSON.parse(esportsStore.get('hekayat_hayah_save_v1'));
+assert.equal(afterEsports.esportsCareer.tournaments, 1, 'entering a tournament should increment the tournament count');
+assert.equal(afterEsports.esportsCareer.history.length, 1, 'each tournament should be saved in the specialist history');
+assert.equal(afterEsports.specialCareer.record.attempts, 1, 'a tournament should count as a specialist career activity');
+assert.equal(afterEsports.specialCareer.record.wins + afterEsports.specialCareer.record.losses, 1, 'a tournament should record exactly one outcome');
+assert.equal(afterEsports.talents.gaming, 95, 'the gaming talent should persist through a tournament');
+
+console.log('Smoke tests passed: RTL/PWA shell, autosave recovery, legacy migration, unpaid tuition, and persisted esports tournament outcomes.');
