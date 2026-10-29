@@ -1209,3 +1209,94 @@ body.theme-gold .modal{border-color:#d3b45d}
 body.theme-gold .event-banner{background:#8b6618}
 body.theme-gold .logcard.special{background:#fff8dc;border-color:#e2cd86}
 body.theme-gold .sectiontitle:before{background:#c09522}
+
+
+/* حياة — تخطيط الهاتف المحسّن: هوية داكنة، بطاقة شخصية مضغوطة، وشريط عمر ثابت. */
+:root{
+  --brand:#0a0c10;--brand-dark:#080a0d;--brand-soft:#e8f3fa;--ink:#174b70;--text:#506571;--muted:#7e8d96;
+  --line:#d6e0e7;--paper:#fff;--page:#e7edf2;--blue:#17659c;--blue-dark:#0d4f80;--green:#19934d;
+  --green-dark:#137b3d;--gold:#f0c34b;--red:#cc3542;--life-nav:#075e9c;--life-stat-bg:#fff;
+  --life-stat-text:#21577c;--life-nav-active:#0a79bb;
+}
+.app{width:100%;max-width:500px;min-height:100dvh;display:flex;flex-direction:column;padding-bottom:205px;background:#fff;overflow:hidden;position:relative}
+.topbar{direction:ltr;display:flex;align-items:center;gap:8px;min-height:58px;padding:calc(7px + env(safe-area-inset-top)) 10px 7px;background:#07090d!important;color:#fff;box-shadow:none;border-bottom:1px solid #161b21}
+.menu-trigger,.header-action{width:38px;height:38px;flex:0 0 38px;border:1px solid #e5ebf055;border-radius:50%;color:#fff;background:#ffffff0d;font-size:20px;box-shadow:none}
+.brandlogo{direction:rtl;display:flex;align-items:center;justify-content:flex-start;gap:6px;min-width:0;flex:1 1 auto;text-align:start;font-size:23px;letter-spacing:0}
+.brandlogo strong{color:#f47739;font-weight:1000;text-shadow:none}
+.brandlogo .brand-symbol{width:31px;height:31px;flex:0 0 31px;display:grid;place-items:center;border-radius:50%;background:#fff;color:#f47739;border:0;box-shadow:none;font-size:18px}
+.membership-trigger{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0;flex:0 0 auto;min-width:68px;min-height:38px;padding:4px 8px;color:#fff;background:transparent;border:1.5px solid #f0f3f7;border-radius:999px;font-size:9px;line-height:1.05;font-weight:750;white-space:nowrap}
+.membership-trigger strong{color:#ffda44;font-size:13px;line-height:1.1}
+.top-actions{display:flex;align-items:center;justify-content:center;width:auto;min-width:0;flex:0 0 34px;gap:0}
+.top-actions .header-action{width:34px;height:34px;flex:0 0 34px}
+.hero{height:74px;min-height:74px;flex:0 0 74px;display:flex;flex-direction:row;direction:ltr;align-items:center;justify-content:space-between;gap:8px;padding:6px 12px;background:#e4ebf3;border-top:1px solid #c9d6e2;border-bottom:1px solid #bacbd8}
+.profile{display:flex;direction:rtl;align-items:center;gap:7px;min-width:0;flex:1}
+.avatar{position:absolute!important;left:-10000px!important;width:1px!important;height:1px!important;overflow:hidden!important;clip:rect(0,0,0,0)!important}
+.identity{display:flex;flex-direction:column;justify-content:center;gap:2px;min-width:0;flex:1}
+.identity-line{display:flex;align-items:center;justify-content:flex-start;gap:4px;min-width:0}
+.identity-flag{font-size:14px;flex:0 0 auto}
+.name{font-size:16px;font-weight:950;color:#11528b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.15}
+.identity-info{width:16px;height:16px;flex:0 0 16px;background:#0e6098;color:#fff;font-size:11px;border:0;border-radius:3px}
+.identity-role,.identity-meta{display:flex;align-items:center;gap:5px;margin:1px 0 0;font-size:10px;line-height:1.15;color:#50718a;min-width:0;flex-wrap:nowrap}
+.identity-role .role-tag{font-size:11px;color:#50718a}
+.identity-meta{font-size:8px}
+.wealth{display:flex;flex:0 0 auto;flex-direction:column;align-items:flex-end;justify-content:center;gap:2px;min-width:75px;max-width:120px;margin:0;padding:0;background:transparent;border:0;border-radius:0;box-shadow:none}
+.wealthnum{font-size:19px;font-weight:1000;line-height:1.05;color:#0c548c;letter-spacing:-.35px;white-space:nowrap;direction:ltr;text-align:right}
+.wealthlabel{font-size:10px;color:#50718a;font-weight:650}
+.wealthsmall{display:none!important}
+.feed{flex:1 1 auto;min-height:220px;height:auto;max-height:none;overflow-x:hidden;overflow-y:auto;padding:6px 14px 20px;background:#fff;overscroll-behavior:contain;scrollbar-width:thin}
+.agegroup{padding:13px 0 5px;margin:0;color:#15578a;font-size:14px;font-weight:900}
+.agegroup:after{display:none}
+.logcard,.logcard.good,.logcard.bad,.logcard.special{display:block;margin:0;padding:2px 0 5px;border:0;border-radius:0;background:#fff;box-shadow:none;animation:none}
+.logicon{display:none!important}.logcontent{display:block;min-width:0}
+.logtitle{font-size:13px;line-height:1.35;font-weight:800;color:#365b74;margin:0 0 2px;overflow-wrap:anywhere}
+.logtext{font-size:13px;line-height:1.48;color:#6c7980;margin:0;overflow-wrap:anywhere}
+.logcard.good .logtitle,.logcard.good .logtext{color:#2c7142}.logcard.bad .logtitle,.logcard.bad .logtext{color:#b3313d}
+.logcard.special .logtitle{color:#365b74}.logcard.special .logtext{color:#6c7980}
+.empty{border:0;border-radius:0;background:#fff;padding:18px 8px;color:#6c7980;line-height:1.75}
+.bottom-dock{position:fixed;left:50%;right:auto;bottom:0;transform:translateX(-50%);z-index:40;width:min(100%,500px);max-width:500px;margin:0;padding:0 0 env(safe-area-inset-bottom);display:flex;flex-direction:column;border:0;border-radius:0;background:#fff;box-shadow:0 -2px 9px #0a35500c}
+.bottom-dock .nav{order:0;height:82px;min-height:82px;flex:0 0 82px;padding:0 3px;display:grid;grid-template-columns:1fr 1fr clamp(80px,23vw,105px) 1fr 1fr;align-items:center;gap:0;overflow:visible;background:#075e9c;border-top:1px solid #0d72b2;border-bottom:0}
+.bottom-dock .navbtn{min-width:0;min-height:70px;padding:6px 1px 4px;border:0;border-radius:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;color:#e8f4fb;background:transparent;font-size:10px;font-weight:800;white-space:nowrap}
+.bottom-dock .navbtn .navico{display:grid;place-items:center;width:38px;height:38px;flex:0 0 38px;border-radius:50%;font-size:19px;line-height:1;color:#fff;background:#10b8c4;filter:none}
+.bottom-dock .navbtn:first-child .navico{background:#f18b31}
+.bottom-dock .navbtn.active{color:#fff;background:#ffffff12;box-shadow:inset 0 -3px 0 #ffcf42}
+.bottom-dock .navbtn.active .navico{filter:none}
+.bottom-dock .agebtn{position:relative;z-index:3;width:clamp(80px,23vw,105px);height:clamp(80px,23vw,105px);min-width:clamp(80px,23vw,105px);flex:0 0 clamp(80px,23vw,105px);margin-top:-25px;border:5px solid #fff;border-radius:50%;background:linear-gradient(180deg,#35a94d,#20883c);color:#fff;box-shadow:0 2px 6px #0b2d3e3d;font-size:14px;font-weight:1000;gap:0}
+.bottom-dock .agebtn span:first-child{font-size:34px;line-height:.98}
+.bottom-dock .agebtn:active{transform:scale(.96);background:linear-gradient(180deg,#2d9944,#176f30)}
+.bottom-dock .stats{order:1;display:flex;flex-direction:column;gap:4px;margin:0;padding:9px 10px 11px;border:0;border-top:2px solid #c5d5e1;border-radius:0;background:#fff}
+.bottom-dock .statrow{display:grid;grid-template-columns:86px minmax(0,1fr);align-items:center;gap:7px;height:17px;width:100%;min-width:0}
+.bottom-dock .stathead{width:auto;min-width:0;display:flex;align-items:center;justify-content:flex-start;margin:0}
+.bottom-dock .statlabel{font-size:10px;color:#1d5680;font-weight:900;white-space:nowrap}
+.bottom-dock .statbar{width:100%;min-width:0}
+.bottom-dock .track{position:relative;width:100%;height:16px;background:#dce6ef;border-radius:0;overflow:hidden}
+.bottom-dock .fill{position:absolute;top:0;left:0;right:auto;bottom:0;height:100%;border-radius:0;transition:width .25s ease}
+.bottom-dock .statvalue{position:absolute;inset:0;display:flex;align-items:center;justify-content:flex-end;padding-right:5px;color:#1a5685;text-shadow:none;font-size:10px;font-weight:950;direction:ltr}
+.drawer-head{background:#0b6098!important;height:56px;min-height:56px}
+.drawer-body .choicegrid{gap:0}
+.drawer-body .choice{border:0;border-bottom:1px solid #d2dce4;border-radius:0;background:#fff;padding:11px 3px;min-height:66px}
+.drawer-body .choice:active,.drawer-body .choice:hover{background:#f3f8fb;border-color:#c4d5e2}
+.drawer-body .choice .ctitle{font-size:13px;color:#215a82}
+.drawer-body .choice .cdesc{font-size:11px;color:#7c8992;line-height:1.5}
+.drawer-body .choice .choiceico{width:32px;font-size:23px}
+.drawer-section{margin:0 -13px;padding:7px 13px;background:#7d8185;color:#fff;text-align:center;font-weight:900;font-size:12px;line-height:1.25}
+@media(max-width:380px){
+ .topbar{gap:5px;padding-inline:6px}.menu-trigger{width:34px;height:34px;flex-basis:34px}
+ .brandlogo{font-size:20px;gap:4px}.brandlogo .brand-symbol{width:27px;height:27px;flex-basis:27px;font-size:15px}
+ .membership-trigger{min-width:59px;min-height:34px;padding:3px 5px;font-size:8px}.membership-trigger strong{font-size:12px}
+ .top-actions{flex-basis:30px}.top-actions .header-action{width:30px;height:30px;flex-basis:30px}
+ .hero{padding-inline:7px;gap:4px;height:70px;min-height:70px;flex-basis:70px}.name{font-size:14px}.identity-role .role-tag{font-size:10px}
+ .wealth{min-width:65px;max-width:88px}.wealthnum{font-size:16px}.wealthlabel{font-size:9px}
+ .bottom-dock .nav{height:75px;min-height:75px;flex-basis:75px;grid-template-columns:1fr 1fr 82px 1fr 1fr;padding-inline:1px}
+ .bottom-dock .navbtn{font-size:9px;min-height:65px;gap:3px}.bottom-dock .navbtn .navico{width:34px;height:34px;flex-basis:34px;font-size:17px}
+ .bottom-dock .agebtn{width:82px;height:82px;min-width:82px;flex-basis:82px;margin-top:-22px}.bottom-dock .agebtn span:first-child{font-size:30px}
+ .bottom-dock .stats{padding:8px 7px 10px;gap:4px}.bottom-dock .statrow{grid-template-columns:77px minmax(0,1fr);gap:5px;height:16px}
+ .bottom-dock .statlabel{font-size:9px}.bottom-dock .track{height:14px}.bottom-dock .statvalue{font-size:9px}
+ .app{padding-bottom:190px}
+}
+@media(max-height:650px){
+ .bottom-dock .nav{height:66px;min-height:66px;flex-basis:66px}.bottom-dock .navbtn{min-height:58px}
+ .bottom-dock .navbtn .navico{width:31px;height:31px;flex-basis:31px}.bottom-dock .agebtn{width:76px;height:76px;min-width:76px;flex-basis:76px}
+ .bottom-dock .agebtn span:first-child{font-size:29px}.bottom-dock .stats{padding-top:5px;padding-bottom:7px;gap:2px}
+ .bottom-dock .statrow{height:13px}.bottom-dock .track{height:11px}
+}
+@media(prefers-reduced-motion:reduce){.bottom-dock .agebtn,.bottom-dock .fill{transition:none!important}}
