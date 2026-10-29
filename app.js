@@ -429,13 +429,14 @@ function ageUp(){
    const salary=Math.round(state.job.salary*state.performance/100);state.bank+=salary;flash('+'+cash(salary));
    log('💼','دخل سنوي','استلمت '+cash(salary)+' من شغلك في '+state.job.title+'.','good');
    state.performance=clamp(state.performance+(chance(.58)?2:-1),20,100);
+   if(state.performance>=78&&state.age<60&&chance(.09)){const raise=Math.round(state.job.salary*.14);state.job.salary+=raise;state.performance=clamp(state.performance+3);state.job.title=state.job.title.startsWith('أول ')?state.job.title:('أول '+state.job.title);log('📈','ترقية مهنية','أداءك المتميز ساعدك تحصل على ترقية وزيادة سنوية '+cash(raise)+'.','good');achievement('الحصول على ترقية مهنية');}
  }
  if(state.age>=18&&!state.retired){
    const living=Math.round(9000+state.age*180);state.bank-=living;flash('-'+cash(living),true);
    log('🧾','مصاريف المعيشة','دفعت '+cash(living)+' لمصاريف السنة من أكل ومواصلات واحتياجات أساسية.');
  }
  if(assetUpkeep){state.bank-=assetUpkeep;flash('-'+cash(assetUpkeep),true);log('🔧','صيانة الأصول','صيانة ممتلكاتك كلّفتك '+cash(assetUpkeep)+'.','bad');}
- if(state.debt>0){const interest=Math.max(100,Math.round(state.debt*.08));state.debt+=interest;state.bank-=interest;log('🏦','فوائد الديون','زادت ديونك بمقدار '+cash(interest)+' بسبب الفوائد. إجمالي الدين '+cash(state.debt)+'.','bad');}
+ if(state.debt>0){const interest=Math.max(100,Math.round(state.debt*.08));state.debt+=interest;log('🏦','فوائد الديون','زادت ديونك بمقدار '+cash(interest)+' بسبب الفوائد. إجمالي الدين '+cash(state.debt)+'.','bad');}
  if((state.investments||[]).length){let totalGain=0;state.investments.forEach(inv=>{const before=inv.value;const move=inv.kind==='مخاطرة عالية'?(Math.random()*.46-.18):(Math.random()*.24-.04);inv.value=Math.max(0,Math.round(inv.value*(1+move)));totalGain+=inv.value-before;});if(totalGain)log('📈','تقرير الاستثمارات',(totalGain>=0?'استثماراتك زادت بقيمة ':'استثماراتك خسرت بقيمة ')+cash(Math.abs(totalGain))+'. السوق بيتحرك صعودًا وهبوطًا. ',totalGain>=0?'good':'bad');}
  if(state.business){const revenue=Math.round(state.business.value*(.03+Math.random()*.08));const costs=Math.round(state.business.value*(.02+Math.random()*.05));const profit=revenue-costs;state.bank+=profit;state.business.value=Math.max(1000,Math.round(state.business.value*(profit>=0?1.04:.97)));log('🏪','نتيجة المشروع',(profit>=0?'حققت أرباحًا ':'حققت خسارة ')+cash(Math.abs(profit))+' من مشروعك هذا العام.','special');}
  if((state.pets||[]).length){const care=state.pets.length*350;state.bank-=care;state.pets.forEach(p=>{p.age=(p.age||0)+1;p.happiness=clamp((p.happiness||70)+(chance(.7)?3:-6));});if(state.bank<0)log('🐾','مصاريف الحيوانات','رعاية الحيوانات كلفتك '+cash(care)+' هذا العام.','bad');}
@@ -493,6 +494,7 @@ function death(cause){
  $('modalRoot').innerHTML='<div class="overlay"><section class="modal"><div class="death"><div class="tomb">🪦</div><div class="deathtitle">انتهت حكاية '+esc(state.name)+'</div><div class="deathsub">عشت '+fmt(state.age)+' سنة.<br>سبب الوفاة: '+esc(cause)+'.<br>كل قرار ساب أثر، وكل سنة كانت فصل من قصتك.</div><div class="summarygrid"><div class="summarycell"><div class="summarylabel">الثروة النهائية</div><div class="summaryvalue">'+cash(net)+'</div></div><div class="summarycell"><div class="summarylabel">العمر</div><div class="summaryvalue">'+fmt(state.age)+' سنة</div></div><div class="summarycell"><div class="summarylabel">إنجازات</div><div class="summaryvalue">'+fmt(state.accomplishments.length)+'</div></div><div class="summarycell"><div class="summarylabel">الأصول</div><div class="summaryvalue">'+fmt(state.assets.length)+'</div></div></div><div class="listitem" style="text-align:right"><div class="listtitle">محطات من حياتك</div><div class="muted" style="margin-top:8px;line-height:2">'+achievements+'</div></div><button class="primarybtn" id="newLifeBtn">🌱 حياة جديدة</button><button class="smallbtn" id="reviewBtn" style="width:100%;margin-top:9px">راجع دفتر حياتك</button></div></section></div>';
  $('newLifeBtn').addEventListener('click',()=>{closeModal();if(confirm('تبدأ حياة جديدة وتستبدل الحفظ الحالي؟'))startNew();});
  $('reviewBtn').addEventListener('click',closeModal);
+ if((state.children||[]).length){const box=document.createElement('div');box.style.marginTop='9px';box.innerHTML='<div class="muted" style="margin:5px 0">شريط حياتك: '+esc(lifeRibbon())+'</div>'+(state.children.map((c,i)=>'<button class="smallbtn" data-heir="'+i+'" style="width:100%;margin-top:6px">🌳 استكمل كـ '+esc(c.name)+'</button>').join(''));$('modalRoot').appendChild(box);box.querySelectorAll('[data-heir]').forEach(btn=>btn.addEventListener('click',()=>startAsChild(Number(btn.dataset.heir))));}
 }
 function startNew(){
  state=newLife();dead=false;
@@ -623,8 +625,8 @@ function childMenu(i){
 function childAction(i,action){
  closeModal();const c=state.children[i];if(!c)return;
  let cost=action==='gift'?500:action==='school'?1000:0;if(state.bank<cost){info('💳','الرصيد مش كفاية','الاختيار محتاج '+cash(cost)+'.');return;}
- state.bank-=cost;let delta=action==='time'?8:action==='talk'?6:action==='gift'?11:4;c.relationshipLevel=clamp(c.relationshipLevel+delta);
- if(action==='school'){if(c.age<4){info('📚','لسه صغير','التعليم المنظم هيكون أنسب لما يكبر شوية.');return;}c.smart=clamp((c.smart||40)+5);}
+ if(action==='school'&&c.age<4){info('📚','لسه صغير','التعليم المنظم هيكون أنسب لما يكبر شوية.');return;}state.bank-=cost;let delta=action==='time'?8:action==='talk'?6:action==='gift'?11:4;c.relationshipLevel=clamp(c.relationshipLevel+delta);
+ if(action==='school'){c.smart=clamp((c.smart||40)+5);}
  if(action==='gift')stat('happiness',2);
  const text=action==='time'?'قضيت وقت مع '+c.name+' وبنيتوا ذكرى جديدة.':action==='talk'?'سمعت '+c.name+' باهتمام وخلّيته يحكي اللي مضايقه.':action==='gift'?'قدمت هدية لـ'+c.name+'.':'ساهمت في تعليم '+c.name+' وتنمية مهاراته.';
  log('👪','وقت مع الأسرة',text,'good');render();info('💞','العلاقة مع '+c.name,c.name+' بقى مستوى العلاقة بينكم '+c.relationshipLevel+'%.');
@@ -865,7 +867,9 @@ function startAsChild(index){
  if(!state.children[index])return;
  const previous=state,child=previous.children[index],oldPartner=previous.partner;
  const estate=Math.max(0,previous.bank)+previous.assets.reduce((sum,a)=>sum+(a.value||0),0)+previous.investments.reduce((sum,a)=>sum+(a.value||0),0);
- const heir=newLife();heir.name=child.name;heir.gender=child.gender||'male';heir.age=child.age||18;heir.place={...previous.place};heir.bank=estate;
+ const cashEstate=Math.max(0,previous.bank)+previous.investments.reduce((sum,a)=>sum+(a.value||0),0);
+ const share=previous.willDistribution==='الأبناء أولًا'?.9:previous.willDistribution==='الشريك أولًا'?.55:previous.willDistribution==='التبرع بجزء'?.65:.8;
+ const heir=newLife();heir.name=child.name;heir.gender=child.gender||'male';heir.age=child.age||18;heir.place={...previous.place};heir.bank=Math.round(cashEstate*share);
  heir.family=[...previous.family];heir.partner=null;heir.married=false;heir.children=[];heir.legacy={name:previous.name,inheritance:estate,heirloom:(previous.heirlooms||[])[0]?.name||null};
  heir.heirlooms=[...(previous.heirlooms||[])];heir.accomplishments=['بدأ حياة جديدة كامتداد لعائلة '+previous.name,'ورث '+cash(estate)];
  heir.job=null;heir.assets=previous.assets.map(a=>({...a,id:Date.now()+Math.random()}));heir.investments=previous.investments.map(a=>({...a,id:Date.now()+Math.random()}));
@@ -873,16 +877,58 @@ function startAsChild(index){
  state=heir;dead=false;log('🌳','استمرار السلالة','بدأت حياة جديدة باسم '+state.name+'، وارثًا قصة '+previous.name+' وإرث العائلة.','special');render();closeModal();info('🌳','جيل جديد','ورثت ثروة تقديرية '+cash(estate)+' وبعض مقتنيات العائلة. تبدأ الآن مرحلة مستقلة باختياراتك.');
 }
 function activities(){
- modal('✨','الأنشطة','اختار نشاط مناسب لسنك وميزانيتك. الأثر بيتراكم مع الوقت.',[
-  choice('🩺','زيارة الطبيب','تكلفة 1,200 جنيه، تستعيد جزءًا من الصحة.',()=>activity('doctor'),'1,200 ج.م'),
-  choice('🏋️','الجيم','تكلفة 300 جنيه، تحسن الصحة والمظهر.',()=>activity('gym'),'300 ج.م'),
+ modal('☰','الأنشطة والحياة اليومية','اختار أي جانب من حياتك تحب تديره. التغييرات بتتسجل تلقائيًا على جهازك.',[
+  choice('🩺','الصحة والعناية بالنفس','طبيب، جيم، راحة ونشاط بدني.',()=>healthMenu()),
+  choice('🎨','الهوايات والمهارات','ابدأ هواية أو زوّد مستواك.',()=>hobbiesMenu()),
+  choice('🐾','الحيوانات الأليفة','تبنّي حيوان أو الاهتمام بالحيوانات الحالية.',()=>petsMenu()),
+  choice('🌟','المهن الخاصة والشهرة','تمثيل وموسيقى ومحتوى ورياضة ومسارات مختلفة.',()=>specialCareers()),
+  choice('⚖️','الجريمة والسجل القانوني','قرارات خيالية عالية المخاطر لها عواقب.',()=>crimeMenu()),
+  choice('🌍','السفر والهجرة','إجازة أو انتقال لبلد جديدة.',()=>travelMenu()),
+  choice('📊','البنك والاستثمارات','قروض، سداد ديون ومحافظ استثمار.',()=>financeMenu()),
+  choice('👪','الأسرة والأبناء','إدارة العلاقة والزواج وتربية الأبناء.',()=>familyMenu()),
+  choice('🏆','الإنجازات والمقتنيات','إنجازاتك، الأشرطة الختامية والمكافأة اليومية.',()=>achievementsMenu()),
+  choice('🪪','ملف الشخصية','تعديل الاسم ورخصة القيادة وتصدير الحفظ.',()=>customizeMenu()),
+  choice('🩺','زيارة الطبيب','تكلفة 1,200 '+state.place.unit+'، تستعيد جزءًا من الصحة.',()=>activity('doctor'),'1,200 '+state.place.unit),
+  choice('🏋️','الجيم','تكلفة 300 '+state.place.unit+'، تحسن الصحة والمظهر.',()=>activity('gym'),'300 '+state.place.unit),
   choice('📚','المكتبة','نشاط مجاني يزيد الذكاء.',()=>activity('library'),'مجانًا'),
-  choice('🏖️','خروجة أو إجازة','تكلفة 1,800 جنيه لتحسين المزاج.',()=>activity('vacation'),'1,800 ج.م'),
-  choice('🤝','مساعدة مجتمعية','مساهمة بسيطة في وقتك.',()=>activity('volunteer'),'مجانًا'),
-  choice('⚖️','مخاطرة غير قانونية','مكسب محتمل مع خسارة أو تبعات قانونية.',()=>activity('crime')),
+  choice('🏖️','خروجة أو إجازة','تكلفة 1,800 '+state.place.unit+' لتحسين المزاج.',()=>activity('vacation'),'1,800 '+state.place.unit),
+  choice('🤝','مساعدة مجتمعية','نشاط مجاني لرفع السعادة والسمعة.',()=>activity('volunteer'),'مجانًا'),
   choice('💾','تصدير الحفظ','نزّل ملف JSON تحتفظ بيه.',exportSave),
   choice('🌱','حياة جديدة','استبدل الشخصية الحالية بشخصية مختلفة.',()=>{closeModal();info('🌱','حياة جديدة','هتبدأ حياة جديدة وتستبدل الحفظ الحالي.',[choice('↻','ابدأ من جديد','',()=>{closeModal();if(confirm('تبدأ حياة جديدة وتستبدل الحفظ الحالي؟'))startNew();}),choice('رجوع','أحتفظ بالحياة الحالية','',closeModal)]);})
  ]);
+}
+function healthMenu(){
+ modal('❤️','الصحة والعافية','حالتك الصحية بتتأثر بالعمر والعادات والعلاقات والمخاطر. دي أنشطة داخل اللعبة وليست نصيحة طبية.',[
+  choice('🩺','زيارة الطبيب','كشف مقابل 1,200 '+state.place.unit+'.',()=>activity('doctor'),'1,200 '+state.place.unit),
+  choice('🏋️','التمرين','مناسب من سن 12، يحسن اللياقة والمظهر.',()=>activity('gym'),'300 '+state.place.unit),
+  choice('🧘','تأمل وراحة','نشاط مجاني يقلل الضغط ويحسن المزاج.',()=>{closeModal();stat('happiness',5);stat('health',2);log('🧘','وقت للراحة','خصصت وقتًا للهدوء واستعادة طاقتك.','good');render();}),
+  choice('🛌','تنظيم النوم','يزود الصحة ويقلل آثار الإرهاق.',()=>{closeModal();stat('health',6);stat('happiness',2);log('🛌','نوم منتظم','حاولت تنظم النوم وتخفف السهر.','good');render();}),
+  choice('📚','معرفة صحية','تعلم عادات صحية بدون تكلفة.',()=>{closeModal();stat('smart',2);log('📚','تثقيف صحي','قرأت عن العادات اليومية المفيدة.');render();})
+ ]);
+}
+function financeMenu(){
+ const opts=[];
+ opts.push(choice('📊','الاستثمارات','أسهم ومحافظ تتغير قيمتها سنويًا.',investingMenu));
+ if(state.debt>0)opts.push(choice('💳','سداد الديون','إجمالي الدين '+cash(state.debt)+'.',repayDebt));
+ opts.push(choice('🏦','قرض طارئ','استلف 10,000 '+state.place.unit+' مع فائدة سنوية.',takeLoan,'10,000 '+state.place.unit));
+ opts.push(choice('💰','ملخص مالي','رصيد البنك '+cash(state.bank)+' · الديون '+cash(state.debt||0)+' · قيمة الأصول '+cash(state.assets.reduce((t,a)=>t+a.value,0)) ,()=>{closeModal();info('💰','ملخص مالي','صافي الثروة التقديري '+cash(state.bank+(state.assets||[]).reduce((t,a)=>t+a.value,0)+(state.investments||[]).reduce((t,a)=>t+a.value,0)-(state.debt||0))+'.');}));
+ modal('🏦','المال والديون','راقب صافي ثروتك، واحتفظ باحتياطي للطوارئ قبل الاستثمار.',opts);
+}
+function takeLoan(){
+ closeModal();if(state.age<18){info('🔒','القرض بعد 18 سنة','الاقتراض متاح للبالغين فقط.');return;}
+ state.bank+=10000;state.debt=(state.debt||0)+10000;log('🏦','قرض جديد','استلفت 10,000 '+state.place.unit+'. الفائدة السنوية 8% والدين مسؤولية لازم تسددها.','bad');render();info('🏦','تمت إضافة القرض','الرصيد زاد، لكن إجمالي ديونك بقى '+cash(state.debt)+'.');
+}
+function repayDebt(){
+ closeModal();const amount=Math.min(Math.max(0,state.bank),state.debt||0);if(amount<=0){info('💳','مفيش مبلغ متاح للسداد','الرصيد الحالي مش كافي للسداد.');return;}
+ modal('💳','سداد الديون','تقدر تسدد جزءًا من الدين أو تسدده بالكامل.',[
+  choice('💵','سداد 25%','تقليل الدين تدريجيًا.',()=>payDebt(Math.min(amount,Math.max(1000,Math.round(state.debt*.25))))),
+  choice('✅','سداد كل المتاح','سداد حتى رصيدك المتاح.',()=>payDebt(amount)),
+  choice('↩️','رجوع','',financeMenu)
+ ]);
+}
+function payDebt(amount){
+ closeModal();const paid=Math.min(amount,Math.max(0,state.bank),state.debt);if(paid<=0){info('💳','لا يوجد رصيد كافٍ','');return;}
+ state.bank-=paid;state.debt-=paid;log('💳','سداد دين','سددت '+cash(paid)+'. المتبقي من الدين '+cash(state.debt)+'.','good');render();info('💳','تم السداد','قللت ديونك، وده هيقلل ضغط الفوائد في السنوات القادمة.');
 }
 function activity(type){
  closeModal();
@@ -907,6 +953,8 @@ document.querySelectorAll('[data-panel]').forEach(btn=>btn.addEventListener('cli
  const p=btn.dataset.panel;if(p==='career')showCareer();if(p==='assets')assets();if(p==='relations')relations();if(p==='activities')activities();
 }));
 $('ageUpBtn').addEventListener('click',ageUp);
+if($('menuBtn'))$('menuBtn').addEventListener('click',()=>activities());
+if($('profileBtn'))$('profileBtn').addEventListener('click',()=>customizeMenu());
 function init(){
  state=load();
  if(state){dead=state.status==='متوفى';render();if(dead)death(state.cause||'نهاية رحلة الحياة');}
