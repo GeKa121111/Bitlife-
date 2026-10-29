@@ -6,9 +6,9 @@ const BACKUP_KEY = 'hekayat_hayah_save_backup_v1';
 const CEMETERY_KEY = 'hekayat_hayah_cemetery_v1';
 const SETTINGS_KEY = 'hayah_ui_settings_v1';
 const PERKS_KEY = 'hayah_permanent_perks_v1';
-const PERK_IDS = ['challengeVault','goldTheme','expandedTime','actorPack','bossMode','healthShield','goldenWrench','goldenPassport','goldenPiggyBank','goldenNeko','fameFortuneBundle','billionairesBundle','crimePaysBundle','partyAnimalBundle','hollywoodStar','goldenResume','goldenDiploma','friendshipBracelet','goldenPacifier','jailCard','businessPack','landlordPack','investorPack','mafiaPack','blackMarketPack','assassinsBlade','zooExpansionPack','superstarMode','cultPack','casinoPack','godMode','bitizenship','movieDirectorPack','dealerPack','auraRing','fighterPack','proAthletePack','politicianPack','astronautPack'];
+const PERK_IDS = ['challengeVault','goldTheme','expandedTime','actorPack','bossMode','healthShield','goldenWrench','goldenPassport','goldenPiggyBank','goldenNeko','fameFortuneBundle','billionairesBundle','crimePaysBundle','partyAnimalBundle','hollywoodStar','goldenResume','goldenDiploma','friendshipBracelet','goldenPacifier','jailCard','businessPack','landlordPack','investorPack','mafiaPack','blackMarketPack','assassinsBlade','zooExpansionPack','superstarMode','cultPack','casinoPack','godMode','bitizenship','movieDirectorPack','dealerPack','auraRing','fighterPack','proAthletePack','politicianPack','astronautPack','modelPack','musicianPack','musicProducerPack','vampireMode','outdoorsPack','gatedCommunityPack'];
 const PERK_TOGGLE_IDS = ['goldTheme','healthShield','goldenWrench','bossMode','goldenNeko','hollywoodStar','goldenResume','goldenPacifier','godMode','bitizenship'];
-const JOB_PACK_IDS = ['actorPack','fighterPack','proAthletePack','politicianPack','astronautPack','businessPack','dealerPack','mafiaPack','movieDirectorPack'];
+const JOB_PACK_IDS = ['actorPack','fighterPack','proAthletePack','politicianPack','astronautPack','businessPack','dealerPack','mafiaPack','movieDirectorPack','modelPack','musicianPack','musicProducerPack'];
 const JOB_PACK_PROMOS = {
  actorPack:{title:'Actor Job Pack',emoji:'🎭',cost:25000,description:'Are you the center of attention? Do you live for drama? Hire an agent, book an acting gig, and rise to fame with this job pack!',features:['Hire a professional agent!','Book auditions and acting gigs!','Film commercials and rise to fame!']},
  fighterPack:{title:'Ultimate Fighter Mode',emoji:'🥊',cost:45000,description:'Step into the cage and fight your way to the top!',features:['Become a WORLD CHAMPION!','Brawl in STREET FIGHTS!','LEARN and level up 200+ moves!','FIGHT in an epic MMA mini game!','Hire a PROFESSIONAL coach!','ENGAGE with other fighters!']},
@@ -19,7 +19,15 @@ const JOB_PACK_PROMOS = {
  dealerPack:{title:'Street Hustler Job Pack',emoji:'🃏',cost:70000,description:'Do you dream in dollar signs? Swindle the masses out of their riches with this job pack!',features:['Start out on the street!','Build your reputation and territory!','Work your way up to the top!']},
  mafiaPack:{title:'Mafia Job Pack',emoji:'🕶️',cost:70000,description:'Does being bad tempt you? Rise to notoriety and become Godfather!',features:['Join a fictional crime family!','Earn rank and reputation!','Try to become the Godfather!']},
  movieDirectorPack:{title:'Movie Director',emoji:'🎥',cost:65000,description:'Become the next legendary filmmaker!',features:['Direct movies across 11 different genres!','Hold auditions to find the perfect actors!','Deal with actor drama behind the scenes!','Win awards for your movies!','Showcase your movies at festivals!']},
- goldenDiploma:{title:'Golden Diploma',emoji:'🎓',cost:38000,description:'Become an overnight expert in the field of your dreams!',features:['Choose a university major instantly!','Unlock the highest education tier!','Improve eligibility for careers!']}
+ goldenDiploma:{title:'Golden Diploma',emoji:'🎓',cost:38000,description:'Become an overnight expert in the field of your dreams!',features:['Choose a university major instantly!','Unlock the highest education tier!','Improve eligibility for careers!']},
+ modelPack:{title:'Model Job Pack',emoji:'📸',cost:28000,description:'Are you a perfect 10 in a world full of 3s? Start your modeling career and strut your way to the top of the industry in this job pack!',features:['Book professional photo shoots!','Sign modeling contracts and campaigns!','Build your portfolio and fame!']},
+ musicianPack:{title:'Musician Job Pack',emoji:'🎼',cost:30000,description:'Are you the next Beyoncé, just waiting to be discovered? Sing your way to the top of the charts with this job pack!',features:['Record and release original songs!','Book gigs and performances!','Grow your fanbase and fame!']},
+ musicProducerPack:{title:'Music Producer Job Pack',emoji:'🎧',cost:35000,description:'Are you the next hit producer, just waiting to be discovered? Produce your way to the top of the charts with this job pack!',features:['Produce and release hit tracks!','Collaborate with musicians!','Build a production reputation!']}
+};
+const ACTIVITY_PACK_PROMOS = {
+ vampireMode:{title:'Vampire Mode',emoji:'🧛',cost:55000,theme:'vampire',description:'Enter a supernatural life of ancient secrets, hunters and immortal ambition.',features:['Absorb ESSENCE to grow stronger!','Survive VAMPIRE HUNTER encounters!','Build your own vampire bloodline!','Use HYPNOTIC charm on encounters!','Rise through the vampire ranks!','Strive to become a VAMPIRE LORD!']},
+ outdoorsPack:{title:'Outdoors Lifestyle',emoji:'🏕️',cost:45000,theme:'outdoors',description:'Get outside, explore the wilderness and make memories with the people you love.',features:['Purchase off-road vehicles and explore trails!','Search caves for lost treasure!','Take friends and family hiking and camping!','Go on fishing trips!','Discover wildlife and fill your handbook!']},
+ gatedCommunityPack:{title:'Gated Community',emoji:'🏙️',cost:90000,theme:'gated',description:'The upper echelon of life is waiting for you. Climb the social ladder and explore the luxury lifestyle.',features:['Own and vacation on private islands!','Enjoy the perks of secret societies!','Attend EXCLUSIVE VIP events!','Shop new luxury items!','Unlock more high-end experiences!']}
 };
 const fmt = n => new Intl.NumberFormat('ar-EG',{maximumFractionDigits:0}).format(Math.round(Number(n)||0));
 const cash = n => fmt(n)+' '+(state&&state.place?state.place.unit:'ج.م');
@@ -716,7 +724,7 @@ function section(title){return {section:true,title};}
 function choice(icon,title,desc,action,price='',progress=null,locked=false){return {icon,title,desc,action,price,progress,locked};}
 function modal(icon,title,desc,choices,closable=true,extra=''){
  const root=$('modalRoot');
- const isDrawer=['الدراسة والشغل','School','University','Class','Cliques','Faculty','الأصول','الأصول والمشتريات','العلاقات','العلاقات والأسرة','الأنشطة والحياة اليومية','السوشيال ميديا','التسوق'].includes(title)||SOCIAL_PLATFORM_CATALOG.some(p=>p.title===title);
+ const isDrawer=['الدراسة والشغل','School','University','Class','Cliques','Faculty','Activities','الأصول','الأصول والمشتريات','العلاقات','العلاقات والأسرة','الأنشطة والحياة اليومية','السوشيال ميديا','التسوق'].includes(title)||SOCIAL_PLATFORM_CATALOG.some(p=>p.title===title);
  const context=String(title||'')+' '+String(desc||'')+' '+String(extra||'');
  const symptom=/(عرض|أعراض|صداع|غثيان|حمى|حُمّى|زكام|سعال|ألم|وجع|دوخة|symptom|headache|nausea|flu|diagnosis)/i.test(context);
  const crime=/(جريمة|سرقة|سجن|مخدر|عصابة|شرطة|اختلاس|سطو|crime|robbery|prison)/i.test(context);
@@ -754,17 +762,17 @@ function modal(icon,title,desc,choices,closable=true,extra=''){
  const list=choices.map((c,i)=>{
   if(c&&c.section)return '<div class="list-section" role="heading" aria-level="2">'+esc(c.title||'')+'</div>';
   if(c&&c.banner)return '<button class="drawer-action-banner" data-i="'+i+'"><span class="banner-emoji">'+(c.icon||'🛍️')+'</span><span class="banner-copy"><strong>'+esc(c.title||'تسوّق الآن')+'</strong>'+(c.desc?'<small>'+esc(c.desc)+'</small>':'')+'</span></button>';
-  return '<button class="choice'+(c&&c.locked?' locked-choice':'')+'" data-i="'+i+'" '+(c&&c.disabled?'disabled':'')+'>'+
+  return '<button class="choice'+(c&&c.locked?' locked-choice':'')+(c&&c.cardClass?' '+esc(c.cardClass):'')+'" data-i="'+i+'" '+(c&&c.disabled?'disabled':'')+'>'+
    '<span class="choiceico">'+(c&&c.icon||'›')+'</span>'+
    '<span class="ctext"><span class="ctitle">'+esc(c&&(c.title||c.label)||'اختيار')+'</span>'+
    (c&&c.desc?'<span class="cdesc">'+esc(c.desc)+'</span>':'')+
    (c&&c.progress!==null&&c&&c.progress!==undefined&&Number.isFinite(Number(c.progress))?'<span class="choice-progress"><span style="width:'+clamp(c.progress)+'%"></span></span>':'')+
-   '</span>'+(c&&c.price?'<span class="price">'+esc(c.price)+'</span>':'')+
+   '</span>'+(c&&c.price?'<span class="price">'+esc(c.price)+'</span>':'')+(c&&c.stamp?'<span class="activity-pack-stamp">'+esc(c.stamp)+'</span>':'')+
    (isDrawer?(c&&c.menuDots?'<span class="choice-dots" aria-hidden="true">•••</span>':'<span class="choice-chevron" aria-hidden="true">›</span>'):'')+
   '</button>';
  }).join('');
  if(isDrawer){
-  root.innerHTML='<div class="overlay drawer-overlay" id="overlay"><section class="modal drawer'+(title==='School'?' school-screen':'')+'" role="dialog" aria-modal="true" aria-label="'+esc(title)+'"><div class="modalhead drawer-head"><div class="modalicon">'+icon+'</div><div class="modaltitle">'+esc(title)+'</div>'+(closable?'<button class="closebtn" id="closeModal" aria-label="إغلاق">×</button>':'')+'</div><div class="modalbody drawer-body">'+(desc?'<p class="desc">'+esc(desc)+'</p>':'')+extra+'<div class="choicegrid">'+list+'</div></div></section></div>';
+  root.innerHTML='<div class="overlay drawer-overlay" id="overlay"><section class="modal drawer'+(title==='School'?' school-screen':'')+(title==='Activities'?' activities-screen':'')+'" role="dialog" aria-modal="true" aria-label="'+esc(title)+'"><div class="modalhead drawer-head"><div class="modalicon">'+icon+'</div><div class="modaltitle">'+esc(title)+'</div>'+(closable?'<button class="closebtn" id="closeModal" aria-label="إغلاق">×</button>':'')+'</div><div class="modalbody drawer-body">'+(desc?'<p class="desc">'+esc(desc)+'</p>':'')+extra+'<div class="choicegrid">'+list+'</div></div></section></div>';
  }else{
   root.innerHTML='<div class="overlay event-overlay" id="overlay"><section class="modal event-modal banner-'+category+(isNotice?' notice-modal':'')+'" role="dialog" aria-modal="true" aria-label="'+esc(title)+'"><div class="event-banner banner-'+category+'"><span>'+categoryLabel+'</span>'+(closable?'<button class="closebtn" id="closeModal" aria-label="إغلاق">×</button>':'')+'</div><div class="event-summary"><div class="event-icon">'+icon+'</div><h2 class="event-title">'+esc(title)+'</h2>'+(desc?'<p class="desc">'+esc(desc)+'</p>':'')+(questionPrompt?'<div class="event-question">'+questionPrompt+'</div>':'')+'</div><div class="modalbody event-body">'+extra+'<div class="choicegrid">'+list+'</div>'+(showSurprise?'<button class="surprise-choice" id="surpriseChoice" type="button"><span aria-hidden="true">🎲</span> فاجئني!</button>':'')+'</div></section></div>';
  }
@@ -2510,7 +2518,9 @@ function esportsHistoryMenu(){
 function specialCareers(){
  const catalog=[
   {id:'actor',title:'Actor',emoji:'🎭',min:16,looks:50,income:14000,desc:'Auditions, acting gigs and new opportunities.',packId:'actorPack'},
-  {id:'musician',title:'Musician',emoji:'🎤',min:14,looks:25,income:11000,desc:'Train, release music and book performances.'},
+  {id:'model',title:'Model',emoji:'📸',min:16,looks:65,income:16000,desc:'Photo shoots, modeling contracts and fashion campaigns.',packId:'modelPack'},
+  {id:'musician',title:'Musician',emoji:'🎼',min:14,looks:25,income:11000,desc:'Record songs, book performances and build a fanbase.',packId:'musicianPack'},
+  {id:'musicProducer',title:'Music Producer',emoji:'🎧',min:18,looks:0,income:18000,desc:'Produce tracks, collaborate with artists and build a reputation.',packId:'musicProducerPack'},
   {id:'influencer',title:'Influencer',emoji:'📱',min:13,looks:30,income:7000,desc:'Post consistently and grow your audience.'},
   {id:'athlete',title:'Pro Athlete',emoji:'🏅',min:15,looks:0,income:18000,desc:'Fitness, training and championship competition.',packId:'proAthletePack'},
   {id:'esports',title:'الرياضات الإلكترونية',emoji:'🎮',min:16,looks:0,income:8500,desc:'بطولات تنافسية ورعايات تعتمد على المهارة والتدريب.'},
@@ -2541,10 +2551,10 @@ function specialCareers(){
 }
 
 function startSpecialCareer(c){
- const requiredPack=({actor:'actorPack',athlete:'proAthletePack',fighter:'fighterPack',director:'movieDirectorPack',politician:'politicianPack',astronaut:'astronautPack',crimeboss:'mafiaPack',dealer:'dealerPack'})[c.id]||c.packId;
+ const requiredPack=({actor:'actorPack',model:'modelPack',musician:'musicianPack',musicProducer:'musicProducerPack',athlete:'proAthletePack',fighter:'fighterPack',director:'movieDirectorPack',politician:'politicianPack',astronaut:'astronautPack',crimeboss:'mafiaPack',dealer:'dealerPack'})[c.id]||c.packId;
  if(requiredPack&&!perkOwned(requiredPack)){closeModal();showJobPackOffer(requiredPack,c);return;}
  closeModal();if(state.age<c.min){info('🔒','لسه بدري','المسار ده متاح من سن '+c.min+'.');return;}
- if(c.looks&&state.stats.looks<c.looks&&c.id==='actor'){info('🎭','طوّر مهاراتك','فرص التمثيل تزيد مع المظهر والتدريب، جرّب الهوايات والتدريب.');return;}
+ if(c.looks&&state.stats.looks<c.looks&&(c.id==='actor'||c.id==='model')){info('🎭','طوّر مهاراتك','فرص التمثيل والأزياء تزيد مع المظهر والتدريب، جرّب الهوايات والتدريب.');return;}
  if(state.specialCareer&&state.specialCareer.id===c.id){if(c.id==='fighter'){ensureCombatCareer();combatCareerMenu();}else if(c.id==='director'){ensureFilmStudio();filmStudioMenu();}else if(c.id==='esports'){ensureEsportsCareer();esportsCareerMenu();}else info('🌟','أنت بالفعل في المسار ده','كمل تدريبك وأنشطتك عشان تتقدم بدل ما تبدأ من الصفر.');return;}
  if(state.specialCareer){if(!Array.isArray(state.specialCareerHistory))state.specialCareerHistory=[];state.specialCareerHistory.unshift(Object.assign({},state.specialCareer,{record:Object.assign({},state.specialCareer.record||{}),history:(state.specialCareer.history||[]).slice(),combatProfile:state.specialCareer.id==='fighter'?JSON.parse(JSON.stringify(state.combatCareer||null)):null,filmProfile:state.specialCareer.id==='director'?JSON.parse(JSON.stringify(state.filmStudio||null)):null,esportsProfile:state.specialCareer.id==='esports'?JSON.parse(JSON.stringify(state.esportsCareer||null)):null,endedAge:state.age,ending:'تغيير المسار'}));state.specialCareerHistory=state.specialCareerHistory.slice(0,20);}
  state.specialCareer={id:c.id,title:c.title,income:c.income,level:1,startedAge:state.age,record:{attempts:0,wins:0,losses:0,projects:0,totalEarnings:0,bestLevel:1},history:[]};state.combatCareer=c.id==='fighter'?createCombatCareer():null;state.filmStudio=c.id==='director'?createFilmStudio():null;state.esportsCareer=c.id==='esports'?createEsportsCareer():null;if(c.id==='influencer'){state.socialMediaAccount=true;state.followers=Math.max(state.followers||0,100);state.socialMediaPosts=(state.socialMediaPosts||0)+1;}state.fame=clamp((state.fame||0)+4);if(perkEnabled('hollywoodStar'))state.fame=100;state.reputation=clamp((state.reputation||50)+2);achievement('بدأ مسار الشهرة: '+c.title);
@@ -2566,7 +2576,7 @@ function specialCareerActivity(){
  closeModal();if(!state.specialCareer){specialCareers();return;}if(state.specialCareer.id==='fighter'){combatCareerMenu();return;}if(state.specialCareer.id==='director'){filmStudioMenu();return;}if(state.specialCareer.id==='esports'){esportsCareerMenu();return;}
  const c=state.specialCareer;const level=Math.max(1,c.level||1);
  if(!c.record||typeof c.record!=='object')c.record={attempts:0,wins:0,losses:0,projects:0,totalEarnings:0,bestLevel:level};if(!Array.isArray(c.history))c.history=[];
- const costs={actor:7000,musician:3500,influencer:1800,athlete:1500,fighter:2200,writer:1500,director:12000};
+ const costs={actor:7000,model:2500,musician:3500,musicProducer:6000,influencer:1800,athlete:1500,fighter:2200,writer:1500,director:12000};
  const cost=costs[c.id]||1500;
  if(state.bank<cost){info('💳','الرصيد مش كفاية','النشاط الخاص محتاج '+cash(cost)+'.');return;}
  state.bank-=cost;
@@ -2575,8 +2585,12 @@ function specialCareerActivity(){
  let title='',text='';
  if(c.id==='actor'||c.id==='director'){
   title=c.id==='director'?'إنتاج فيلم جديد':'تصوير عمل فني';gain=success?Math.round(5000+Math.random()*30000+state.fame*180):0;fame=success?5+Math.floor(Math.random()*12):0;text=success?'العمل حقق استجابة إيجابية ووصل لجمهور أوسع.':'العمل ما حققش النجاح المتوقع، واتعلمت من التجربة.';
+ }else if(c.id==='model'){
+  title='جلسة تصوير أزياء';success=chance(Math.min(.92,.2+power*.17+state.stats.looks/260+level/80));gain=success?Math.round(3500+Math.random()*22000+state.fame*130):0;fame=success?4+Math.floor(Math.random()*12):0;text=success?'جلسة التصوير نجحت ووصل لك عرض لحملة أزياء جديدة.':'جلسة التصوير لم تجذب الاهتمام المتوقع؛ راجع ملف أعمالك وجرّب مرة أخرى.';
  }else if(c.id==='musician'){
   title='إصدار أغنية';gain=success?Math.round(1500+Math.random()*18000+state.fame*120):0;fame=success?4+Math.floor(Math.random()*10):0;text=success?'الأغنية انتشرت وبدأ يوصلك اهتمام جديد.':'التفاعل كان أقل من المتوقع، ومحتاج تطوّر أسلوبك.';
+ }else if(c.id==='musicProducer'){
+  title='إنتاج مقطوعة موسيقية';success=chance(Math.min(.9,.18+power*.2+state.stats.smart/450+level/90));gain=success?Math.round(3000+Math.random()*24000+state.fame*150):0;fame=success?4+Math.floor(Math.random()*11):0;text=success?'المقطوعة جذبت فنانًا جديدًا وجالك عرض تعاون وإنتاج.':'الإصدار لم يصل للجمهور المطلوب؛ تطوير المهارة والتعاون مع فنانين قد يساعدان.';
  }else if(c.id==='influencer'){
   title='نشر حملة محتوى';gain=success?Math.round(1000+Math.random()*11000+state.fame*100):0;fame=success?3+Math.floor(Math.random()*12):0;text=success?'المحتوى وصل لمتابعين أكتر وجالك عرض تعاون.':'المحتوى ما انتشرش بالشكل المتوقع.';
  }else if(c.id==='athlete'||c.id==='fighter'){
@@ -2592,11 +2606,11 @@ function specialCareerActivity(){
  }
  if(success&&gain>0)gain=Math.round(gain*specialCareerIncomeMultiplier());state.fame=clamp(state.fame+fame);const newLevel=clamp(level+(success?1:0),1,100);if(state.specialCareer)state.specialCareer.level=newLevel;
  c.record.attempts=(c.record.attempts||0)+1;c.record.wins=(c.record.wins||0)+(success?1:0);c.record.losses=(c.record.losses||0)+(success?0:1);
- if(['actor','director','musician','influencer','writer'].includes(c.id))c.record.projects=(c.record.projects||0)+1;
+ if(['actor','director','model','musician','musicProducer','influencer','writer'].includes(c.id))c.record.projects=(c.record.projects||0)+1;
  c.record.totalEarnings=(c.record.totalEarnings||0)+(success?gain:0);c.record.bestLevel=Math.max(c.record.bestLevel||1,newLevel);
  c.history.push({age:state.age,title,success,earnings:success?gain:0,fameGain:fame});if(c.history.length>20)c.history.shift();
  if(success){state.bank+=gain;state.reputation=clamp((state.reputation||50)+3);achievement('نشاط ناجح في '+c.title);}else{state.stats.happiness=clamp(state.stats.happiness-3);state.reputation=clamp((state.reputation||50)-2);}
- log(c.id==='director'?'🎥':c.id==='actor'?'🎬':c.id==='musician'?'🎤':c.id==='influencer'?'📱':c.id==='athlete'?'🏅':c.id==='fighter'?'🥊':'✍️',title,text+(success?' الدخل: '+cash(gain)+'.':''),success?'good':'bad');
+ log(c.id==='director'?'🎥':c.id==='actor'?'🎬':c.id==='model'?'📸':c.id==='musician'?'🎼':c.id==='musicProducer'?'🎧':c.id==='influencer'?'📱':c.id==='athlete'?'🏅':c.id==='fighter'?'🥊':'✍️',title,text+(success?' الدخل: '+cash(gain)+'.':''),success?'good':'bad');
  render();info(success?'⭐':'🔁',success?'نشاط ناجح':'تجربة جديدة',text+(success?' الشهرة الحالية '+state.fame+'%.':' جرب التدريب أو نشاطًا مختلفًا في المرة القادمة.'));
 }
 function tryAudition(){
@@ -3669,6 +3683,12 @@ function premiumPerksMenu(){
   {id:'proAthletePack',title:'Pro Athlete Job Pack',emoji:'🏀',cost:35000,desc:'افتح مسار الرياضة الاحترافية.'},
   {id:'politicianPack',title:'Politician Job Pack',emoji:'🏛️',cost:30000,desc:'افتح مسار الحياة السياسية.'},
   {id:'astronautPack',title:'Astronaut Job Pack',emoji:'🧑‍🚀',cost:50000,desc:'افتح مسار استكشاف الفضاء.'},
+  {id:'modelPack',title:'Model Job Pack',emoji:'📸',cost:28000,desc:'جلسات تصوير وعقود أزياء وحملات تجارية.'},
+  {id:'musicianPack',title:'Musician Job Pack',emoji:'🎼',cost:30000,desc:'تسجيل أغاني وحفلات وبناء جمهور موسيقي.'},
+  {id:'musicProducerPack',title:'Music Producer Job Pack',emoji:'🎧',cost:35000,desc:'إنتاج مقطوعات موسيقية وتعاونات مع الفنانين.'},
+  {id:'vampireMode',title:'Vampire Mode',emoji:'🧛',cost:55000,desc:'قصة خارقة للطبيعة مع جوهر مصاصي الدماء والصيادين وتكوين سلالة.'},
+  {id:'outdoorsPack',title:'Outdoors Lifestyle',emoji:'🏕️',cost:45000,desc:'مركبات وعرة ورحلات تخييم وصيد واستكشاف الحياة البرية.'},
+  {id:'gatedCommunityPack',title:'Gated Community',emoji:'🏙️',cost:90000,desc:'جزر خاصة ومجتمعات سرية وفعاليات VIP وتجارب رفاهية.'},
   {id:'bossMode',title:'مركز المهن الشامل',emoji:'🧰',cost:45000,desc:'لوحة للمهن الخاصة وعلاوة دخل 10% عند التفعيل.'},
   {id:'healthShield',title:'درع العافية',emoji:'🩺',cost:18000,desc:'يمنع عدوى محاكية في خيار اختياري للبالغين داخل اللعبة.'},
   {id:'goldenWrench',title:'الورشة الذهبية',emoji:'🔧',cost:20000,desc:'صيانة السيارات مجانًا مع الحفاظ على حالتها.'},
@@ -3691,7 +3711,7 @@ function premiumPerksMenu(){
   if(item.id==='streakSaver')return choice(item.emoji,item.title+' · المتبقي '+(permanentPerks.streakSavers||0),item.desc+' التكلفة '+cash(item.cost)+'.',()=>buyPremiumPerk(item.id),cash(item.cost));
   if(perkOwned(item.id)){
    if(PERK_TOGGLE_IDS.includes(item.id))return choice(perkEnabled(item.id)?'🟢':'⚪',item.title+(perkEnabled(item.id)?' · مفعّل':' · متوقف'),item.desc,()=>togglePremiumPerk(item.id));
-   const actions={challengeVault:challengeVaultMenu,expandedTime:timeMachineMenu,actorPack:actorPackMenu,bossMode:bossModeMenu,superstarMode:()=>togglePremiumPerk('goldTheme'),zooExpansionPack:zooMenu,mafiaPack:mafiaMenu,blackMarketPack:blackMarketMenu,assassinsBlade:assassinBladeMission,goldenDiploma:goldenDiplomaMenu,businessPack:companyPortfolioMenu,landlordPack:landlordPortfolioMenu,investorPack:investingMenu,cultPack:cultMenu,casinoPack:casinoMenu,godMode:godModeMenu,bitizenship:bitizenshipMenu,movieDirectorPack:movieDirectorMenu,dealerPack:dealerMenu,auraRing:auraRingMenu,fighterPack:()=>openJobPackDestination('fighterPack'),proAthletePack:()=>openJobPackDestination('proAthletePack'),politicianPack:()=>openJobPackDestination('politicianPack'),astronautPack:()=>openJobPackDestination('astronautPack')};
+   const actions={challengeVault:challengeVaultMenu,expandedTime:timeMachineMenu,actorPack:actorPackMenu,bossMode:bossModeMenu,superstarMode:()=>togglePremiumPerk('goldTheme'),zooExpansionPack:zooMenu,mafiaPack:mafiaMenu,blackMarketPack:blackMarketMenu,assassinsBlade:assassinBladeMission,goldenDiploma:goldenDiplomaMenu,businessPack:companyPortfolioMenu,landlordPack:landlordPortfolioMenu,investorPack:investingMenu,cultPack:cultMenu,casinoPack:casinoMenu,godMode:godModeMenu,bitizenship:bitizenshipMenu,movieDirectorPack:movieDirectorMenu,dealerPack:dealerMenu,auraRing:auraRingMenu,fighterPack:()=>openJobPackDestination('fighterPack'),proAthletePack:()=>openJobPackDestination('proAthletePack'),politicianPack:()=>openJobPackDestination('politicianPack'),astronautPack:()=>openJobPackDestination('astronautPack'),modelPack:()=>openJobPackDestination('modelPack'),musicianPack:()=>openJobPackDestination('musicianPack'),musicProducerPack:()=>openJobPackDestination('musicProducerPack'),vampireMode:()=>openActivityPackDestination('vampireMode'),outdoorsPack:()=>openActivityPackDestination('outdoorsPack'),gatedCommunityPack:()=>openActivityPackDestination('gatedCommunityPack')};
    return choice('✅',item.title+' · مفتوح',item.desc,actions[item.id]||(()=>info(item.emoji,item.title,item.desc)));
   }
   return choice(item.emoji,item.title,item.desc+' شراء مرة واحدة من رصيد اللعبة: '+cash(item.cost)+'.',()=>buyPremiumPerk(item.id),cash(item.cost));
@@ -3708,6 +3728,8 @@ function buyPremiumPerk(id){
  const catalog={
   fameFortuneBundle:{cost:135000,title:'باقة الشهرة والثروة'},billionairesBundle:{cost:160000,title:'باقة الملياردير'},crimePaysBundle:{cost:145000,title:'باقة عالم الجريمة'},partyAnimalBundle:{cost:175000,title:'باقة الحيوان الحفّال'},
   fighterPack:{cost:45000,title:'Ultimate Fighter Mode'},proAthletePack:{cost:35000,title:'Pro Athlete Job Pack'},politicianPack:{cost:30000,title:'Politician Job Pack'},astronautPack:{cost:50000,title:'Astronaut Job Pack'},
+  modelPack:{cost:28000,title:'Model Job Pack'},musicianPack:{cost:30000,title:'Musician Job Pack'},musicProducerPack:{cost:35000,title:'Music Producer Job Pack'},
+  vampireMode:{cost:55000,title:'Vampire Mode'},outdoorsPack:{cost:45000,title:'Outdoors Lifestyle'},gatedCommunityPack:{cost:90000,title:'Gated Community'},
   challengeVault:{cost:22000,title:'خزنة التحديات'},goldTheme:{cost:16000,title:'الطابع الذهبي'},streakSaver:{cost:8000,title:'حماة السلسلة'},expandedTime:{cost:30000,title:'ذاكرة الزمن الموسّعة'},businessPack:{cost:60000,title:'حزمة الأعمال'},landlordPack:{cost:55000,title:'توسعة العقارات والملاك'},investorPack:{cost:55000,title:'حزمة المستثمر'},cultPack:{cost:72000,title:'توسعة الطائفة والمجتمع'},casinoPack:{cost:95000,title:'توسعة الكازينو'},godMode:{cost:110000,title:'وضع الإله'},bitizenship:{cost:85000,title:'عضوية المواطن Bitizen'},movieDirectorPack:{cost:65000,title:'حزمة مخرج الأفلام'},dealerPack:{cost:70000,title:'حزمة التاجر'},auraRing:{cost:32000,title:'خاتم الهالة'},
   actorPack:{cost:25000,title:'حزمة التمثيل الاحترافية'},bossMode:{cost:45000,title:'مركز المهن الشامل'},healthShield:{cost:18000,title:'درع العافية'},goldenWrench:{cost:20000,title:'الورشة الذهبية'},
   goldenPassport:{cost:30000,title:'جواز العالم'},goldenPiggyBank:{cost:75000,title:'حصالة المليون'},goldenNeko:{cost:55000,title:'تميمة الازدهار'},hollywoodStar:{cost:60000,title:'نجم هوليوود'},
@@ -3804,10 +3826,14 @@ function routePack(id,openAction){
  closeModal();
  if(perkOwned(id)){openAction();return;}
  if(JOB_PACK_PROMOS[id]){showJobPackOffer(id);return;}
+ if(ACTIVITY_PACK_PROMOS[id]){showActivityPackOffer(id);return;}
  premiumPerksMenu();
 }
 function openJobPackDestination(id){
  if(id==='goldenDiploma'){goldenDiplomaMenu();return;}if(id==='actorPack'){actorPackMenu();return;}if(id==='movieDirectorPack'){movieDirectorMenu();return;}if(id==='businessPack'){companyPortfolioMenu();return;}if(id==='dealerPack'){dealerMenu();return;}if(id==='mafiaPack'){mafiaMenu();return;}if(id==='bossMode'){bossModeMenu();return;}
+ if(id==='modelPack'){startSpecialCareer({id:'model',title:'Model',emoji:'📸',min:16,looks:65,income:16000,desc:'Photo shoots, modeling contracts and fashion campaigns.'});return;}
+ if(id==='musicianPack'){startSpecialCareer({id:'musician',title:'Musician',emoji:'🎼',min:14,looks:25,income:11000,desc:'Record songs, book performances and build a fanbase.'});return;}
+ if(id==='musicProducerPack'){startSpecialCareer({id:'musicProducer',title:'Music Producer',emoji:'🎧',min:18,looks:0,income:18000,desc:'Produce tracks, collaborate with artists and build a reputation.'});return;}
  const careers={
   fighterPack:{id:'fighter',title:'Professional Fighter',emoji:'🥊',min:18,looks:0,income:22000,desc:'Training, tactical choices and high-risk competitions.'},
   proAthletePack:{id:'athlete',title:'Pro Athlete',emoji:'🏅',min:15,looks:0,income:18000,desc:'Fitness, training and championship competition.'},
@@ -3826,53 +3852,224 @@ function showJobPackOffer(id,career){
  overlay.addEventListener('click',e=>{if(e.target===overlay)close();});$('jobPackClose').addEventListener('click',close);
  const select=choiceId=>{selected=choiceId;packCard.classList.toggle('selected',selected===id);bossCard.classList.toggle('selected',selected==='bossMode');price.textContent=cash(selected==='bossMode'?45000:pack.cost);};
  packCard.addEventListener('click',()=>select(id));bossCard.addEventListener('click',()=>select('bossMode'));
- $('jobPackBuy').addEventListener('click',()=>buyPremiumPerk(selected,()=>{if(career){startSpecialCareer(career);return;}openJobPackDestination(selected==='bossMode'?id:selected);}));
+ $('jobPackBuy').addEventListener('click',()=>buyPremiumPerkWithAction(selected,()=>{if(career){startSpecialCareer(career);return;}openJobPackDestination(selected==='bossMode'?id:selected);}));
  $('jobPackRestore').addEventListener('click',()=>{permanentPerks=loadPermanentPerks();if(perkOwned(id)||perkOwned('bossMode')){close();if(career)startSpecialCareer(career);else openJobPackDestination(id);}else{close();info('↻','No previous purchase found','Job packs in this version are unlocked with in-game currency saved on this device. There are no external payments to restore.');}});
 }
 function showMovieDirectorOffer(){showJobPackOffer('movieDirectorPack');}
 
-function activities(){
- const opts=[
-  section('Premium Activities'),
-  choice('🎬','Movie Director','Become a famous movie director!',()=>routePack('movieDirectorPack',movieDirectorMenu),'',null,!perkOwned('movieDirectorPack')),
-  choice('🌿','Outdoor Lifestyle','Spend time with Mother Nature.',()=>{closeModal();hobbiesMenu();},'',null,false),
-  choice('💎','Luxury Lifestyle','Wealth and luxury purchases.',()=>{closeModal();assets();},'',null,false),
-  choice('🎰','Casino','Start your own casino.',()=>routePack('casinoPack',casinoMenu),'',null,!perkOwned('casinoPack')),
-  choice('🕶️','Black Market','Shop for contraband and manage a museum.',()=>routePack('blackMarketPack',blackMarketMenu),'',null,!perkOwned('blackMarketPack')),
-  choice('🕯️','Commune','Start a cult.',()=>routePack('cultPack',cultMenu),'',null,!perkOwned('cultPack')),
-  choice('🏁','Racing','Participate in races.',()=>{closeModal();specialCareers();},'',null,true),
-  choice('🕵️','Secret Agent','Start your own spy agency.',()=>{closeModal();premiumPerksMenu();},'',null,true),
-  choice('🦁','Zoo','Purchase a zoo.',()=>routePack('zooExpansionPack',zooMenu),'',null,!perkOwned('zooExpansionPack')),
-  section('Activities'),
-  choice('🩺','الصحة والعناية بالنفس','طبيب، جيم، راحة ونشاط بدني.',()=>healthMenu()),
-  choice('🎨','الهوايات والمهارات','ابدأ هواية أو زوّد مستواك.',()=>hobbiesMenu()),
-  choice('🐾','الحيوانات الأليفة','تبنّي حيوان أو الاهتمام بالحيوانات الحالية.',()=>petsMenu()),
-  choice('🌟','المهن الخاصة والشهرة','تمثيل وموسيقى ومحتوى ورياضة ومسارات مختلفة.',()=>specialCareers()),
-  choice('⚖️','الجريمة والسجل القانوني','قرارات خيالية عالية المخاطر لها عواقب.',()=>crimeMenu()),
-  choice('🌍','السفر والهجرة','إجازة أو انتقال لبلد جديدة.',()=>travelMenu()),
-  choice('👪','الأسرة والأبناء','إدارة العلاقة والزواج وتربية الأبناء.',()=>familyMenu()),
-  choice('💈','الصالون والمظهر','قص الشعر والملابس وتغيير الإطلالة.',()=>salonMenu()),
-  choice('🎬','السينما','اختر فيلمًا لوقت ترفيه قصير.',()=>cinemaMenu()),
-  choice('🩺','زيارة الطبيب','تكلفة 1,200 '+state.place.unit+'، تستعيد جزءًا من الصحة.',()=>activity('doctor'),'1,200 '+state.place.unit),
-  choice('🏋️','الجيم','تكلفة 300 '+state.place.unit+'، تحسن الصحة والمظهر.',()=>activity('gym'),'300 '+state.place.unit),
-  choice('📚','المكتبة','نشاط مجاني يزيد الذكاء.',()=>activity('library'),'مجانًا'),
-  choice('🏖️','خروجة أو إجازة','تكلفة 1,800 '+state.place.unit+' لتحسين المزاج.',()=>activity('vacation'),'1,800 '+state.place.unit),
-  choice('🤝','مساعدة مجتمعية','نشاط مجاني لرفع السعادة والسمعة.',()=>activity('volunteer'),'مجانًا'),
-  choice('🎟️','اليانصيب','تذكرة 100 '+state.place.unit+'؛ مكسب نادر وخسارة غالبًا.',()=>activity('lottery'),'100 '+state.place.unit),
-  choice('🌃','الحياة الليلية','خروجة من سن 18 مقابل 1,200 '+state.place.unit+'.',()=>activity('nightlife'),'1,200 '+state.place.unit),
-  choice('❤️','تبرّع خيري','ساهم بـ1,000 '+state.place.unit+' لرفع السمعة والسعادة.',()=>activity('donate'),'1,000 '+state.place.unit),
-  section('Misc.'),
-  choice('📊','البنك والاستثمارات','قروض، سداد ديون ومحافظ استثمار.',()=>financeMenu()),
-  choice('🏆','الإنجازات والمقتنيات','إنجازاتك، الأشرطة الختامية والمكافأة اليومية.',()=>achievementsMenu()),
-  choice('✨','متجر مزايا حياة','مزايا دائمة ومسارات إضافية ومكافآت داخل اللعبة.',premiumPerksMenu),
-  choice('🪪','ملف الشخصية','تعديل الاسم ورخصة القيادة وتصدير الحفظ.',()=>customizeMenu()),
-  choice('📱','السوشيال ميديا','حسابات ومحتوى ومتابعون وتعاونات.',()=>socialMediaMenu()),
-  choice('💾','تصدير الحفظ','نزّل ملف JSON تحتفظ بيه.',exportSave),
-  choice('🌱','حياة جديدة','ابدأ قصة جديدة مع اختيار عشوائي أو تخصيص بلد الميلاد والنوع.',()=>{closeModal();info('🌱','حياة جديدة','هتبدأ حياة جديدة وتستبدل الحفظ الحالي.',[choice('↻','تابع','',()=>{closeModal();if(confirm('تبدأ حياة جديدة وتستبدل الحفظ الحالي؟'))newLifeSetup();}),choice('رجوع','أحتفظ بالحياة الحالية','',closeModal)]);})
- ];
- modal('☰','الأنشطة والحياة اليومية','اختار أي جانب من حياتك تحب تديره. التغييرات بتتسجل تلقائيًا على جهازك.',opts);
+function openActivityPackDestination(id){
+ if(!perkOwned(id)){showActivityPackOffer(id);return;}
+ if(id==='vampireMode'){vampireModeMenu();return;}
+ if(id==='outdoorsPack'){outdoorLifestyleMenu();return;}
+ if(id==='gatedCommunityPack'){gatedCommunityMenu();return;}
+ premiumPerksMenu();
 }
-
+function showActivityPackOffer(id){
+ const pack=ACTIVITY_PACK_PROMOS[id];if(!pack){premiumPerksMenu();return;}
+ if(perkOwned(id)){openActivityPackDestination(id);return;}
+ const root=$('modalRoot'),theme=pack.theme;
+ const bullet=theme==='vampire'?'🩸':theme==='outdoors'?'🐾':'✦';
+ const features=pack.features.map(f=>'<div class="activity-pack-feature"><span>'+bullet+'</span><strong>'+esc(f)+'</strong></div>').join('');
+ const art=theme==='outdoors'?'🏞️　🏕️　🛻　🌲':theme==='gated'?'🏝️　🏙️　✨':'🦇　🌕　🦇';
+ const logo=theme==='vampire'?'VAMPIRE MODE':theme==='outdoors'?'OUTDOORS LIFESTYLE':'GATED COMMUNITY';
+ root.innerHTML='<div class="overlay activity-pack-offer-overlay activity-theme-'+theme+'" id="activityPackOfferOverlay"><button class="activity-pack-close" id="activityPackClose" type="button" aria-label="Close">×</button><section class="activity-pack-panel" role="dialog" aria-modal="true" aria-label="'+esc(pack.title)+'"><div class="activity-pack-hero"><span class="activity-pack-new">NEW</span><div class="activity-pack-art" aria-hidden="true">'+art+'</div><div class="activity-pack-symbol">'+pack.emoji+'</div><div class="activity-pack-logo">'+logo+'</div><p>'+esc(pack.description)+'</p></div><div class="activity-pack-features">'+features+'</div><div class="activity-pack-actions"><button class="activity-pack-buy" id="activityPackBuy" type="button"><span>Get it now!</span><small>'+cash(pack.cost)+' · in-game currency</small></button><button class="activity-pack-restore" id="activityPackRestore" type="button">restore earlier purchase</button></div></section></div>';
+ const close=()=>{root.innerHTML='';},overlay=$('activityPackOfferOverlay');
+ overlay.addEventListener('click',e=>{if(e.target===overlay)close();});$('activityPackClose').addEventListener('click',close);
+ $('activityPackBuy').addEventListener('click',()=>buyPremiumPerkWithAction(id,()=>{close();openActivityPackDestination(id);}));
+ $('activityPackRestore').addEventListener('click',()=>{permanentPerks=loadPermanentPerks();if(perkOwned(id)){close();openActivityPackDestination(id);}else{close();info('↻','No previous purchase found','These packs use in-game currency saved on this device. There are no external payments to restore.');}});
+}
+function refreshVampireRank(vampire){
+ const essence=Math.max(0,Number(vampire.essence)||0);
+ vampire.rank=essence>=300?'Vampire Lord':essence>=150?'Ancient Vampire':essence>=50?'Night Stalker':essence>0?'Newborn Vampire':'Fledgling';
+ return vampire.rank;
+}
+function vampireModeMenu(){
+ if(!perkOwned('vampireMode')){closeModal();showActivityPackOffer('vampireMode');return;}
+ const vampire=state.vampireMode||(state.vampireMode={isVampire:false,essence:0,bloodline:0,hypnosis:0,hunterEncounters:0,rank:'Human'});
+ vampire.essence=Math.max(0,Number(vampire.essence)||0);vampire.bloodline=Math.max(0,Number(vampire.bloodline)||0);
+ const opts=[];
+ if(!vampire.isVampire){
+  opts.push(choice('🧛','Become a Vampire','Enter the supernatural storyline and unlock vampire actions.',()=>{
+   closeModal();vampire.isVampire=true;vampire.rank=refreshVampireRank(vampire);stat('happiness',3);log('🦇','A supernatural change','You chose to become a vampire in the fictional life simulation.','special');save();render();info('🧛','Vampire Mode','Your new supernatural storyline has begun.');
+  }));
+ }else{
+  opts.push(choice('🩸','Absorb Essence','Gain essence and progress toward higher vampire ranks. Hunters may occasionally appear.',()=>{
+   closeModal();const gain=12+Math.floor(Math.random()*19);vampire.essence+=gain;vampire.rank=refreshVampireRank(vampire);let message='You absorbed '+gain+' essence and reached the '+vampire.rank+' rank.';
+   if(chance(.22)){vampire.hunterEncounters++;stat('health',-8);message+=' A vampire hunter appeared, leaving you exhausted.';}
+   log('🩸','Essence absorbed',message,'special');save();render();info('🩸','Essence gained',message);
+  }));
+  opts.push(choice('🌀','Use Hypnotic Charm','A fictional supernatural encounter that can improve your mood and charisma.',()=>{
+   closeModal();vampire.hypnosis++;vampire.essence+=8;vampire.rank=refreshVampireRank(vampire);stat('happiness',3);state.reputation=clamp((state.reputation||50)+1);
+   log('🌀','Hypnotic Charm','Your supernatural charm worked in a fictional encounter. Essence +8.','good');save();render();vampireModeMenu();
+  }));
+  opts.push(choice('🧛‍♀️','Grow the Vampire Bloodline','Grow your fictional vampire family and deepen the storyline.',()=>{
+   closeModal();vampire.bloodline++;vampire.essence+=15;vampire.rank=refreshVampireRank(vampire);stat('happiness',4);
+   log('🧛‍♀️','Vampire Bloodline','Your vampire bloodline grew. Total lineage '+vampire.bloodline+'.','special');save();render();vampireModeMenu();
+  }));
+  opts.push(choice('🦇','Encounter Vampire Hunters','A risky fictional encounter. Resolve it with your current essence and health.',()=>{
+   closeModal();vampire.hunterEncounters++;const won=chance(Math.min(.9,.28+vampire.essence/450+state.stats.smart/250));
+   if(won){vampire.essence+=22;state.reputation=clamp(state.reputation+3);log('🦇','Hunter encounter','You escaped the encounter and gained 22 essence.','good');}
+   else{stat('health',-14);stat('happiness',-4);log('🦇','Hunter encounter','You escaped but were hurt and lost some confidence.','bad');}
+   vampire.rank=refreshVampireRank(vampire);save();render();info(won?'🏆':'🩹',won?'Hunters outsmarted':'A narrow escape','Current rank: '+vampire.rank+' · essence '+vampire.essence+'.');
+  }));
+  opts.push(choice('🌅','Return to Human Life','Leave the supernatural storyline. Your life save remains intact.',()=>{
+   closeModal();vampire.isVampire=false;vampire.rank='Human';log('🌅','Returned to ordinary life','You left Vampire Mode without resetting your life save.');save();render();info('🌅','Back to ordinary life','Your vampire progress is saved if you choose to return.');
+  }));
+ }
+ opts.push(choice('📊','Vampire Handbook','Rank '+(vampire.isVampire?refreshVampireRank(vampire):'Human')+' · Essence '+vampire.essence+' · Bloodline '+vampire.bloodline+' · Hunter encounters '+vampire.hunterEncounters+'.',()=>{closeModal();info('📊','Vampire Handbook','Mode '+(vampire.isVampire?'active':'inactive')+' · rank '+vampire.rank+' · essence '+vampire.essence+' · bloodline '+vampire.bloodline+' · hypnosis '+vampire.hypnosis+'.');}));
+ opts.push(choice('↩️','Back to Activities','',()=>{closeModal();activities();}));
+ modal('🧛','Vampire Mode','A fictional supernatural expansion. Your rank rises as you collect essence and grow your bloodline.',opts);
+}
+function outdoorLifestyleMenu(){
+ if(!perkOwned('outdoorsPack')){closeModal();showActivityPackOffer('outdoorsPack');return;}
+ const outdoors=state.outdoors||(state.outdoors={vehicle:false,trips:0,treasures:0,fishingTrips:0,wildlife:[],islandTrips:0});
+ if(!Array.isArray(outdoors.wildlife))outdoors.wildlife=[];
+ const opts=[
+  choice(outdoors.vehicle?'🛻':'🚙',outdoors.vehicle?'Explore in Your Off-Road Vehicle':'Purchase an Off-Road Vehicle',outdoors.vehicle?'Vehicle ready · trails explored '+outdoors.trips:'Buy a vehicle for '+cash(120000)+' to unlock off-road trails.',()=>{
+   closeModal();if(outdoors.vehicle){outdoorActivity('trail');return;}if(state.age<18){info('🔒','Adults only','Off-road vehicle purchases are available from age 18.');return;}
+   const cost=120000;if(state.bank<cost){info('💳','Not enough money','The off-road vehicle costs '+cash(cost)+'.');return;}
+   state.bank-=cost;outdoors.vehicle=true;log('🛻','Off-road vehicle','You bought an off-road vehicle and unlocked trail adventures.','good');save();render();outdoorLifestyleMenu();
+  },outdoors.vehicle?'Owned':cash(120000)),
+  choice('🏞️','Hike and Camp','Take friends or family hiking and camping.',()=>outdoorActivity('camp'),cash(900)),
+  choice('🪨','Explore a Cave','Search for a hidden treasure underground.',()=>outdoorActivity('cave'),cash(1200)),
+  choice('🎣','Go Fishing','Spend a day fishing; the trip may bring a catch or a small reward.',()=>outdoorActivity('fishing'),cash(600)),
+  choice('🐾','Wildlife Handbook','Discover and log new wildlife entries.',()=>outdoorActivity('wildlife')),
+  choice('📊','Outdoors Journal','Trips '+outdoors.trips+' · treasures '+outdoors.treasures+' · fishing trips '+outdoors.fishingTrips+' · wildlife entries '+outdoors.wildlife.length+'.',()=>{closeModal();info('📊','Outdoors Journal','Off-road vehicle: '+(outdoors.vehicle?'owned':'not owned')+' · trips '+outdoors.trips+' · treasures '+outdoors.treasures+' · fishing '+outdoors.fishingTrips+' · wildlife log '+outdoors.wildlife.length+'.');}),
+  choice('↩️','Back to Activities','',()=>{closeModal();activities();})
+ ];
+ modal('🏕️','Outdoors Lifestyle','Explore nature, spend time with loved ones and build your own wilderness journal.',opts);
+}
+function outdoorActivity(kind){
+ const outdoors=state.outdoors||(state.outdoors={vehicle:false,trips:0,treasures:0,fishingTrips:0,wildlife:[],islandTrips:0});
+ if(!Array.isArray(outdoors.wildlife))outdoors.wildlife=[];
+ closeModal();const costs={trail:1800,camp:900,cave:1200,fishing:600,wildlife:250},cost=costs[kind]||0;
+ if(kind==='trail'&&!outdoors.vehicle){info('🛻','Vehicle required','Purchase an off-road vehicle before exploring the trails.');return;}
+ if(state.bank<cost){info('💳','Not enough money','This activity costs '+cash(cost)+'.');return;}
+ if(state.age<8){info('🔒','Too young for this trip','Outdoor adventures become available from age 8.');return;}
+ state.bank-=cost;let title='',message='',reward=0;
+ if(kind==='trail'){
+  title='Off-road Trail';outdoors.trips++;stat('happiness',4);stat('health',chance(.8)?2:-3);
+  if(chance(.18)){reward=2500+Math.floor(Math.random()*10000);state.bank+=reward;outdoors.treasures++;message='You found a forgotten stash on the trail and earned '+cash(reward)+'.';}
+  else message='You completed a scenic off-road trail and logged the trip.';
+ }else if(kind==='camp'){
+  title='Hiking and Camping';outdoors.trips++;stat('health',4);stat('happiness',5);
+  if(state.friends&&state.friends.length){const friend=pick(state.friends);friend.relationshipLevel=clamp((friend.relationshipLevel||50)+5);message='You camped outdoors and grew closer to '+friend.name+'.';}
+  else if(state.partner){state.partner.relationshipLevel=clamp((state.partner.relationshipLevel||50)+5);message='You camped outdoors with your partner and strengthened the relationship.';}
+  else message='You took a peaceful hiking and camping trip and felt refreshed.';
+ }else if(kind==='cave'){
+  title='Cave Exploration';outdoors.trips++;stat('happiness',2);
+  if(chance(.35)){reward=4000+Math.floor(Math.random()*18000);state.bank+=reward;outdoors.treasures++;message='You found a hidden treasure in the cave worth '+cash(reward)+'.';}
+  else{stat('health',-2);message='No treasure this time, but you recorded a new cave in your journal.';}
+ }else if(kind==='fishing'){
+  title='Fishing Trip';outdoors.fishingTrips++;outdoors.trips++;stat('happiness',3);
+  if(chance(.5)){reward=900+Math.floor(Math.random()*4000);state.bank+=reward;message='You had a good catch and earned '+cash(reward)+'.';}
+  else message='The fish were not biting, but the quiet day helped you relax.';
+ }else{
+  title='Wildlife Handbook';const entries=['fox','deer','owl','eagle','turtle','otter','wild horse','hedgehog','falcon','mountain goat','badger','heron'];
+  const unseen=entries.filter(entry=>!outdoors.wildlife.includes(entry)),count=Math.min(unseen.length,1+Math.floor(Math.random()*3)),found=[];
+  for(let i=0;i<count;i++){const entry=unseen.splice(Math.floor(Math.random()*unseen.length),1)[0];if(entry){outdoors.wildlife.push(entry);found.push(entry);}}
+  message=found.length?'You logged new wildlife: '+found.join(', ')+'.':'You reviewed your wildlife journal. New entries are waiting on another trip.';
+  outdoors.trips++;stat('smart',2);stat('happiness',2);
+ }
+ log(kind==='wildlife'?'🐾':kind==='trail'?'🛻':kind==='fishing'?'🎣':'🏕️',title,message,'good');save();render();info('🏕️',title,message);
+}
+function netWorthForLuxury(){
+ return Math.max(0,(Number(state.bank)||0)+(state.assets||[]).reduce((sum,item)=>sum+Math.max(0,Number(item.value)||0),0)+(state.investments||[]).reduce((sum,item)=>sum+Math.max(0,Number(item.value)||0),0)+(state.business?Math.max(0,Number(state.business.value)||0):0)-(Number(state.debt)||0));
+}
+function gatedCommunityMenu(){
+ if(!perkOwned('gatedCommunityPack')){closeModal();showActivityPackOffer('gatedCommunityPack');return;}
+ const netWorth=netWorthForLuxury(),required=1000000;
+ if(netWorth<required){
+  modal('🏙️','Gated Community','The upper echelon of life is waiting for you—climb that social ladder! Your current net worth is '+cash(netWorth)+'. You need at least '+cash(required)+' to qualify for the Luxury Lifestyle.',[
+   choice('💼','Find a Job','Build steady income before entering the gated community.',()=>{closeModal();showCareer();}),
+   choice('📈','Manage Assets','Review property, investments and business value.',()=>{closeModal();assets();}),
+   choice('↩️','Back to Activities','',()=>{closeModal();activities();})
+  ]);return;
+ }
+ const luxury=state.gatedCommunity||(state.gatedCommunity={privateIsland:false,societyMember:false,vipEvents:0,luxuryItems:0}),opts=[];
+ if(!luxury.privateIsland)opts.push(choice('🏝️','Own a Private Island','A rare luxury asset with an annual upkeep cost.',()=>buyLuxuryIsland(),cash(1200000)));
+ else opts.push(choice('🏝️','Vacation on Your Private Island','Enjoy a private holiday away from ordinary life.',()=>luxuryIslandVacation(),cash(25000)));
+ opts.push(choice('🤝','Join a Secret Society',luxury.societyMember?'You are already a member.':'A private networking club with annual dues.',()=>joinLuxurySociety(),cash(80000)));
+ opts.push(choice('🥂','Attend an Exclusive VIP Event','A high-profile event that may improve fame and connections.',()=>attendLuxuryEvent(),cash(12000)));
+ opts.push(choice('💎','Shop Luxury Items','Purchase luxury pieces and increase your lifestyle score.',()=>buyLuxuryItem(),cash(18000)));
+ opts.push(choice('📊','Luxury Profile','Net worth '+cash(netWorthForLuxury())+' · private island '+(luxury.privateIsland?'owned':'not owned')+' · VIP events '+luxury.vipEvents+' · luxury items '+luxury.luxuryItems+'.',()=>{closeModal();info('🏙️','Luxury Profile','Net worth '+cash(netWorthForLuxury())+' · society '+(luxury.societyMember?'member':'not a member')+' · VIP events '+luxury.vipEvents+' · luxury items '+luxury.luxuryItems+'.');}));
+ opts.push(choice('↩️','Back to Activities','',()=>{closeModal();activities();}));
+ modal('🏙️','Gated Community','Private islands, secret societies, VIP events and high-end shopping. Your wealth unlocks the next tier.',opts);
+}
+function buyLuxuryIsland(){
+ closeModal();const cost=1200000;if(state.bank<cost){info('💳','Not enough money','A private island costs '+cash(cost)+'.');return;}
+ const luxury=state.gatedCommunity||(state.gatedCommunity={privateIsland:false,societyMember:false,vipEvents:0,luxuryItems:0});
+ state.bank-=cost;luxury.privateIsland=true;state.assets.push({id:Date.now()+Math.random(),title:'Private Island',emoji:'🏝️',kind:'property',value:cost,upkeep:18000,bought:state.age,condition:100,rented:false,tenant:null,amenities:[],luxuryAsset:true});
+ log('🏝️','Private Island','You purchased a private island and unlocked private vacations.','special');save();render();gatedCommunityMenu();
+}
+function luxuryIslandVacation(){
+ closeModal();const cost=25000;const luxury=state.gatedCommunity||(state.gatedCommunity={privateIsland:false,societyMember:false,vipEvents:0,luxuryItems:0});
+ if(!luxury.privateIsland){gatedCommunityMenu();return;}if(state.bank<cost){info('💳','Not enough money','A private vacation costs '+cash(cost)+'.');return;}
+ state.bank-=cost;state.gatedCommunity.islandTrips=(state.gatedCommunity.islandTrips||0)+1;stat('happiness',8);stat('health',3);log('🏝️','Private Island Vacation','You relaxed on your private island.','good');save();render();gatedCommunityMenu();
+}
+function joinLuxurySociety(){
+ closeModal();const luxury=state.gatedCommunity||(state.gatedCommunity={privateIsland:false,societyMember:false,vipEvents:0,luxuryItems:0}),cost=80000;
+ if(luxury.societyMember){info('🤝','Already a member','You already belong to this society.');return;}if(state.bank<cost){info('💳','Not enough money','Membership costs '+cash(cost)+'.');return;}
+ state.bank-=cost;luxury.societyMember=true;state.reputation=clamp(state.reputation+8);log('🤝','Secret Society','You joined a private society and expanded your network.','special');save();render();gatedCommunityMenu();
+}
+function attendLuxuryEvent(){
+ closeModal();const luxury=state.gatedCommunity||(state.gatedCommunity={privateIsland:false,societyMember:false,vipEvents:0,luxuryItems:0}),cost=12000;
+ if(state.bank<cost){info('💳','Not enough money','The VIP event costs '+cash(cost)+'.');return;}
+ state.bank-=cost;luxury.vipEvents++;stat('happiness',4);state.fame=clamp(state.fame+2);state.reputation=clamp(state.reputation+3);log('🥂','VIP Event','You attended an exclusive event and built new connections.','good');save();render();gatedCommunityMenu();
+}
+function buyLuxuryItem(){
+ closeModal();const luxury=state.gatedCommunity||(state.gatedCommunity={privateIsland:false,societyMember:false,vipEvents:0,luxuryItems:0}),cost=18000;
+ if(state.bank<cost){info('💳','Not enough money','A luxury item costs '+cash(cost)+'.');return;}
+ state.bank-=cost;luxury.luxuryItems++;stat('happiness',3);state.reputation=clamp(state.reputation+1);log('💎','Luxury Shopping','You purchased a luxury item and upgraded your lifestyle.','good');save();render();gatedCommunityMenu();
+}
+function activities(){
+ const netWorth=netWorthForLuxury();
+ const opts=[
+  section('Favorites'),
+  choice('❤️','Love','Find someone to love',()=>{closeModal();if(state.partner)relations();else meetPartner();}),
+  choice('🧘','Mind & Body','Work on self-improvement',healthMenu),
+  (()=>{const row=choice('🐕','Pets','Get a pet',petsMenu);row.menuDots=true;return row;})(),
+  choice('💆','Salon & Spa','Take time for yourself',salonMenu),
+  section('Premium Activities'),
+  (()=>{const row=choice('🎬','Movie Director','Become a famous movie director!',()=>routePack('movieDirectorPack',movieDirectorMenu));row.cardClass='activity-movie-row';row.stamp='MOVIE DIRECTOR';return row;})(),
+  (()=>{const row=choice('🧛','Vampire Mode','Become a vampire',()=>routePack('vampireMode',vampireModeMenu));row.cardClass='activity-vampire-row';row.stamp='VAMPIRE MODE';return row;})(),
+  (()=>{const row=choice('🌲','Outdoor Lifestyle','Spend time with Mother Nature',()=>routePack('outdoorsPack',outdoorLifestyleMenu));row.cardClass='activity-outdoors-row';row.stamp='OUTDOORS';return row;})(),
+  (()=>{const row=choice('💎','Luxury Lifestyle','Wealth',()=>routePack('gatedCommunityPack',gatedCommunityMenu),'',clamp(netWorth/20000000*100));row.cardClass='activity-luxury-row';row.menuDots=true;return row;})(),
+  choice('🎰','Casino','Start your own casino',()=>routePack('casinoPack',casinoMenu),'',null,!perkOwned('casinoPack')),
+  choice('🕶️','Black Market','Shop for contraband and manage a museum',()=>routePack('blackMarketPack',blackMarketMenu),'',null,!perkOwned('blackMarketPack')),
+  choice('🕯️','Commune','Start a cult',()=>routePack('cultPack',cultMenu),'',null,!perkOwned('cultPack')),
+  choice('🏁','Racing','Participate in races',()=>{closeModal();specialCareers();},'',null,true),
+  choice('🕵️','Secret Agent','Start your own spy agency',()=>{closeModal();premiumPerksMenu();},'',null,true),
+  choice('🦁','Zoo','Purchase a zoo',()=>routePack('zooExpansionPack',zooMenu),'',null,!perkOwned('zooExpansionPack')),
+  section('All'),
+  choice('🩺','Health & Wellness','Doctor, gym, rest and physical activity',healthMenu),
+  choice('🎨','Hobbies & Skills','Start a hobby or practise your skills',hobbiesMenu),
+  choice('🐾','Pets & Animals','Adopt a pet or care for your current pets',petsMenu),
+  choice('🌟','Special Careers','Acting, music, content, sports and other career paths',specialCareers),
+  choice('⚖️','Crime & Legal Record','Risky fictional decisions with consequences',crimeMenu),
+  choice('🌍','Travel & Immigration','Take a holiday or move to another country',travelMenu),
+  choice('👪','Family & Children','Manage your relationship, marriage and children',familyMenu),
+  choice('💈','Salon & Appearance','Change your style and appearance',salonMenu),
+  choice('🎬','Cinema','Choose a film for a short entertainment break',cinemaMenu),
+  choice('🩺','Visit a Doctor','Cost '+cash(1200)+' · recover some health',()=>activity('doctor'),cash(1200)),
+  choice('🏋️','Gym','Cost '+cash(300)+' · improve health and appearance',()=>activity('gym'),cash(300)),
+  choice('📚','Library','Free activity to improve smarts',()=>activity('library'),'Free'),
+  choice('🏖️','Vacation','Cost '+cash(1800)+' · improve happiness',()=>activity('vacation'),cash(1800)),
+  choice('🤝','Volunteer','Free activity to improve happiness and reputation',()=>activity('volunteer'),'Free'),
+  choice('🎟️','Lottery','A '+cash(100)+' ticket with a small chance of a prize',()=>activity('lottery'),cash(100)),
+  choice('🌃','Nightlife','Available from 18 · cost '+cash(1200),()=>activity('nightlife'),cash(1200)),
+  choice('❤️','Charity','Donate '+cash(1000)+' to improve reputation',()=>activity('donate'),cash(1000)),
+  section('More'),
+  choice('📊','Bank & Investments','Loans, debt payments and investment portfolios',financeMenu),
+  choice('🏆','Achievements & Collectibles','Achievements, life ribbons and daily rewards',achievementsMenu),
+  choice('✨','Life Perks Store','Permanent perks and additional career paths',premiumPerksMenu),
+  choice('🪪','Character Profile','Edit your name, driver license and export a save',customizeMenu),
+  choice('📱','Social Media','Accounts, posts, followers and collaborations',socialMediaMenu),
+  choice('💾','Export Save','Download a JSON file backup',exportSave),
+  choice('🌱','New Life','Start a new life with random or custom birthplace and gender',()=>{closeModal();info('🌱','New Life','Starting a new life replaces the current save.',[choice('↻','Continue','',()=>{closeModal();if(confirm('Start a new life and replace the current save?'))newLifeSetup();}),choice('↩️','Keep Current Life','',closeModal)]);})
+ ];
+ modal('☰','Activities','',opts);
+}
 function healthMenu(){
  const healthDesc='حالتك الصحية بتتأثر بالعمر والعادات والعلاقات والمخاطر. دي أنشطة داخل اللعبة وليست نصيحة طبية. '+(state.sti?'فيه حالة صحية محاكية مسجلة؛ زيارة الطبيب داخل اللعبة تقدر تعالجها.':'لا توجد حالة صحية محاكية مسجلة حاليًا.');
  modal('❤️','الصحة والعافية',healthDesc,[

@@ -113,7 +113,7 @@ test('تطبيق الويب قابل للتثبيت ويحتفظ بملفات ا
   assert.ok(manifest.icons.some(item => item.src === './icon.svg'));
   assert.match(html, /rel="manifest" href="manifest\.webmanifest"/);
   assert.match(app, /navigator\.serviceWorker\.register\('\.\/sw\.js'\)/);
-  assert.match(worker, /const CACHE_NAME = 'hayah-shell-v18'/);
+  assert.match(worker, /const CACHE_NAME = 'hayah-shell-v19'/);
   assert.match(worker, /cache\.addAll\(APP_SHELL\)/);
   assert.match(worker, /caches\.match\(APP_SHELL\[0\]\)/);
   assert.match(icon, /حياة/);
@@ -201,7 +201,7 @@ test('مسيرة الرياضات الإلكترونية أصلية وتحافظ
   assert.match(app, /function upgradeEsportsSetup\(\)/);
   assert.match(app, /موهبة الألعاب الإلكترونية/);
   assert.match(app, /data\.talents\.gaming=clamp\(Number\(data\.talents\.gaming\),0,100\)/);
-  assert.match(read('sw.js'), /hayah-shell-v18/);
+  assert.match(read('sw.js'), /hayah-shell-v19/);
   assert.match(functionSource('rewindToSnapshot', 'customizeMenu'), /ensureGamingTalent\(\)/, 'rewinding a pre-feature snapshot should restore a valid talent default');
 });
 
@@ -378,6 +378,15 @@ test('واجهة الهاتف الجديدة تطابق تخطيط الصفحا�
   assert.match(app, /function schoolCliqueMenu\(\)/);
   assert.match(app, /function schoolFacultyMenu\(\)/);
   assert.match(app, /function showJobPackOffer\(id,career\)/);
+  assert.match(app, /function showActivityPackOffer\(id\)/);
+  assert.match(app, /function vampireModeMenu\(\)/);
+  assert.match(app, /function outdoorLifestyleMenu\(\)/);
+  assert.match(app, /function gatedCommunityMenu\(\)/);
+  assert.match(app, /id:'modelPack'/);
+  assert.match(app, /id:'musicianPack'/);
+  assert.match(app, /id:'musicProducerPack'/);
+  assert.match(css, /\.activities-screen/);
+  assert.match(css, /\.activity-vampire-row/);
   assert.match(app, /id:'astronautPack'/);
   assert.match(app, /function openJobPackDestination\(id\)/);
   assert.match(css, /\.school-screen/);
