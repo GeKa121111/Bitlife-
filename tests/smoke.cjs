@@ -12,6 +12,9 @@ assert.match(index, /id="ageUpBtn"/);
 assert.match(css, /max-width:500px/);
 assert.ok((app.match(/\nE\(\[/g) || []).length >= 25, 'at least 25 age-based events should exist');
 assert.match(app, /events\.push\(/, 'expanded event library should be present');
+assert.match(app, /function syncBusinessAsset\(\)/, 'business value should stay synchronized with the owned asset');
+assert.match(app, /syncBusinessAsset\(\);renderHeader\(\)/, 'rendering should reconcile business and asset values');
+assert.match(app, /النسخة الحالية بتدعم إدارة مشروع واحد/, 'buying a second business should be blocked until multi-business support exists');
 for (const system of ['function familyMenu()', 'function petsMenu()', 'function hobbiesMenu()', 'function investingMenu()', 'function crimeMenu()', 'function cemeteryMenu()', 'function newLifeSetup()', 'function startAsChild(index)']) {
   assert.ok(app.includes(system), 'missing gameplay system: ' + system);
 }
