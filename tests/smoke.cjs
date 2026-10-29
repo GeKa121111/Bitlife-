@@ -381,8 +381,10 @@ const esportsContext = {
   alert() {},
   console
 };
-vm.runInNewContext(app, esportsContext, { timeout: 3000 });
-vm.runInNewContext('enterEsportsTournament()', esportsContext, { timeout: 3000 });
+const esportsTestApp = app.replace("function enterEsportsTournament(){", "globalThis.__testEnterEsportsTournament=function(){");
+assert.notEqual(esportsTestApp, app, 'test harness should expose the tournament action only inside its isolated VM');
+vm.runInNewContext(esportsTestApp, esportsContext, { timeout: 3000 });
+vm.runInNewContext('globalThis.__testEnterEsportsTournament()', esportsContext, { timeout: 3000 });
 const afterEsports = JSON.parse(esportsStore.get('hekayat_hayah_save_v1'));
 assert.equal(afterEsports.esportsCareer.tournaments, 1, 'entering a tournament should increment the tournament count');
 assert.equal(afterEsports.esportsCareer.history.length, 1, 'each tournament should be saved in the specialist history');
