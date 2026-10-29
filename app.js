@@ -425,8 +425,29 @@ function save(){
  try{localStorage.setItem(KEY,JSON.stringify(state));$('saveStatus').textContent='● محفوظة';}
  catch(e){$('saveStatus').textContent='⚠ الحفظ غير متاح';}
 }
+function normalizeCoreState(data){
+ const rawPlace=data.place&&typeof data.place==='object'&&!Array.isArray(data.place)?data.place:{};
+ const fallbackPlace=places.find(p=>p.country===rawPlace.country&&p.city===rawPlace.city)||places[0];
+ data.place={...fallbackPlace,...rawPlace};
+ ['country','city','flag','unit'].forEach(key=>{if(typeof data.place[key]!=='string'||!data.place[key].trim())data.place[key]=fallbackPlace[key];});
+ if(!Number.isFinite(Number(data.place.start))||Number(data.place.start)<=0)data.place.start=fallbackPlace.start;
+ const statDefaults={happiness:65,health:80,smart:40,looks:45};
+ Object.keys(statDefaults).forEach(key=>{const value=Number(data.stats[key]);data.stats[key]=Number.isFinite(value)?clamp(value):statDefaults[key];});
+ data.age=Number.isFinite(Number(data.age))?Math.max(0,Math.min(120,Math.floor(Number(data.age)))):0;
+ data.bank=Number.isFinite(Number(data.bank))?Number(data.bank):Number(data.place.start)||0;
+ if(typeof data.name!=='string'||!data.name.trim())data.name=pick(names[data.gender==='female'?'female':'male'])+' '+pick(names.family);
+ if(!['male','female'].includes(data.gender))data.gender='male';
+ if(!['حي','متوفى'].includes(data.status))data.status='حي';
+ if(!Array.isArray(data.family))data.family=[];
+ if(!Array.isArray(data.friends))data.friends=[];
+ if(!Array.isArray(data.assets))data.assets=[];
+ if(!Array.isArray(data.log))data.log=[];
+ if(!Array.isArray(data.accomplishments))data.accomplishments=[];
+ return data;
+}
 function load(){
- try{const x=JSON.parse(localStorage.getItem(KEY)||'null');if(x&&x.version===1&&x.stats&&Array.isArray(x.log)){
+ try{const x=JSON.parse(localStorage.getItem(KEY)||'null');if(x&&x.version===1&&x.stats&&typeof x.stats==='object'&&!Array.isArray(x.stats)&&Array.isArray(x.log)){
+  normalizeCoreState(x);
   const defaults={lifeId:Date.now()+Math.random(),cemeterySaved:false,jobHistory:[],specialCareer:null,specialCareerHistory:[],combatCareer:null,investments:[],business:null,married:false,children:[],pets:[],hobbies:[],fame:0,followers:0,socialMediaAccount:false,socialMediaPosts:0,reputation:50,crimeRecord:0,prison:null,debt:0,willDistribution:'الأسرة بالتساوي',heirlooms:[],dailyRewardDate:null,dailyChallenges:null,timeMachineSnapshots:[],legacy:{name:null,inheritance:0,heirloom:null},driversLicense:false,travelHistory:[]};
   Object.keys(defaults).forEach(k=>{if(x[k]===undefined||x[k]===null)x[k]=defaults[k];});
   if(!Array.isArray(x.family))x.family=[];if(!Array.isArray(x.friends))x.friends=[];if(!Array.isArray(x.assets))x.assets=[];if(!Array.isArray(x.timeMachineSnapshots))x.timeMachineSnapshots=[];
@@ -621,7 +642,7 @@ function afterDecision(){if(!validState())return;if(state.stats.health<=0){death
 function advanceAge(){
  if(!validState())return;
  state.age++;state.yearCount++;
- if(state.specialCareer&&state.specialCareer.id==='fighter'&&state.combatCareer){const cc=ensureCombatCareer();cc.energy=100;if(cc.injuryYears>0){cc.injuryYears--;cc.injury=clamp(cc.injury-28);if(cc.injuryYears===0||cc.injury===0){cc.injury=0;cc.injuryYears=0;log('🩹','التعافي من الإصابة','تعافيت من إصابة القتال وعدت جاهزًا للتدريب.','good');}}if(cc.coach&&cc.coach.yearsLeft>0){state.bank-=cc.coach.annualCost||0;cc.coach.yearsLeft--;if(cc.coach.yearsLeft<=0){log('🧑‍🏫','انتهاء عقد المدرب','انتهى عقد المدرب. يمكنك تجديده من مسيرة القتال.');cc.coach=null;}else if(state.bank<0){log('💳','تعذر دفع مصاريف المدرب','الرصيد لا يكفي مصاريف المدرب السنوية؛ انتهى التعاقد.','bad');cc.coach=null;}}}
+ if(state.specialCareer&&state.specialCareer.id==='fighter'&&state.combatCareer){const cc=ensureCombatCareer();cc.energy=100;if(cc.injuryYears>0){cc.injuryYears--;cc.injury=clamp(cc.injury-28);if(cc.injuryYears===0||cc.injury===0){cc.injury=0;cc.injuryYears=0;log('🩹','التعافي من الإصابة','تعافيت من إصابة القتال وعدت جاهزًا للتدريب.','good');}}if(cc.coach&&cc.coach.yearsLeft>0){const annualCost=cc.coach.annualCost||0;if(state.bank<annualCost){log('💳','تعذر دفع مصاريف المدرب','الرصيد لا يكفي مصاريف المدرب السنوية؛ انتهى التعاقد دون خصم المصروف.','bad');cc.coach=null;}else{state.bank-=annualCost;cc.coach.yearsLeft--;if(cc.coach.yearsLeft<=0){log('🧑‍🏫','انتهاء عقد المدرب','انتهى عقد المدرب. يمكنك تجديده من مسيرة القتال.');cc.coach=null;}}}}
  (state.children||[]).forEach(c=>{c.age=(c.age||0)+1;if(c.age===6)log('🏫','أول يوم مدرسة','بدأ '+c.name+' رحلته الدراسية.','special');if(c.age===18){c.job='بداية المسار المهني';log('🎓','ابنك/بنتك كبر','وصل '+c.name+' لسن الرشد وبدأ يرسم طريقه.','good');}});
  (state.family||[]).forEach(relative=>{if(relative.deceased)return;relative.age=(relative.age||0)+1;const oldest=relative.age>=100;const parent=/(الأب|الأم|والد|والدة)/.test(relative.relation||'');const risk=relative.age>75?Math.min(.45,.012+(relative.age-75)*.012):0;if(oldest||(risk&&chance(risk))){relative.deceased=true;const close=(relative.relationshipLevel||50)>=70;state.stats.happiness=clamp(state.stats.happiness-(close?12:5));log('🕯️','وفاة أحد أفراد العائلة','توفي '+relative.name+' بعد رحلة من العمر. الخبر أثر عليك وعلى علاقتك بالعائلة.','bad');achievement('وداع '+relative.name);}});
  if(state.partner&&typeof state.partner.age==='number'){
@@ -1026,11 +1047,11 @@ function personModal(n){
  ],true,progress);
 }
 function relationshipAction(n,act){
- closeModal();if(act==='gift'&&state.bank<500){info('💳','الرصيد مش كفاية','الهدية محتاجة 500 جنيه.');return;}
+ closeModal();if(act==='gift'&&state.bank<500){info('💳','الرصيد مش كفاية','الهدية محتاجة '+cash(500)+'.');return;}
  let d=0,text='',tone='good';
  if(act==='time'){d=chance(.78)?7:3;stat('happiness',2);text='قضيت وقت مع '+n.name+' واتكلمتوا عن حاجات كتير.';}
  if(act==='talk'){d=chance(.72)?5:2;text='اتكلمت مع '+n.name+' وسمعت أخباره.';}
- if(act==='gift'){state.bank-=500;flash('-'+cash(500),true);d=chance(.82)?10:4;text='قدمت هدية بسيطة لـ'+n.name+' بتكلفة 500 جنيه.';}
+ if(act==='gift'){state.bank-=500;flash('-'+cash(500),true);d=chance(.82)?10:4;text='قدمت هدية بسيطة لـ'+n.name+' بتكلفة '+cash(500)+'.';}
  if(act==='argue'){d=chance(.7)?-12:-5;stat('happiness',-3);text='دخلت في خلاف مع '+n.name+'. كان ممكن تختار الكلام بهدوء.';tone='bad';}
  if(n.personality==='حنون'&&(act==='talk'||act==='time'))d+=2; if(n.personality==='عملي'&&act==='gift')d+=1; if(n.personality==='عنيد'&&act==='argue')d-=2;
  n.relationshipLevel=clamp(n.relationshipLevel+d);if(n.relationshipLevel>=85)achievement('بناء علاقة قوية مع '+n.name);
@@ -1154,7 +1175,7 @@ function combatCareerMenu(){
  const coach=c.coach?' · المدرب '+c.coach.name+' ('+fmt(c.coach.yearsLeft||0)+' سنوات متبقية)':' · من غير مدرب';
  const summary='الرتبة: '+rank+' · نقاط الدوري '+fmt(c.leaguePoints)+' · رصيد الشارع '+fmt(c.streetCred)+injury+coach;
  const opts=[
-  choice('📊','ملف المقاتل',summary,'', '',c.leaguePoints/2),
+  choice('📊','ملف المقاتل',summary,()=>{closeModal();info('🥊','ملف المقاتل',summary+' · فوز '+c.wins+' · خسارة '+c.losses+' · نزالات الشوارع '+c.streetWins+' · نزالات الدوري '+c.leagueWins+' · الطاقة '+c.energy+'%.');},'',c.leaguePoints/2),
   choice('🏋️','تدريب القدرات','تقنية '+c.technique+'% · قوة '+c.power+'% · سرعة '+c.speed+'% · دفاع '+c.defense+'% · لياقة '+c.stamina+'%.',combatTrainingMenu,'',Math.round((c.technique+c.power+c.speed+c.defense+c.stamina)/5)),
   choice('📚','تعلّم حركة جديدة','تعلّم حركات بأساليب وقوة مختلفة، وافتح الحركات المتقدمة مع التقدم.',learnCombatMove),
   choice('🎯','اختيار الحركة الرئيسية','الحركة المختارة: '+((combatMoveCatalog.find(m=>m.id===c.selectedMove)||combatMoveCatalog[0]).title)+'.',selectCombatMove),
@@ -1786,10 +1807,10 @@ function payDebt(amount){
 }
 function activity(type){
  closeModal();
- if(type==='doctor'){if(state.bank<1200){info('💳','الرصيد مش كفاية','زيارة الطبيب تكلف 1,200 جنيه.');return;}state.bank-=1200;flash('-'+cash(1200),true);stat('health',16);log('🩺','زيارة الطبيب','دفعت 1,200 جنيه واهتميت بصحتك. لو التعب مستمر، المتابعة الطبية المنتظمة أفضل.','good');}
- if(type==='gym'){if(state.age<12){info('🏃','نشاط مناسب للعمر','اللعب والحركة المناسبة لسنك كفاية في المرحلة دي.');return;}if(state.bank<300){info('💳','الرصيد مش كفاية','اشتراك الجيم يكلف 300 جنيه.');return;}state.bank-=300;flash('-'+cash(300),true);stat('health',7);stat('looks',4);stat('happiness',2);log('🏋️','تمرنت في الجيم','دفعت 300 جنيه وتمرنت. الاستمرار أهم من تمرينة واحدة.','good');}
+ if(type==='doctor'){if(state.bank<1200){info('💳','الرصيد مش كفاية','زيارة الطبيب تكلف '+cash(1200)+'.');return;}state.bank-=1200;flash('-'+cash(1200),true);stat('health',16);log('🩺','زيارة الطبيب','دفعت '+cash(1200)+' واهتميت بصحتك. لو التعب مستمر، المتابعة الطبية المنتظمة أفضل.','good');}
+ if(type==='gym'){if(state.age<12){info('🏃','نشاط مناسب للعمر','اللعب والحركة المناسبة لسنك كفاية في المرحلة دي.');return;}if(state.bank<300){info('💳','الرصيد مش كفاية','اشتراك الجيم يكلف '+cash(300)+'.');return;}state.bank-=300;flash('-'+cash(300),true);stat('health',7);stat('looks',4);stat('happiness',2);log('🏋️','تمرنت في الجيم','دفعت '+cash(300)+' وتمرنت. الاستمرار أهم من تمرينة واحدة.','good');}
  if(type==='library'){stat('smart',5);stat('happiness',1);log('📚','وقت في المكتبة','قرأت وتعلمت حاجة جديدة من غير ما تدفع فلوس.','good');}
- if(type==='vacation'){if(state.bank<1800){info('💳','الرصيد مش كفاية','الخروجة تكلف 1,800 جنيه. جرب نشاط مجاني.');return;}state.bank-=1800;flash('-'+cash(1800),true);stat('happiness',8);stat('health',2);log('🏖️','خروجة لتغيير الجو','دفعت 1,800 جنيه وغيّرت روتينك شوية.','good');}
+ if(type==='vacation'){if(state.bank<1800){info('💳','الرصيد مش كفاية','الخروجة تكلف '+cash(1800)+'. جرب نشاط مجاني.');return;}state.bank-=1800;flash('-'+cash(1800),true);stat('happiness',8);stat('health',2);log('🏖️','خروجة لتغيير الجو','دفعت '+cash(1800)+' وغيّرت روتينك شوية.','good');}
  if(type==='volunteer'){stat('happiness',5);stat('reputation',2);log('🤝','مساعدة مجتمعية','خصصت وقتك لمساعدة ناس في محيطك.','good');achievement('شاركت في عمل مجتمعي');}
  if(type==='lottery'){if(state.bank<100){info('💳','الرصيد مش كفاية','تذكرة اليانصيب تكلف 100 '+state.place.unit+'.');return;}state.bank-=100;if(chance(.065)){const prize=5000+Math.floor(Math.random()*45000);state.bank+=prize;stat('happiness',7);log('🎟️','فزت في اليانصيب','فزت بجائزة '+cash(prize)+' بعد شراء تذكرة.','good');achievement('الفوز بجائزة اليانصيب');}else{log('🎟️','تذكرة يانصيب','ماكسبتش المرة دي وخسرت سعر التذكرة. خلي اللعب في حدود ميزانيتك.','');}render();}
  if(type==='nightlife'){if(state.age<18){info('🔒','النشاط متاح للبالغين','الحياة الليلية متاحة من سن 18 داخل اللعبة.');return;}if(state.bank<1200){info('💳','الرصيد مش كفاية','الخروجة تكلف 1,200 '+state.place.unit+'.');return;}state.bank-=1200;const fun=chance(.78);stat('happiness',fun?7:2);if(!fun)stat('health',-3);log('🌃','خروجة ليلية',fun?'قضيت وقتًا ممتعًا ورجعت بمزاج أفضل.':'الخروجة كانت مرهقة ومكلفة أكتر من المتوقع.',fun?'good':'bad');render();}
@@ -1811,7 +1832,8 @@ function importSave(){
   reader.onload=()=>{
    try{
     const data=JSON.parse(String(reader.result||''));
-    if(!data||data.version!==1||!data.stats||!Array.isArray(data.log)||!Array.isArray(data.family)||!data.place)throw new Error('invalid');
+    if(!data||typeof data!=='object'||Array.isArray(data)||data.version!==1||!data.stats||typeof data.stats!=='object'||Array.isArray(data.stats)||!Array.isArray(data.log)||!Array.isArray(data.family)||!data.place||typeof data.place!=='object'||Array.isArray(data.place))throw new Error('invalid');
+    normalizeCoreState(data);
     const defaults={lifeId:Date.now()+Math.random(),cemeterySaved:false,jobHistory:[],specialCareer:null,specialCareerHistory:[],combatCareer:null,investments:[],business:null,married:false,children:[],pets:[],hobbies:[],fame:0,followers:0,socialMediaAccount:false,socialMediaPosts:0,reputation:50,crimeRecord:0,prison:null,debt:0,willDistribution:'الأسرة بالتساوي',heirlooms:[],dailyRewardDate:null,dailyChallenges:null,timeMachineSnapshots:[],legacy:{name:null,inheritance:0,heirloom:null},driversLicense:false,travelHistory:[],retired:false,yearCount:data.age||0,assets:[],friends:[],accomplishments:[],status:'حي'};
     Object.keys(defaults).forEach(k=>{if(data[k]===undefined||data[k]===null)data[k]=defaults[k];});
     if(!Array.isArray(data.assets))data.assets=[];if(!Array.isArray(data.timeMachineSnapshots))data.timeMachineSnapshots=[];data.assets.forEach(a=>{if((a.kind==='car'||a.kind==='property')&&!Number.isFinite(Number(a.condition)))a.condition=100;});
