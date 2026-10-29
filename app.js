@@ -651,7 +651,7 @@ function startNew(){
 function schoolHub(){
  const education=state.education||(state.education={level:0,school:'لم تبدأ الدراسة',major:null,yearsLeft:0,tuition:0});
  const isUniversity=(education.yearsLeft||0)>0;
- const stage=isUniversity?'طالب جامعي · '+education.major:(education.school||'المدرسة');
+ const stage=education.droppedOut?'ترك الدراسة':isUniversity?'طالب جامعي · '+education.major:(education.school||'المدرسة');
  const score=clamp(education.studyScore||50);
  const clubs=Array.isArray(education.clubs)?education.clubs:[];
  const options=[
