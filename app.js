@@ -2000,7 +2000,11 @@ const filmGenreCatalog=[
  {id:'scifi',title:'خيال علمي',emoji:'🚀',critic:7,audience:4,desc:'عالم مختلف وفكرة مستقبلية.',titles:['مدينة الغد','إشارة من بعيد','بعد المدار']},
  {id:'mystery',title:'غموض وتحقيق',emoji:'🕵️',critic:8,audience:5,desc:'لغز بتفاصيل مترابطة ونهاية مفاجئة.',titles:['الممر رقم سبعة','ظل على الزجاج','الشاهد الأخير']},
  {id:'family',title:'عائلي ومغامرات',emoji:'🏡',critic:2,audience:9,desc:'قصة تناسب المشاهدة العائلية.',titles:['رحلة إلى البيت','أصدقاء الصيف','سر الحديقة']},
- {id:'documentary',title:'وثائقي',emoji:'📽️',critic:12,audience:-2,desc:'عمل واقعي يعتمد على البحث والتوثيق.',titles:['حكاية مكان','ناس من الشارع','أثر قديم']}
+ {id:'documentary',title:'وثائقي',emoji:'📽️',critic:12,audience:-2,desc:'عمل واقعي يعتمد على البحث والتوثيق.',titles:['حكاية مكان','ناس من الشارع','أثر قديم']},
+ {id:'horror',title:'رعب وغموض',emoji:'👻',critic:4,audience:9,desc:'أجواء متوترة وأسرار مخيفة.',titles:['البيت الأخير','الطابق السفلي','بعد منتصف الليل'],packOnly:true},
+ {id:'romance',title:'رومانسية',emoji:'💌',critic:5,audience:11,desc:'قصة علاقات وتغيّرات شخصية.',titles:['موعد في المطر','رسالة لم تصل','صيف آخر'],packOnly:true},
+ {id:'thriller',title:'إثارة وتشويق',emoji:'🧩',critic:8,audience:6,desc:'إيقاع سريع وقرارات حاسمة.',titles:['خمس دقائق','الخط الأحمر','نقطة عمياء'],packOnly:true},
+ {id:'animation',title:'رسوم متحركة',emoji:'🎨',critic:6,audience:13,desc:'حكاية مرئية تناسب جمهورًا واسعًا.',titles:['مدينة الورق','رحلة لولو','الكوكب الأزرق'],packOnly:true}
 ];
 const filmBudgetCatalog=[
  {id:'indie',title:'إنتاج مستقل',cost:5000,reach:0,desc:'طاقم صغير ومخاطرة مالية أقل.'},
@@ -2050,14 +2054,16 @@ function filmStudioMenu(){
  ]);
 }
 function filmFocusMenu(){
- const studio=ensureFilmStudio(),opts=filmGenreCatalog.map(g=>choice(g.emoji,g.title,g.desc+' اختيار النوع ده كتخصص يزيد كفاءة مشاريع النوع نفسه.',()=>{closeModal();studio.genreFocus=g.id;log('🎬','تخصص الاستوديو','اخترت '+g.title+' كتخصص لاستوديو الأفلام.','good');save();render();filmStudioMenu();},'',g.id===studio.genreFocus?100:undefined));
+ const studio=ensureFilmStudio(),genres=filmGenreCatalog.filter(g=>!g.packOnly||perkOwned('movieDirectorPack')),opts=genres.map(g=>choice(g.emoji,g.title,g.desc+' اختيار النوع ده كتخصص يزيد كفاءة مشاريع النوع نفسه.',()=>{closeModal();studio.genreFocus=g.id;log('🎬','تخصص الاستوديو','اخترت '+g.title+' كتخصص لاستوديو الأفلام.','good');save();render();filmStudioMenu();},'',g.id===studio.genreFocus?100:undefined));
  opts.unshift(choice('🎞️','استوديو متنوع','إلغاء التخصص للحصول على نفس الفرص في كل الأنواع.',()=>{closeModal();studio.genreFocus=null;save();render();filmStudioMenu();}));
  modal('🎭','تخصص الاستوديو','التخصص يمنح مكافأة عند إنتاج النوع المختار، لكنه لا يمنعك من تجربة الأنواع الأخرى.',opts);
 }
+
 function filmGenreMenu(){
- const studio=ensureFilmStudio(),opts=filmGenreCatalog.map(g=>choice(g.emoji,g.title,g.desc+(studio.genreFocus===g.id?' · النوع المفضل للاستوديو.':''),()=>filmBudgetMenu(g.id)));
+ const studio=ensureFilmStudio(),genres=filmGenreCatalog.filter(g=>!g.packOnly||perkOwned('movieDirectorPack')),opts=genres.map(g=>choice(g.emoji,g.title,g.desc+(studio.genreFocus===g.id?' · النوع المفضل للاستوديو.':''),()=>filmBudgetMenu(g.id)));
  modal('🎬','اختار نوع الفيلم','ابدأ بإحدى الأفكار الأصلية. النوع يغير توقعات الجمهور والنقاد.',opts);
 }
+
 function filmBudgetMenu(genreId){
  const genre=filmGenreCatalog.find(g=>g.id===genreId);if(!genre){closeModal();filmStudioMenu();return;}
  const opts=filmBudgetCatalog.map(b=>choice(b.id==='blockbuster'?'💎':b.id==='standard'?'🎞️':'🎬',b.title,b.desc+' تكلفة الإنتاج '+cash(b.cost)+'.',()=>filmCreativeMenu(genreId,b.id),cash(b.cost),state.bank>=b.cost?100:35));
@@ -3415,6 +3421,8 @@ function mainMenu(){
   ...(perkOwned('hollywoodStar')?[choice(perkEnabled('hollywoodStar')?'🌟':'⭐',perkEnabled('hollywoodStar')?'إيقاف نجم هوليوود':'تفعيل نجم هوليوود','الشهرة الفورية في الوظائف والمهن الخاصة.',()=>togglePremiumPerk('hollywoodStar'))]:[]),
   ...(perkOwned('goldenResume')?[choice(perkEnabled('goldenResume')?'📄':'📝',perkEnabled('goldenResume')?'إيقاف السيرة الذاتية الذهبية':'تفعيل السيرة الذاتية الذهبية','قبول مضمون للوظائف المؤهل لها وحماية من الفصل العشوائي.',()=>togglePremiumPerk('goldenResume'))]:[]),
   ...(perkOwned('goldenPacifier')?[choice(perkEnabled('goldenPacifier')?'🍼':'👶',perkEnabled('goldenPacifier')?'إيقاف إعداد الولادات':'تفعيل إعداد الولادات','اختيار عدد الأبناء والنوع والموهبة الخاصة.',()=>togglePremiumPerk('goldenPacifier'))]:[]),
+  ...(perkOwned('godMode')?[choice(perkEnabled('godMode')?'⚡':'⚪',perkEnabled('godMode')?'إيقاف وضع الإله':'تفعيل وضع الإله','تخصيص الحيوات والمواهب والشخصيات.',()=>togglePremiumPerk('godMode')),...(perkEnabled('godMode')?[choice('👑','قائمة وضع الإله','حياة ملكية ومحرر الشخصيات والمواهب.',godModeMenu)]:[])]:[]),
+  ...(perkOwned('bitizenship')?[choice(perkEnabled('bitizenship')?'🌟':'⚪',perkEnabled('bitizenship')?'إيقاف عضوية Bitizen':'تفعيل عضوية Bitizen','الوصول المميز للأنشطة ومحرر الشخصيات والأجيال.',()=>togglePremiumPerk('bitizenship')),...(perkEnabled('bitizenship')?[choice('🌟','قائمة Bitizen','الحيوانات والصالون والتفاعل مع المعلمين والمدير.',bitizenshipMenu)]:[])]:[]),
   ...(state.prison?[choice('🚔','الحياة داخل السجن','استعرض خيارات العقوبة أو استخدم بطاقة الخروج.',prisonEvent)]:[]),
   choice('⏳','الرجوع بالزمن','استرجع نقطة حفظ سنوية سابقة.',timeMachineMenu),
   choice('🎁','المكافأة اليومية','احصل على مكافأتك اليومية إن كانت متاحة.',()=>dailyReward()),
@@ -3433,6 +3441,13 @@ function activities(){
   choice('🐾','الحيوانات الأليفة','تبنّي حيوان أو الاهتمام بالحيوانات الحالية.',()=>petsMenu()),
   choice('🌟','المهن الخاصة والشهرة','تمثيل وموسيقى ومحتوى ورياضة ومسارات مختلفة.',()=>specialCareers()),
   ...(perkOwned('zooExpansionPack')?[choice('🦁','إدارة حديقة الحيوان','شراء حيوانات، رعاية وتكاثر واكتشافات نادرة.',zooMenu)]:[]),
+  ...(perkOwned('cultPack')?[choice('🛕','المجتمع والطائفة','تجنيد أتباع، مراسم، قواعد وخزينة.',cultMenu)]:[]),
+  ...(perkOwned('casinoPack')?[choice('🎰','إدارة الكازينو','تركيب ألعاب ومرافق ومشاهير وجولات افتراضية.',casinoMenu)]:[]),
+  ...(perkOwned('dealerPack')?[choice('🃏','مسار التاجر الخيالي','مسار قصصي عالي المخاطر داخل اللعبة.',dealerMenu)]:[]),
+  ...(perkOwned('landlordPack')?[choice('🏘️','العقارات والملاك','عقارات ذكية ومرافق وعقود وإخلاء مستأجرين.',landlordPortfolioMenu)]:[]),
+  ...(perkOwned('investorPack')?[choice('📊','حزمة المستثمر','الأسهم والسندات والمستشار والأخبار.',investingMenu)]:[]),
+  ...(perkOwned('godMode')&&perkEnabled('godMode')?[choice('⚡','وضع الإله','تخصيص الحياة والمواهب والشخصيات.',godModeMenu)]:[]),
+  ...(perkOwned('bitizenship')&&perkEnabled('bitizenship')?[choice('🌟','عضوية Bitizen','محرر الشخصيات والصالون والحيوانات وتفاعلات المدرسة والعمل.',bitizenshipMenu)]:[]),
   choice('⚖️','الجريمة والسجل القانوني','قرارات خيالية عالية المخاطر لها عواقب.',()=>crimeMenu()),
   choice('🌍','السفر والهجرة','إجازة أو انتقال لبلد جديدة.',()=>travelMenu()),
   choice('📊','البنك والاستثمارات','قروض، سداد ديون ومحافظ استثمار.',()=>financeMenu()),
