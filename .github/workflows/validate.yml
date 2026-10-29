@@ -18,6 +18,8 @@ jobs:
           node-version: 20
       - name: Check JavaScript syntax
         run: node --check app.js
+      - name: Run game smoke tests
+        run: node tests/smoke.cjs
       - name: Check required game files
         run: |
           test -s index.html
