@@ -102,10 +102,10 @@ test('تطور الأبناء يربط العمر بالتعليم والاست�
   assert.match(app,/function ensureChildGrowthProfile\(c\)/);
   assert.match(app,/function advanceChildren\(\)/);
   assert.match(app,/advanceChildren\(\);/);
-  assert.match(app,/child\.schoolPerformance/);
-  assert.match(app,/child\.careerPotential/);
-  assert.match(app,/child\.independence/);
-  assert.match(app,/child\.educationStatus='خريج جامعي'/);
+  assert.match(app,/c\.schoolPerformance/);
+  assert.match(app,/c\.careerPotential/);
+  assert.match(app,/c\.independence/);
+  assert.match(app,/c\.educationStatus='خريج جامعي'/);
   const childActions=functionSource('childAction','personModal');
   assert.match(childActions,/action==='study'/);
   assert.match(childActions,/action==='career'/);
