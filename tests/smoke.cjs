@@ -43,6 +43,12 @@ assert.match(app, /function startCombatBout\(mode\)/, 'street and league fights 
 assert.match(app, /function resolveCombatBout\(mode,opponent,moveId\)/, 'bouts should resolve using player stats and move matchups');
 assert.match(app, /function recoverCombatInjury\(\)/, 'combat injuries should have a recovery system');
 assert.match(app, /function combatBoutHistory\(\)/, 'recent fight results should be inspectable');
+assert.match(app, /restUsedYear:-1/, 'fighter state should track the yearly rest cooldown');
+assert.match(app, /c\.restUsedYear===state\.yearCount/, 'free recovery should not be infinitely repeatable in the same year');
+assert.match(app, /rating:mode==='league'\?34\+c\.rank\*8\+Math\.floor\(Math\.random\(\)\*13\):18\+Math\.floor\(Math\.random\(\)\*31\)/, 'street and league opponents should have separate difficulty ranges');
+assert.match(app, /move\.style===opponent\.weakTo\?7/, 'combat odds should use the opponent weakness as a tactical matchup');
+assert.match(app, /if\(state\.specialCareer\.id==='fighter'\)\{opts\.unshift\(choice\('🥊','إدارة مسيرة القتال'/, 'fighter careers should show a dedicated career hub');
+
 assert.match(app, /state\.combatCareer=c\.id==='fighter'\?createCombatCareer\(\):null/, 'changing to the fighter career should initialize the dedicated profile');
 assert.match(app, /c\.streetCred\+=12/, 'street wins should build street credibility');
 assert.match(app, /Losing a street fight does not remove street credibility/, 'street losses should not remove credibility');

@@ -115,14 +115,14 @@ const combatOpponentTypes=[
 const combatOpponentNames=['آدم منصور','مالك شريف','ياسين حمدي','عمر لطفي','كريم فوزي','سيف كمال','علي ناصر','زياد حسن','حمزة فريد','نوح عادل'];
 function createCombatCareer(){
  return {rank:0,leaguePoints:0,streetCred:0,streetWins:0,leagueWins:0,wins:0,losses:0,knockouts:0,draws:0,
-  technique:24+Math.floor(Math.random()*8),power:23+Math.floor(Math.random()*9),speed:24+Math.floor(Math.random()*8),defense:22+Math.floor(Math.random()*9),stamina:28+Math.floor(Math.random()*8),energy:100,
-  injury:0,injuryYears:0,coach:null,movesKnown:['quick-jab','high-guard'],selectedMove:'quick-jab',champion:false,bouts:[],startedAge:state?state.age:18};
+  technique:32+Math.floor(Math.random()*8),power:28+Math.floor(Math.random()*8),speed:31+Math.floor(Math.random()*8),defense:28+Math.floor(Math.random()*8),stamina:34+Math.floor(Math.random()*8),energy:100,
+  injury:0,injuryYears:0,restUsedYear:-1,coach:null,movesKnown:['quick-jab','high-guard'],selectedMove:'quick-jab',champion:false,bouts:[],startedAge:state?state.age:18};
 }
 function ensureCombatCareer(){
  if(!state)return null;
  let c=state.combatCareer;
  if(!c||typeof c!=='object')c=state.combatCareer=createCombatCareer();
- const defaults={rank:0,leaguePoints:0,streetCred:0,streetWins:0,leagueWins:0,wins:0,losses:0,knockouts:0,draws:0,technique:25,power:25,speed:25,defense:25,stamina:30,energy:100,injury:0,injuryYears:0,coach:null,movesKnown:['quick-jab','high-guard'],selectedMove:'quick-jab',champion:false,bouts:[]};
+ const defaults={rank:0,leaguePoints:0,streetCred:0,streetWins:0,leagueWins:0,wins:0,losses:0,knockouts:0,draws:0,technique:25,power:25,speed:25,defense:25,stamina:30,energy:100,injury:0,injuryYears:0,restUsedYear:-1,coach:null,movesKnown:['quick-jab','high-guard'],selectedMove:'quick-jab',champion:false,bouts:[]};
  Object.keys(defaults).forEach(k=>{if(c[k]===undefined||c[k]===null)c[k]=defaults[k];});
  if(!Array.isArray(c.movesKnown))c.movesKnown=['quick-jab','high-guard'];
  if(!c.movesKnown.length)c.movesKnown=['quick-jab','high-guard'];
@@ -1260,7 +1260,7 @@ function startCombatBout(mode){
  if(mode==='league'&&(c.streetWins<2||c.streetCred<20)){closeModal();info('🔒','الدوري لسه مقفول','محتاج فوزين في نزالات الشوارع ورصيد شارع 20 على الأقل. الحالي: '+c.streetWins+' فوز و'+c.streetCred+' رصيد.');return;}
  if(mode==='league'&&state.bank<1500){closeModal();info('💳','رسوم الدوري','المشاركة في نزال الدوري تحتاج '+cash(1500)+'.');return;}
  const type=pick(combatOpponentTypes),opponent={name:pick(combatOpponentNames),style:type.style,weakTo:type.weakTo,emoji:type.emoji,
-  rating:mode==='league'?38+c.rank*9+Math.floor(Math.random()*15):22+Math.floor(Math.random()*38),
+  rating:mode==='league'?34+c.rank*8+Math.floor(Math.random()*13):18+Math.floor(Math.random()*31),
   mode,fee:mode==='league'?1500:0};
  const opts=c.movesKnown.map(id=>{
   const m=combatMoveCatalog.find(x=>x.id===id);if(!m)return null;
@@ -1275,7 +1275,7 @@ function resolveCombatBout(mode,opponent,moveId){
  if(!move){closeModal();info('🥋','الحركة غير متاحة','اختار واحدة من الحركات التي تعلمتها.');return;}
  if(mode==='league'&&state.bank<1500){closeModal();info('💳','الرصيد مش كفاية','رسوم الدوري تحتاج '+cash(1500)+'.');return;}
  closeModal();if(mode==='league')state.bank-=1500;
- const coachBonus=c.coach?c.coach.bonus:0,counterBonus=move.strongAgainst===opponent.style?12:(move.style===opponent.style?-4:0);
+ const coachBonus=c.coach?c.coach.bonus:0,counterBonus=move.strongAgainst===opponent.style?12:(move.style===opponent.weakTo?7:(move.style===opponent.style?-4:0));
  const agePenalty=state.age>38?(state.age-38)*.8:0;
  const playerScore=c.technique*.19+c.power*.18+c.speed*.16+c.defense*.13+c.stamina*.10+state.stats.health*.10+(state.specialCareer.level||1)*.8+move.power*.12+coachBonus-c.injury*.16-agePenalty;
  const opponentScore=opponent.rating+(Math.random()*12-6);
@@ -1317,7 +1317,7 @@ function recoverCombatInjury(){
  const c=ensureCombatCareer();
  const opts=[
   choice('🩹','علاج وتأهيل','تكلفة 2,500 '+state.place.unit+' لتقليل الإصابة بنحو 45 نقطة.',()=>treatCombatInjury(),'2,500 '+state.place.unit),
-  choice('🛌','راحة وتدريب خفيف','قلّل الإصابة 20 نقطة واستعد 25 طاقة من غير تكلفة.',()=>{closeModal();c.injury=clamp(c.injury-20);if(c.injury===0)c.injuryYears=0;c.energy=clamp(c.energy+25);log('🛌','راحة المقاتل','أخذت راحة وتراجعت الإصابة إلى '+c.injury+'%.','good');save();render();combatCareerMenu();}),
+  choice('🛌','راحة وتدريب خفيف',(c.restUsedYear===state.yearCount?'استخدمت راحة السنة دي بالفعل. ':'راحة واحدة في كل سنة من اللعبة. ')+'قلّل الإصابة 20 نقطة واستعد 25 طاقة من غير تكلفة.',()=>{if(c.restUsedYear===state.yearCount){closeModal();info('🛌','الراحة السنوية مستخدمة','تقدر تستخدم الراحة المجانية مرة واحدة في كل سنة من عمر الشخصية.');return;}closeModal();c.restUsedYear=state.yearCount;c.injury=clamp(c.injury-20);if(c.injury===0)c.injuryYears=0;c.energy=clamp(c.energy+25);log('🛌','راحة المقاتل','أخذت راحة وتراجعت الإصابة إلى '+c.injury+'%.','good');save();render();combatCareerMenu();}),
   choice('↩️','رجوع','',combatCareerMenu)
  ];
  modal('🩹','التعافي من الإصابات','الإصابة تقلل نتيجتك في النزالات، والراحة مهمة خصوصًا قبل الدوري.',opts);
