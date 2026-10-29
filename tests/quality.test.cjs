@@ -369,7 +369,7 @@ test('واجهة الهاتف الجديدة تطابق تخطيط الصفحا�
   assert.match(app, /section\('Parents'\)/);
   assert.match(app, /section\('Premium Activities'\)/);
   assert.match(app, /section\('Premium Assets'\)/);
-  assert.match(app, /id==='auraRing'/);
+  assert.match(app, /auraRing:\{cost:32000,title:'خاتم الهالة'\}/);
   assert.match(css, /--blue:#075a9b/);
   assert.match(css, /\.drawer-body \.choice\.locked-choice/);
   assert.match(css, /\.agebtn[\s\S]{0,200}border-radius:50%/);
