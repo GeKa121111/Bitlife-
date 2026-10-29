@@ -17,6 +17,15 @@ assert.match(app, /function claimDailyChallenge\(id\)/, 'daily challenge rewards
 assert.match(app, /choice\('🎯','تحديات اليوم'/, 'daily challenges should be reachable from the main menu');
 assert.match(app, /board\.claimed\.length===board\.ids\.length/, 'all daily challenge claims should trigger a completion bonus');
 assert.match(app, /dailyChallenges:null/, 'older saves should migrate to the daily challenge state');
+assert.match(app, /function timeMachineMenu\(\)/, 'the player should be able to review yearly rewind snapshots');
+assert.match(app, /function rewindToSnapshot\(index\)/, 'time rewind should restore a selected prior state');
+assert.match(app, /timeMachineSnapshots: \[\]/, 'new lives should initialize the time-machine history');
+assert.match(app, /state\.timeMachineSnapshots\.push\(JSON\.stringify\(snapshot\)\)/, 'each age-up should preserve a rewind point');
+assert.match(app, /timeMachineDeathBtn/, 'the end-of-life panel should offer a rewind path when available');
+assert.match(app, /function editCharacterTraits\(\)/, 'player traits editor should exist');
+assert.match(app, /function editNpcMenu\(\)/, 'NPC trait editor should exist');
+assert.match(app, /choice\('🧬','محرر سمات الشخصية'/, 'character editor should be reachable from the profile menu');
+
 assert.ok((app.match(/\{id:'[a-z-]+',title:'/g) || []).length >= 20, 'daily challenge catalog should have breadth');
 
 assert.ok((app.match(/\nE\(\[/g) || []).length >= 25, 'at least 25 age-based events should exist');
