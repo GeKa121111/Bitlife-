@@ -1829,8 +1829,10 @@ function investingMenu(){
 
 function investAmount(kind,amount){
  closeModal();if(state.age<18){info('🔒','الاستثمار بعد 18 سنة','');return;}if(state.bank<amount){info('💳','الرصيد مش كفاية','تحتاج '+cash(amount)+' عشان تبدأ.');return;}
- state.bank-=amount;state.investments.push({id:Date.now()+Math.random(),kind,value:amount,started:state.age});log('📊','بدأت الاستثمار','خصصت '+cash(amount)+' لمحفظة '+kind+'. راجع قيمتها كل سنة ولا تستثمر أموال احتياجاتك الأساسية.','special');render();info('📊','تم إنشاء المحفظة','رأس المال المستثمر '+cash(amount)+'. النتائج هتتغير مع تقدم السنين.');
+ state.bank-=amount;state.investments.push({id:Date.now()+Math.random(),kind,value:amount,initialValue:amount,strategy:'balanced',started:state.age});
+ log('📊','بدأت الاستثمار','خصصت '+cash(amount)+' لمحفظة '+kind+'. تقدر تختار استراتيجية قصيرة أو طويلة المدى من تفاصيل المحفظة.','special');save();render();info('📊','تم إنشاء المحفظة','رأس المال المستثمر '+cash(amount)+'. النتائج هتتغير مع تقدم السنين.');
 }
+
 function sellInvestment(i){
  closeModal();const inv=state.investments[i];if(!inv)return;
  info('💵','بيع الاستثمار','القيمة الحالية '+cash(inv.value)+'. هل تريد تصفية المحفظة؟',[
@@ -3158,6 +3160,117 @@ function evictTenant(index){
  const compensation=Math.round((p.tenant.rent||0)*.15);if(state.bank<compensation){info('💳','الرصيد مش كفاية','تعويض الإخلاء الرمزي يحتاج '+cash(compensation)+'.');return;}
  state.bank-=compensation;const name=p.tenant.name;p.tenant=null;p.rented=false;state.reputation=clamp(state.reputation-4);log('🚪','إنهاء عقد وإخلاء','أنهيت عقد '+name+' بعد دفع تعويض '+cash(compensation)+'.','bad');save();render();landlordPortfolioMenu();
 }
+
+function financialAdvisorMenu(){
+ if(!perkOwned('investorPack')){closeModal();info('📊','حزمة المستثمر مقفولة','افتحها من متجر مزايا حياة.');return;}
+ const a=state.investmentAdvisor||(state.investmentAdvisor={hired:false,yearsLeft:0,fee:4500});
+ const opts=[];
+ if(!a.hired)opts.push(choice('🧑‍💼','تعيين مستشار مالي','رسوم التعاقد 8,000، ثم 4,500 سنويًا لمدة 3 سنوات. المستشار يخفف تقلب المحافظ ويستثمر تلقائيًا عندما تسمح الميزانية.',hireFinancialAdvisor,'8,000 '+state.place.unit));
+ else{
+  opts.push(choice('📄','عقد المستشار','المتبقي '+a.yearsLeft+' سنوات · الرسوم السنوية '+cash(a.fee)+'.',()=>{closeModal();info('🧑‍💼','عقد المستشار','المستشار ينفذ استثمارًا آليًا محافظًا إذا كان رصيد البنك يسمح، ويخفف الخسائر المحتملة بدل ضمان الأرباح.');}));
+  opts.push(choice('🧭','استراتيجية طويلة المدى','تطبيق استراتيجية طويلة المدى على كل المحافظ الحالية.',()=>{closeModal();(state.investments||[]).forEach(inv=>inv.strategy='long');log('🧭','تحديث استراتيجية الاستثمار','حوّلت المحافظ الحالية إلى استراتيجية طويلة المدى.','good');save();render();investingMenu();}));
+  opts.push(choice('🚪','إنهاء التعاقد','إيقاف الرسوم السنوية والاستثمار الآلي.',()=>{closeModal();a.hired=false;a.yearsLeft=0;log('🧑‍💼','إنهاء عقد المستشار','أنهيت التعاقد مع المستشار المالي.','');save();render();investingMenu();}));
+ }
+ opts.push(choice('↩️','رجوع للاستثمارات','',investingMenu));
+ modal('🧑‍💼','المستشار المالي',a.hired?'المستشار يعمل لمدة '+a.yearsLeft+' سنوات.':'عيّن مستشارًا لمساعدتك في التخطيط وتوزيع المخاطر.',opts);
+}
+function hireFinancialAdvisor(){
+ closeModal();const a=state.investmentAdvisor||(state.investmentAdvisor={hired:false,yearsLeft:0,fee:4500});
+ if(a.hired){financialAdvisorMenu();return;}const cost=8000;
+ if(state.bank<cost){info('💳','الرصيد مش كفاية','التعاقد يحتاج '+cash(cost)+'.');return;}
+ state.bank-=cost;a.hired=true;a.yearsLeft=3;a.fee=4500;
+ log('🧑‍💼','تعيين مستشار مالي','دفعت '+cash(cost)+' وبدأ عقد مستشار لمدة 3 سنوات. لا توجد أرباح مضمونة.','good');save();render();financialAdvisorMenu();
+}
+function investmentPositionMenu(index){
+ const inv=(state.investments||[])[index];if(!inv){investingMenu();return;}
+ if(!Number.isFinite(Number(inv.initialValue)))inv.initialValue=inv.value;if(!inv.strategy)inv.strategy='balanced';
+ const delta=inv.value-inv.initialValue,percent=inv.initialValue?Math.round(delta/inv.initialValue*100):0;
+ modal('📊',inv.kind+' · المحفظة','القيمة الحالية '+cash(inv.value)+' · رأس المال الأولي '+cash(inv.initialValue)+' · التغير '+(delta>=0?'+':'')+cash(delta)+' ('+percent+'%) · الاستراتيجية '+inv.strategy+'.',[
+  choice('🧭','تغيير الاستراتيجية','قصيرة المدى أكثر تقلبًا، وطويلة المدى أقل تقلبًا في المحاكاة.',()=>investmentStrategyMenu(index)),
+  choice('💵','بيع المحفظة','تحويل القيمة الحالية إلى رصيد نقدي.',()=>sellInvestment(index)),
+  choice('↩️','رجوع للاستثمارات','',investingMenu)
+ ]);
+}
+function investmentStrategyMenu(index){
+ const inv=(state.investments||[])[index];if(!inv){investingMenu();return;}
+ modal('🧭','استراتيجية '+inv.kind,'هذه إعدادات محاكاة داخل اللعبة وليست نصيحة استثمارية حقيقية.',[
+  choice('⚡','قصيرة المدى','تقلب أعلى مع تغيرات أكثر حدة.',()=>setInvestmentStrategy(index,'short')),
+  choice('⚖️','متوازنة','مزيج بين النمو وتقليل التقلب.',()=>setInvestmentStrategy(index,'balanced')),
+  choice('🌱','طويلة المدى','تقلب أقل ومكافأة زمنية افتراضية صغيرة.',()=>setInvestmentStrategy(index,'long')),
+  choice('↩️','رجوع','',()=>investmentPositionMenu(index))
+ ]);
+}
+function setInvestmentStrategy(index,strategy){
+ closeModal();const inv=(state.investments||[])[index];if(!inv)return;inv.strategy=strategy;
+ log('🧭','تغيير استراتيجية الاستثمار','ضبطت محفظة '+inv.kind+' على استراتيجية '+({short:'قصيرة المدى',balanced:'متوازنة',long:'طويلة المدى'}[strategy]||strategy)+'.','good');save();render();investmentPositionMenu(index);
+}
+function investmentTipsMenu(){
+ if(!perkOwned('investorPack')){closeModal();info('📊','حزمة المستثمر مقفولة','افتحها من متجر مزايا حياة.');return;}
+ const people=[...(state.friends||[]),...(state.family||[]).filter(p=>p&&!p.deceased)];
+ const opts=people.map(p=>choice(p.emoji||'👤',p.name+' · '+(p.relation||'معرفة'),'اسأل الشخص عن رأيه في السوق الافتراضي.',()=>requestInvestmentTip(p)));
+ if(!opts.length)opts.push(choice('📰','اقرأ الصحيفة بدلًا من ذلك','تقرير سوق افتراضي.',marketNewspaperMenu));
+ opts.push(choice('↩️','رجوع','',investingMenu));modal('🗣️','نصائح من الأصدقاء والعائلة','الآراء متغيرة وقد تكون خاطئة؛ قارِنها بالأخبار ولا تستثمر أموال احتياجاتك الأساسية.',opts);
+}
+function requestInvestmentTip(person){
+ closeModal();const kind=pick(['أسهم','سندات','عملات رقمية']),notes={
+  'أسهم':'الشخص شايف أن شركات معروفة داخل عالم اللعبة ممكن يكون لها نمو، مع احتمالية خسارة.',
+  'سندات':'الشخص يفضل عائدًا أقل تقلبًا في المحاكاة، لكنه ليس مضمونًا.',
+  'عملات رقمية':'الشخص يتوقع حركة كبيرة في السوق الافتراضي؛ المخاطر أعلى.'
+ };
+ state.marketTip={kind,source:person.name,age:state.age,note:notes[kind]};
+ info('🗣️','نصيحة من '+person.name,notes[kind]+' دي مجرد وجهة نظر داخل اللعبة.',[
+  choice('📊','جرّب استثمارًا صغيرًا','محفظة '+kind+' بمبلغ 8,000.',()=>investAmount(kind,8000),'8,000 '+state.place.unit),
+  choice('📰','قارنها بالصحيفة','',marketNewspaperMenu),
+  choice('↩️','رجوع','',investmentTipsMenu)
+ ]);
+}
+function marketNewspaperMenu(){
+ const holdings=(state.investments||[]).map(inv=>{
+  if(!Number.isFinite(Number(inv.initialValue)))inv.initialValue=inv.value;
+  const difference=inv.value-inv.initialValue;
+  return choice('📊',inv.kind+' · '+cash(inv.value),'التغير منذ البداية '+(difference>=0?'+':'')+cash(difference)+'.',()=>investmentPositionMenu(state.investments.indexOf(inv)));
+ });
+ const articles=[
+  'مؤشر الشركات الافتراضي متقلب هذا العام؛ تابع النتائج ولا تعتمد على عنوان واحد.',
+  'السندات أقل تقلبًا في المحاكاة الحالية، لكن عائدها عادة أهدأ.',
+  'العملات الرقمية قد تتحرك صعودًا أو هبوطًا بحدة؛ نوّع محفظتك الافتراضية.',
+  'التخطيط طويل المدى يقلل القرارات المتسرعة داخل اللعبة، لكنه لا يضمن الربح.'
+ ];
+ const opts=[choice('🗞️','خبر السوق','اقرأ موجزًا افتراضيًا لأسعار السوق.',()=>{closeModal();info('🗞️','موجز السوق',pick(articles));}),...holdings,choice('↩️','رجوع للاستثمارات','',investingMenu)];
+ modal('📰','صحيفة السوق','تقرير تعليمي افتراضي، وليس نصيحة مالية حقيقية. المحافظ الحالية '+holdings.length+'.',opts);
+}
+function investorQuitJob(){
+ closeModal();if(!perkOwned('investorPack')||!state.job){investingMenu();return;}
+ const holdings=(state.investments||[]).reduce((s,x)=>s+(Number(x.value)||0),0),assets=(state.assets||[]).reduce((s,x)=>s+(Number(x.value)||0),0),net=state.bank+holdings+assets-(state.debt||0);
+ if(net<1000000){info('💼','الاستقلال المالي لسه بدري','صافي الثروة التقديري '+cash(net)+'. احتفظ بوظيفتك حتى تكوّن احتياطيًا أكبر.');return;}
+ info('💼','التفرغ للاستثمار','صافي ثروتك التقديري '+cash(net)+'. ترك الوظيفة يوقف الدخل السنوي؛ هل أنت متأكد؟',[
+  choice('✓','أستقيل وأتفرغ','',()=>{closeModal();state.jobHistory.push({title:state.job.title,salary:state.job.salary,startAge:state.job.startAge??state.age,endAge:state.age});state.job=null;state.performance=50;log('💼','التفرغ للاستثمار','تركت الوظيفة بعد وصول صافي الثروة لمستوى الاستقلال المالي.','special');save();render();investingMenu();}),
+  choice('↩️','أحتفظ بالوظيفة','',investingMenu)
+ ]);
+}
+function investingMenu(){
+ const opts=[];
+ if(state.age<18){opts.push(choice('🔒','الاستثمار بعد 18 سنة','ابدأ بالتعلم والادخار لحد ما تقدر تستثمر قانونيًا.',()=>{closeModal();info('📊','لسه بدري','الاستثمار متاح بعد سن 18.');}));}
+ else{
+  opts.push(choice('🏦','استثمار محافظ','مبلغ 2,000 في محفظة أقل تقلبًا.',()=>investAmount('محافظ',2000),'2,000 '+state.place.unit));
+  opts.push(choice('📈','أسهم متوازنة','مبلغ 10,000 مع صعود وهبوط سنوي.',()=>investAmount('متوازن',10000),'10,000 '+state.place.unit));
+  opts.push(choice('🎢','استثمار عالي المخاطر','مبلغ 5,000 مع احتمال مكسب أو خسارة كبيرين.',()=>investAmount('مخاطرة عالية',5000),'5,000 '+state.place.unit));
+  if(perkOwned('investorPack')){
+   opts.unshift(choice('🪙','عملات رقمية','محفظة شديدة التقلب، بمبلغ 8,000.',()=>investAmount('عملات رقمية',8000),'8,000 '+state.place.unit));
+   opts.unshift(choice('🏛️','سندات','محفظة محافظة نسبيًا، بمبلغ 5,000.',()=>investAmount('سندات',5000),'5,000 '+state.place.unit));
+   opts.unshift(choice('📊','أسهم شركات','محفظة أسهم منفصلة بمبلغ 10,000.',()=>investAmount('أسهم',10000),'10,000 '+state.place.unit));
+  }
+ }
+ (state.investments||[]).forEach((inv,i)=>opts.push(choice('📊',inv.kind+' · '+cash(inv.value),'إدارة المحفظة وتغيير استراتيجيتها.',()=>investmentPositionMenu(i),cash(inv.value))));
+ if(perkOwned('investorPack')){
+  opts.push(choice('🧑‍💼','المستشار المالي',state.investmentAdvisor&&state.investmentAdvisor.hired?'عقد نشط · '+state.investmentAdvisor.yearsLeft+' سنوات':'تعيين مستشار يدير محفظة افتراضية.',financialAdvisorMenu));
+  opts.push(choice('🗣️','نصائح الأصدقاء والعائلة','اسأل شخصًا تعرفه عن نوع استثمار افتراضي.',investmentTipsMenu));
+  opts.push(choice('📰','صحيفة السوق','عناوين السوق والتغير في المحافظ.',marketNewspaperMenu));
+  if(state.job)opts.push(choice('💼','التفرغ للاستثمار','الاستقالة متاحة عند صافي ثروة تقديري يتجاوز مليونًا.',investorQuitJob));
+ }
+ modal('📊','الاستثمارات','النتائج داخل المحاكاة متغيرة وليست مضمونة؛ احتفظ بمبلغ للطوارئ ولا تستثمر أموال احتياجاتك الأساسية.',opts);
+}
+
 function premiumPerksMenu(){
  if(!state)return;
  const catalog=[
