@@ -3,7 +3,7 @@
 const $ = id => document.getElementById(id);
 const KEY = 'hekayat_hayah_save_v1';
 const fmt = n => new Intl.NumberFormat('ar-EG',{maximumFractionDigits:0}).format(Math.round(Number(n)||0));
-const cash = n => fmt(n)+' ج.م';
+const cash = n => fmt(n)+' '+(state&&state.place?state.place.unit:'ج.م');
 const clamp = (n,min=0,max=100) => Math.max(min,Math.min(max,Math.round(n)));
 const pick = list => list[Math.floor(Math.random()*list.length)];
 const chance = p => Math.random()<p;
@@ -17,8 +17,8 @@ const names = {
 const places=[
  {country:'مصر',city:'القاهرة',flag:'🇪🇬',start:18000,unit:'ج.م'},
  {country:'مصر',city:'الإسكندرية',flag:'🇪🇬',start:16000,unit:'ج.م'},
- {country:'السعودية',city:'جدة',flag:'🇸🇦',start:4200,unit:'ر.س'},
- {country:'الإمارات',city:'دبي',flag:'🇦🇪',start:5200,unit:'د.إ'}
+ {country:'السعودية',city:'جدة',flag:'🇸🇦',start:18000,unit:'ر.س'},
+ {country:'الإمارات',city:'دبي',flag:'🇦🇪',start:18000,unit:'د.إ'}
 ];
 const parentJobs=['مدرس','محاسب','مهندسة','طبيب','موظف حكومي','صاحب محل','ممرضة','موظف بنك','سائق','محامية','فني كهرباء','ربة منزل'];
 const jobs=[
@@ -250,7 +250,8 @@ C('أتفاوض على المقابل','اعرف قيمة وقتك',{smart:2},'�
 ])
 ];
 function makePerson(gender,relation,emoji,age,level){
- return {id:relation+'-'+Math.random().toString(36).slice(2,8),name:pick(names[gender])+' '+pick(names.family),relation,emoji,age,relationshipLevel:level,personality:pick(['حنون','عملي','مرح','جاد','طموح','فضولي'])};
+ const job=relation==='الأب'?pick(['مدرس','محاسب','مهندس','موظف حكومي','صاحب محل','طبيب','سائق']):relation==='الأم'?pick(['مدرسة','محاسبة','مهندسة','موظفة حكومية','صاحبة محل','طبيبة','ممرضة','ربة منزل']):'طالب';
+ return {id:relation+'-'+Math.random().toString(36).slice(2,8),name:pick(names[gender])+' '+pick(names.family),relation,emoji,age,job,generosity:25+Math.floor(Math.random()*76),relationshipLevel:level,personality:pick(['حنون','عملي','مرح','جاد','طموح','فضولي'])};
 }
 function newLife(){
  const gender=pick(['male','female']),place=pick(places);
@@ -334,10 +335,10 @@ function render(){
 }
 function closeModal(){ $('modalRoot').innerHTML=''; }
 function choice(icon,title,desc,action,price=''){return {icon,title,desc,action,price};}
-function modal(icon,title,desc,choices,closable=true){
+function modal(icon,title,desc,choices,closable=true,extra=''){
  const root=$('modalRoot');
  const list=choices.map((c,i)=>'<button class="choice" data-i="'+i+'" '+(c.disabled?'disabled':'')+'><span class="choiceico">'+(c.icon||'›')+'</span><span class="ctext"><span class="ctitle">'+esc(c.title||c.label||'اختيار')+'</span>'+(c.desc?'<span class="cdesc">'+esc(c.desc)+'</span>':'')+'</span>'+(c.price?'<span class="price">'+esc(c.price)+'</span>':'')+'</button>').join('');
- root.innerHTML='<div class="overlay" id="overlay"><section class="modal" role="dialog" aria-modal="true" aria-label="'+esc(title)+'"><div class="modalhead"><div class="modalicon">'+icon+'</div><div class="modaltitle">'+esc(title)+'</div>'+(closable?'<button class="closebtn" id="closeModal" aria-label="إغلاق">×</button>':'')+'</div><div class="modalbody">'+(desc?'<p class="desc">'+esc(desc)+'</p>':'')+'<div class="choicegrid">'+list+'</div></div></section></div>';
+ root.innerHTML='<div class="overlay" id="overlay"><section class="modal" role="dialog" aria-modal="true" aria-label="'+esc(title)+'"><div class="modalhead"><div class="modalicon">'+icon+'</div><div class="modaltitle">'+esc(title)+'</div>'+(closable?'<button class="closebtn" id="closeModal" aria-label="إغلاق">×</button>':'')+'</div><div class="modalbody">'+(desc?'<p class="desc">'+esc(desc)+'</p>':'')+extra+'<div class="choicegrid">'+list+'</div></div></section></div>';
  const overlay=$('overlay');overlay.addEventListener('click',e=>{if(e.target===overlay&&closable)closeModal();});
  if(closable&&$('closeModal'))$('closeModal').addEventListener('click',closeModal);
  root.querySelectorAll('[data-i]').forEach(b=>b.addEventListener('click',()=>{const c=choices[Number(b.dataset.i)];if(c&&c.action)c.action();}));
@@ -520,7 +521,7 @@ function manageAssets(){
  if(!opts.length)opts.push(choice('📦','مفيش أصول لسه','ابدأ بالشراء لما ميزانيتك تسمح.',()=>{closeModal();assets();}));
  opts.push(choice('↩️','رجوع للأصول','',()=>{closeModal();assets();}));modal('📦','إدارة الممتلكات','كل أصل له قيمة ومصاريف تشغيل.',opts);
 }
-function person(gender,relation,emoji,age,level){return {id:relation+'-'+Math.random().toString(36).slice(2,8),name:pick(names[gender])+' '+pick(names.family),relation,emoji,age,relationshipLevel:level,personality:pick(['حنون','عملي','مرح','جاد','طموح','فضولي'])};}
+function person(gender,relation,emoji,age,level){return {id:relation+'-'+Math.random().toString(36).slice(2,8),name:pick(names[gender])+' '+pick(names.family),relation,emoji,age,job:pick(['طالب','محاسب','مصمم','مدرس','موظف','مطور']),generosity:25+Math.floor(Math.random()*76),relationshipLevel:level,personality:pick(['حنون','عملي','مرح','جاد','طموح','فضولي'])};}
 function relations(){
  const opts=[];
  state.family.forEach(n=>opts.push(choice(n.emoji,n.name+' · '+n.relation,n.personality+' · مستوى العلاقة '+n.relationshipLevel+'%',()=>{closeModal();personModal(n);},n.relationshipLevel+'%')));
@@ -531,12 +532,13 @@ function relations(){
  modal('💞','العلاقات','العلاقات محتاجة وقت واهتمام. اختار شخصًا عشان تتفاعل معاه.',opts);
 }
 function personModal(n){
- modal(n.emoji,n.name+' · '+n.relation,'شخصيته '+n.personality+'، ومستوى العلاقة '+n.relationshipLevel+'%.',[
+ const progress='<div class="muted" style="margin:-2px 0 15px">قوة العلاقة · '+n.relationshipLevel+'%</div><div class="progressline"><div style="width:'+clamp(n.relationshipLevel)+'%"></div></div><div class="pillrow"><span class="pill">💼 '+esc(n.job||'غير محدد')+'</span><span class="pill">🎁 الكرم '+clamp(n.generosity||50)+'%</span><span class="pill">🧠 '+esc(n.personality)+'</span></div>';
+ modal(n.emoji,n.name+' · '+n.relation,'بيشتغل '+(n.job||'غير محدد')+'، وشخصيته '+n.personality+'.',[
   choice('☕','قضاء وقت','خصص وقت للشخص ده.',()=>relationshipAction(n,'time')),
   choice('💬','محادثة','اسأل عن أخباره واسمعه كويس.',()=>relationshipAction(n,'talk')),
   choice('🎁','تقديم هدية','هدية صغيرة بتكلفة 500 جنيه.',()=>relationshipAction(n,'gift')),
   choice('😤','شجار','الخلاف ممكن يقلل مستوى العلاقة.',()=>relationshipAction(n,'argue'))
- ]);
+ ],true,progress);
 }
 function relationshipAction(n,act){
  closeModal();if(act==='gift'&&state.bank<500){info('💳','الرصيد مش كفاية','الهدية محتاجة 500 جنيه.');return;}
