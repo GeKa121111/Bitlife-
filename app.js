@@ -28,7 +28,7 @@ function loadPermanentPerks(){
  return defaults;
 }
 function persistPermanentPerks(){try{localStorage.setItem(PERKS_KEY,JSON.stringify(permanentPerks));}catch(e){}}
-function perkOwned(id){return !!(permanentPerks&&permanentPerks.owned&&permanentPerks.owned[id]);}
+function perkOwned(id){return !!(permanentPerks&&permanentPerks.owned&&permanentPerks.owned[id])||(id==='actorPack'&&!!(permanentPerks&&permanentPerks.owned&&permanentPerks.owned.bossMode));}
 function perkEnabled(id){return perkOwned(id)&&!!(permanentPerks.enabled&&permanentPerks.enabled[id]);}
 function careerIncomeMultiplier(){return perkEnabled('goldenNeko')?1.2:1;}
 function specialCareerIncomeMultiplier(){return careerIncomeMultiplier()*(perkEnabled('bossMode')?1.1:1);}
@@ -444,7 +444,7 @@ function newLife(){
  const father=makePerson('male','الأب','👨',28+Math.floor(Math.random()*12),68+Math.floor(Math.random()*28));
  const mother=makePerson('female','الأم','👩',25+Math.floor(Math.random()*12),72+Math.floor(Math.random()*26));
  const sibling=makePerson(gender,'الأخ/الأخت','🧒',Math.floor(Math.random()*8),55+Math.floor(Math.random()*35));
- return {version:1,lifeId:Date.now()+Math.random(),cemeterySaved:false,name:pick(names[gender])+' '+pick(names.family),gender,age:0,place,bank:(perkOwned('goldenPiggyBank')?Math.max(1000000,place.start):place.start),stats:{happiness:65+Math.floor(Math.random()*26),health:76+Math.floor(Math.random()*22),smart:35+Math.floor(Math.random()*41),looks:35+Math.floor(Math.random()*51)},education:{level:0,school:'لم تبدأ الدراسة',major:null,yearsLeft:0,tuition:0},job:null,jobHistory:[],specialCareer:null,specialCareerHistory:[],combatCareer:null,filmStudio:null,esportsCareer:null,talents:{gaming:15+Math.floor(Math.random()*71)},performance:50,assets:[],investments:[],business:null,family:[father,mother,sibling],friends:[],partner:null,married:false,children:[],coParentingPlans:[],pets:[],hobbies:[],fame:0,followers:0,socialMediaAccount:false,socialMediaPosts:0,reputation:50,crimeRecord:0,prison:null,debt:0,willDistribution:'الأسرة بالتساوي',heirlooms:[],dailyRewardDate:null,dailyChallenges:null,challengeArchive:[],timeMachineSnapshots:[],legacy:{name:null,inheritance:0,heirloom:null},driversLicense:false,travelHistory:[],log:[],accomplishments:['بدأت رحلة الحياة'],status:'حي',cause:null,retired:false,yearCount:0,wealthPeak:place.start};
+ return {version:1,lifeId:Date.now()+Math.random(),cemeterySaved:false,name:pick(names[gender])+' '+pick(names.family),gender,age:0,place,bank:(perkOwned('goldenPiggyBank')?Math.max(1000000,place.start):place.start),stats:{happiness:65+Math.floor(Math.random()*26),health:76+Math.floor(Math.random()*22),smart:35+Math.floor(Math.random()*41),looks:35+Math.floor(Math.random()*51)},education:{level:0,school:'لم تبدأ الدراسة',major:null,yearsLeft:0,tuition:0},job:null,jobHistory:[],specialCareer:null,specialCareerHistory:[],combatCareer:null,filmStudio:null,esportsCareer:null,talents:{gaming:15+Math.floor(Math.random()*71)},performance:50,assets:[],investments:[],business:null,family:[father,mother,sibling],friends:[],partner:null,married:false,children:[],coParentingPlans:[],pets:[],hobbies:[],fame:0,followers:0,socialMediaAccount:false,socialMediaPosts:0,reputation:50,sti:false,crimeRecord:0,prison:null,debt:0,willDistribution:'الأسرة بالتساوي',heirlooms:[],dailyRewardDate:null,dailyChallenges:null,challengeArchive:[],timeMachineSnapshots:[],legacy:{name:null,inheritance:0,heirloom:null},driversLicense:false,travelHistory:[],log:[],accomplishments:['بدأت رحلة الحياة'],status:'حي',cause:null,retired:false,yearCount:0,wealthPeak:place.start};
 }
 
 function isValidSaveData(data){
@@ -482,6 +482,7 @@ function normalizeCoreState(data){
  Object.keys(statDefaults).forEach(key=>{const value=Number(data.stats[key]);data.stats[key]=Number.isFinite(value)?clamp(value):statDefaults[key];});
  data.age=Number.isFinite(Number(data.age))?Math.max(0,Math.min(120,Math.floor(Number(data.age)))):0;
  data.bank=Number.isFinite(Number(data.bank))?Number(data.bank):Number(data.place.start)||0;
+ data.sti=typeof data.sti==='boolean'?data.sti:false;
  if(!data.talents||typeof data.talents!=='object'||Array.isArray(data.talents))data.talents={};
  const gamingHobby=Array.isArray(data.hobbies)?data.hobbies.find(h=>h&&h.id==='gaming'):null;
  if(!Number.isFinite(Number(data.talents.gaming)))data.talents.gaming=gamingHobby?clamp(25+(Number(gamingHobby.level)||1)*5,0,100):35;
@@ -1338,13 +1339,20 @@ function relationshipHistory(n){
 }
 
 function relationshipIntimacy(n){
-if(state.age<18||state.partner!==n){info('🔒','الاختيار غير متاح','الاختيار ده متاح للبالغين مع الشريك الحالي فقط.');return;}
-  const protectedByShield=perkEnabled('healthShield'),complication=!protectedByShield&&chance(.14);
-  state.stats.happiness=clamp(state.stats.happiness+4);state.partner.relationshipLevel=clamp((state.partner.relationshipLevel||50)+5);
-  if(complication)state.stats.health=clamp(state.stats.health-12);
-  if(!Array.isArray(n.interactions))n.interactions=[];n.interactions.push({age:state.age,action:'intimate',delta:5,levelAfter:n.relationshipLevel});if(n.interactions.length>12)n.interactions.shift();
-  log(complication?'🩺':'🛡️',complication?'تنبيه صحي مرتبط بالعلاقة':'وقت خاص مع الشريك',complication?'قضيت وقتًا مع الشريك لكن ظهرت مضاعفة صحية داخل اللعبة، وانخفضت الصحة 12 نقطة.':'قضيت وقتًا خاصًا مع '+n.name+' وتحسّن التواصل'+(protectedByShield?'، ودرع العافية منع المضاعفات الصحية.':'. لم تظهر مضاعفات هذه المرة.'),complication?'bad':'good');
-  save();render();info(complication?'🩺':'💞',complication?'مضاعفة صحية خيالية':'تقارب ناجح',complication?'تقدر تراجع الصحة من قائمة العناية بالنفس.':(protectedByShield?'درع العافية فعّال في اللقاءات المقبلة.':'التأثير إيجابي هذه المرة، لكن المخاطرة تظل موجودة بدون درع العافية.'));return;
+ if(state.age<18||state.partner!==n){info('🔒','الاختيار غير متاح','الاختيار ده متاح للبالغين مع الشريك الحالي فقط.');return;}
+ const protectedByShield=perkEnabled('healthShield');
+ const infection=!protectedByShield&&!state.sti&&chance(.14);
+ state.stats.happiness=clamp(state.stats.happiness+4);
+ state.partner.relationshipLevel=clamp((state.partner.relationshipLevel||50)+5);
+ if(infection){state.sti=true;state.stats.health=clamp(state.stats.health-12);}
+ if(!Array.isArray(n.interactions))n.interactions=[];
+ n.interactions.push({age:state.age,action:'intimate',delta:5,levelAfter:n.relationshipLevel});
+ if(n.interactions.length>12)n.interactions.shift();
+ const title=infection?'عدوى صحية محاكية':'وقت خاص مع الشريك';
+ const message=infection?'ظهرت عدوى منقولة جنسيًا في محاكاة اللعبة وانخفضت الصحة 12 نقطة. يمكن علاج الحالة بزيارة الطبيب داخل اللعبة.':(state.sti?'التواصل تحسّن، لكن ما زالت هناك حالة صحية محاكية مسجلة وتحتاج إلى علاج داخل اللعبة.':protectedByShield?'قضيت وقتًا خاصًا مع '+n.name+' وتحسّن التواصل، ودرع العافية منع العدوى المحاكية.':'قضيت وقتًا خاصًا مع '+n.name+' وتحسّن التواصل. لم تظهر عدوى هذه المرة.');
+ log(infection?'🩺':protectedByShield?'🛡️':'💞',title,message,infection?'bad':'good');
+ save();render();
+ info(infection?'🩺':'💞',infection?'حالة صحية داخل اللعبة':'تقارب ناجح',infection?'زيارة الطبيب داخل اللعبة تزيل الحالة المسجلة.':(protectedByShield?'درع العافية يمنع هذا الخطر طوال فترة التفعيل.':state.sti?'يمكنك علاج الحالة الحالية بزيارة الطبيب داخل اللعبة.':'التأثير إيجابي هذه المرة، لكن الخطر المحاكي يظل قائمًا دون درع العافية.'));
 }
 
 function relationshipAction(n,act){
@@ -2381,7 +2389,7 @@ function premiumPerksMenu(){
   {id:'expandedTime',title:'ذاكرة الزمن الموسّعة',emoji:'⏳',cost:30000,desc:'ارفع عدد نقاط الرجوع السنوية من 8 إلى 60، مع حد آمن لتخزين الهاتف.'},
   {id:'actorPack',title:'حزمة التمثيل الاحترافية',emoji:'🎬',cost:25000,desc:'اختبارات أداء موسعة، إعلانات مدفوعة، ووكيل أعمال.'},
   {id:'bossMode',title:'مركز المهن الشامل',emoji:'🧰',cost:45000,desc:'لوحة موحدة للمهن الخاصة وعلاوة دخل 10% عند التفعيل.'},
-  {id:'healthShield',title:'درع العافية',emoji:'🩺',cost:18000,desc:'عند تفعيله، يمنع خطر المضاعفات الصحية المرتبطة بخيار العلاقة الخاص داخل اللعبة.'},
+  {id:'healthShield',title:'درع العافية',emoji:'🩺',cost:18000,desc:'عند تفعيله، يمنع عدوى منقولة جنسيًا محاكية في خيار اختياري للبالغين داخل اللعبة.'},
   {id:'goldenWrench',title:'الورشة الذهبية',emoji:'🔧',cost:20000,desc:'عند التفعيل، تبقى السيارات بحالة 100% ولا تُخصم صيانتها السنوية.'},
   {id:'goldenPassport',title:'جواز العالم',emoji:'🌍',cost:30000,desc:'الهجرة لأي وجهة متاحة داخل اللعبة من دون رسوم انتقال.'},
   {id:'goldenPiggyBank',title:'حصالة المليون',emoji:'🐷',cost:75000,desc:'ابدأ كل حياة جديدة، بما فيها حياة الوارث، بمليون من عملة بلدك داخل اللعبة.'},
@@ -2489,14 +2497,16 @@ function activities(){
  ]);
 }
 function healthMenu(){
- modal('❤️','الصحة والعافية','حالتك الصحية بتتأثر بالعمر والعادات والعلاقات والمخاطر. دي أنشطة داخل اللعبة وليست نصيحة طبية.',[
-  choice('🩺','زيارة الطبيب','كشف مقابل 1,200 '+state.place.unit+'.',()=>activity('doctor'),'1,200 '+state.place.unit),
+ const healthDesc='حالتك الصحية بتتأثر بالعمر والعادات والعلاقات والمخاطر. دي أنشطة داخل اللعبة وليست نصيحة طبية. '+(state.sti?'فيه حالة صحية محاكية مسجلة؛ زيارة الطبيب داخل اللعبة تقدر تعالجها.':'لا توجد حالة صحية محاكية مسجلة حاليًا.');
+ modal('❤️','الصحة والعافية',healthDesc,[
+  choice('🩺','زيارة الطبيب','كشف مقابل 1,200 '+state.place.unit+(state.sti?' — يعالج الحالة الصحية المحاكية المسجلة.':''),()=>activity('doctor'),'1,200 '+state.place.unit),
   choice('🏋️','التمرين','مناسب من سن 12، يحسن اللياقة والمظهر.',()=>activity('gym'),'300 '+state.place.unit),
   choice('🧘','تأمل وراحة','نشاط مجاني يقلل الضغط ويحسن المزاج.',()=>{closeModal();stat('happiness',5);stat('health',2);log('🧘','وقت للراحة','خصصت وقتًا للهدوء واستعادة طاقتك.','good');render();}),
   choice('🛌','تنظيم النوم','يزود الصحة ويقلل آثار الإرهاق.',()=>{closeModal();stat('health',6);stat('happiness',2);log('🛌','نوم منتظم','حاولت تنظم النوم وتخفف السهر.','good');render();}),
   choice('📚','معرفة صحية','تعلم عادات صحية بدون تكلفة.',()=>{closeModal();stat('smart',2);log('📚','تثقيف صحي','قرأت عن العادات اليومية المفيدة.');render();})
  ]);
 }
+
 function socialMediaMenu(){
  const opts=[];
  if(!state.socialMediaAccount)opts.push(choice('📱','إنشاء حساب','ابدأ حسابًا باسمك بدون تكلفة.',createSocialAccount));
@@ -2579,7 +2589,12 @@ function payDebt(amount){
 }
 function activity(type){
  closeModal();
- if(type==='doctor'){if(state.bank<1200){info('💳','الرصيد مش كفاية','زيارة الطبيب تكلف '+cash(1200)+'.');return;}state.bank-=1200;flash('-'+cash(1200),true);stat('health',16);log('🩺','زيارة الطبيب','دفعت '+cash(1200)+' واهتميت بصحتك. لو التعب مستمر، المتابعة الطبية المنتظمة أفضل.','good');}
+ if(type==='doctor'){
+  if(state.bank<1200){info('💳','الرصيد مش كفاية','زيارة الطبيب تكلف '+cash(1200)+'.');return;}
+  state.bank-=1200;flash('-'+cash(1200),true);stat('health',16);
+  const treatedCondition=state.sti===true;if(treatedCondition)state.sti=false;
+  log('🩺','زيارة الطبيب','دفعت '+cash(1200)+' واهتميت بصحتك.'+(treatedCondition?' وتم علاج الحالة الصحية المحاكية المسجلة في اللعبة.':' لو التعب مستمر، المتابعة الطبية المنتظمة أفضل.'),'good');
+ }
  if(type==='gym'){if(state.age<12){info('🏃','نشاط مناسب للعمر','اللعب والحركة المناسبة لسنك كفاية في المرحلة دي.');return;}if(state.bank<300){info('💳','الرصيد مش كفاية','اشتراك الجيم يكلف '+cash(300)+'.');return;}state.bank-=300;flash('-'+cash(300),true);stat('health',7);stat('looks',4);stat('happiness',2);log('🏋️','تمرنت في الجيم','دفعت '+cash(300)+' وتمرنت. الاستمرار أهم من تمرينة واحدة.','good');}
  if(type==='library'){stat('smart',5);stat('happiness',1);log('📚','وقت في المكتبة','قرأت وتعلمت حاجة جديدة من غير ما تدفع فلوس.','good');}
  if(type==='vacation'){if(state.bank<1800){info('💳','الرصيد مش كفاية','الخروجة تكلف '+cash(1800)+'. جرب نشاط مجاني.');return;}state.bank-=1800;flash('-'+cash(1800),true);stat('happiness',8);stat('health',2);log('🏖️','خروجة لتغيير الجو','دفعت '+cash(1800)+' وغيّرت روتينك شوية.','good');}
@@ -2595,6 +2610,7 @@ function activity(type){
  }
  render();closeModal();
 }
+
 function importSave(){
  closeModal();
  const input=document.createElement('input');input.type='file';input.accept='application/json,.json';
