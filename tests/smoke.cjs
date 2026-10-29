@@ -75,6 +75,7 @@ const context = {
 };
 vm.runInNewContext(app, context, { timeout: 3000 });
 assert.match(get('lifeFeed').innerHTML, /أول يوم في الدنيا/);
+assert.match(get('modalRoot').innerHTML, /تخصيص البداية/, 'first session should offer life setup options');
 let saved = JSON.parse(store.get('hekayat_hayah_save_v1'));
 assert.equal(saved.age, 0);
 assert.equal(saved.status, 'حي');
