@@ -1576,6 +1576,168 @@ function meetPartner(){
   choice('🌿','مش الوقت المناسب','قرارك محترم، الفرص مش سباق.',()=>{closeModal();log('🌿','قرار شخصي','قررت تركز على نفسك في المرحلة الحالية.');render();})
  ]);
 }
+
+const zooHabitatCatalog=[
+ {id:'savannah',title:'سافانا',emoji:'🌾',cost:35000,upkeep:3200},
+ {id:'forest',title:'غابة',emoji:'🌳',cost:38000,upkeep:3500},
+ {id:'aviary',title:'بيت الطيور',emoji:'🪶',cost:28000,upkeep:2600},
+ {id:'aquatic',title:'حوض مائي',emoji:'🐟',cost:65000,upkeep:6500},
+ {id:'arctic',title:'موئل قطبي',emoji:'❄️',cost:57000,upkeep:5200},
+ {id:'desert',title:'موئل صحراوي',emoji:'🏜️',cost:40000,upkeep:3500},
+ {id:'wetland',title:'أرض رطبة',emoji:'🪷',cost:42000,upkeep:3900},
+ {id:'reptile',title:'بيت الزواحف',emoji:'🦎',cost:32000,upkeep:3000},
+ {id:'insect',title:'بيت الحشرات',emoji:'🦋',cost:22000,upkeep:1800},
+ {id:'mountain',title:'موئل جبلي',emoji:'⛰️',cost:48000,upkeep:4200}
+];
+const zooSpeciesCatalog=[
+ ['lion','أسد','🦁','savannah'],['zebra','حمار وحشي','🦓','savannah'],['monkey','قرد','🐒','forest'],['elephant','فيل','🐘','savannah'],['giraffe','زرافة','🦒','savannah'],['tiger','نمر','🐅','forest'],['leopard','فهد','🐆','forest'],['cheetah','فهد صائد','🐆','savannah'],['hippo','فرس النهر','🦛','wetland'],['rhino','وحيد القرن','🦏','savannah'],
+ ['gorilla','غوريلا','🦍','forest'],['chimpanzee','شمبانزي','🐵','forest'],['orangutan','إنسان الغاب','🦧','forest'],['panda','باندا عملاقة','🐼','forest'],['red-panda','باندا حمراء','🐾','forest'],['polar-bear','دب قطبي','🐻‍❄️','arctic'],['grizzly','دب أشيب','🐻','forest'],['black-bear','دب أسود','🐻','forest'],['wolf','ذئب','🐺','forest'],['fox','ثعلب','🦊','forest'],
+ ['fennec','ثعلب صحراوي','🦊','desert'],['hyena','ضبع','🐾','savannah'],['wild-dog','كلب بري','🐕','savannah'],['meerkat','ميركات','🐿️','desert'],['otter','قضاعة','🦦','aquatic'],['beaver','قندس','🦫','wetland'],['raccoon','راكون','🦝','forest'],['sloth','كسلان','🦥','forest'],['armadillo','أرماديلو','🐾','desert'],['anteater','آكل النمل','🐜','forest'],
+ ['kangaroo','كنغر','🦘','savannah'],['koala','كوالا','🐨','forest'],['wombat','ومبت','🐾','forest'],['wallaby','والابي','🦘','savannah'],['camel','جمل','🐪','desert'],['llama','لاما','🦙','mountain'],['alpaca','ألباكا','🦙','mountain'],['bison','بيسون','🐃','mountain'],['buffalo','جاموس بري','🐃','savannah'],['deer','غزال','🦌','forest'],
+ ['moose','موظ','🫎','arctic'],['reindeer','رنة','🦌','arctic'],['elk','أيل','🦌','forest'],['boar','خنزير بري','🐗','forest'],['warthog','خنزير ثؤلولي','🐗','savannah'],['tapir','تابير','🐾','forest'],['okapi','أوكابي','🦓','forest'],['lemur','ليمور','🐒','forest'],['mandrill','مندريل','🐒','forest'],['capybara','كابيبارا','🐹','wetland'],
+ ['porcupine','نيص','🦔','forest'],['hedgehog','قنفذ','🦔','forest'],['mongoose','نمس','🐾','desert'],['squirrel','سنجاب','🐿️','forest'],['prairie-dog','كلب البراري','🐿️','savannah'],['bat','خفاش','🦇','forest'],['seal','فقمة','🦭','aquatic'],['sea-lion','أسد بحر','🦭','aquatic'],['walrus','فظ','🦭','arctic'],['dolphin','دلفين','🐬','aquatic'],
+ ['beluga','حوت أبيض','🐋','aquatic'],['orca','حوت قاتل','🐳','aquatic'],['manatee','خروف البحر','🐋','aquatic'],['penguin','بطريق','🐧','arctic'],['flamingo','فلامنجو','🦩','wetland'],['ostrich','نعامة','🪶','savannah'],['emu','إيمو','🪶','savannah'],['cassowary','كاسواري','🪶','forest'],['eagle','نسر','🦅','aviary'],['hawk','صقر','🦅','aviary'],
+ ['owl','بومة','🦉','forest'],['parrot','ببغاء','🦜','aviary'],['macaw','مكاو','🦜','aviary'],['cockatoo','كوكاتو','🦜','aviary'],['toucan','طوقان','🦜','aviary'],['peacock','طاووس','🦚','aviary'],['crane','كركي','🪶','wetland'],['stork','لقلق','🪶','wetland'],['pelican','بجع','🦢','wetland'],['swan','بجعة','🦢','wetland'],
+ ['duck','بط','🦆','wetland'],['goose','إوز','🪿','wetland'],['turkey','ديك رومي','🦃','aviary'],['pheasant','تدرج','🪶','aviary'],['hornbill','أبو قرن','🦜','aviary'],['kingfisher','رفراف','🐦','wetland'],['snake','ثعبان','🐍','reptile'],['python','أصلة','🐍','reptile'],['cobra','كوبرا','🐍','reptile'],['alligator','تمساح أمريكي','🐊','wetland'],
+ ['crocodile','تمساح','🐊','wetland'],['tortoise','سلحفاة برية','🐢','reptile'],['turtle','سلحفاة','🐢','aquatic'],['iguana','إغوانا','🦎','reptile'],['chameleon','حرباء','🦎','reptile'],['gecko','أبو بريص','🦎','reptile'],['monitor-lizard','ورل','🦎','desert'],['frog','ضفدع','🐸','wetland'],['salamander','سمندر','🦎','wetland'],['axolotl','أكسولوتل','🦎','aquatic'],
+ ['tarantula','عنكبوت طائر','🕷️','insect'],['scorpion','عقرب','🦂','desert'],['butterfly','فراشة','🦋','insect'],['beetle','خنفساء','🪲','insect'],['ant','نملة','🐜','insect'],['koi','سمكة كوي','🐟','aquatic'],['shark','قرش','🦈','aquatic'],['ray','شفنين','🐟','aquatic'],['octopus','أخطبوط','🐙','aquatic'],['sea-turtle','سلحفاة بحرية','🐢','aquatic'],
+ ['snow-leopard','نمر ثلجي','🐆','mountain'],['jaguar','جاغوار','🐆','forest'],['lynx','وشق','🐈','mountain'],['arctic-fox','ثعلب قطبي','🦊','arctic'],['mountain-goat','ماعز جبلي','🐐','mountain'],['yak','ياك','🐂','mountain'],['wild-horse','حصان بري','🐎','savannah'],['wild-boar','خنزير بري أوروبي','🐗','forest'],['bongo','ظبي بونجو','🦌','forest'],['ibex','وعل','🐐','mountain'],
+ ['vulture','رخمة','🦅','aviary'],['condor','كوندور','🦅','mountain'],['parakeet','ببغاء صغير','🦜','aviary'],['lovebird','طائر الحب','🐦','aviary'],['puffin','بفن','🐧','arctic'],['sea-otter','قضاعة بحرية','🦦','aquatic'],['stingray','راي لاسع','🐟','aquatic'],['jellyfish','قنديل البحر','🪼','aquatic'],['seahorse','فرس البحر','🐠','aquatic'],['clownfish','سمكة مهرج','🐠','aquatic'],
+ ['unicorn','حصان أسطوري','🦄','mountain'],['phoenix','طائر الفينيق الأسطوري','🔥','aviary'],['griffin','غريفين أسطوري','🦅','mountain'],['dragon','تنين أسطوري','🐉','mountain']
+].map((a,i)=>({id:a[0],name:a[1],emoji:a[2],habitat:a[3],cost:Math.round(9000+i*620+(a[0]==='dragon'?150000:a[0]==='phoenix'?95000:a[0]==='unicorn'?80000:a[0]==='griffin'?110000:0)),legendary:['unicorn','phoenix','griffin','dragon'].includes(a[0])}));
+const zooAccessoryCatalog=[
+ {id:'enrichment-ball',title:'كرة إثراء',emoji:'⚽',cost:3500},
+ {id:'climbing-rope',title:'حبل تسلق',emoji:'🪢',cost:5000},
+ {id:'nest',title:'عش فاخر',emoji:'🪺',cost:4200},
+ {id:'water-feature',title:'نافورة مياه',emoji:'⛲',cost:8500},
+ {id:'shade',title:'منطقة ظل',emoji:'🌴',cost:6000},
+ {id:'scratch-tree',title:'شجرة خدش',emoji:'🌳',cost:4500},
+ {id:'puzzle-feeder',title:'موزع طعام تفاعلي',emoji:'🧩',cost:7000},
+ {id:'warming-rock',title:'صخرة تدفئة',emoji:'🪨',cost:3800}
+];
+function zooMenu(){
+ if(!perkOwned('zooExpansionPack')){closeModal();info('🦁','حديقة الحيوان مقفولة','افتح توسعة حديقة الحيوان من متجر مزايا حياة أو باقة الحيوان الحفّال.');return;}
+ const z=state.zoo||(state.zoo={opened:false,animals:[],rareDiscoveries:0,funds:0,habitats:[]}),opts=[];
+ if(!z.opened)opts.push(choice('🏗️','إنشاء حديقة الحيوان','تكلفة الإنشاء 250,000، ومعها تمويل تشغيلي مجاني داخل الحديقة بقيمة 75,000.',openZoo,'250,000 '+state.place.unit));
+ else{
+  opts.push(choice('🐘','الحيوانات والأنواع','اختيار من '+zooSpeciesCatalog.length+' نوعًا، منها أنواع نادرة وأسطورية.',zooAnimalShop));
+  opts.push(choice('🌳','الموائل والمرافق','بناء موائل جديدة وإصلاح الموائل الحالية.',zooHabitatMenu));
+  opts.push(choice('🧬','التكاثر والرعاية','مساعدة الحيوانات على التكاثر عند توفر الظروف.',zooBreedingMenu));
+  opts.push(choice('✨','رحلة اكتشاف نادر','رحلة ميدانية بتكلفة 12,000 قد تكشف نوعًا أسطوريًا.',discoverZooAnimal,'12,000 '+state.place.unit));
+  opts.push(choice('💰','صندوق حديقة الحيوان','الصندوق '+cash(z.funds||0)+' · اسحب الأرباح المتاحة.',zooTreasuryMenu));
+  opts.push(choice('📊','تقرير الحديقة','الحيوانات '+z.animals.length+' · الموائل '+z.habitats.length+' · اكتشافات نادرة '+(z.rareDiscoveries||0)+'.',()=>{closeModal();info('🦁','تقرير الحديقة','الأنواع المسجلة '+zooSpeciesCatalog.length+' · الحيوانات '+z.animals.length+' · الموائل '+z.habitats.length+' · الاكتشافات الأسطورية '+(z.rareDiscoveries||0)+' · صندوق التشغيل '+cash(z.funds||0)+'.');}));
+  z.animals.forEach((animal,i)=>opts.push(choice(animal.emoji||'🐾',animal.name+' · '+animal.species,'العمر '+animal.age+' سنة · '+((animal.accessories||[]).length)+' إكسسوار',()=>zooAnimalDetails(i))));
+ }
+ opts.push(choice('↩️','رجوع للأنشطة','',activities));modal('🦁','إدارة حديقة الحيوان',z.opened?'موائل تتطلب صيانة، حيوانات لها احتياجات، وصندوق تمويل يبدأ بمنحة مجانية.':'ابدأ مشروع الحديقة عندما تسمح ميزانيتك، ثم افتح الموائل واشترِ أنواعًا مناسبة لها.',opts);
+}
+
+function openZoo(){
+ closeModal();if(!perkOwned('zooExpansionPack'))return;const cost=250000;
+ if(state.age<18){info('🔒','الافتتاح من سن 18','تقدر تفتح الحديقة بعد سن 18.');return;}
+ if(state.bank<cost){info('💳','الميزانية غير كافية','تجهيز الحديقة يحتاج '+cash(cost)+'.');return;}
+ state.bank-=cost;state.zoo={opened:true,animals:[],rareDiscoveries:0,funds:75000,habitats:['savannah','forest','aviary'],habitatHealth:{savannah:100,forest:100,aviary:100}};
+ log('🦁','افتتاح حديقة الحيوان','افتتحت الحديقة وحصلت على منحة تشغيل مجانية بقيمة '+cash(75000)+'. بدأت بثلاثة موائل أساسية.','special');achievement('افتتاح حديقة حيوان');save();render();zooMenu();
+}
+
+function zooAnimalShop(){
+ const z=state.zoo;if(!z||!z.opened){zooMenu();return;}
+ const grouped=zooHabitatCatalog.map(h=>{const count=zooSpeciesCatalog.filter(s=>s.habitat===h.id).length;return choice(h.emoji,h.title+' · '+count+' أنواع','الموئل '+(z.habitats.includes(h.id)?'متاح':'غير مبني')+'.',()=>zooBrowseSpecies(h.id));});
+ grouped.push(choice('✨','الأنواع الأسطورية','حصان أسطوري وفينيق وغريفين وتنين.',()=>zooBrowseSpecies('legendary')));
+ grouped.push(choice('↩️','رجوع','',zooMenu));modal('🐾','كتالوج حديقة الحيوان','أكثر من 100 نوع من الحيوانات والطيور والزواحف والكائنات المائية، بالإضافة إلى أنواع أسطورية.',grouped);
+}
+
+function zooBrowseSpecies(habitatId){
+ const z=state.zoo;let species=zooSpeciesCatalog.filter(s=>habitatId==='legendary'?s.legendary:s.habitat===habitatId);
+ const habitat=zooHabitatCatalog.find(h=>h.id===habitatId);
+ const opts=species.map(s=>choice(s.emoji,s.name+(s.legendary?' · نادر/أسطوري':''),'سعر الاقتناء '+cash(s.cost)+' · الموئل '+(zooHabitatCatalog.find(h=>h.id===s.habitat)||{title:s.habitat}).title+'.',()=>buyZooAnimal(s.id),cash(s.cost)));
+ if(!z.habitats.includes(habitatId)&&habitatId!=='legendary'&&habitat)opts.unshift(choice('🏗️','بناء موئل '+habitat.title,'الموئل غير متاح. تكلفة البناء '+cash(habitat.cost)+'.',()=>buildZooHabitat(habitatId),cash(habitat.cost)));
+ opts.push(choice('↩️','رجوع للكتالوج','',zooAnimalShop));modal('🐾',habitat?habitat.title:'الأنواع الأسطورية','اختار نوعًا مناسبًا للموائل المتاحة. يوجد '+species.length+' نوع في هذا القسم.',opts);
+}
+function buyZooAnimal(speciesId){
+ closeModal();const z=state.zoo,s=zooSpeciesCatalog.find(x=>x.id===speciesId);if(!z||!z.opened||!s)return;
+ if(!z.habitats.includes(s.habitat)){const h=zooHabitatCatalog.find(x=>x.id===s.habitat);info('🏗️','الموئل غير جاهز','يحتاج '+s.name+' إلى موئل '+h.title+'.',[choice('🏗️','بناء الموئل','',()=>buildZooHabitat(s.habitat)),choice('↩️','رجوع','',()=>zooBrowseSpecies(s.habitat))]);return;}
+ if(state.bank<s.cost){info('💳','الرصيد مش كفاية','شراء '+s.name+' يحتاج '+cash(s.cost)+'.');return;}
+ if(z.animals.length>=120){info('🐾','وصلت لحد الحديقة','حد الحديقة 120 حيوانًا لتظل مستقرة على الموبايل.');return;}
+ state.bank-=s.cost;const animal={id:Date.now()+Math.random(),species:s.name,name:s.name+' '+(z.animals.length+1),emoji:s.emoji,habitat:s.habitat,age:0,legendary:s.legendary,accessories:[],happiness:75,health:90};
+ z.animals.push(animal);if(s.legendary)z.rareDiscoveries=(z.rareDiscoveries||0)+1;
+ log('🐾','حيوان جديد في الحديقة','أضفت '+animal.name+' إلى موئل '+(zooHabitatCatalog.find(h=>h.id===s.habitat)||{title:s.habitat}).title+'.','good');save();render();zooMenu();
+}
+
+function zooHabitatMenu(){
+ const z=state.zoo;if(!z||!z.opened){zooMenu();return;}
+ const opts=zooHabitatCatalog.map(h=>{
+  const built=z.habitats.includes(h.id),health=(z.habitatHealth&&z.habitatHealth[h.id])??100;
+  return choice(built?'🟢':h.emoji,h.title+(built?' · مبني':' · غير متاح'),built?'حالة الموئل '+health+'% · الصيانة السنوية '+cash(h.upkeep)+'.':'تكلفة البناء '+cash(h.cost)+'.',[...[]],built?'مبني':cash(h.cost));
+ });
+ // Replace the action handlers with real build/repair routes.
+ const actions=zooHabitatCatalog.map(h=>{const built=z.habitats.includes(h.id);return choice(built?'🟢':h.emoji,h.title+(built?' · مبني':' · غير متاح'),built?'حالة الموئل '+((z.habitatHealth&&z.habitatHealth[h.id])??100)+'% · الصيانة السنوية '+cash(h.upkeep)+'.':'تكلفة البناء '+cash(h.cost)+'.',()=>built?repairZooHabitat(h.id):buildZooHabitat(h.id),built?'صيانة':cash(h.cost));});
+ actions.push(choice('↩️','رجوع للحديقة','',zooMenu));modal('🌳','الموائل والمرافق','ابنِ الموائل المناسبة للأنواع وحافظ على سلامتها. الموائل المهملة تقلل دخل الزوار.',actions);
+}
+function buildZooHabitat(habitatId){
+ closeModal();const z=state.zoo,h=zooHabitatCatalog.find(x=>x.id===habitatId);if(!z||!z.opened||!h)return;
+ if(z.habitats.includes(h.id)){repairZooHabitat(h.id);return;}
+ if(state.bank<h.cost){info('💳','الرصيد مش كفاية','بناء موئل '+h.title+' يحتاج '+cash(h.cost)+'.');return;}
+ state.bank-=h.cost;z.habitats.push(h.id);z.habitatHealth=z.habitatHealth||{};z.habitatHealth[h.id]=100;
+ log('🌳','بناء موئل جديد','أنشأت موئل '+h.title+' ليستوعب أنواعًا جديدة.','good');save();render();zooHabitatMenu();
+}
+function repairZooHabitat(habitatId){
+ closeModal();const z=state.zoo,h=zooHabitatCatalog.find(x=>x.id===habitatId);if(!z||!z.opened||!z.habitats.includes(habitatId)||!h)return;
+ z.habitatHealth=z.habitatHealth||{};const current=clamp(z.habitatHealth[habitatId]??100);const cost=Math.max(1000,Math.round((100-current)*h.upkeep*.12));
+ if(current>=100){info('✅','الموئل بحالة ممتازة','الموئل '+h.title+' حالته 100%.');return;}
+ if(state.bank<cost){info('💳','الرصيد مش كفاية','إصلاح الموئل يحتاج '+cash(cost)+'.');return;}
+ state.bank-=cost;z.habitatHealth[habitatId]=100;log('🛠️','صيانة موئل','أصلحت '+h.title+' مقابل '+cash(cost)+'.','good');save();render();zooHabitatMenu();
+}
+function zooTreasuryMenu(){
+ const z=state.zoo;if(!z||!z.opened){zooMenu();return;}
+ modal('💰','صندوق حديقة الحيوان','الرصيد '+cash(z.funds||0)+'. أرباح الزوار وتكاليف الموائل والحيوانات تنعكس هنا كل سنة.',[
+  choice('💵','سحب 10,000','تحويل أرباح الحديقة للحساب الشخصي.',()=>{closeModal();if((z.funds||0)<10000){info('💳','صندوق الحديقة غير كافٍ','لا يوجد 10,000 قابلة للسحب.');return;}z.funds-=10000;state.bank+=10000;log('💵','سحب أرباح الحديقة','حوّلت '+cash(10000)+' من أرباح الحديقة لحسابك.','good');save();render();zooMenu();}),
+  choice('📈','إعادة استثمار 10,000','رفع جودة الموائل وجذب زوار أكثر.',()=>{closeModal();if(state.bank<10000){info('💳','الرصيد مش كفاية','إعادة الاستثمار تحتاج '+cash(10000)+'.');return;}state.bank-=10000;z.funds=(z.funds||0)+10000;z.habitats.forEach(id=>{z.habitatHealth=z.habitatHealth||{};z.habitatHealth[id]=clamp((z.habitatHealth[id]??100)+5);});log('📈','إعادة استثمار في الحديقة','أعدت استثمار '+cash(10000)+' في جودة الموائل.','good');save();render();zooMenu();},'10,000 '+state.place.unit),
+  choice('↩️','رجوع','',zooMenu)
+ ]);
+}
+function zooBreedingMenu(){
+ const z=state.zoo,animals=z&&Array.isArray(z.animals)?z.animals:[];if(!animals.length){info('🧬','لا توجد حيوانات','اشترِ حيوانًا واحدًا على الأقل قبل محاولة التكاثر.');return;}
+ modal('🧬','التكاثر والرعاية','كل محاولة تكلف 5,000، والنجاح يعتمد على صحة الحيوان وسعادته.',animals.map((animal,i)=>choice(animal.emoji||'🐾',animal.name,'الصحة '+(animal.health||80)+'% · السعادة '+(animal.happiness||70)+'%.',()=>breedZooAnimal(i))));
+}
+
+function breedZooAnimal(index){
+ closeModal();const z=state.zoo;if(!z||!z.animals[index])return;const animal=z.animals[index],cost=5000;
+ if(state.bank<cost){info('💳','الرصيد مش كفاية','الرعاية والتجهيز للتكاثر تحتاج '+cash(cost)+'.');return;}
+ state.bank-=cost;const chanceRate=.35+(animal.health||80)/250+(animal.happiness||70)/350;
+ if(chance(chanceRate)&&z.animals.length<120){z.animals.push({id:Date.now()+Math.random(),name:'صغير '+animal.species,species:animal.species,emoji:animal.emoji,habitat:animal.habitat,age:0,legendary:false,accessories:[],happiness:80,health:100});log('🧬','مولود جديد في الحديقة','نجحت الرعاية وولد حيوان صغير من نوع '+animal.species+'.','good');}
+ else log('🧬','محاولة تكاثر غير ناجحة','لم تنجح المحاولة هذه المرة أو وصلت الحديقة للحد الأقصى؛ حسّن الرعاية وحاول لاحقًا.','bad');
+ save();render();zooMenu();
+}
+
+function zooAnimalDetails(index){
+ const z=state.zoo,a=z&&z.animals[index];if(!a){zooMenu();return;}
+ modal(a.emoji||'🐾',a.name,'النوع '+a.species+' · العمر '+a.age+' · الصحة '+(a.health||80)+'% · السعادة '+(a.happiness||70)+'% · الموئل '+a.habitat+'.',[
+  choice('🎁','إكسسوارات ووسائل إثراء','إضافة لعبة أو مرفق خاص للحيوان.',()=>zooAccessoryMenu(index)),
+  choice('🩺','رعاية بيطرية','تكلفة 2,500 لرفع الصحة والسعادة.',()=>{closeModal();if(state.bank<2500){info('💳','الرصيد مش كفاية','الرعاية تكلف '+cash(2500)+'.');return;}state.bank-=2500;a.health=clamp((a.health||80)+18);a.happiness=clamp((a.happiness||70)+10);log('🩺','رعاية حيوان','قدمت رعاية إلى '+a.name+'.','good');save();render();zooAnimalDetails(index);},'2,500 '+state.place.unit),
+  choice('↩️','رجوع للحديقة','',zooMenu)
+ ]);
+}
+function zooAccessoryMenu(index){
+ const z=state.zoo,a=z&&z.animals[index];if(!a){zooMenu();return;}
+ a.accessories=Array.isArray(a.accessories)?a.accessories:[];
+ const opts=zooAccessoryCatalog.filter(item=>!a.accessories.includes(item.id)).map(item=>choice(item.emoji,item.title,'تكلفة الإضافة '+cash(item.cost)+'.',()=>installZooAccessory(index,item.id),cash(item.cost)));
+ if(!opts.length)opts.push(choice('✅','كل الإكسسوارات مركبة','هذا الحيوان لديه كل وسائل الإثراء المتاحة.',closeModal));
+ opts.push(choice('↩️','رجوع للحيوان','',()=>zooAnimalDetails(index)));modal('🎁','إكسسوارات '+a.name,'الإكسسوارات تحسن السعادة وتزيد جاذبية الحديقة بصورة صغيرة.',opts);
+}
+function installZooAccessory(index,accessoryId){
+ closeModal();const z=state.zoo,a=z&&z.animals[index],item=zooAccessoryCatalog.find(x=>x.id===accessoryId);if(!a||!item)return;
+ a.accessories=Array.isArray(a.accessories)?a.accessories:[];if(a.accessories.includes(item.id)){zooAnimalDetails(index);return;}
+ if(state.bank<item.cost){info('💳','الرصيد مش كفاية','الإكسسوار يحتاج '+cash(item.cost)+'.');return;}
+ state.bank-=item.cost;a.accessories.push(item.id);a.happiness=clamp((a.happiness||70)+10);log('🎁','إكسسوار جديد للحيوان','أضفت '+item.title+' إلى '+a.name+'.','good');save();render();zooAnimalDetails(index);
+}
+function discoverZooAnimal(){
+ closeModal();const z=state.zoo;if(!z||!z.opened)return;const cost=12000;
+ if(state.bank<cost){info('💳','الرصيد مش كفاية','رحلة الاكتشاف تكلف '+cash(cost)+'.');return;}state.bank-=cost;
+ if(chance(.28)){const species=pick(zooSpeciesCatalog.filter(s=>s.legendary));z.animals.push({id:Date.now()+Math.random(),name:species.name+' مكتشف',species:species.name,emoji:species.emoji,habitat:species.habitat,age:0,legendary:true,accessories:[],happiness:85,health:100});z.rareDiscoveries=(z.rareDiscoveries||0)+1;log('✨','اكتشاف أسطوري','اكتشفت '+species.name+' وأضفته للحديقة.','special');achievement('اكتشاف حيوان أسطوري');}
+ else log('🔎','رحلة بحث','لم تعثر على نوع نادر هذه المرة؛ فريق الحديقة جمع معلومات مفيدة.','');
+ save();render();zooMenu();
+}
+
 function zooMenu(){
  if(!perkOwned('zooExpansionPack')){closeModal();info('🦁','حديقة الحيوان مقفولة','افتح توسعة حديقة الحيوان من متجر مزايا حياة أو باقة الحيوان الحفّال.');return;}
  const zoo=state.zoo||(state.zoo={opened:false,animals:[],rareDiscoveries:0}),opts=[];
