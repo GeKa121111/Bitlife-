@@ -345,16 +345,45 @@ function modal(icon,title,desc,choices,closable=true){
 function info(icon,title,desc,choices=[choice('✓','تمام','',closeModal)]){modal(icon,title,desc,choices);}
 function validState(){return state&&state.status==='حي'&&!dead;}
 function availableEvents(){return events.filter(e=>state.age>=e.range[0]&&state.age<=e.range[1]);}
+function chooseAdaptiveEvent(pool){
+ // محرك ترجيح محلي: يفضّل المواقف المرتبطة باحتياجات اللاعب الحالية.
+ const s=state.stats;
+ const weights=pool.map(e=>{
+  let w=1;
+  const text=(e.title+' '+e.text).toLowerCase();
+  const allChoices=e.choices||[];
+  const hasEffect=k=>allChoices.some(c=>c.effects&&Number(c.effects[k])>0);
+  const offersCash=hasEffect('bank');
+  const improvesHealth=hasEffect('health')||/صحة|طبيب|جسم|نوم|جيم/.test(text);
+  const improvesHappiness=hasEffect('happiness')||/عيلة|صديق|هواية|إجازة|عزومة|مناسبة/.test(text);
+  const improvesSmart=hasEffect('smart')||/دراسة|تدريب|تعليم|تحدي|مقابلة/.test(text);
+  if(s.health<40&&improvesHealth)w*=1.8;
+  if(s.happiness<40&&improvesHappiness)w*=1.55;
+  if(s.smart<35&&improvesSmart)w*=1.4;
+  if(state.bank<10000){
+   if(offersCash)w*=1.45;
+   if(allChoices.every(c=>(c.cost||0)>0))w*=.55;
+  }
+  if(state.job&&/شغل|ترقية|وظيفة|مدير|مقابلة/.test(text))w*=1.35;
+  const lowestRelation=[...(state.family||[]),...(state.friends||[]),...(state.partner?[state.partner]:[])].reduce((v,p)=>Math.min(v,p.relationshipLevel||100),100);
+  if(lowestRelation<35&&/عيلة|صديق|مساعدة|ناس/.test(text))w*=1.25;
+  return Math.max(.1,w);
+ });
+ const total=weights.reduce((sum,w)=>sum+w,0);
+ let roll=Math.random()*total;
+ for(let i=0;i<pool.length;i++){roll-=weights[i];if(roll<=0)return pool[i];}
+ return pool[pool.length-1];
+}
 function randomEvent(){
  if(!validState())return;
  const pool=availableEvents();if(!pool.length){info('🌤️','سنة هادئة','عدّت السنة من غير حدث استثنائي، بس اختياراتك اليومية لسه بتبني مستقبلك.');return;}
- const e=pick(pool);
+ const e=chooseAdaptiveEvent(pool);
  modal(e.icon,e.title,e.text,e.choices.map(c=>choice('›',c.label,c.desc,()=>{
    closeModal();
    if(c.cost&&state.bank<c.cost){info('💳','الرصيد مش كفاية','الاختيار ده محتاج '+cash(c.cost)+'، ورصيدك الحالي '+cash(state.bank)+'.',[choice('↩️','تمام','',()=>{closeModal();afterDecision();})]);return;}
    if(c.cost)state.bank-=c.cost;
    let failed=false,result=c.result||'اخدت قرارك وكمّلت طريقك.';
-   if(c.risk&&chance(c.risk)){failed=true;result=c.failText||'النتيجة ما كانتش زي ما توقعت.';effects(c.fail);if(c.fail&&c.fail.bank)state.bank+=c.fail.bank;}
+   if(c.risk&&chance(c.risk)){failed=true;result=c.failText||'النتيجة ما كانتش زي ما توقعت.';effects(c.fail);}
    else{effects(c.effects);if(c.win)effects(c.win);}
    if(c.effects&&c.effects.bank){} 
    log(e.icon,e.title,result,failed?'bad':'special');render();
@@ -383,9 +412,21 @@ function ageUp(){
    if(state.age>45)state.stats.looks=clamp(state.stats.looks-1);
  }
  if(state.education.yearsLeft>0){
-   if(state.bank>=state.education.tuition){state.bank-=state.education.tuition;state.education.yearsLeft--;state.stats.smart=clamp(state.stats.smart+3);log('🎓','سنة جامعية جديدة','نجحت في سنة من دراسة '+state.education.major+'. المتبقي '+state.education.yearsLeft+' سنوات.','special');
-    if(state.education.yearsLeft===0){state.education.level=state.education.major==='تجارة وإدارة'?2:state.education.major==='علوم الحاسب'?3:state.education.major==='هندسة'?4:5;state.education.school='خريج '+state.education.major;log('🎓','اتخرجت من الجامعة','أنهيت دراسة '+state.education.major+'. فرص جديدة بقت متاحة ليك.','good');achievement('التخرج من '+state.education.major);}
-   }else{log('⚠️','تعثر دراسي','الرصيد مش كافي لدفع رسوم السنة. الدراسة اتوقفت مؤقتًا.','bad');state.education.yearsLeft=0;}
+   if(state.education.prepaidYear===true){
+     state.education.prepaidYear=false;state.education.yearsLeft--;state.stats.smart=clamp(state.stats.smart+3);
+     log('🎓','سنة جامعية جديدة','أنهيت سنة من دراسة '+state.education.major+'. المتبقي '+state.education.yearsLeft+' سنوات.','special');
+   }else if(state.bank>=state.education.tuition){
+     state.bank-=state.education.tuition;state.education.yearsLeft--;state.stats.smart=clamp(state.stats.smart+3);
+     log('🎓','سنة جامعية جديدة','دفعت رسوم سنة وأنهيت سنة من دراسة '+state.education.major+'. المتبقي '+state.education.yearsLeft+' سنوات.','special');
+   }else{
+     log('⚠️','تعثر دراسي','الرصيد مش كافي لدفع رسوم السنة. الدراسة اتوقفت مؤقتًا.','bad');state.education.yearsLeft=0;
+   }
+   if(state.education.yearsLeft===0&&state.education.major){
+     state.education.level=state.education.major==='تجارة وإدارة'?2:state.education.major==='علوم الحاسب'?3:state.education.major==='هندسة'?4:5;
+     state.education.school='خريج '+state.education.major;
+     log('🎓','اتخرجت من الجامعة','أنهيت دراسة '+state.education.major+'. فرص جديدة بقت متاحة ليك.','good');
+     achievement('التخرج من '+state.education.major);
+   }
  }
  if(state.age===6){state.education.level=Math.max(state.education.level,1);state.education.school='المدرسة الابتدائية';log('🏫','أول يوم مدرسة','بدأت رحلتك في المدرسة الابتدائية. هتتعلم حاجات كتير وتكوّن صداقات.','special');achievement('بدأت التعليم الابتدائي');}
  if(state.age===12){state.education.school='المرحلة الإعدادية';log('📚','مرحلة جديدة','خلصت المرحلة الابتدائية وبدأت الإعدادي. اختياراتك الدراسية هتبدأ تفرق أكتر.','special');}
@@ -459,7 +500,7 @@ function university(from18){
    closeModal();
    if(state.stats.smart<m.min){info('🧠','محتاج تستعد أكتر','التخصص ده محتاج ذكاء '+m.min+'% على الأقل. استخدم المكتبة وطوّر مهاراتك.');return;}
    if(state.bank<m.cost){info('💳','الرسوم مش متاحة','محتاج '+cash(m.cost)+' كبداية. ممكن تبدأ شغل أو تجمع فلوس.');return;}
-   state.bank-=m.cost;state.education.major=m.title;state.education.yearsLeft=m.years;state.education.tuition=m.cost;state.education.school='جامعة - '+m.title;state.stats.smart=clamp(state.stats.smart+3);log('🏛️','بدأت الجامعة','اتقبلت في '+m.title+'. دفعت رسوم السنة الأولى '+cash(m.cost)+'.','special');achievement('الالتحاق بالجامعة: '+m.title);render();info('🎓','أهلًا بالجامعة','هتتقدم في الدراسة مع مرور السنين. حاول تحافظ على صحتك ومستواك.');
+   state.bank-=m.cost;state.education.major=m.title;state.education.yearsLeft=m.years;state.education.tuition=m.cost;state.education.prepaidYear=true;state.education.school='جامعة - '+m.title;state.stats.smart=clamp(state.stats.smart+3);log('🏛️','بدأت الجامعة','اتقبلت في '+m.title+'. دفعت رسوم السنة الأولى '+cash(m.cost)+'.','special');achievement('الالتحاق بالجامعة: '+m.title);render();info('🎓','أهلًا بالجامعة','هتتقدم في الدراسة مع مرور السنين. حاول تحافظ على صحتك ومستواك.');
  },cash(m.cost)+'/سنة'));
  opts.push(choice('📚','أستعد للدراسة','نشاط مجاني يزيد الذكاء.',()=>{closeModal();stat('smart',4);log('📚','استعداد للجامعة','قضيت وقتًا في التعلم قبل التقديم.');render();}));
  modal('🏛️','التخصصات الجامعية','اختار تخصصًا مناسبًا. رسوم السنة التالية تُخصم عند تقدم العمر، ولو الرصيد مش كافي الدراسة تتوقف.',opts);
@@ -504,6 +545,7 @@ function relationshipAction(n,act){
  if(act==='talk'){d=chance(.72)?5:2;text='اتكلمت مع '+n.name+' وسمعت أخباره.';}
  if(act==='gift'){state.bank-=500;d=chance(.82)?10:4;text='قدمت هدية بسيطة لـ'+n.name+' بتكلفة 500 جنيه.';}
  if(act==='argue'){d=chance(.7)?-12:-5;stat('happiness',-3);text='دخلت في خلاف مع '+n.name+'. كان ممكن تختار الكلام بهدوء.';tone='bad';}
+ if(n.personality==='حنون'&&(act==='talk'||act==='time'))d+=2; if(n.personality==='عملي'&&act==='gift')d+=1; if(n.personality==='عنيد'&&act==='argue')d-=2;
  n.relationshipLevel=clamp(n.relationshipLevel+d);if(n.relationshipLevel>=85)achievement('بناء علاقة قوية مع '+n.name);
  log(act==='argue'?'💢':'💞','تفاعل مع '+n.name,text,tone);render();info(act==='argue'?'💢':'💞','مستوى العلاقة: '+n.relationshipLevel+'%',d>=0?'العلاقة اتحسنت، والاستمرار في الاهتمام يفرق.':'العلاقة اتأثرت سلبًا. ممكن تحاول تصلح الموقف بعدين.',[choice('✓','تمام','',()=>{closeModal();relations();})]);
 }
