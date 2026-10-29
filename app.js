@@ -9,7 +9,7 @@ const clamp = (n,min=0,max=100) => Math.max(min,Math.min(max,Math.round(n)));
 const pick = list => list[Math.floor(Math.random()*list.length)];
 const chance = p => Math.random()<p;
 const esc = s => String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-let state, dead=false;
+let state, dead=false, logBatchDepth=0, logBatchDirty=false;
 const names = {
  male:['آدم','يوسف','عمر','مالك','زياد','حمزة','كريم','سليم','ياسين','علي','إياد','مروان','أحمد','سيف','نوح'],
  female:['مريم','ليلى','سلمى','نور','جنى','ملك','فريدة','ياسمين','هنا','تاليا','آية','دانا','لارا','مكة','ريماس'],
@@ -391,6 +391,7 @@ function effects(obj){
 function log(icon,title,text,tone=''){
  state.log.push({age:state.age,icon,title,text,tone});
  if(state.log.length>360)state.log=state.log.slice(-360);
+ if(logBatchDepth){logBatchDirty=true;return;}
  renderFeed();save();
 }
 function achievement(s){if(!state.accomplishments.includes(s))state.accomplishments.push(s);}
@@ -544,7 +545,7 @@ function randomEvent(){
  },c.cost?'− '+cash(c.cost):'')),false);
 }
 function afterDecision(){if(!validState())return;if(state.stats.health<=0){death('تدهور الحالة الصحية');return;}render();}
-function ageUp(){
+function advanceAge(){
  if(!validState())return;
  state.age++;state.yearCount++;
  (state.children||[]).forEach(c=>{c.age=(c.age||0)+1;if(c.age===6)log('🏫','أول يوم مدرسة','بدأ '+c.name+' رحلته الدراسية.','special');if(c.age===18){c.job='بداية المسار المهني';log('🎓','ابنك/بنتك كبر','وصل '+c.name+' لسن الرشد وبدأ يرسم طريقه.','good');}});
@@ -614,6 +615,15 @@ function ageUp(){
  if((risk&&chance(risk))||state.age>105){death(state.age>105?'نهاية رحلة طويلة':'أسباب طبيعية بعد عمر طويل');return;}
  if(state.age===18){age18Choice();return;}
  randomEvent();
+}
+function ageUp(){
+ if(!validState())return;
+ logBatchDepth++;
+ try{advanceAge();}
+ finally{
+  logBatchDepth=Math.max(0,logBatchDepth-1);
+  if(logBatchDepth===0&&logBatchDirty){logBatchDirty=false;renderFeed();save();}
+ }
 }
 function age18Choice(){
  modal('🎓','وبعد المدرسة؟','عندك 18 سنة. تختار تبدأ إزاي؟ مفيش طريق واحد صح، وكل اختيار له تكلفة وفرص مختلفة.',[
@@ -705,6 +715,7 @@ function showCareer(){
  if(!state.job&&(state.age<18||state.education.yearsLeft>0)&&!state.retired){schoolHub();return;}
  if(state.job){
   const opts=[
+   ...(state.education.yearsLeft>0? [choice('🎓','الجامعة والدراسة','تابع الدراسة والأنشطة الجامعية بالتوازي مع العمل.',()=>{closeModal();schoolHub();})] : []),
    choice('🌟','المهن الخاصة والشهرة','مسار إضافي بجانب وظيفتك التقليدية.',specialCareers),
    choice('📚','سجل الوظائف السابقة','راجع الوظائف التي تركتها أو انتقلت منها.',()=>{closeModal();const records=(state.jobHistory||[]).map(j=>choice('💼',j.title,(j.startAge??'?')+'–'+(j.endAge??'؟')+' سنة · الراتب '+cash(j.salary),()=>{closeModal();info('💼',j.title,'وظيفة سابقة في سجل حياتك.');}));modal('📚','التاريخ الوظيفي','مسار العمل خلال حياتك.',records.length?records:[choice('📚','لا توجد وظائف سابقة','سيظهر السجل بعد تغيير وظيفة أو الاستقالة.',closeModal)]);}),
    choice('📈','طلب علاوة','أداءك الحالي '+state.performance+'%.',()=>{
@@ -840,8 +851,8 @@ function person(gender,relation,emoji,age,level){return {id:relation+'-'+Math.ra
 function relations(){
  const opts=[];
  state.family.forEach(n=>{if(n.deceased)opts.push(choice('🕯️',n.name+' · '+n.relation,'ذكرى عائلية · توفي عن عمر '+(n.age||'?')+' سنة.',()=>{closeModal();info('🕯️',n.name,'هذا الفرد من العائلة جزء من تاريخ حياتك، وسجّلت اللعبة وفاته في دفتر الأحداث.');}));else opts.push(choice(n.emoji,n.name+' · '+n.relation,n.personality+' · مستوى العلاقة '+n.relationshipLevel+'%',()=>{closeModal();personModal(n);},n.relationshipLevel+'%',n.relationshipLevel));});
- state.friends.forEach(n=>opts.push(choice(n.emoji,n.name+' · صديق','مستوى العلاقة '+n.relationshipLevel+'%',()=>{closeModal();personModal(n);},n.relationshipLevel+'%')));
- if(state.partner)opts.push(choice(state.married?'💍':'💞',state.partner.name+(state.married?' · زوج/زوجة':' · شريك عاطفي'),'مستوى العلاقة '+state.partner.relationshipLevel+'%',()=>{closeModal();personModal(state.partner);},state.partner.relationshipLevel+'%'));
+ state.friends.forEach(n=>opts.push(choice(n.emoji,n.name+' · صديق','مستوى العلاقة '+n.relationshipLevel+'%',()=>{closeModal();personModal(n);},n.relationshipLevel+'%',n.relationshipLevel)));
+ if(state.partner)opts.push(choice(state.married?'💍':'💞',state.partner.name+(state.married?' · زوج/زوجة':' · شريك عاطفي'),'مستوى العلاقة '+state.partner.relationshipLevel+'%',()=>{closeModal();personModal(state.partner);},state.partner.relationshipLevel+'%',state.partner.relationshipLevel));
  (state.children||[]).forEach((n,i)=>opts.push(choice(n.emoji||'🧒',n.name+' · '+(n.age<18?'ابن/ابنة':'ابن/ابنة بالغ'), 'العمر '+n.age+' سنة · العلاقة '+n.relationshipLevel+'%',()=>{closeModal();childMenu(i);},n.relationshipLevel+'%',n.relationshipLevel)));
  opts.push(choice('🤝','تكوين صداقة جديدة','تتعرف على شخص جديد وتبدأ علاقة.',()=>{closeModal();addFriend();}));
  opts.push(choice('👤','إضافة شخص مخصص','أدخل اسم شخص تعرفه ليظهر في شبكة علاقاتك.',()=>{closeModal();addCustomFriend();}));
