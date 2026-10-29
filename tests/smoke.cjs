@@ -66,6 +66,10 @@ assert.match(app, /loyalty:25\+Math\.floor\(Math\.random\(\)\*76\)/, 'new NPCs s
 assert.match(app, /jealousy:Math\.floor\(Math\.random\(\)\*101\)/, 'new NPCs should have a jealousy trait');
 assert.match(app, /reliability:25\+Math\.floor\(Math\.random\(\)\*76\)/, 'new NPCs should have a reliability trait');
 assert.match(app, /function relationshipHistory\(n\)/, 'each NPC should have a relationship interaction journal');
+const relationshipActionBlock = app.match(/function relationshipAction\(n,act\)\{([\s\S]*?)\n\}\nfunction addFriend\(\)/);
+assert.ok(relationshipActionBlock, 'relationship interaction handler should be present');
+assert.ok(relationshipActionBlock[1].indexOf("if(act==='argue'&&jealousy>=78") < relationshipActionBlock[1].indexOf("n.interactions.push"), 'journal should record the final relationship outcome after jealousy effects');
+
 assert.match(app, /n\.interactions\.push\(\{age:state\.age,action:act,delta:d,levelAfter:n\.relationshipLevel\}\)/, 'NPC interactions should record their relationship outcome');
 assert.match(app, /reaction=clamp\(28\+generosity\*\.42\+\(100-money\)\*\.12-petulance\*\.20,8,92\)/, 'gift outcomes should depend on generosity, wealth and petulance');
 assert.match(app, /const stability=clamp\(36\+loyalty\*\.22\+reliability\*\.20\+generosity\*\.12-petulance\*\.16-jealousy\*\.10/, 'yearly partner stability should depend on relationship traits');

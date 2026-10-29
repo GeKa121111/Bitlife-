@@ -1088,11 +1088,11 @@ function relationshipAction(n,act){
  if(personality==='فضولي'&&act==='talk')d+=1;
  if(personality==='جاد'&&act==='argue')d-=1;
  n.relationshipLevel=clamp((n.relationshipLevel||50)+d);
+ if(act==='argue'&&jealousy>=78&&n.relationshipLevel<45&&chance(.18)){n.relationshipLevel=clamp(n.relationshipLevel-3);text+=' الغيرة العالية زوّدت سوء الفهم.';d-=3;}
  if(!Array.isArray(n.interactions))n.interactions=[];
  n.interactions.push({age:state.age,action:act,delta:d,levelAfter:n.relationshipLevel});
  if(n.interactions.length>12)n.interactions.shift();
  if(n.relationshipLevel>=85)achievement('بناء علاقة قوية مع '+n.name);
- if(act==='argue'&&jealousy>=78&&n.relationshipLevel<45&&chance(.18)){n.relationshipLevel=clamp(n.relationshipLevel-3);text+=' الغيرة العالية زوّدت سوء الفهم.';d-=3;}
  save();log(act==='argue'?'💢':'💞','تفاعل مع '+n.name,text,tone);render();
  info(act==='argue'?'💢':'💞','مستوى العلاقة: '+n.relationshipLevel+'%',d>=0?'العلاقة اتحسنت. النتيجة اتأثرت بسمات الشخصية وطريقة التفاعل.':'العلاقة اتأثرت سلبًا، وكل شخصية بتستجيب للخلاف بشكل مختلف.',[choice('✓','تمام','',()=>{closeModal();relations();})]);
 }
