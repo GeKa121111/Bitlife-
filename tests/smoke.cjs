@@ -152,6 +152,8 @@ assert.match(finalUi, /\.stats\s*\{[^}]*order:1/s, 'status meters should appear 
 assert.match(finalUi, /\.statrow\s*\{[^}]*grid-template-columns:80px minmax\(0,1fr\)/s, 'status bars should use the full row width');
 assert.match(finalUi, /\.fill\s*\{[^}]*position:absolute[^}]*right:0/s, 'status fills should render inside the track');
 assert.match(finalUi, /\.statvalue\s*\{[^}]*position:absolute[^}]*z-index:1/s, 'status values should overlay the progress bars');
+assert.match(finalUi, /\.nav\{direction:ltr\}/, 'tab positions should follow the original left-to-right order');
+assert.match(finalUi, /\.fill\{left:0;right:auto\}/, 'progress fills should grow from the left edge like the reference');
 assert.match(serviceWorker, /hayah-shell-v5/, 'the app shell cache should refresh the new styles');
 assert.match(app, /function schoolHub\(\)/);
 assert.match(app, /function maintainAsset\(index\)/);
@@ -161,7 +163,7 @@ assert.match(app, /petulance:Math\.floor\(Math\.random\(\)\*101\)/, 'sibling pet
 assert.match(app, /a\.condition=clamp\(\(a\.condition\?\?100\)-4\)/, 'car condition should decay over time');
 assert.match(app, /a\.condition=clamp\(\(a\.condition\?\?100\)-2\)/, 'property condition should decay over time');
 assert.match(app, /if\(state\.prison\)return 'سجين'/, 'prison state should appear in the identity bar');
-assert.match(app, /state\.fame\|\|0\)>0\)rows\.push/);
+assert.ok(app.includes("const rows=[['happiness','😄','السعادة'],['health','❤️','الصحة'],['smart','🧠','الذكاء'],['looks','😎','المظهر']];"), 'the main screen should keep the four classic life stats');
 assert.match(css, /--brand:\s*#[0-9a-fA-F]{6}/, 'brand color token should be defined');
 assert.match(css, /--ink:\s*#[0-9a-fA-F]{6}/, 'text color token should be defined');
 assert.match(css, /@media\s*\(max-width:\s*380px\)/, 'small-phone layout rules should exist');
