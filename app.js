@@ -1073,6 +1073,17 @@ function startAsChild(index){
  heir.family.push({id:'legacy-parent-'+Date.now(),name:previous.name,relation:'والد/والدة متوفى',emoji:previous.gender==='male'?'👨‍🦳':'👩‍🦳',age:previous.age,job:previous.job?previous.job.title:'متوفى',relationshipLevel:100,personality:'موروث عائلي'});if(oldPartner)heir.family.push({...oldPartner,relation:'الأم/الأب'});
  state=heir;dead=false;log('🌳','استمرار السلالة','بدأت حياة جديدة باسم '+state.name+'، وارثًا قصة '+previous.name+' وإرث العائلة.','special');render();closeModal();info('🌳','جيل جديد','ورثت ثروة تقديرية '+cash(estate)+' وبعض مقتنيات العائلة. تبدأ الآن مرحلة مستقلة باختياراتك.');
 }
+function mainMenu(){
+ modal('☰','القائمة الرئيسية','إدارة حياتك وحفظ تقدمك واستعراض إنجازاتك.',[
+  choice('🌱','حياة جديدة','ابدأ شخصية جديدة أو خصّص بلد الميلاد.',()=>newLifeSetup()),
+  choice('🪦','مقبرة الحيوات','استعرض الشخصيات السابقة وأعمارها ونهاياتها.',()=>cemeteryMenu()),
+  choice('🏆','الإنجازات والأشرطة','الأهداف التي حققتها في رحلتك.',()=>achievementsMenu()),
+  choice('🎁','المكافأة اليومية','احصل على مكافأتك اليومية إن كانت متاحة.',()=>dailyReward()),
+  choice('🪪','ملف الشخصية','تعديل الاسم وإعدادات الشخصية.',()=>customizeMenu()),
+  choice('💾','تصدير الحفظ','نزّل نسخة احتياطية من حياتك الحالية.',()=>exportSave()),
+  choice('☰','كل الأنشطة','الصحة والهوايات والحيوانات والسفر والمال والمزيد.',()=>activities())
+ ]);
+}
 function activities(){
  modal('☰','الأنشطة والحياة اليومية','اختار أي جانب من حياتك تحب تديره. التغييرات بتتسجل تلقائيًا على جهازك.',[
   choice('🩺','الصحة والعناية بالنفس','طبيب، جيم، راحة ونشاط بدني.',()=>healthMenu()),
@@ -1170,7 +1181,7 @@ document.querySelectorAll('[data-panel]').forEach(btn=>btn.addEventListener('cli
  const p=btn.dataset.panel;if(p==='career')showCareer();if(p==='assets')assets();if(p==='relations')relations();if(p==='activities')activities();
 }));
 $('ageUpBtn').addEventListener('click',ageUp);
-if($('menuBtn'))$('menuBtn').addEventListener('click',()=>activities());
+if($('menuBtn'))$('menuBtn').addEventListener('click',()=>mainMenu());
 if($('profileBtn'))$('profileBtn').addEventListener('click',()=>customizeMenu());
 function init(){
  state=load();
