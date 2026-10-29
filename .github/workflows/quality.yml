@@ -13,6 +13,7 @@ permissions:
 jobs:
   smoke:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -26,9 +27,17 @@ jobs:
         run: node --check sw.js
       - name: Check smoke-test syntax
         run: node --check tests/smoke.cjs
+      - name: Check browser-test syntax
+        run: node --check tests/browser.cjs
       - name: Run game smoke tests
         run: node tests/smoke.cjs
       - name: Run regression checks
         run: node --test tests/quality.test.cjs
       - name: Test offline service-worker behavior
         run: node --test tests/service-worker.test.cjs
+      - name: Install Playwright and Chromium
+        run: |
+          npm install --no-save --package-lock=false playwright@1.64.1
+          npx playwright install --with-deps chromium
+      - name: Run mobile browser end-to-end tests
+        run: node tests/browser.cjs
