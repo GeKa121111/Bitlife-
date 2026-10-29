@@ -1401,7 +1401,7 @@ function hobbiesMenu(){
   {id:'gaming',title:'الألعاب',emoji:'🎮',cost:600,desc:'ترفيه وتواصل مع الأصدقاء.'}
  ];
  const opts=catalog.map(h=>choice(h.emoji,h.title,h.desc+(h.cost?' التكلفة '+cash(h.cost)+'.':' مجانية.'),()=>startHobby(h),h.cost?cash(h.cost):'مجانًا'));
- opts.unshift(choice('🎮','موهبة الألعاب الإلكترونية','استعدادك الحالي '+clamp(state.talents&&state.talents.gaming)+'%. ممارسة هواية الألعاب والتدريب التنافسي يساعدان على تطويرها.',()=>{closeModal();info('🎮','موهبة الألعاب الإلكترونية','مستوى استعدادك '+clamp(state.talents&&state.talents.gaming)+'%. تقدر تطورها بالممارسة أو بمسيرة الرياضات الإلكترونية.');}));
+ opts.unshift(choice('🎮','موهبة الألعاب الإلكترونية','استعدادك الحالي '+ensureGamingTalent()+'%. ممارسة هواية الألعاب والتدريب التنافسي يساعدان على تطويرها.',()=>{closeModal();info('🎮','موهبة الألعاب الإلكترونية','مستوى استعدادك '+ensureGamingTalent()+'%. تقدر تطورها بالممارسة أو بمسيرة الرياضات الإلكترونية.');}));
  (state.hobbies||[]).forEach(h=>opts.unshift(choice('✅','ممارسة '+h.title,'رفع مهارتك وتحسين الحالة.',()=>practiceHobby(h.id))));
  modal('🎨','الهوايات والمهارات','اختار هواياتك ودرّب مهاراتك على مدار السنين.',opts);
 }
@@ -1414,7 +1414,7 @@ function startHobby(h){
 }
 function practiceHobby(id){
  closeModal();const h=state.hobbies.find(x=>x.id===id);if(!h)return;
- h.level=clamp((h.level||1)+1,1,100);if(id==='gaming'){if(!state.talents||typeof state.talents!=='object')state.talents={};state.talents.gaming=clamp((Number.isFinite(Number(state.talents.gaming))?Number(state.talents.gaming):35)+2,0,100);}stat('happiness',3);
+ h.level=clamp((h.level||1)+1,1,100);if(id==='gaming'){ensureGamingTalent();state.talents.gaming=clamp(state.talents.gaming+2,0,100);}stat('happiness',3);
  if(id==='sports')stat('health',4);if(id==='reading'||id==='writing')stat('smart',3);if(id==='music'||id==='photography')state.fame=clamp((state.fame||0)+(chance(.3)?2:0));
  log('🎨','تدريب على '+h.title,'خصصت وقتًا لتطوير هواية '+h.title+'. مستواك الحالي '+h.level+'.','good');render();info('⭐','مستوى الهواية '+h.level,'الممارسة المستمرة تحسن مهاراتك وتفتح فرصًا جديدة.');
 }
@@ -1745,6 +1745,12 @@ function specialCareerHistoryMenu(){
  if(!opts.length)opts.push(choice('🌱','لا توجد مسارات سابقة','ابدأ مسارًا متخصصًا ثم غيّره لاحقًا لتظهر سيرته هنا.',closeModal));
  modal('📜','تاريخ المهن الخاصة','ملخص المسارات السابقة ونتائجها والمكاسب التي حققتها.',opts);
 }
+function ensureGamingTalent(){
+ if(!state.talents||typeof state.talents!=='object'||Array.isArray(state.talents))state.talents={};
+ if(state.talents.gaming===undefined||state.talents.gaming===null||!Number.isFinite(Number(state.talents.gaming)))state.talents.gaming=35;
+ state.talents.gaming=clamp(Number(state.talents.gaming),0,100);
+ return state.talents.gaming;
+}
 function createEsportsCareer(){
  return {rank:1,tournaments:0,wins:0,losses:0,sponsor:null,sponsorYears:0,sponsorAnnualIncome:0,equipment:1,history:[]};
 }
@@ -1763,7 +1769,7 @@ function ensureEsportsCareer(){
 }
 function esportsCareerMenu(){
  if(!state.specialCareer||state.specialCareer.id!=='esports'){specialCareers();return;}
- const e=ensureEsportsCareer(),talent=clamp(state.talents&&state.talents.gaming),hobby=(state.hobbies||[]).find(item=>item&&item.id==='gaming'),hobbyLevel=hobby?Math.max(1,Number(hobby.level)||1):0;
+ const e=ensureEsportsCareer(),talent=ensureGamingTalent(),hobby=(state.hobbies||[]).find(item=>item&&item.id==='gaming'),hobbyLevel=hobby?Math.max(1,Number(hobby.level)||1):0;
  const sponsorText=e.sponsor&&e.sponsorYears>0?'الرعاية الحالية: '+e.sponsor+' · متبقي '+e.sponsorYears+' سنة · دخل سنوي '+cash(e.sponsorAnnualIncome)+'.':'لا يوجد عقد رعاية نشط.';
  const options=[
   choice('🏆','دخول بطولة','رسوم الدخول '+cash(700+e.rank*50)+'. فرص الفوز تعتمد على الموهبة والخبرة والتجهيزات.',enterEsportsTournament,cash(700+e.rank*50)),
@@ -1780,7 +1786,7 @@ function enterEsportsTournament(){
  const e=ensureEsportsCareer(),fee=700+e.rank*50;
  if(state.bank<fee){info('💳','الرصيد مش كفاية','رسوم دخول البطولة '+cash(fee)+'.');return;}
  state.bank-=fee;
- const talent=clamp(state.talents&&state.talents.gaming),level=clamp(state.specialCareer.level||1,1,100),hobby=(state.hobbies||[]).find(item=>item&&item.id==='gaming'),hobbyLevel=hobby?Math.max(1,Number(hobby.level)||1):0;
+ const talent=ensureGamingTalent(),level=clamp(state.specialCareer.level||1,1,100),hobby=(state.hobbies||[]).find(item=>item&&item.id==='gaming'),hobbyLevel=hobby?Math.max(1,Number(hobby.level)||1):0;
  const odds=clamp(22+talent*.42+level*.28+(e.equipment-1)*4+hobbyLevel*1.5+(state.stats.smart-50)*.12+(state.fame||0)*.06,12,88);
  const won=chance(odds/100),prize=won?Math.round(2200+Math.random()*4800+talent*35+level*240+e.rank*180):0;
  e.tournaments++;
@@ -1799,7 +1805,7 @@ function negotiateEsportsSponsorship(){
  if(!state.specialCareer||state.specialCareer.id!=='esports'){info('🤝','ابدأ مسيرتك أولًا','اختار الرياضات الإلكترونية من قائمة المهن الخاصة.');return;}
  const e=ensureEsportsCareer();
  if(e.sponsor&&e.sponsorYears>0){info('🤝','عقد الرعاية مستمر','عندك عقد مع '+e.sponsor+' لمدة '+e.sponsorYears+' سنة إضافية.');return;}
- const talent=clamp(state.talents&&state.talents.gaming),level=clamp(state.specialCareer.level||1,1,100);
+ const talent=ensureGamingTalent(),level=clamp(state.specialCareer.level||1,1,100);
  const odds=clamp(18+talent*.3+(state.fame||0)*.2+level*.2+e.rank*1.5,12,85);
  if(chance(odds/100)){
   e.sponsor=pick(['نبضة التقنية','مدار للأجهزة','ساحة اللاعبين']);e.sponsorYears=2+(e.rank>=5?1:0);e.sponsorAnnualIncome=Math.round(1200+talent*24+(state.fame||0)*28+e.rank*220);
@@ -1851,13 +1857,13 @@ function startSpecialCareer(c){
  if(state.specialCareer&&state.specialCareer.id===c.id){if(c.id==='fighter'){ensureCombatCareer();combatCareerMenu();}else if(c.id==='director'){ensureFilmStudio();filmStudioMenu();}else if(c.id==='esports'){ensureEsportsCareer();esportsCareerMenu();}else info('🌟','أنت بالفعل في المسار ده','كمل تدريبك وأنشطتك عشان تتقدم بدل ما تبدأ من الصفر.');return;}
  if(state.specialCareer){if(!Array.isArray(state.specialCareerHistory))state.specialCareerHistory=[];state.specialCareerHistory.unshift(Object.assign({},state.specialCareer,{record:Object.assign({},state.specialCareer.record||{}),history:(state.specialCareer.history||[]).slice(),combatProfile:state.specialCareer.id==='fighter'?JSON.parse(JSON.stringify(state.combatCareer||null)):null,filmProfile:state.specialCareer.id==='director'?JSON.parse(JSON.stringify(state.filmStudio||null)):null,esportsProfile:state.specialCareer.id==='esports'?JSON.parse(JSON.stringify(state.esportsCareer||null)):null,endedAge:state.age,ending:'تغيير المسار'}));state.specialCareerHistory=state.specialCareerHistory.slice(0,20);}
  state.specialCareer={id:c.id,title:c.title,income:c.income,level:1,startedAge:state.age,record:{attempts:0,wins:0,losses:0,projects:0,totalEarnings:0,bestLevel:1},history:[]};state.combatCareer=c.id==='fighter'?createCombatCareer():null;state.filmStudio=c.id==='director'?createFilmStudio():null;state.esportsCareer=c.id==='esports'?createEsportsCareer():null;if(c.id==='influencer'){state.socialMediaAccount=true;state.followers=Math.max(state.followers||0,100);state.socialMediaPosts=(state.socialMediaPosts||0)+1;}state.fame=clamp((state.fame||0)+4);state.reputation=clamp((state.reputation||50)+2);achievement('بدأ مسار الشهرة: '+c.title);
- log(c.emoji,'بداية مسار جديد','بدأت مسارك في '+c.title+'. النجاح محتاج تدريب واستمرارية، والدخل ممكن يتغير من سنة للتانية.','special');render();info('🌟','بدأت المسار',c.id==='esports'?'موهبة الألعاب عندك '+clamp(state.talents&&state.talents.gaming)+'%. افتح إدارة المسيرة للتدريب والبطولات والرعاية.':'تقدر تتدرب أو تختبر فرص جديدة من قائمة المهن الخاصة.');
+ log(c.emoji,'بداية مسار جديد','بدأت مسارك في '+c.title+'. النجاح محتاج تدريب واستمرارية، والدخل ممكن يتغير من سنة للتانية.','special');render();info('🌟','بدأت المسار',c.id==='esports'?'موهبة الألعاب عندك '+ensureGamingTalent()+'%. افتح إدارة المسيرة للتدريب والبطولات والرعاية.':'تقدر تتدرب أو تختبر فرص جديدة من قائمة المهن الخاصة.');
 }
 function trainSpecialCareer(){
  closeModal();if(state.specialCareer&&state.specialCareer.id==='fighter'){combatTrainingMenu();return;}
  if(state.specialCareer&&state.specialCareer.id==='esports'){
   const e=ensureEsportsCareer();if(state.bank<1000){info('💳','الرصيد مش كفاية','التدريب التنافسي يكلف 1,000 '+state.place.unit+'.');return;}
-  state.bank-=1000;state.specialCareer.level=clamp((state.specialCareer.level||1)+1,1,100);if(!state.talents||typeof state.talents!=='object')state.talents={gaming:35};state.talents.gaming=clamp((Number.isFinite(Number(state.talents.gaming))?Number(state.talents.gaming):35)+3,0,100);stat('smart',1);stat('happiness',-1);
+  state.bank-=1000;state.specialCareer.level=clamp((state.specialCareer.level||1)+1,1,100);ensureGamingTalent();state.talents.gaming=clamp(state.talents.gaming+3,0,100);stat('smart',1);stat('happiness',-1);
   log('🎯','تدريب تنافسي','تدربت على الاستراتيجية وسرعة اتخاذ القرار. موهبة الألعاب وصلت '+state.talents.gaming+'%، ومستوى المسيرة '+state.specialCareer.level+'.','good');save();render();info('🎮','تدريب ناجح','موهبة الألعاب '+state.talents.gaming+'% · مستوى المسيرة '+state.specialCareer.level+'.');return;
  }
  if(state.bank<800){info('💳','الرصيد مش كفاية','التدريب يكلف 800 '+state.place.unit+'.');return;}
@@ -2127,7 +2133,7 @@ function rewindToSnapshot(index){
  }
  restored.timeMachineSnapshots=history.slice(0,index);
  restored.status='حي';restored.cause=null;restored.cemeterySaved=false;
- state=restored;dead=false;closeModal();
+ state=restored;dead=false;ensureGamingTalent();closeModal();
  log('⏳','رجوع بالزمن','رجعت من عمر '+currentAge+' إلى عمر '+state.age+'. مسار الحياة اتراجع، وتقدر تختار قرارات مختلفة من هنا.','special');
  achievement('استخدمت الرجوع بالزمن');save();render();
  info('⏳','تم الرجوع بالزمن','تم استرجاع الحياة عند عمر '+state.age+' سنة، مع استعادة حالة الشخصية في ذلك الوقت.');
