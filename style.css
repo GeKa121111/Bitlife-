@@ -645,3 +645,184 @@ body.theme-dark .navbtn{color:#9eb0bd}
 body.theme-dark .navbtn.active{color:#fff;background:#293d48}
 body.theme-dark .agebtn{border-color:#17232c}
 body.theme-dark .statlabel{color:#dce6ec}
+
+
+/* BitLife-like final mobile layout: clean life feed, full-width meters, compact dock. */
+:root{
+  --life-nav:#ffffff;
+  --life-nav-active:#fff0ee;
+  --life-tab-text:#788790;
+  --life-stat-bg:#ffffff;
+  --life-stat-text:#455a64;
+  --bitlife-red:#e53935;
+  --bitlife-green:#43a047;
+}
+html,body{height:100%;min-height:0}
+body{align-items:stretch;justify-content:center;overflow:hidden;background:#eef1f3}
+.app{
+  width:100%;max-width:450px;height:100dvh;min-height:0;padding:0;
+  display:flex;flex-direction:column;overflow:hidden;background:#fff;
+  border:0;box-shadow:0 0 24px #182b360d;
+}
+.topbar{
+  height:54px;min-height:54px;flex:0 0 54px;padding:0 8px;
+  display:grid;grid-template-columns:36px minmax(0,1fr) 104px;gap:5px;
+  position:relative;top:auto;z-index:10;background:var(--bitlife-red);
+  border:0;box-shadow:none;border-radius:0;
+}
+.menu-trigger,.header-action{
+  width:32px;height:32px;border-radius:50%;border:1px solid #ffffff52;
+  background:#ffffff18;color:#fff;font-size:17px;
+}
+.brandlogo{min-width:0;text-align:center;color:#fff;font-size:17px;font-weight:1000;white-space:nowrap}
+.brandlogo span{color:#ffd9d5}
+.top-actions{display:flex;align-items:center;justify-content:flex-end;gap:3px;min-width:0}
+.top-actions .header-action{width:31px;height:31px;flex:0 0 31px}
+.savepill{border:0;background:transparent;color:#fff3d0;font-size:8px;padding:0 1px}
+.hero{
+  height:72px;min-height:72px;flex:0 0 72px;padding:7px 10px;
+  display:flex;flex-direction:row;direction:rtl;align-items:center;
+  justify-content:space-between;gap:8px;background:#f7f8f9;border-bottom:1px solid #e3e7ea;
+}
+.profile{height:100%;gap:8px;min-width:0;flex:1}
+.avatar{width:47px;height:47px;flex:0 0 47px;border-radius:50%;font-size:28px;background:#fff;border:1px solid #dce2e6;box-shadow:none}
+.avatar .flag{bottom:-2px;left:-3px;width:19px;height:19px;border:2px solid #f7f8f9;font-size:11px}
+.identity{min-width:0;display:flex;flex-direction:column;justify-content:center;gap:2px}
+.name{font-size:15px;line-height:1.15;font-weight:900;color:#263238;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.identity-role .role-tag{font-size:11px;color:#52636c;font-weight:650;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.identity-meta{font-size:9px;color:#7a8991;gap:5px;flex-wrap:nowrap}
+.wealth{min-width:90px;max-width:126px;padding:0;background:transparent;border:0;border-radius:0;box-shadow:none;gap:2px;align-items:flex-start;flex:0 0 auto}
+.wealthlabel{font-size:10px;font-weight:750;color:#71818a}
+.wealthnum{font-size:16px;line-height:1.15;font-weight:950;color:#2e7d32;white-space:nowrap;direction:ltr;text-align:right;letter-spacing:-.25px}
+.wealthsmall{font-size:8px;line-height:1.25;color:#7a8991}
+.feed{
+  flex:1 1 0%;min-height:0;height:auto;max-height:none;
+  padding:3px 13px 10px;gap:0;overflow-x:hidden;overflow-y:auto;
+  overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:#d7dee2 transparent;background:#fff;
+}
+.feed::-webkit-scrollbar{width:3px}
+.feed::-webkit-scrollbar-thumb{background:#d7dee2;border-radius:99px}
+.agegroup{padding:11px 0 5px;margin:0;color:#1976b9;font-size:13px;font-weight:850;gap:0}
+.agegroup:after{display:none}
+.logcard{
+  display:flex;align-items:flex-start;gap:7px;padding:8px 0 9px;margin:0;
+  border:0;border-bottom:1px solid #edf0f2;border-radius:0;background:#fff;
+  box-shadow:none;animation:none;
+}
+.logicon{flex:0 0 23px;width:23px;height:auto;min-height:22px;padding-top:1px;place-items:start center;border:0;border-radius:0;background:transparent;font-size:17px}
+.logcontent{min-width:0;flex:1}
+.logtitle{margin:0 0 2px;font-size:12.5px;line-height:1.35;font-weight:850;color:#263238}
+.logtext{margin:0;font-size:13px;line-height:1.6;color:#37474f;overflow-wrap:anywhere}
+.logcard.good,.logcard.bad,.logcard.special{background:#fff;border:0;border-bottom:1px solid #edf0f2}
+.logcard.good .logtitle,.logcard.good .logtext{color:#2e7d32}
+.logcard.bad .logtitle,.logcard.bad .logtext{color:#c62828}
+.logcard.special .logtitle{color:#7b1fa2}
+.logcard.special .logtext{color:#37474f}
+.logcard.good .logicon,.logcard.bad .logicon,.logcard.special .logicon{background:transparent}
+.empty{border:0;border-radius:0;padding:22px 10px;margin:0;text-align:center;color:#71818a;background:#fff;line-height:1.8}
+
+/* Keep the meters in the normal layout flow so the story cannot scroll behind them. */
+.bottom-dock{
+  position:relative;inset:auto;left:auto;bottom:auto;transform:none;
+  flex:0 0 auto;width:100%;max-width:450px;margin-top:auto;
+  padding:0 0 calc(4px + env(safe-area-inset-bottom));
+  display:flex;flex-direction:column;z-index:20;background:#fff;
+  border:0;border-top:1px solid #e5eaed;border-radius:0;box-shadow:0 -3px 12px #1f344208;
+}
+.stats{
+  order:0;display:flex;flex-direction:column;gap:4px;margin:0;
+  padding:8px 12px 8px;background:#fff;border:0;border-radius:0;
+}
+.statrow{
+  display:grid;grid-template-columns:76px minmax(0,1fr);align-items:center;
+  gap:8px;width:100%;min-width:0;height:15px;
+}
+.stathead{width:auto;min-width:0;flex:initial;display:flex;align-items:center;justify-content:flex-start;margin:0;font-size:10px}
+.statlabel{font-size:10px;color:#455a64;font-weight:850;white-space:nowrap}
+.statbar{width:100%;min-width:0}
+.track{
+  position:relative;isolation:isolate;display:block;width:100%;height:13px;
+  background:#e8edef;border-radius:99px;overflow:hidden;
+}
+.fill{
+  position:absolute;top:0;right:0;bottom:0;height:100%;
+  border-radius:99px;z-index:0;transition:width .3s ease;
+}
+.statvalue{
+  position:absolute;inset:0;z-index:1;display:flex;align-items:center;justify-content:center;
+  width:100%;font-size:9px;font-weight:950;direction:ltr;color:#263238;
+  text-shadow:0 1px #ffffffa0;pointer-events:none;
+}
+.nav{
+  order:1;height:61px;min-height:61px;flex:0 0 61px;
+  padding:4px 6px 1px;display:grid;grid-template-columns:1fr 1fr 76px 1fr 1fr;
+  align-items:center;gap:2px;overflow:visible;background:#fff;border:0;border-top:1px solid #edf0f2;
+}
+.navbtn{
+  min-width:0;min-height:53px;padding:4px 1px 3px;border:0;border-radius:9px;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
+  color:#788790;background:transparent;font-size:10px;font-weight:800;
+}
+.navbtn .navico{font-size:20px;line-height:1.1;filter:none;color:currentColor}
+.navbtn.active{color:#c62828;background:#fff0ee;box-shadow:none}
+.navbtn.active .navico{filter:none}
+.agebtn{
+  position:relative;z-index:3;width:62px;height:62px;min-width:62px;flex:0 0 62px;
+  margin-top:-17px;border:4px solid #fff;border-radius:19px;background:#43a047;color:#fff;
+  box-shadow:0 3px 9px #102c3b33;font-size:10px;font-weight:1000;gap:1px;
+}
+.agebtn span:first-child{font-size:25px;line-height:1}
+.agebtn:active{transform:scale(.96);background:#2e7d32}
+.overlay{z-index:50}
+@media(max-width:380px){
+  .topbar{grid-template-columns:33px minmax(0,1fr) 97px;padding-inline:5px;gap:3px}
+  .brandlogo{font-size:15px}
+  .top-actions{gap:2px}
+  .top-actions .header-action{width:29px;height:29px;flex-basis:29px}
+  .savepill{display:none}
+  .hero{padding-inline:7px;gap:4px}
+  .avatar{width:43px;height:43px;flex-basis:43px;font-size:26px}
+  .name{font-size:14px}
+  .wealth{min-width:86px}
+  .wealthnum{font-size:14px}
+  .stats{padding:7px 8px;gap:3px}
+  .statrow{grid-template-columns:69px minmax(0,1fr);gap:6px;height:14px}
+  .statlabel{font-size:9px}
+  .track{height:12px}
+  .nav{grid-template-columns:1fr 1fr 68px 1fr 1fr;padding-inline:2px;height:58px;min-height:58px;flex-basis:58px}
+  .navbtn{font-size:9px;min-height:50px}
+  .navbtn .navico{font-size:19px}
+  .agebtn{width:56px;height:56px;min-width:56px;flex-basis:56px;border-radius:17px;margin-top:-14px}
+}
+@media(max-height:680px){
+  .hero{height:64px;min-height:64px;flex-basis:64px}
+  .stats{padding-top:5px;padding-bottom:5px;gap:2px}
+  .statrow{height:13px}
+  .track{height:11px}
+  .nav{height:54px;min-height:54px;flex-basis:54px}
+  .agebtn{width:55px;height:55px;min-width:55px;flex-basis:55px;margin-top:-12px}
+}
+@media(prefers-reduced-motion:reduce){.agebtn,.fill,.modal,.logcard{animation:none!important;transition:none!important}}
+
+/* Keep the existing dark-mode and large-text preferences functional after layout overrides. */
+body.theme-dark .app,body.theme-dark .feed,body.theme-dark .logcard,body.theme-dark .logcard.good,body.theme-dark .logcard.bad,body.theme-dark .logcard.special{background:#17232c}
+body.theme-dark .hero{background:#20313b;border-color:#354651}
+body.theme-dark .name,body.theme-dark .logtitle,body.theme-dark .logtext,body.theme-dark .logcard.special .logtext{color:#dce6ec}
+body.theme-dark .agegroup{color:#80c8f1}
+body.theme-dark .logcard{border-color:#354651}
+body.theme-dark .logcard.good .logtitle,body.theme-dark .logcard.good .logtext{color:#8cdaad}
+body.theme-dark .logcard.bad .logtitle,body.theme-dark .logcard.bad .logtext{color:#ff9ba5}
+body.theme-dark .logcard.special .logtitle{color:#d7a7f3}
+body.theme-dark .wealthlabel,body.theme-dark .wealthsmall{color:#b8c9d2}
+body.theme-dark .bottom-dock,body.theme-dark .stats,body.theme-dark .nav{background:#17232c;border-color:#354651}
+body.theme-dark .statlabel,body.theme-dark .navbtn{color:#bac8d0}
+body.theme-dark .navbtn.active{color:#ffb7bd;background:#38272e}
+body.theme-dark .track{background:#344651}
+body.theme-dark .statvalue{color:#fff;text-shadow:0 1px #0009}
+body.theme-dark .agebtn{border-color:#17232c}
+body.text-large .name{font-size:16px}
+body.text-large .logtitle{font-size:14px}
+body.text-large .logtext{font-size:14px;line-height:1.75}
+body.text-large .statlabel{font-size:11px}
+body.text-large .statvalue{font-size:10px}
+body.text-large .navbtn{font-size:11px}
