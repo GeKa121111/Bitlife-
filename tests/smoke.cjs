@@ -20,6 +20,14 @@ for (const system of ['function familyMenu()', 'function petsMenu()', 'function 
 }
 assert.match(index, /id="fameTag"/);
 assert.match(index, /id="profileBtn"/);
+assert.match(index, /حياة <span>\|<\/span> BITLIFE/);
+assert.match(index, /id="heirloomBtn"/);
+assert.match(index, /class="bottom-dock">[\s\S]*<nav class="nav"[\s\S]*id="statsPanel"/);
+assert.match(css, /height:54px;min-height:54px;flex:0 0 54px/);
+assert.match(css, /grid-template-columns:1fr 1fr 84px 1fr 1fr/);
+assert.match(app, /function schoolHub\(\)/);
+assert.match(app, /function maintainAsset\(index\)/);
+assert.match(app, /state\.fame\|\|0\)>0\)rows\.push/);
 assert.match(css, /--brand:\s*#[0-9a-fA-F]{6}/, 'brand color token should be defined');
 assert.match(css, /--ink:\s*#[0-9a-fA-F]{6}/, 'text color token should be defined');
 assert.match(css, /@media\s*\(max-width:\s*380px\)/, 'small-phone layout rules should exist');
@@ -92,7 +100,7 @@ saved = JSON.parse(store.get('hekayat_hayah_save_v1'));
 assert.equal(saved.age, 1, 'age button increments the character age');
 assert.ok(saved.log.length >= 2, 'life log persists after an action');
 panels.find(p => p.dataset.panel === 'career').dispatch('click');
-assert.ok(get('modalRoot').innerHTML.includes('لسه بدري'), 'career navigation blocks official work for a one-year-old');
+assert.ok(get('modalRoot').innerHTML.includes('لسه بدري'), 'career navigation blocks school hub for a toddler');
 panels.find(p => p.dataset.panel === 'relations').dispatch('click');
 assert.ok(get('modalRoot').innerHTML.includes('العلاقات'), 'relationships navigation opens its panel');
 get('menuBtn').dispatch('click');
