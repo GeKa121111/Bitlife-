@@ -584,6 +584,7 @@ function death(cause){
  $('modalRoot').querySelectorAll('[data-heir]').forEach(btn=>btn.addEventListener('click',()=>startAsChild(Number(btn.dataset.heir))));
 }
 function startNew(){
+ if(state&&state.status==='حي'&&state.age>0)archiveLife('بدأ حياة جديدة');
  state=newLife();dead=false;
  log('👶','أول يوم في الدنيا','اتولدت في '+state.place.city+'، '+state.place.country+'. أهلك '+state.family[0].name+' و'+state.family[1].name+' بيبدأوا معاك أول فصل في الحكاية.','special');
  log('🏡','البيت والعيلة','أبوك شغال '+state.family[0].personality+'، وأمك '+state.family[1].personality+'. العيلة هي أول شبكة أمان ليك.');
@@ -1044,17 +1045,17 @@ function chooseBirthCountry(gender){
  modal('🌍','بلد الميلاد','البلد هتحدد المدينة والعملة ورصيد البداية.',opts);
 }
 function createLifeConfigured(gender,place){
- closeModal();state=newLife();dead=false;state.gender=gender;state.name=pick(names[gender])+' '+pick(names.family);state.place={...place};state.bank=place.start;
+ closeModal();if(state&&state.status==='حي'&&state.age>0)archiveLife('اختيار حياة جديدة');state=newLife();dead=false;state.gender=gender;state.name=pick(names[gender])+' '+pick(names.family);state.place={...place};state.bank=place.start;
  if(typeof prompt==='function'){const name=prompt('اكتب اسم الشخصية (اختياري)',state.name);if(name&&name.trim())state.name=name.trim().slice(0,50);}
  log('👶','أول يوم في الدنيا','اتولدت في '+state.place.city+'، '+state.place.country+'. بدأت حكايتك بعائلة وظروف مختلفة، وكل سنة هتفتح قدامك اختيارات جديدة.','special');
  log('🏡','البيت والعيلة','أبوك '+state.family[0].name+' وأمك '+state.family[1].name+' هما أول شبكة أمان ليك.');achievement('بدأت رحلة الحياة');render();
 }
-function archiveLife(){
+function archiveLife(reason){
  if(!state||state.cemeterySaved)return;
  try{
   const list=JSON.parse(localStorage.getItem(CEMETERY_KEY)||'[]');const id=state.lifeId||('life-'+Date.now());
   if(!list.some(x=>x.id===id)){const assets=(state.assets||[]).reduce((n,a)=>n+(a.value||0),0),invest=(state.investments||[]).reduce((n,a)=>n+(a.value||0),0);
-   list.unshift({id,name:state.name,age:state.age,cause:state.cause||'نهاية الرحلة',netWorth:(state.bank||0)+assets+invest-(state.debt||0),ribbon:lifeRibbon(),country:state.place?.country||'',accomplishments:(state.accomplishments||[]).slice(0,40),children:(state.children||[]).length,createdAt:new Date().toISOString()});
+   list.unshift({id,name:state.name,age:state.age,cause:state.cause||reason||'نهاية الرحلة',netWorth:(state.bank||0)+assets+invest-(state.debt||0),ribbon:reason&&state.status==='حي'?'حياة متروكة · '+lifeRibbon():lifeRibbon(),country:state.place?.country||'',accomplishments:(state.accomplishments||[]).slice(0,40),children:(state.children||[]).length,createdAt:new Date().toISOString()});
    localStorage.setItem(CEMETERY_KEY,JSON.stringify(list.slice(0,100)));
   }
   state.cemeterySaved=true;
