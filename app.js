@@ -371,7 +371,7 @@ function newLife(){
  const father=makePerson('male','الأب','👨',28+Math.floor(Math.random()*12),68+Math.floor(Math.random()*28));
  const mother=makePerson('female','الأم','👩',25+Math.floor(Math.random()*12),72+Math.floor(Math.random()*26));
  const sibling=makePerson(gender,'الأخ/الأخت','🧒',Math.floor(Math.random()*8),55+Math.floor(Math.random()*35));
- return {version:1,lifeId:Date.now()+Math.random(),cemeterySaved:false,name:pick(names[gender])+' '+pick(names.family),gender,age:0,place,bank:place.start,stats:{happiness:65+Math.floor(Math.random()*26),health:76+Math.floor(Math.random()*22),smart:35+Math.floor(Math.random()*41),looks:35+Math.floor(Math.random()*51)},education:{level:0,school:'لم تبدأ الدراسة',major:null,yearsLeft:0,tuition:0},job:null,jobHistory:[],specialCareer:null,performance:50,assets:[],investments:[],business:null,family:[father,mother,sibling],friends:[],partner:null,married:false,children:[],pets:[],hobbies:[],fame:0,followers:0,socialMediaAccount:false,socialMediaPosts:0,reputation:50,crimeRecord:0,prison:null,debt:0,willDistribution:'الأسرة بالتساوي',heirlooms:[],dailyRewardDate:null,dailyChallenges:null,legacy:{name:null,inheritance:0,heirloom:null},driversLicense:false,travelHistory:[],log:[],accomplishments:['بدأت رحلة الحياة'],status:'حي',cause:null,retired:false,yearCount:0,wealthPeak:place.start};
+ return {version:1,lifeId:Date.now()+Math.random(),cemeterySaved:false,name:pick(names[gender])+' '+pick(names.family),gender,age:0,place,bank:place.start,stats:{happiness:65+Math.floor(Math.random()*26),health:76+Math.floor(Math.random()*22),smart:35+Math.floor(Math.random()*41),looks:35+Math.floor(Math.random()*51)},education:{level:0,school:'لم تبدأ الدراسة',major:null,yearsLeft:0,tuition:0},job:null,jobHistory:[],specialCareer:null,performance:50,assets:[],investments:[],business:null,family:[father,mother,sibling],friends:[],partner:null,married:false,children:[],pets:[],hobbies:[],fame:0,followers:0,socialMediaAccount:false,socialMediaPosts:0,reputation:50,crimeRecord:0,prison:null,debt:0,willDistribution:'الأسرة بالتساوي',heirlooms:[],dailyRewardDate:null,dailyChallenges:null,timeMachineSnapshots:[],legacy:{name:null,inheritance:0,heirloom:null},driversLicense:false,travelHistory:[],log:[],accomplishments:['بدأت رحلة الحياة'],status:'حي',cause:null,retired:false,yearCount:0,wealthPeak:place.start};
 }
 function save(){
  try{localStorage.setItem(KEY,JSON.stringify(state));$('saveStatus').textContent='● محفوظة';}
@@ -379,9 +379,9 @@ function save(){
 }
 function load(){
  try{const x=JSON.parse(localStorage.getItem(KEY)||'null');if(x&&x.version===1&&x.stats&&Array.isArray(x.log)){
-  const defaults={lifeId:Date.now()+Math.random(),cemeterySaved:false,jobHistory:[],specialCareer:null,investments:[],business:null,married:false,children:[],pets:[],hobbies:[],fame:0,followers:0,socialMediaAccount:false,socialMediaPosts:0,reputation:50,crimeRecord:0,prison:null,debt:0,willDistribution:'الأسرة بالتساوي',heirlooms:[],dailyRewardDate:null,dailyChallenges:null,legacy:{name:null,inheritance:0,heirloom:null},driversLicense:false,travelHistory:[]};
+  const defaults={lifeId:Date.now()+Math.random(),cemeterySaved:false,jobHistory:[],specialCareer:null,investments:[],business:null,married:false,children:[],pets:[],hobbies:[],fame:0,followers:0,socialMediaAccount:false,socialMediaPosts:0,reputation:50,crimeRecord:0,prison:null,debt:0,willDistribution:'الأسرة بالتساوي',heirlooms:[],dailyRewardDate:null,dailyChallenges:null,timeMachineSnapshots:[],legacy:{name:null,inheritance:0,heirloom:null},driversLicense:false,travelHistory:[]};
   Object.keys(defaults).forEach(k=>{if(x[k]===undefined||x[k]===null)x[k]=defaults[k];});
-  if(!Array.isArray(x.family))x.family=[];if(!Array.isArray(x.friends))x.friends=[];if(!Array.isArray(x.assets))x.assets=[];
+  if(!Array.isArray(x.family))x.family=[];if(!Array.isArray(x.friends))x.friends=[];if(!Array.isArray(x.assets))x.assets=[];if(!Array.isArray(x.timeMachineSnapshots))x.timeMachineSnapshots=[];
   if(!x.education||typeof x.education!=='object')x.education={level:0,school:'لم تبدأ الدراسة',major:null,yearsLeft:0,tuition:0};
   x.education.clubs=Array.isArray(x.education.clubs)?x.education.clubs:[];
   x.assets.forEach(a=>{if((a.kind==='car'||a.kind==='property')&&!Number.isFinite(Number(a.condition)))a.condition=100;});
@@ -642,6 +642,9 @@ function advanceAge(){
 }
 function ageUp(){
  if(!validState())return;
+ const snapshot=JSON.parse(JSON.stringify(state));delete snapshot.timeMachineSnapshots;
+ if(!Array.isArray(state.timeMachineSnapshots))state.timeMachineSnapshots=[];
+ state.timeMachineSnapshots.push(JSON.stringify(snapshot));if(state.timeMachineSnapshots.length>8)state.timeMachineSnapshots.shift();
  logBatchDepth++;
  try{advanceAge();}
  finally{
@@ -660,9 +663,10 @@ function death(cause){
  dead=true;state.status='متوفى';state.cause=cause;archiveLife();save();render();
  const assetValue=state.assets.reduce((sum,a)=>sum+a.value,0),investmentValue=(state.investments||[]).reduce((sum,a)=>sum+(a.value||0),0),net=state.bank+assetValue+investmentValue-(state.debt||0);
  const achievements=state.accomplishments.length?state.accomplishments.map(a=>'• '+esc(a)).join('<br>'):'لسه مفيش إنجازات مسجلة، بس كل حياة ليها حكايتها.';
- $('modalRoot').innerHTML='<div class="overlay"><section class="modal"><div class="death"><div class="tomb">🪦</div><div class="deathtitle">انتهت حكاية '+esc(state.name)+'</div><div class="deathsub">عشت '+fmt(state.age)+' سنة.<br>سبب الوفاة: '+esc(cause)+'.<br>شريط حياتك: '+esc(lifeRibbon())+'.<br>كل قرار ساب أثر، وكل سنة كانت فصل من قصتك.</div><div class="summarygrid"><div class="summarycell"><div class="summarylabel">الثروة النهائية</div><div class="summaryvalue">'+cash(net)+'</div></div><div class="summarycell"><div class="summarylabel">العمر</div><div class="summaryvalue">'+fmt(state.age)+' سنة</div></div><div class="summarycell"><div class="summarylabel">إنجازات</div><div class="summaryvalue">'+fmt(state.accomplishments.length)+'</div></div><div class="summarycell"><div class="summarylabel">الأصول</div><div class="summaryvalue">'+fmt(state.assets.length)+'</div></div></div><div class="listitem" style="text-align:right"><div class="listtitle">محطات من حياتك</div><div class="muted" style="margin-top:8px;line-height:2">'+achievements+'</div></div><button class="primarybtn" id="newLifeBtn">🌱 حياة جديدة</button>'+(state.children.length?'<div class="muted" style="margin:8px 0">كمّل إرث العائلة:</div>'+state.children.map((c,i)=>'<button class="smallbtn" data-heir="'+i+'" style="width:100%;margin:4px 0">🌳 استكمل كـ '+esc(c.name)+'</button>').join(''):'')+'<button class="smallbtn" id="reviewBtn" style="width:100%;margin-top:9px">راجع دفتر حياتك</button></div></section></div>';
+ $('modalRoot').innerHTML='<div class="overlay"><section class="modal"><div class="death"><div class="tomb">🪦</div><div class="deathtitle">انتهت حكاية '+esc(state.name)+'</div><div class="deathsub">عشت '+fmt(state.age)+' سنة.<br>سبب الوفاة: '+esc(cause)+'.<br>شريط حياتك: '+esc(lifeRibbon())+'.<br>كل قرار ساب أثر، وكل سنة كانت فصل من قصتك.</div><div class="summarygrid"><div class="summarycell"><div class="summarylabel">الثروة النهائية</div><div class="summaryvalue">'+cash(net)+'</div></div><div class="summarycell"><div class="summarylabel">العمر</div><div class="summaryvalue">'+fmt(state.age)+' سنة</div></div><div class="summarycell"><div class="summarylabel">إنجازات</div><div class="summaryvalue">'+fmt(state.accomplishments.length)+'</div></div><div class="summarycell"><div class="summarylabel">الأصول</div><div class="summaryvalue">'+fmt(state.assets.length)+'</div></div></div><div class="listitem" style="text-align:right"><div class="listtitle">محطات من حياتك</div><div class="muted" style="margin-top:8px;line-height:2">'+achievements+'</div></div><button class="primarybtn" id="newLifeBtn">🌱 حياة جديدة</button>'+((state.timeMachineSnapshots||[]).length?'<button class="smallbtn" id="timeMachineDeathBtn" style="width:100%;margin-top:8px">⏳ تراجع عن سنة قاتلة</button>':'')+(state.children.length?'<div class="muted" style="margin:8px 0">كمّل إرث العائلة:</div>'+state.children.map((c,i)=>'<button class="smallbtn" data-heir="'+i+'" style="width:100%;margin:4px 0">🌳 استكمل كـ '+esc(c.name)+'</button>').join(''):'')+'<button class="smallbtn" id="reviewBtn" style="width:100%;margin-top:9px">راجع دفتر حياتك</button></div></section></div>';
  $('newLifeBtn').addEventListener('click',()=>{closeModal();if(confirm('تبدأ حياة جديدة وتستبدل الحفظ الحالي؟'))newLifeSetup();});
  $('reviewBtn').addEventListener('click',closeModal);
+ const rewindDeathBtn=$('timeMachineDeathBtn');if(rewindDeathBtn)rewindDeathBtn.addEventListener('click',timeMachineMenu);
  $('modalRoot').querySelectorAll('[data-heir]').forEach(btn=>btn.addEventListener('click',()=>startAsChild(Number(btn.dataset.heir))));
 }
 function startNew(){
@@ -1316,13 +1320,83 @@ function cemeteryMenu(){
  if(!opts.length)opts.push(choice('🌱','لا توجد حيوات سابقة','عند انتهاء حياة شخصية، هتظهر هنا على نفس الجهاز.',closeModal));
  modal('🪦','المقبرة والحيوات السابقة','سجل محلي لأهم ملخصات الحيوات المنتهية، محفوظ على نفس المتصفح.',opts);
 }
+
+function editCharacterTraits(){
+ const rows=[['health','الصحة','❤️'],['happiness','السعادة','😄'],['smart','الذكاء','🧠'],['looks','المظهر','😎']];
+ const opts=rows.map(([key,label,icon])=>choice(icon,label+' · '+clamp(state.stats[key])+'%', 'تعديل مستوى '+label+' من 0 إلى 100.',()=>editCharacterTrait(key,label)));
+ modal('🧬','محرر سمات الشخصية','وضع تخصيص اختياري لتجربة أنماط حياة مختلفة. التغييرات تؤثر على المحاكاة الحالية.',opts);
+}
+function editCharacterTrait(key,label){
+ const levels=[100,80,60,40,20,0];
+ const opts=levels.map(value=>choice(value===100?'💯':value>=70?'⬆️':value<=30?'⬇️':'⚖️',value+'%', 'ضبط '+label+' عند '+value+'%.',()=>{
+  closeModal();state.stats[key]=clamp(value);log('🧬','تعديل سمات الشخصية','تم ضبط '+label+' عند '+value+'% باستخدام محرر الشخصية.','special');save();render();editCharacterTraits();
+ }));
+ modal('🧬',label+' · '+clamp(state.stats[key])+'%','اختار قيمة جديدة. ده وضع تخصيص اختياري وليس نتيجة عشوائية من أحداث الحياة.',opts);
+}
+function editNpcMenu(){
+ const people=[];
+ (state.family||[]).filter(n=>!n.deceased).forEach(n=>people.push(n));
+ (state.friends||[]).forEach(n=>people.push(n));
+ (state.children||[]).forEach(n=>people.push(n));
+ if(state.partner)people.push(state.partner);
+ const opts=people.map(n=>choice(n.emoji||'👤',(n.name||'شخص')+' · '+(n.relation||'شخص'), 'تعديل السمات المخفية وقوة العلاقة للشخصية دي.',()=>editNpcTraits(n)));
+ if(!opts.length)opts.push(choice('👥','لا توجد شخصيات متاحة','كوّن علاقة أو تعرّف على صديق الأول.',closeModal));
+ modal('👥','محرر الشخصيات','اختار فردًا من العائلة أو صديقًا أو الشريك لتعديل سماته داخل وضع التخصيص.',opts);
+}
+function editNpcTraits(n){
+ const props=[['relationshipLevel','قوة العلاقة','❤️'],['generosity','الكرم','🎁'],['craziness','الاندفاع','⚡'],['money','الوضع المالي','💰'],['petulance','العناد','😤']];
+ const opts=props.map(([key,label,icon])=>choice(icon,label+' · '+clamp(n[key]??50)+'%', 'اختار قيمة جديدة لصفة '+label+'.',()=>editNpcTraitLevel(n,key,label)));
+ opts.unshift(choice(n.emoji||'👤','رجوع لقائمة الشخصيات','اختار شخصية تانية.',editNpcMenu));
+ modal('🧬',(n.name||'شخص')+' · محرر السمات','الصفات دي بتأثر على انطباعك عن الشخصية وتفاعل العلاقة داخل اللعبة.',opts);
+}
+function editNpcTraitLevel(n,key,label){
+ const levels=[100,80,60,40,20,0];
+ const opts=levels.map(value=>choice(value===100?'💯':value>=70?'⬆️':value<=30?'⬇️':'⚖️',value+'%', 'ضبط '+label+' عند '+value+'%.',()=>{
+  closeModal();n[key]=clamp(value);log('🧬','تعديل شخصية','تم تعديل '+label+' لدى '+(n.name||'الشخصية')+' إلى '+value+'%.','special');save();render();editNpcTraits(n);
+ }));
+ modal('🧬',label+' · '+clamp(n[key]??50)+'%','اختار المستوى الجديد.',opts);
+}
+function timeMachineMenu(){
+ if(!state||!Array.isArray(state.timeMachineSnapshots)||!state.timeMachineSnapshots.length){
+  closeModal();info('⏳','الرجوع بالزمن','الميزة بتظهر بعد ما تتقدم سنة واحدة على الأقل في الحياة.');return;
+ }
+ const isDead=state.status==='متوفى',history=state.timeMachineSnapshots,opts=[];
+ for(let index=history.length-1;index>=0;index--){
+  try{
+   const snap=JSON.parse(history[index]);
+   opts.push(choice('⏪','العودة إلى عمر '+fmt(snap.age)+' سنة','استرجاع حالة الحياة كما كانت قبل التقدم إلى السنة التالية. كل ما حدث بعدها سيتراجع.',()=>rewindToSnapshot(index)));
+  }catch(e){}
+ }
+ opts.push(choice('↩️','رجوع','العودة للحياة الحالية دون تغيير.',()=>{closeModal();if(isDead)death(state.cause||'نهاية رحلة الحياة');}));
+ modal('⏳','الرجوع بالزمن','تقدر ترجع لواحدة من آخر 8 نقاط حفظ سنوية. الرجوع يستعيد المال والعلاقات والإحصائيات والسجل كما كانت في تلك السنة.',opts);
+}
+function rewindToSnapshot(index){
+ const history=Array.isArray(state.timeMachineSnapshots)?state.timeMachineSnapshots:[];
+ if(index<0||index>=history.length){closeModal();info('⏳','نقطة الحفظ غير متاحة','اختار سنة ظاهرة في القائمة.');return;}
+ const wasDead=state.status==='متوفى',currentAge=state.age,lifeId=state.lifeId;
+ let restored;
+ try{restored=JSON.parse(history[index]);}catch(e){closeModal();info('⚠️','تعذر الرجوع','نقطة الحفظ دي غير صالحة.');return;}
+ if(wasDead){
+  try{const list=JSON.parse(localStorage.getItem(CEMETERY_KEY)||'[]');localStorage.setItem(CEMETERY_KEY,JSON.stringify(list.filter(item=>item.id!==lifeId)));}catch(e){}
+ }
+ restored.timeMachineSnapshots=history.slice(0,index);
+ restored.status='حي';restored.cause=null;restored.cemeterySaved=false;
+ state=restored;dead=false;closeModal();
+ log('⏳','رجوع بالزمن','رجعت من عمر '+currentAge+' إلى عمر '+state.age+'. مسار الحياة اتراجع، وتقدر تختار قرارات مختلفة من هنا.','special');
+ achievement('استخدمت الرجوع بالزمن');save();render();
+ info('⏳','تم الرجوع بالزمن','تم استرجاع الحياة عند عمر '+state.age+' سنة، مع استعادة حالة الشخصية في ذلك الوقت.');
+}
+
 function customizeMenu(){
  const opts=[
   choice('✍️','تغيير الاسم','اكتب اسم جديد للشخصية.',()=>{closeModal();if(typeof prompt!=='function'){info('✍️','تعديل الاسم','التعديل اليدوي غير متاح في بيئة الاختبار.');return;}const v=prompt('اكتب الاسم الجديد',state.name);if(v&&v.trim()){state.name=v.trim().slice(0,50);log('🪪','تغيير الاسم','أصبح اسمك '+state.name+'.','special');render();}}),
   choice('🎲','اسم عشوائي','اختيار اسم جديد من الأسماء المتاحة.',()=>{closeModal();state.name=pick(names[state.gender])+' '+pick(names.family);log('🪪','اسم جديد','اسم شخصيتك أصبح '+state.name+'.');render();}),
   choice('👤','تغيير نوع الشخصية','تغيير الصورة الرمزية ونوع الاسم العشوائي القادم.',()=>{closeModal();modal('👤','نوع الشخصية','تأكيد تغيير النوع الظاهر للشخصية.',[choice('👦','ذكر','',()=>{closeModal();state.gender='male';render();}),choice('👧','أنثى','',()=>{closeModal();state.gender='female';render();})]);}),
+  choice('🧬','محرر سمات الشخصية','عدّل الصحة والسعادة والذكاء والمظهر في وضع التخصيص.',editCharacterTraits),
+  choice('👥','محرر العائلة والأصدقاء','غيّر السمات المخفية وقوة العلاقة لشخصياتك.',editNpcMenu),
   choice('🚗','رخصة قيادة','اختبار بسيط للحصول على رخصة بعد سن 16.',()=>{closeModal();getLicense();}),
   choice('🌍','السفر والهجرة','تغيير بلد الإقامة أو السفر.',travelMenu),
+  choice('⏳','الرجوع بالزمن','استرجع حالة الحياة من إحدى السنوات السابقة.',timeMachineMenu),
   choice('📤','تصدير الحفظ','نزّل نسخة JSON من تقدمك.',exportSave),
   choice('📥','استيراد حفظ سابق','استرجع نسخة سبق تصديرها من اللعبة.',importSave)
  ];
@@ -1353,6 +1427,7 @@ function mainMenu(){
   choice('🪦','مقبرة الحيوات','استعرض الشخصيات السابقة وأعمارها ونهاياتها.',()=>cemeteryMenu()),
   choice('🏆','الإنجازات والأشرطة','الأهداف التي حققتها في رحلتك.',()=>achievementsMenu()),
   choice('🎯','تحديات اليوم','ثلاث مهام يومية ومكافآت إضافية عند إكمالها.',()=>dailyChallengesMenu()),
+  choice('⏳','الرجوع بالزمن','استرجع نقطة حفظ سنوية سابقة.',timeMachineMenu),
   choice('🎁','المكافأة اليومية','احصل على مكافأتك اليومية إن كانت متاحة.',()=>dailyReward()),
   choice('🪪','ملف الشخصية','تعديل الاسم وإعدادات الشخصية.',()=>customizeMenu()),
   choice('💾','تصدير الحفظ','نزّل نسخة احتياطية من حياتك الحالية.',()=>exportSave()),
@@ -1504,9 +1579,9 @@ function importSave(){
    try{
     const data=JSON.parse(String(reader.result||''));
     if(!data||data.version!==1||!data.stats||!Array.isArray(data.log)||!Array.isArray(data.family)||!data.place)throw new Error('invalid');
-    const defaults={lifeId:Date.now()+Math.random(),cemeterySaved:false,jobHistory:[],specialCareer:null,investments:[],business:null,married:false,children:[],pets:[],hobbies:[],fame:0,followers:0,socialMediaAccount:false,socialMediaPosts:0,reputation:50,crimeRecord:0,prison:null,debt:0,willDistribution:'الأسرة بالتساوي',heirlooms:[],dailyRewardDate:null,dailyChallenges:null,legacy:{name:null,inheritance:0,heirloom:null},driversLicense:false,travelHistory:[],retired:false,yearCount:data.age||0,assets:[],friends:[],accomplishments:[],status:'حي'};
+    const defaults={lifeId:Date.now()+Math.random(),cemeterySaved:false,jobHistory:[],specialCareer:null,investments:[],business:null,married:false,children:[],pets:[],hobbies:[],fame:0,followers:0,socialMediaAccount:false,socialMediaPosts:0,reputation:50,crimeRecord:0,prison:null,debt:0,willDistribution:'الأسرة بالتساوي',heirlooms:[],dailyRewardDate:null,dailyChallenges:null,timeMachineSnapshots:[],legacy:{name:null,inheritance:0,heirloom:null},driversLicense:false,travelHistory:[],retired:false,yearCount:data.age||0,assets:[],friends:[],accomplishments:[],status:'حي'};
     Object.keys(defaults).forEach(k=>{if(data[k]===undefined||data[k]===null)data[k]=defaults[k];});
-    if(!Array.isArray(data.assets))data.assets=[];data.assets.forEach(a=>{if((a.kind==='car'||a.kind==='property')&&!Number.isFinite(Number(a.condition)))a.condition=100;});
+    if(!Array.isArray(data.assets))data.assets=[];if(!Array.isArray(data.timeMachineSnapshots))data.timeMachineSnapshots=[];data.assets.forEach(a=>{if((a.kind==='car'||a.kind==='property')&&!Number.isFinite(Number(a.condition)))a.condition=100;});
     if(!data.education||typeof data.education!=='object')data.education={level:0,school:'لم تبدأ الدراسة',major:null,yearsLeft:0,tuition:0};data.education.clubs=Array.isArray(data.education.clubs)?data.education.clubs:[];
     const npcDefaults=n=>{if(!n||typeof n!=='object')return;if(!Number.isFinite(Number(n.generosity)))n.generosity=50;if(!Number.isFinite(Number(n.craziness)))n.craziness=50;if(!Number.isFinite(Number(n.money)))n.money=50;if(!Number.isFinite(Number(n.petulance)))n.petulance=50;};(data.family||[]).forEach(npcDefaults);(data.friends||[]).forEach(npcDefaults);(data.children||[]).forEach(npcDefaults);npcDefaults(data.partner);
     state=data;dead=state.status==='متوفى';save();render();if(dead)death(state.cause||'نهاية رحلة الحياة');else info('📥','تم استيراد الحفظ','تم تحميل '+state.name+' · العمر '+state.age+' سنة.');
