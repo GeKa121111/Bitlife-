@@ -497,7 +497,7 @@ function normalizeCoreState(data){
  if(!data.dealer||typeof data.dealer!=='object'||Array.isArray(data.dealer))data.dealer={joined:false,rank:0,rep:0,earnings:0,territory:1};data.dealer.joined=!!data.dealer.joined;data.dealer.rank=clamp(Number(data.dealer.rank)||0,0,4);data.dealer.rep=clamp(Number(data.dealer.rep)||0,0,100);data.dealer.earnings=Math.max(0,Number(data.dealer.earnings)||0);data.dealer.territory=clamp(Number(data.dealer.territory)||1,1,10);
  if(!data.royalty||typeof data.royalty!=='object'||Array.isArray(data.royalty))data.royalty={active:false,title:null,house:null};data.royalty.active=!!data.royalty.active;data.royalty.title=typeof data.royalty.title==='string'?data.royalty.title:null;data.royalty.house=typeof data.royalty.house==='string'?data.royalty.house:null;
  if(!data.investmentAdvisor||typeof data.investmentAdvisor!=='object'||Array.isArray(data.investmentAdvisor))data.investmentAdvisor={hired:false,yearsLeft:0,fee:4500};data.investmentAdvisor.hired=!!data.investmentAdvisor.hired;data.investmentAdvisor.yearsLeft=clamp(Number(data.investmentAdvisor.yearsLeft)||0,0,20);data.investmentAdvisor.fee=Math.max(0,Number(data.investmentAdvisor.fee)||4500);if(data.marketTip!==null&&typeof data.marketTip!=='object')data.marketTip=null;
- if(!data.zoo.funds||!Number.isFinite(Number(data.zoo.funds)))data.zoo.funds=data.zoo.opened?75000:0;if(!Array.isArray(data.zoo.habitats))data.zoo.habitats=data.zoo.opened?['savannah','forest','aviary']:[];
+ if(!Number.isFinite(Number(data.zoo.funds)))data.zoo.funds=data.zoo.opened?75000:0;if(!Array.isArray(data.zoo.habitats))data.zoo.habitats=data.zoo.opened?['savannah','forest','aviary']:[];
  if(!data.talents||typeof data.talents!=='object'||Array.isArray(data.talents))data.talents={};
  const gamingHobby=Array.isArray(data.hobbies)?data.hobbies.find(h=>h&&h.id==='gaming'):null;
  if(!Number.isFinite(Number(data.talents.gaming)))data.talents.gaming=gamingHobby?clamp(25+(Number(gamingHobby.level)||1)*5,0,100):35;
@@ -824,10 +824,10 @@ function advanceAge(){
  if(assetUpkeep){state.bank-=assetUpkeep;flash('-'+cash(assetUpkeep),true);log('🔧','صيانة الأصول','صيانة ممتلكاتك كلّفتك '+cash(assetUpkeep)+'.','bad');}
  const rentIncome=(state.assets||[]).filter(a=>a.kind==='property'&&a.rented).reduce((total,a)=>total+Math.round(a.tenant&&perkOwned('landlordPack')?(a.tenant.rent||a.value*.045):(a.value||0)*.045),0);
  (state.assets||[]).forEach(a=>{if(a.kind==='property'&&a.tenant&&perkOwned('landlordPack')){a.tenant.yearsLeft=Math.max(0,(a.tenant.yearsLeft||0)-1);if(a.tenant.yearsLeft===0&&chance(.25)){a.rented=false;a.tenant=null;log('🏠','انتهاء عقد الإيجار','غادر المستأجر أحد عقاراتك بعد انتهاء العقد. افتح إدارة المستأجرين للبحث عن مستأجر جديد.','bad');}else if(a.tenant&&a.tenant.yearsLeft===0)a.tenant.yearsLeft=1;}});
- if(state.zoo&&state.zoo.opened){const operatingCost=18000,visitors=9000+Math.floor(Math.random()*24000);state.bank+=visitors-operatingCost;state.zoo.animals.forEach(a=>a.age=(a.age||0)+1);if(chance(.12)&&state.zoo.animals.length>0&&state.zoo.animals.length<50){const parent=pick(state.zoo.animals);state.zoo.animals.push({id:Date.now()+Math.random(),name:'صغير '+parent.species,species:parent.species,emoji:parent.emoji,age:0,legendary:false});log('🦁','مولود جديد في الحديقة','استقبلت حديقة الحيوان صغيرًا جديدًا من نوع '+parent.species+'.','good');}log('🦁','تشغيل حديقة الحيوان','دخل الزوار '+cash(visitors)+'، وتكاليف الرعاية '+cash(operatingCost)+'.','special');}
+ if(state.zoo&&state.zoo.opened)advanceZooSystem();if(state.cult&&state.cult.founded)advanceCultSystem();if(state.casino&&state.casino.opened)advanceCasinoSystem();if(state.dealer&&state.dealer.joined)advanceDealerSystem();advanceInvestmentAdvisor();
  if(state.museum&&state.museum.opened){const visitorIncome=(state.museum.displayed||[]).length*2400;state.bank+=visitorIncome;if(visitorIncome)log('🏛️','دخل المتحف السنوي','جاء '+cash(visitorIncome)+' من الزوار بفضل المقتنيات المعروضة.','good');}if(rentIncome>0){state.bank+=rentIncome;log('🏠','دخل إيجار سنوي','دخل لك '+cash(rentIncome)+' من تأجير العقارات.','good');}
  if(state.debt>0){const interest=Math.max(100,Math.round(state.debt*.08));state.debt+=interest;log('🏦','فوائد الديون','زادت ديونك بمقدار '+cash(interest)+' بسبب الفوائد. إجمالي الدين '+cash(state.debt)+'.','bad');}
- if((state.investments||[]).length){let totalGain=0;state.investments.forEach(inv=>{const before=inv.value;const move=inv.kind==='عملات رقمية'?(Math.random()*.9-.35):inv.kind==='أسهم'?(Math.random()*.3-.09):inv.kind==='سندات'?(Math.random()*.08-.02):inv.kind==='مخاطرة عالية'?(Math.random()*.46-.18):(Math.random()*.24-.04);inv.value=Math.max(0,Math.round(inv.value*(1+move)));totalGain+=inv.value-before;});if(totalGain)log('📈','تقرير الاستثمارات',(totalGain>=0?'استثماراتك زادت بقيمة ':'استثماراتك خسرت بقيمة ')+cash(Math.abs(totalGain))+'. السوق بيتحرك صعودًا وهبوطًا. ',totalGain>=0?'good':'bad');}
+ if((state.investments||[]).length){let totalGain=0;state.investments.forEach(inv=>{const before=inv.value;let move=inv.kind==='عملات رقمية'?(Math.random()*.9-.35):inv.kind==='أسهم'?(Math.random()*.3-.09):inv.kind==='سندات'?(Math.random()*.08-.02):inv.kind==='مخاطرة عالية'?(Math.random()*.46-.18):(Math.random()*.24-.04);if(inv.strategy==='long')move=move*.62+.008;else if(inv.strategy==='short')move=move*1.2;if(state.investmentAdvisor&&state.investmentAdvisor.hired)move=move>=0?move*1.08:move*.72;inv.value=Math.max(0,Math.round(inv.value*(1+move)));totalGain+=inv.value-before;});if(totalGain)log('📈','تقرير الاستثمارات',(totalGain>=0?'استثماراتك زادت بقيمة ':'استثماراتك خسرت بقيمة ')+cash(Math.abs(totalGain))+'. السوق بيتحرك صعودًا وهبوطًا. ',totalGain>=0?'good':'bad');}
  if(state.business){const level=Math.max(1,state.business.level||1);const revenue=Math.round(state.business.value*(.03+Math.random()*.08)*(.8+level*.15));const costs=Math.round(state.business.value*(.02+Math.random()*.05)*(1+Math.max(0,level-1)*.08));const profit=revenue-costs;state.bank+=profit;state.business.value=Math.max(1000,Math.round(state.business.value*(profit>=0?1.04:.97)));log('🏪','التقرير السنوي للمشروع',(profit>=0?'صافي الأرباح ':'صافي الخسارة ')+cash(Math.abs(profit))+' · مستوى الإدارة '+level+'.','special');}
  (state.companies||[]).forEach(company=>{const revenue=Math.round(company.value*(.03+Math.random()*.10)*(.85+(company.level||1)*.12));const costs=Math.round(company.value*(.025+Math.random()*.055)*(1+Math.max(0,(company.level||1)-1)*.06));const profit=revenue-costs;state.bank+=profit;company.value=Math.max(1000,Math.round(company.value*(profit>=0?1.04:.97)));const asset=state.assets.find(a=>a.id===company.id);if(asset)asset.value=company.value;log('🏢','التقرير السنوي: '+company.title,(profit>=0?'صافي الأرباح ':'صافي الخسارة ')+cash(Math.abs(profit))+'.','special');});
  if((state.pets||[]).length){const care=state.pets.length*350;state.bank-=care;state.pets.forEach(p=>{p.age=(p.age||0)+1;p.happiness=clamp((p.happiness||70)+(chance(.7)?3:-6));p.health=clamp((p.health||70)-(p.age>10?2:0)+(p.happiness>40&&chance(.5)?1:-1));});const lost=state.pets.filter(p=>(p.species==='طائر'?p.age>19:p.age>15)&&chance(.35));if(lost.length){state.pets=state.pets.filter(p=>!lost.includes(p));lost.forEach(p=>log('🐾','وداع صديق','توفي '+p.name+' بعد سنوات من الرفقة. ستفضل ذكراه جزءًا من حكايتك.','bad'));}if(state.bank<0)log('🐾','مصاريف الحيوانات','رعاية الحيوانات كلفتك '+cash(care)+' هذا العام.','bad');}
@@ -1808,23 +1808,6 @@ function emigrate(destination){
  state.place={...destination};state.stats.happiness=clamp(state.stats.happiness-2);
  if(state.job){state.job.salary=Math.round(state.job.salary*1.15);state.performance=clamp(state.performance-8);}
  log('🌍','بدأت حياة في بلد جديدة','انتقلت من '+old.country+' إلى '+destination.country+'. '+(cost?'محتاج وقت تتأقلم مع المجتمع وسوق العمل.':'جواز العالم غطّى رسوم الانتقال؛ الآن ابدأ التكيّف مع المجتمع وسوق العمل.'),'special');achievement('الهجرة إلى '+destination.country);render();info('🌍','وصلت '+destination.city,'غيّرت بلد الإقامة. وظيفتك ومصاريفك وفرصك هتتأثر بالمكان الجديد.');
-}
-
-function investingMenu(){
- const opts=[];
- if(state.age<18){opts.push(choice('🔒','الاستثمار بعد 18 سنة','ابدأ بالتعلم والادخار لحد ما تقدر تستثمر قانونيًا.',()=>{closeModal();info('📊','لسه بدري','الاستثمار متاح بعد سن 18.');}));}
- else{
-  opts.push(choice('🏦','استثمار محافظ','مبلغ 2,000 في محفظة أقل تقلبًا.',()=>investAmount('محافظ',2000),'2,000 '+state.place.unit));
-  opts.push(choice('📈','أسهم متوازنة','مبلغ 10,000 مع صعود وهبوط سنوي.',()=>investAmount('متوازن',10000),'10,000 '+state.place.unit));
-  opts.push(choice('🎢','استثمار عالي المخاطر','مبلغ 5,000 مع احتمال مكسب أو خسارة كبيرين.',()=>investAmount('مخاطرة عالية',5000),'5,000 '+state.place.unit));
-  if(perkOwned('investorPack')){
-   opts.unshift(choice('🪙','عملات رقمية','محفظة شديدة التقلب، بمبلغ 8,000.',()=>investAmount('عملات رقمية',8000),'8,000 '+state.place.unit));
-   opts.unshift(choice('🏛️','سندات','محفظة محافظة نسبيًا، بمبلغ 5,000.',()=>investAmount('سندات',5000),'5,000 '+state.place.unit));
-   opts.unshift(choice('📊','أسهم شركات','محفظة أسهم منفصلة بمبلغ 10,000.',()=>investAmount('أسهم',10000),'10,000 '+state.place.unit));
-  }
- }
- (state.investments||[]).forEach((inv,i)=>opts.push(choice('📊',inv.kind+' · '+cash(inv.value),'القيمة الحالية بعد تغير السوق.',()=>sellInvestment(i),cash(inv.value))));
- modal('📊','الاستثمارات','قيمة المحافظ بتتغير كل سنة. الأسهم والسندات والعملات الرقمية تتحرك بمعدلات مخاطر مختلفة. مفيش عائد مضمون، وممكن تخسر جزءًا من رأس المال.',opts);
 }
 
 function investAmount(kind,amount){
@@ -3271,6 +3254,54 @@ function investingMenu(){
  modal('📊','الاستثمارات','النتائج داخل المحاكاة متغيرة وليست مضمونة؛ احتفظ بمبلغ للطوارئ ولا تستثمر أموال احتياجاتك الأساسية.',opts);
 }
 
+
+function advanceZooSystem(){
+ const z=state.zoo;if(!z||!z.opened)return;
+ if(!Number.isFinite(Number(z.funds)))z.funds=75000;
+ if(!Array.isArray(z.habitats))z.habitats=['savannah','forest','aviary'];
+ z.habitatHealth=z.habitatHealth||{};
+ const animals=z.animals||[],habitats=z.habitats||[];
+ const visitors=12000+Math.floor(Math.random()*7000)+animals.length*850+habitats.length*2300+animals.reduce((n,a)=>n+(a.legendary?900:0)+(a.accessories||[]).length*160,0);
+ const habitatIncome=habitats.reduce((n,id)=>n+Math.round(((z.habitatHealth[id]??100)/100)*900),0);
+ const upkeep=14000+animals.length*360+habitats.reduce((n,id)=>n+(zooHabitatCatalog.find(h=>h.id===id)?.upkeep||2500),0);
+ z.funds+=visitors+habitatIncome-upkeep;
+ habitats.forEach(id=>z.habitatHealth[id]=clamp((z.habitatHealth[id]??100)-4));
+ animals.forEach(a=>{a.age=(a.age||0)+1;a.health=clamp((a.health??85)-(a.age>15?3:1));a.happiness=clamp((a.happiness??70)-2+Math.min(4,(a.accessories||[]).length));});
+ if(z.funds<0){state.bank+=z.funds;z.funds=0;log('💳','دعم مالي للحديقة','صندوق الحديقة لم يغطِ تكاليف التشغيل بالكامل، فتم تغطية العجز من حسابك الشخصي.','bad');}
+ if(chance(.07)&&animals.length>0&&animals.length<120){const parent=pick(animals);z.animals.push({id:Date.now()+Math.random(),name:'صغير '+parent.species,species:parent.species,emoji:parent.emoji,habitat:parent.habitat,age:0,legendary:false,accessories:[],happiness:85,health:100});log('🦁','مولود جديد في الحديقة','استقبلت الحديقة صغيرًا جديدًا من نوع '+parent.species+'.','good');}
+ log('🦁','تقرير تشغيل الحديقة','دخل الزوار '+cash(visitors)+' · تكاليف التشغيل '+cash(upkeep)+' · تغير الصندوق '+cash(visitors+habitatIncome-upkeep)+'.','special');
+}
+function advanceCultSystem(){
+ const c=state.cult;if(!c||!c.founded)return;
+ const inside=c.members.filter(m=>m.status==='داخل المجتمع');
+ const donations=inside.reduce((n,m)=>n+Math.round(250+Math.random()*650+(m.loyalty||50)*3),0);
+ const upkeep=2500+inside.length*450;c.fund=Math.max(-30000,(c.fund||0)+donations-upkeep);
+ inside.forEach(m=>{m.loyalty=clamp(m.loyalty+(c.doctrine==='المعرفة'?2:1)-(c.discipline<25?2:0));if(m.loyalty<20&&chance(.18))m.status='غادر المجتمع';});
+ if(c.fund<0){const deficit=Math.min(state.bank,Math.abs(c.fund));state.bank-=deficit;c.fund+=deficit;log('💳','عجز مالي في المجتمع','اضطررت لتغطية جزء من تكاليف المجتمع من حسابك الشخصي.','bad');}
+ log('🛕','تقرير المجتمع السنوي','المساهمات '+cash(donations)+' · التكاليف '+cash(upkeep)+' · الأعضاء داخل المقر '+inside.filter(m=>m.status==='داخل المجتمع').length+'.','');
+}
+function advanceCasinoSystem(){
+ const c=state.casino;if(!c||!c.opened)return;
+ if(!Number.isFinite(Number(c.funds)))c.funds=75000;
+ const revenue=18000+(c.games||[]).length*12000+(c.amenities||[]).length*7500+(c.celebrityHires||0)*11000+Math.round((state.fame||0)*250);
+ const cost=20000+(c.games||[]).length*4000+(c.amenities||[]).length*3500+(c.celebrityHires||0)*8500;
+ c.funds+=revenue-cost;
+ if(c.funds<0){state.bank+=c.funds;c.funds=0;log('💳','تغطية عجز الكازينو','صندوق التشغيل لم يغطِ المصاريف، فتم خصم العجز من حسابك الشخصي.','bad');}
+ log('🎰','التقرير السنوي للكازينو','إيرادات '+cash(revenue)+' · تكاليف '+cash(cost)+' · التغير الصافي '+cash(revenue-cost)+'.','special');
+}
+function advanceDealerSystem(){
+ const d=state.dealer;if(!d||!d.joined)return;
+ if(chance(Math.min(.72,.32+d.rank*.07+d.territory*.025))){const gain=3500+Math.floor(Math.random()*9000)+d.rank*2200+d.territory*500;state.bank+=gain;d.earnings+=gain;d.rep=clamp(d.rep+4);log('🃏','تقرير مسار التاجر','دخل افتراضي من نشاط المسار '+cash(gain)+'.','special');}
+ else if(chance(.12)){d.rep=clamp(d.rep-8);state.crimeRecord=(state.crimeRecord||0)+1;log('⚠️','توتر في مسار التاجر','تراجعت سمعة الشبكة الافتراضية بسبب حدث عشوائي.','bad');if(chance(.18)){state.prison={years:1,kind:'قضية من المسار الخيالي'};state.job=null;state.specialCareer=null;log('🚔','قضية قانونية','أدى حدث عشوائي إلى عقوبة داخل اللعبة.','bad');}}
+}
+function advanceInvestmentAdvisor(){
+ const a=state.investmentAdvisor;if(!a||!a.hired)return;
+ if(state.bank<a.fee){a.hired=false;a.yearsLeft=0;log('🧑‍💼','انتهاء عقد المستشار','لم يكفِ الرصيد لدفع رسوم المستشار السنوية، فتم إنهاء العقد دون زيادة الديون.','bad');return;}
+ state.bank-=a.fee;
+ if(state.bank>15000&&state.investments.length<30){const amount=5000;state.bank-=amount;state.investments.push({id:Date.now()+Math.random(),kind:'سندات',value:amount,initialValue:amount,strategy:'long',started:state.age,advisorManaged:true});log('🧑‍💼','استثمار آلي من المستشار','خصص المستشار '+cash(amount)+' لمحفظة سندات طويلة المدى داخل اللعبة.','special');}
+ a.yearsLeft=Math.max(0,(a.yearsLeft||0)-1);log('🧑‍💼','رسوم المستشار المالي','دُفعت رسوم سنوية '+cash(a.fee)+'.','');
+ if(a.yearsLeft===0){a.hired=false;log('🧑‍💼','انتهاء عقد المستشار','انتهت مدة العقد. يمكنك تجديده من قائمة الاستثمارات.');}
+}
 function premiumPerksMenu(){
  if(!state)return;
  const catalog=[
@@ -3495,6 +3526,7 @@ function cinemaAction(kind){
 function financeMenu(){
  const opts=[];
  opts.push(choice('📊','الاستثمارات','أسهم ومحافظ تتغير قيمتها سنويًا.',investingMenu));
+ if(perkOwned('investorPack'))opts.push(choice('🧑‍💼','المستشار المالي','إدارة استثمارية اختيارية برسوم معلومة.',financialAdvisorMenu));
  if(state.debt>0)opts.push(choice('💳','سداد الديون','إجمالي الدين '+cash(state.debt)+'.',repayDebt));
  opts.push(choice('🏦','قرض طارئ','استلف 10,000 '+state.place.unit+' مع فائدة سنوية.',takeLoan,'10,000 '+state.place.unit));
  opts.push(choice('💰','ملخص مالي','رصيد البنك '+cash(state.bank)+' · الديون '+cash(state.debt||0)+' · قيمة الأصول '+cash(state.assets.reduce((t,a)=>t+a.value,0)) ,()=>{closeModal();info('💰','ملخص مالي','صافي الثروة التقديري '+cash(state.bank+(state.assets||[]).reduce((t,a)=>t+a.value,0)+(state.investments||[]).reduce((t,a)=>t+a.value,0)-(state.debt||0))+'.');}));
