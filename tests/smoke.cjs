@@ -11,6 +11,13 @@ assert.match(index, /src="app.js"/);
 assert.match(index, /id="ageUpBtn"/);
 assert.match(css, /max-width:450px/);
 assert.ok((app.match(/\nE\(\[/g) || []).length >= 25, 'at least 25 age-based events should exist');
+assert.match(app, /events\.push\(/, 'expanded event library should be present');
+for (const system of ['function familyMenu()', 'function petsMenu()', 'function hobbiesMenu()', 'function investingMenu()', 'function crimeMenu()', 'function cemeteryMenu()', 'function newLifeSetup()', 'function startAsChild()']) {
+  assert.ok(app.includes(system), 'missing gameplay system: ' + system);
+}
+assert.match(index, /id="fameTag"/);
+assert.match(index, /id="profileBtn"/);
+assert.match(css, /--orange:#ff5738/);
 
 class FakeElement {
   constructor(id = '') {
