@@ -664,36 +664,50 @@ function choice(icon,title,desc,action,price='',progress=null,locked=false){retu
 function modal(icon,title,desc,choices,closable=true,extra=''){
  const root=$('modalRoot');
  const isDrawer=['الدراسة والشغل','الأصول والمشتريات','العلاقات والأسرة','الأنشطة والحياة اليومية'].includes(title);
- const context=String(title||'')+' '+String(desc||'');
- const symptom=/(عرض|أعراض|صداع|غثيان|حمى|حُمّى|زكام|سعال|ألم|وجع|دوخة)/.test(context);
- const crime=/(جريمة|سرقة|سجن|مخدر|عصابة|شرطة|اختلاس|سطو)/.test(context);
- const healthcare=/(طبيب|صحة|إصابة|خطر|مرض|وفاة|علاج|تشخيص|مستشفى|جراحة)/.test(context);
- const money=/(مهنة|الشغل|وظيفة|عمل|مال|بنك|استثمار|مشروع|ترقية|راتب|أصول|دخل|ثروة|قرض)/.test(context);
- const relations=/(صديق|صداقة|علاقة|شريك|زواج|طلاق|أب|أم|أخ|أخت|ابن|عائلة|علاقات|حبيب)/.test(context);
- const special=/(شهرة|إنجاز|مقتنيات|ملك|أمير|جائزة|تاج|بطولة|وسام)/.test(context);
+ const context=String(title||'')+' '+String(desc||'')+' '+String(extra||'');
+ const symptom=/(عرض|أعراض|صداع|غثيان|حمى|حُمّى|زكام|سعال|ألم|وجع|دوخة|symptom|headache|nausea|flu|diagnosis)/i.test(context);
+ const crime=/(جريمة|سرقة|سجن|مخدر|عصابة|شرطة|اختلاس|سطو|crime|robbery|prison)/i.test(context);
+ const education=/(جامعة|تخصص|مدرسة|تعليم|تخرج|دراسة|شهادة|امتحان|التعليم|education|graduation|school|university|major)/i.test(context);
+ const license=/(رخصة|قيادة|اختبار قيادة|license|driving test|road sign)/i.test(context);
+ const racing=/(سباق|رالي|تحدي الطريق|drifting|racing|road race|street race)/i.test(context);
+ const film=/(فيلم|السينما|مخرج|ممثل|تصوير|استوديو|movie|actor|director|screenplay)/i.test(context);
+ const money=/(مهنة|الشغل|وظيفة|عمل|مال|بنك|استثمار|مشروع|ترقية|راتب|أصول|دخل|ثروة|قرض|money|bank|investment)/i.test(context);
+ const relations=/(صديق|صداقة|علاقة|شريك|زواج|طلاق|أب|أم|أخ|أخت|ابن|عائلة|علاقات|حبيب|friend|relationship|mother|father)/i.test(context);
+ const healthcare=/(طبيب|صحة|إصابة|خطر|مرض|وفاة|علاج|تشخيص|مستشفى|جراحة|healthcare|doctor|medical|injury|illness)/i.test(context);
+ const special=/(شهرة|إنجاز|مقتنيات|ملك|أمير|جائزة|تاج|بطولة|وسام|achievement|award)/i.test(context);
  const category=symptom?'success':(crime||healthcare)?'danger':special?'special':'normal';
- const labels={
-  danger:crime?'الجريمة':'الرعاية الصحية',
-  success:'الأعراض الصحية',
-  special:'إنجاز خاص',
-  normal:money?'المال والعمل':relations?'العلاقات':'موقف من الحياة'
- };
+ let categoryLabel='موقف من الحياة';
+ if(symptom)categoryLabel='الصحة';
+ else if(crime)categoryLabel='الجريمة';
+ else if(healthcare)categoryLabel='الرعاية الصحية';
+ else if(education)categoryLabel='التعليم';
+ else if(license)categoryLabel='الرخصة';
+ else if(racing)categoryLabel='السباق';
+ else if(film)categoryLabel='الإخراج السينمائي';
+ else if(money)categoryLabel='المال والعمل';
+ else if(relations)categoryLabel='العلاقات';
+ else if(special)categoryLabel='إنجاز خاص';
+ const actualChoices=choices.filter(c=>c&&!c.section&&!c.disabled&&typeof c.action==='function');
+ const hasSelect=/<select[\s>]/i.test(extra||'');
+ const isNotice=!isDrawer&&actualChoices.length<=1&&!hasSelect;
+ const hasRandomChoice=actualChoices.length>1||hasSelect;
+ const hasQuestion=/(هتعمل إيه|ماذا ستفعل|ماذا ستختار|هتختار إيه|؟|\?)/.test(String(desc||''));
+ const questionPrompt=!isNotice&&!hasSelect&&actualChoices.length>1&&!hasQuestion?'هتعمل إيه؟':'';
  const list=choices.map((c,i)=>{
   if(c&&c.section)return '<div class="list-section" role="heading" aria-level="2">'+esc(c.title||'')+'</div>';
   return '<button class="choice'+(c&&c.locked?' locked-choice':'')+'" data-i="'+i+'" '+(c&&c.disabled?'disabled':'')+'>'+
    '<span class="choiceico">'+(c&&c.icon||'›')+'</span>'+
-   '<span class="ctext"><span class="ctitle">'+esc(c&& (c.title||c.label)||'اختيار')+'</span>'+
+   '<span class="ctext"><span class="ctitle">'+esc(c&&(c.title||c.label)||'اختيار')+'</span>'+
    (c&&c.desc?'<span class="cdesc">'+esc(c.desc)+'</span>':'')+
    (c&&c.progress!==null&&c&&c.progress!==undefined&&Number.isFinite(Number(c.progress))?'<span class="choice-progress"><span style="width:'+clamp(c.progress)+'%"></span></span>':'')+
    '</span>'+(c&&c.price?'<span class="price">'+esc(c.price)+'</span>':'')+
    (isDrawer?'<span class="choice-chevron" aria-hidden="true">›</span>':'')+
   '</button>';
  }).join('');
- const hasRandomChoice=choices.some(c=>c&&!c.section&&!c.disabled&&typeof c.action==='function');
  if(isDrawer){
   root.innerHTML='<div class="overlay drawer-overlay" id="overlay"><section class="modal drawer" role="dialog" aria-modal="true" aria-label="'+esc(title)+'"><div class="modalhead drawer-head"><div class="modalicon">'+icon+'</div><div class="modaltitle">'+esc(title)+'</div>'+(closable?'<button class="closebtn" id="closeModal" aria-label="إغلاق">×</button>':'')+'</div><div class="modalbody drawer-body">'+(desc?'<p class="desc">'+esc(desc)+'</p>':'')+extra+'<div class="choicegrid">'+list+'</div></div></section></div>';
  }else{
-  root.innerHTML='<div class="overlay event-overlay" id="overlay"><section class="modal event-modal" role="dialog" aria-modal="true" aria-label="'+esc(title)+'"><div class="event-banner banner-'+category+'"><span>'+labels[category]+'</span>'+(closable?'<button class="closebtn" id="closeModal" aria-label="إغلاق">×</button>':'')+'</div><div class="event-summary"><div class="event-icon">'+icon+'</div><h2 class="event-title">'+esc(title)+'</h2>'+(desc?'<p class="desc">'+esc(desc)+'</p>':'')+'</div><div class="modalbody event-body">'+extra+'<div class="choicegrid">'+list+'</div>'+(hasRandomChoice?'<button class="surprise-choice" id="surpriseChoice" type="button"><span aria-hidden="true">🎲</span> فاجئني!</button>':'')+'</div></section></div>';
+  root.innerHTML='<div class="overlay event-overlay" id="overlay"><section class="modal event-modal banner-'+category+(isNotice?' notice-modal':'')+'" role="dialog" aria-modal="true" aria-label="'+esc(title)+'"><div class="event-banner banner-'+category+'"><span>'+categoryLabel+'</span>'+(closable?'<button class="closebtn" id="closeModal" aria-label="إغلاق">×</button>':'')+'</div><div class="event-summary"><div class="event-icon">'+icon+'</div><h2 class="event-title">'+esc(title)+'</h2>'+(desc?'<p class="desc">'+esc(desc)+'</p>':'')+(questionPrompt?'<div class="event-question">'+questionPrompt+'</div>':'')+'</div><div class="modalbody event-body">'+extra+'<div class="choicegrid">'+list+'</div>'+(hasRandomChoice?'<button class="surprise-choice" id="surpriseChoice" type="button"><span aria-hidden="true">🎲</span> فاجئني!</button>':'')+'</div></section></div>';
  }
  const overlay=$('overlay');
  overlay.addEventListener('click',e=>{if(e.target===overlay&&closable)closeModal();});
@@ -701,8 +715,12 @@ function modal(icon,title,desc,choices,closable=true,extra=''){
  root.querySelectorAll('[data-i]').forEach(b=>b.addEventListener('click',()=>{const c=choices[Number(b.dataset.i)];if(c&&typeof c.action==='function')c.action();}));
  const surprise=$('surpriseChoice');
  if(surprise)surprise.addEventListener('click',()=>{
-  const available=choices.filter(c=>c&&!c.section&&!c.disabled&&typeof c.action==='function');
-  if(available.length)pick(available).action();
+  const selects=Array.from(root.querySelectorAll('select[data-surpriseable="true"]'));
+  if(selects.length){
+   selects.forEach(sel=>{if(sel.options.length)sel.selectedIndex=Math.floor(Math.random()*sel.options.length);});
+   return;
+  }
+  if(actualChoices.length)pick(actualChoices).action();
  });
 }
 function info(icon,title,desc,choices=[choice('✓','تمام','',closeModal)]){modal(icon,title,desc,choices);}
@@ -1050,15 +1068,22 @@ function applyJob(job){
 function university(from18){
  if(state.age<18){info('🔒','لسه بدري','تقدر تقدم للجامعة بعد سن 18.');return;}
  if(state.education.yearsLeft>0){info('🎓','أنت طالب جامعي','تخصصك الحالي '+state.education.major+'. المتبقي '+state.education.yearsLeft+' سنوات.');return;}
- const opts=majors.map(m=>choice(m.emoji,m.title,m.desc+' الحد الأدنى للذكاء '+m.min+'%. الرسوم السنوية '+cash(m.cost)+'، والمدة '+m.years+' سنوات.',()=>{
-   closeModal();
-   if(state.stats.smart<m.min){info('🧠','محتاج تستعد أكتر','التخصص ده محتاج ذكاء '+m.min+'% على الأقل. استخدم المكتبة وطوّر مهاراتك.');return;}
-   if(state.bank<m.cost){info('💳','الرسوم مش متاحة','محتاج '+cash(m.cost)+' كبداية. ممكن تبدأ شغل أو تجمع فلوس.');return;}
-   state.bank-=m.cost;flash('-'+cash(m.cost),true);state.education.major=m.title;state.education.yearsLeft=m.years;state.education.tuition=m.cost;state.education.prepaidYear=true;state.education.school='جامعة - '+m.title;state.stats.smart=clamp(state.stats.smart+3);log('🏛️','بدأت الجامعة','اتقبلت في '+m.title+'. دفعت رسوم السنة الأولى '+cash(m.cost)+'.','special');achievement('الالتحاق بالجامعة: '+m.title);render();info('🎓','أهلًا بالجامعة','هتتقدم في الدراسة مع مرور السنين. حاول تحافظ على صحتك ومستواك.');
- },cash(m.cost)+'/سنة'));
- opts.push(choice('📚','أستعد للدراسة','نشاط مجاني يزيد الذكاء.',()=>{closeModal();stat('smart',4);log('📚','استعداد للجامعة','قضيت وقتًا في التعلم قبل التقديم.');render();}));
- modal('🏛️','التخصصات الجامعية','اختار تخصصًا مناسبًا. رسوم السنة التالية تُخصم عند تقدم العمر، ولو الرصيد مش كافي الدراسة تتوقف.',opts);
+ const majorOptions=majors.map(m=>'<option value="'+esc(m.id)+'">'+esc(m.title+' — '+m.years+' سنوات — '+cash(m.cost)+' سنويًا')+'</option>').join('');
+ const form='<div class="event-form"><label for="majorSelect">اختار تخصصك:</label><select id="majorSelect" data-surpriseable="true">'+majorOptions+'</select><p class="field-note">القبول بيتطلب مستوى ذكاء مناسب ورصيد يغطي رسوم أول سنة.</p></div>';
+ const applyMajor=()=>{
+  const m=majors.find(item=>item.id===$('majorSelect')?.value);
+  if(!m){info('🎓','اختار تخصصك','حدد تخصصًا من القائمة الأول.');return;}
+  closeModal();
+  if(state.stats.smart<m.min){info('🧠','محتاج تستعد أكتر','التخصص ده محتاج ذكاء '+m.min+'% على الأقل. استخدم المكتبة وطوّر مهاراتك.');return;}
+  if(state.bank<m.cost){info('💳','الرسوم مش متاحة','محتاج '+cash(m.cost)+' كبداية. ممكن تبدأ شغل أو تجمع فلوس.');return;}
+  state.bank-=m.cost;flash('-'+cash(m.cost),true);state.education.major=m.title;state.education.yearsLeft=m.years;state.education.tuition=m.cost;state.education.prepaidYear=true;state.education.school='جامعة - '+m.title;state.stats.smart=clamp(state.stats.smart+3);log('🏛️','بدأت الجامعة','اتقبلت في '+m.title+'. دفعت رسوم السنة الأولى '+cash(m.cost)+'.','special');achievement('الالتحاق بالجامعة: '+m.title);render();info('🎓','أهلًا بالجامعة','هتتقدم في الدراسة مع مرور السنين. حاول تحافظ على صحتك ومستواك.');
+ };
+ modal('🏛️','التخصصات الجامعية','قدّم للجامعة واختار التخصص اللي يناسبك.',[
+  choice('🎓','التقديم للجامعة','تأكيد التخصص ودفع رسوم السنة الأولى.',applyMajor),
+  choice('📚','أستعد للدراسة','نشاط مجاني يزيد الذكاء.',()=>{closeModal();stat('smart',4);log('📚','استعداد للجامعة','قضيت وقتًا في التعلم قبل التقديم.');render();})
+ ],true,form);
 }
+
 function assets(){
  const opts=[
   section('Finances'),
@@ -2133,9 +2158,18 @@ function filmCreativeMenu(genreId,budgetId){
 }
 function filmCastMenu(genreId,budgetId,creativeId){
  const budget=filmBudgetCatalog.find(b=>b.id===budgetId),style=filmCreativeCatalog.find(x=>x.id===creativeId);if(!budget||!style){closeModal();filmStudioMenu();return;}
- const opts=filmCastCatalog.map(cast=>choice('🎭',cast.title,cast.desc+' تكلفة الطاقم '+cash(cast.cost)+'.',()=>filmMarketingMenu(genreId,budgetId,creativeId,cast.id),cash(cast.cost),cast.cost===0?100:Math.round(cast.cost/(cast.cost+budget.cost)*100)));
- modal('🎭','اختيار طاقم التمثيل','اتزان تكلفة الطاقم مع الميزانية قد يحدد نجاح الإنتاج.',opts);
+ const castOptions=filmCastCatalog.map(cast=>'<option value="'+esc(cast.id)+'">'+esc(cast.title+' — '+cash(cast.cost))+'</option>').join('');
+ const form='<div class="event-form"><label for="filmCastSelect">اختار طاقم التمثيل:</label><select id="filmCastSelect" data-surpriseable="true">'+castOptions+'</select><p class="field-note">اختيار الطاقم بيأثر على فرص النجاح والتقييم والتكلفة النهائية.</p></div>';
+ const continueToMarketing=()=>{
+  const selected=filmCastCatalog.find(cast=>cast.id===$('filmCastSelect')?.value);
+  if(!selected){info('🎭','اختار طاقم التمثيل','حدد طاقمًا من القائمة الأول.');return;}
+  filmMarketingMenu(genreId,budgetId,creativeId,selected.id);
+ };
+ modal('🎭','اختيار طاقم التمثيل','راجع ميزانية الفيلم واختار مستوى الطاقم قبل التسويق.',[
+  choice('➡️','متابعة إلى التسويق','اختيار الخطة التسويقية التالية.',continueToMarketing)
+ ],true,form);
 }
+
 function filmMarketingMenu(genreId,budgetId,creativeId,castId){
  const opts=filmMarketingCatalog.map(marketing=>choice('📣',marketing.title,marketing.desc+' تكلفة التسويق '+cash(marketing.cost)+'.',()=>releaseFilm(genreId,budgetId,creativeId,castId,marketing.id),cash(marketing.cost)));
  modal('📣','خطة إطلاق الفيلم','اختار التسويق. إجمالي التكلفة هيظهر ويتراجع قبل تنفيذ الإنتاج.',opts);
@@ -2754,11 +2788,33 @@ function customizeMenu(){
  modal('🪪','ملف الشخصية','اسمك ومهاراتك وسجلك هي أجزاء من هويتك. غيّر الاسم أو جهّز مستقبلك.',opts);
 }
 function getLicense(){
- closeModal();if(state.age<16){info('🚗','لسه بدري','رخصة القيادة متاحة من سن 16.');return;}
+ closeModal();
+ if(state.age<16){info('🚗','لسه بدري','رخصة القيادة متاحة من سن 16.');return;}
  if(state.driversLicense){info('🚗','معاك رخصة بالفعل','تقدر تستخدمها كجزء من أحداث السفر والعمل.');return;}
- if(chance(.75)){state.driversLicense=true;stat('happiness',2);achievement('الحصول على رخصة قيادة');log('🚗','نجحت في اختبار القيادة','اجتزت الاختبار وحصلت على رخصة قيادة.','good');render();info('🚗','مبروك الرخصة','بقى عندك رخصة قيادة، وده ممكن يفتح فرص في بعض الأحداث.');}
- else{stat('happiness',-2);log('🚗','اختبار قيادة غير ناجح','ماعدّتش الاختبار المرة دي. جرّب تتدرب وتعيد المحاولة.','bad');render();info('🚗','حاول مرة أخرى','التدريب والتعلم بيرفعوا فرص النجاح.');}
+ modal('🚗','رخصة القيادة','حان وقت اختبار القيادة. هل هتخوض الاختبار؟',[
+  choice('🚘','خوض الاختبار','جاوب على سؤال عن علامة من علامات الطريق.',startDrivingTest),
+  choice('⏳','مش دلوقتي','ممكن ترجع للاختبار في أي وقت بعد كده.',closeModal)
+ ]);
 }
+function startDrivingTest(){
+ const sign='<div class="road-sign-wrap" aria-label="علامة توقف"><div class="road-sign-stop"><span>قف</span></div></div>';
+ modal('🚘','اختبار القيادة','علامة الطريق دي معناها إيه؟',[
+  choice('✓','توقف تمامًا قبل الاستمرار','الإجابة الصحيحة.',()=>finishDrivingTest(true)),
+  choice('↗','زود السرعة وعدّي بسرعة','',()=>finishDrivingTest(false)),
+  choice('×','تجاهل العلامة لو الطريق فاضي','',()=>finishDrivingTest(false))
+ ],false,sign);
+}
+function finishDrivingTest(passed){
+ closeModal();
+ if(passed){
+  state.driversLicense=true;stat('happiness',2);achievement('الحصول على رخصة قيادة');log('🚗','نجحت في اختبار القيادة','اجتزت الاختبار وحصلت على رخصة قيادة.','good');render();
+  info('🚘','اجتزت الاختبار!','مبروك! حصلت على رخصة القيادة، وده ممكن يفتح فرص جديدة في أحداث العمل والسفر.');
+ }else{
+  stat('happiness',-2);log('🚗','اختبار قيادة غير ناجح','ماعدّتش الاختبار المرة دي. راجع علامات الطريق وحاول تاني.','bad');render();
+  info('🚘','ماعدّتش الاختبار','الإجابة الصحيحة كانت التوقف تمامًا قبل الاستمرار. تقدر تحاول مرة تانية.');
+ }
+}
+
 function calculateInheritance(previous,share){
  const bank=Math.max(0,Number(previous&&previous.bank)||0);
  const assets=Array.isArray(previous&&previous.assets)?previous.assets:[];
