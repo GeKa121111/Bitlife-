@@ -260,7 +260,7 @@ assert.ok(get('modalRoot').innerHTML.includes('مقبرة الحيوات'), 'mai
 const backupKey = 'hekayat_hayah_save_backup_v1';
 assert.ok(store.has(backupKey), 'age-up should create a last-known-good backup');
 const recoveryStore = new Map(store);
-recoveryStore.set('hekayat_hayah_save_v1', '{corrupted-json');
+recoveryStore.set('hekayat_hayah_save_v1', JSON.stringify({ version: 1, name: '', age: 'not-a-number', stats: {}, log: [] }));
 const recoveryElements = new Map();
 const recoveryGet = id => {
   if (!recoveryElements.has(id)) recoveryElements.set(id, new FakeElement(id));
@@ -290,7 +290,7 @@ const recoveryContext = {
 vm.runInNewContext(app, recoveryContext, { timeout: 3000 });
 const recovered = JSON.parse(recoveryStore.get('hekayat_hayah_save_v1'));
 const expectedBackup = JSON.parse(store.get(backupKey));
-assert.equal(recovered.lifeId, expectedBackup.lifeId, 'corrupt primary save should recover the previous life');
+assert.equal(recovered.lifeId, expectedBackup.lifeId, 'a parseable but structurally invalid primary save should recover the previous life');
 assert.equal(recovered.age, expectedBackup.age, 'recovery should restore the checkpoint age');
 assert.match(recoveryGet('saveStatus').textContent, /نسخة مستردة/, 'the interface should disclose that recovery occurred');
 
