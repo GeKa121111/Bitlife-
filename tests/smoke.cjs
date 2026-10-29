@@ -88,4 +88,7 @@ panels.find(p => p.dataset.panel === 'career').dispatch('click');
 assert.ok(get('modalRoot').innerHTML.includes('لسه بدري'), 'career navigation blocks official work for a one-year-old');
 panels.find(p => p.dataset.panel === 'relations').dispatch('click');
 assert.ok(get('modalRoot').innerHTML.includes('العلاقات'), 'relationships navigation opens its panel');
+get('menuBtn').dispatch('click');
+assert.ok(get('modalRoot').innerHTML.includes('القائمة الرئيسية'), 'main menu opens from the top bar');
+assert.ok(get('modalRoot').innerHTML.includes('مقبرة الحيوات'), 'main menu provides access to the cemetery');
 console.log('Smoke tests passed: RTL page, assets, 40+ events, new life, autosave, age-up, career and relationship navigation.');
