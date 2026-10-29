@@ -1043,10 +1043,13 @@ function university(from18){
  modal('🏛️','التخصصات الجامعية','اختار تخصصًا مناسبًا. رسوم السنة التالية تُخصم عند تقدم العمر، ولو الرصيد مش كافي الدراسة تتوقف.',opts);
 }
 function assets(){
- const opts=assetShop.map(a=>choice(a.emoji,a.title,a.desc+' التكلفة '+cash(a.value)+'. صيانة سنوية '+cash(a.upkeep)+'.',()=>buyAsset(a),cash(a.value)));
- if(state.business)opts.unshift(choice('🏪','إدارة مشروعي','قيمة المشروع '+cash(state.business.value)+' · مستوى الإدارة '+(state.business.level||1)+'.',businessMenu));
- if(perkOwned('businessPack'))opts.unshift(choice('🏢','محفظة الشركات','إدارة الشركات الإضافية وشراء شركات جديدة.',companyPortfolioMenu));
- if(state.assets.length)opts.push(choice('📦','إدارة أصولي','شوف ممتلكاتك وبع اللي مش محتاجه أو أجّر العقارات.',manageAssets));
+ const opts=[drawerSection('الشراء والاستحواذ'),...assetShop.map(a=>choice(a.emoji,a.title,a.desc+' التكلفة '+cash(a.value)+'. صيانة سنوية '+cash(a.upkeep)+'.',()=>buyAsset(a),cash(a.value)))];
+ const manage=[];
+ if(state.business)manage.push(choice('🏪','إدارة مشروعي','قيمة المشروع '+cash(state.business.value)+' · مستوى الإدارة '+(state.business.level||1)+'.',businessMenu));
+ if(perkOwned('businessPack'))manage.push(choice('🏢','محفظة الشركات','إدارة الشركات الإضافية وشراء شركات جديدة.',companyPortfolioMenu));
+ if(perkOwned('landlordPack'))manage.push(choice('🏘️','العقارات والملاك','شراء عقارات خاصة وتعديل مرافقها وإدارة المستأجرين.',landlordPortfolioMenu));
+ if(state.assets.length)manage.push(choice('📦','إدارة أصولي','شوف ممتلكاتك وبع اللي مش محتاجه أو أجّر العقارات.',manageAssets));
+ if(manage.length)opts.push(drawerSection('إدارة أصولك'),...manage);
  modal('🏠','الأصول والمشتريات','العقارات ممكن تجيب دخل إيجار، والسيارات تنخفض قيمتها مع الوقت، والمشروع يحتاج إدارة سنوية.',opts);
 }
 
@@ -1210,10 +1213,13 @@ function maintainAsset(index){
 function person(gender,relation,emoji,age,level){return {id:relation+'-'+Math.random().toString(36).slice(2,8),name:pick(names[gender])+' '+pick(names.family),relation,emoji,age,job:pick(['طالب','محاسب','مصمم','مدرس','موظف','مطور']),generosity:25+Math.floor(Math.random()*76),craziness:Math.floor(Math.random()*101),money:Math.floor(Math.random()*101),petulance:Math.floor(Math.random()*101),loyalty:25+Math.floor(Math.random()*76),jealousy:Math.floor(Math.random()*101),reliability:25+Math.floor(Math.random()*76),interactions:[],relationshipLevel:level,personality:pick(['حنون','عملي','مرح','جاد','طموح','فضولي'])};}
 function relations(){
  const opts=[];
- state.family.forEach(n=>{if(n.deceased)opts.push(choice('🕯️',n.name+' · '+n.relation,'ذكرى عائلية · توفي عن عمر '+(n.age||'?')+' سنة.',()=>{closeModal();info('🕯️',n.name,'هذا الفرد من العائلة جزء من تاريخ حياتك، وسجّلت اللعبة وفاته في دفتر الأحداث.');}));else opts.push(choice(n.emoji,n.name+' · '+n.relation,n.personality+' · مستوى العلاقة '+n.relationshipLevel+'%',()=>{closeModal();personModal(n);},n.relationshipLevel+'%',n.relationshipLevel));});
- state.friends.forEach(n=>opts.push(choice(n.emoji,n.name+' · صديق','مستوى العلاقة '+n.relationshipLevel+'%',()=>{closeModal();personModal(n);},n.relationshipLevel+'%',n.relationshipLevel)));
+ if(state.partner||(state.children||[]).length)opts.push(drawerSection('الأسرة والعلاقات القريبة'));
  if(state.partner)opts.push(choice(state.married?'💍':'💞',state.partner.name+(state.married?' · زوج/زوجة':' · شريك عاطفي'),'مستوى العلاقة '+state.partner.relationshipLevel+'%',()=>{closeModal();personModal(state.partner);},state.partner.relationshipLevel+'%',state.partner.relationshipLevel));
- (state.children||[]).forEach((n,i)=>opts.push(choice(n.emoji||'🧒',n.name+' · '+(n.age<18?'ابن/ابنة':'ابن/ابنة بالغ'), 'العمر '+n.age+' سنة · العلاقة '+n.relationshipLevel+'%',()=>{closeModal();childMenu(i);},n.relationshipLevel+'%',n.relationshipLevel)));
+ (state.family||[]).forEach(n=>{if(n.deceased)opts.push(choice('🕯️',n.name+' · '+n.relation,'ذكرى عائلية · توفي عن عمر '+(n.age||'?')+' سنة.',()=>{closeModal();info('🕯️',n.name,'هذا الفرد من العائلة جزء من تاريخ حياتك، وسجّلت اللعبة وفاته في دفتر الأحداث.');}));else opts.push(choice(n.emoji,n.name+' · '+n.relation,n.personality+' · مستوى العلاقة '+n.relationshipLevel+'%',()=>{closeModal();personModal(n);},n.relationshipLevel+'%',n.relationshipLevel));});
+ (state.children||[]).forEach((n,i)=>opts.push(choice(n.emoji||'🧒',n.name+' · '+(n.age<18?'ابن/ابنة':'ابن/ابنة بالغ'),'العمر '+n.age+' سنة · العلاقة '+n.relationshipLevel+'%',()=>{closeModal();childMenu(i);},n.relationshipLevel+'%',n.relationshipLevel)));
+ if(state.friends.length)opts.push(drawerSection('الأصدقاء والدائرة الاجتماعية'));
+ state.friends.forEach(n=>opts.push(choice(n.emoji,n.name+' · صديق','مستوى العلاقة '+n.relationshipLevel+'%',()=>{closeModal();personModal(n);},n.relationshipLevel+'%',n.relationshipLevel)));
+ opts.push(drawerSection('بناء علاقات جديدة'));
  opts.push(choice('🤝','تكوين صداقة جديدة','تتعرف على شخص جديد وتبدأ علاقة.',()=>{closeModal();addFriend();}));
  opts.push(choice('👤','إضافة شخص مخصص','أدخل اسم شخص تعرفه ليظهر في شبكة علاقاتك.',()=>{closeModal();addCustomFriend();}));
  if(state.age>=16&&!state.partner)opts.push(choice('💞','التعرف على شريك','تبدأ علاقة بالتعارف والاحترام المتبادل.',()=>{closeModal();meetPartner();}));
