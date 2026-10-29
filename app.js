@@ -1057,9 +1057,10 @@ function acquireCompany(title,sector,value,emoji){
  closeModal();if(state.age<18){info('🔒','الشراء غير متاح','تقدر تستحوذ على الشركات بعد سن 18.');return;}
  if(state.bank<value){info('💳','رأس المال غير كافٍ','شراء '+title+' يحتاج '+cash(value)+'.');return;}
  state.bank-=value;const id=Date.now()+Math.random(),company={id,title,sector,value,level:1,upkeep:Math.round(value*.025),bought:state.age,emoji};
- state.companies.push(company);state.assets.push({id,title,emoji,kind:'business',value,upkeep:company.upkeep,bought:state.age,companyPortfolio:true});
+ state.companies.push(company);state.assets.push({id,title,emoji,kind:'business',value,upkeep:0,bought:state.age,companyPortfolio:true});
  log('🏢','استحواذ على شركة','اشتريت '+title+' في قطاع '+sector+'. الأرباح تعتمد على الإدارة والتقلبات السنوية.','special');achievement('تنويع محفظة الشركات');save();render();companyPortfolioMenu();
 }
+
 function companyDetailMenu(index){
  const company=(state.companies||[])[index];if(!company){companyPortfolioMenu();return;}
  modal(company.emoji||'🏢','إدارة '+company.title,'قيمة تقديرية '+cash(company.value)+' · القطاع '+company.sector+' · المستوى '+company.level+'. نتائج السنة القادمة غير مضمونة.',[
@@ -1160,6 +1161,7 @@ function manageAssets(){
   const progress=condition===null?null:condition;
   return choice(a.emoji,a.title,'القيمة '+cash(a.value)+conditionText+' · الصيانة '+cash(a.upkeep)+' سنويًا'+(a.kind==='property'?(a.rented?' · مؤجّر':' · غير مؤجّر'):''),()=>{
    closeModal();
+   if(a.companyPortfolio){const companyIndex=(state.companies||[]).findIndex(c=>c.id===a.id);if(companyIndex>=0){companyDetailMenu(companyIndex);return;}}
    const actions=[];
    if(condition!==null)actions.push(choice('🧰','صيانة / تجديد','استعادة الحالة إلى 100% ورفع قيمة إعادة البيع.',()=>maintainAsset(i),cash(Math.max(500,Math.round(a.value*(a.kind==='car'?.018:.03)*((100-condition)/100))))));
    actions.push(choice('💵','أبيع الأصل','القيمة المتوقعة حاليًا '+cash(sale),()=>sellAsset(i),cash(sale)));
@@ -2727,12 +2729,12 @@ function buyPremiumPerk(id){
  }else if(bundles[id]){
   permanentPerks.owned[id]=true;bundles[id].forEach(perk=>{permanentPerks.owned[perk]=true;if(PERK_TOGGLE_IDS.includes(perk))permanentPerks.enabled[perk]=true;});
   if(bundles[id].includes('superstarMode')||bundles[id].includes('goldTheme')){permanentPerks.owned.goldTheme=true;permanentPerks.enabled.goldTheme=true;uiSettings.theme='gold';persistUiSettings();}
-  if(bundles[id].includes('hollywoodStar')){permanentPerks.enabled.hollywoodStar=true;state.fame=100;}
+  if(bundles[id].includes('hollywoodStar')){permanentPerks.enabled.hollywoodStar=true;if(state.job||state.specialCareer)state.fame=100;}
   persistPermanentPerks();log('🎁','تم فتح '+item.title,'اتفتحت '+bundles[id].length+' مزايا مرتبطة بالباقة. راجع الأنشطة والقائمة الرئيسية لاستخدامها.','special');
  }else{
   permanentPerks.owned[id]=true;if(PERK_TOGGLE_IDS.includes(id))permanentPerks.enabled[id]=true;
   if(id==='goldTheme'||id==='superstarMode'){permanentPerks.owned.goldTheme=true;permanentPerks.enabled.goldTheme=true;uiSettings.theme='gold';persistUiSettings();}
-  if(id==='hollywoodStar'){permanentPerks.enabled.hollywoodStar=true;state.fame=100;}
+  if(id==='hollywoodStar'){permanentPerks.enabled.hollywoodStar=true;if(state.job||state.specialCareer)state.fame=100;}
   if(id==='goldenResume')permanentPerks.enabled.goldenResume=true;
   if(id==='goldenPacifier')permanentPerks.enabled.goldenPacifier=true;
   if(id==='goldenWrench')state.assets.forEach(a=>{if(a.kind==='car')a.condition=100;});
@@ -2918,7 +2920,7 @@ function activity(type){
  if(type==='crime'){
   modal('⚖️','قرار فيه مخاطرة','التصرف غير القانوني ممكن يسبب ضرر للناس ويعرّضك لعواقب داخل اللعبة. تقدر تختار طريق قانوني بدلًا منه.',[
    choice('🚫','أتراجع','أدور على طريقة قانونية أكسب منها.',()=>{closeModal();stat('smart',1);log('⚖️','قرار مسؤول','تراجعت عن المخاطرة وقررت تدور على بديل أفضل.','good');render();}),
-   choice('🎲','أخاطر','خسارة مالية أو تبعات قانونية محتملة.',()=>{closeModal();if(chance(.48)){const gain=3000+Math.floor(Math.random()*7000);state.bank+=gain;flash('+'+cash(gain));log('⚠️','مكسب قصير المدى','حققت '+cash(gain)+'، لكن المخاطرة كانت كبيرة.','bad');}else{const fine=Math.min(Math.max(0,state.bank),5000);state.bank-=fine;stat('happiness',-8);if(chance(.45)){state.job=null;log('🚔','عواقب قانونية','خسرت '+cash(fine)+' وتضررت سمعتك وفقدت عملك بسبب القضية.','bad');}else log('🚔','عواقب قانونية','خسرت '+cash(fine)+' وتعلمت إن المكسب السريع ممكن تكون تكلفته أكبر.','bad');}render();})
+   choice('🎲','أخاطر','خسارة مالية أو تبعات قانونية محتملة.',()=>{closeModal();if(chance(.48)){const gain=3000+Math.floor(Math.random()*7000);state.bank+=gain;flash('+'+cash(gain));log('⚠️','مكسب قصير المدى','حققت '+cash(gain)+'، لكن المخاطرة كانت كبيرة.','bad');}else{const fine=Math.min(Math.max(0,state.bank),5000);state.bank-=fine;stat('happiness',-8);if(chance(.45)){if(perkEnabled('goldenResume'))log('🛡️','حماية السيرة الذهبية','حافظت على وظيفتك رغم العواقب القانونية داخل اللعبة.','good');else{state.job=null;log('🚔','عواقب قانونية','خسرت '+cash(fine)+' وتضررت سمعتك وفقدت عملك بسبب القضية.','bad');}}else log('🚔','عواقب قانونية','خسرت '+cash(fine)+' وتعلمت إن المكسب السريع ممكن تكون تكلفته أكبر.','bad');}render();})
   ]);return;
  }
  render();closeModal();
