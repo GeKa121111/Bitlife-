@@ -577,7 +577,6 @@ function renderHeader(){
 }
 function renderStats(){
  const rows=[['happiness','😄','السعادة'],['health','❤️','الصحة'],['smart','🧠','الذكاء'],['looks','😎','المظهر']];
- if((state.fame||0)>0)rows.push(['fame','⭐','الشهرة']);
  $('statsPanel').innerHTML=rows.map(r=>{
   const v=clamp(r[0]==='fame'?(state.fame||0):state.stats[r[0]]);
   const color=r[0]==='fame'?'#FDD835':v>=31?'#43A047':v>=13?'#FB8C00':'#E53935';
