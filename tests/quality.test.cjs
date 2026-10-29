@@ -87,3 +87,28 @@ test('توثيق الجودة لا يدّعي اختبار متصفح غير م�
   assert.match(readme, /صياغة.*app\.js/);
   assert.match(readme, /اختبار يدوي كامل داخل متصفح الهاتف/);
 });
+
+
+test('شجرة العائلة تفتح من العلاقات والوصية', () => {
+  const relationMenu=functionSource('relations','familyMenu');
+  const will=functionSource('willMenu','setWill');
+  assert.match(relationMenu,/familyTreeMenu/);
+  assert.match(will,/familyTreeMenu/);
+  assert.match(app,/function familyTreeMenu\(\)/);
+  assert.match(app,/family-tree-generation/);
+  assert.match(app,/function familyTreeNode\(p\)/);
+});
+test('تطور الأبناء يربط العمر بالتعليم والاستقلال ويحافظ على الحفظ القديم', () => {
+  assert.match(app,/function ensureChildGrowthProfile\(c\)/);
+  assert.match(app,/function advanceChildren\(\)/);
+  assert.match(app,/advanceChildren\(\);/);
+  assert.match(app,/c\.schoolPerformance/);
+  assert.match(app,/c\.careerPotential/);
+  assert.match(app,/c\.independence/);
+  assert.match(app,/c\.educationStatus='خريج جامعي'/);
+  const childActions=functionSource('childAction','personModal');
+  assert.match(childActions,/action==='study'/);
+  assert.match(childActions,/action==='career'/);
+  assert.match(childActions,/action==='launch'/);
+  assert.match(app,/heir\.stats=\{\.\.\.heir\.stats,health:clamp\(child\.health/);
+});

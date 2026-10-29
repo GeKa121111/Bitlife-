@@ -639,11 +639,69 @@ function randomEvent(){
  },c.cost?'− '+cash(c.cost):'')),false);
 }
 function afterDecision(){if(!validState())return;if(state.stats.health<=0){death('تدهور الحالة الصحية');return;}render();}
+
+function childDevelopmentStage(age){
+ const n=Math.max(0,Number(age)||0);
+ return n<4?'الطفولة المبكرة':n<6?'الروضة':n<12?'الابتدائي':n<15?'الإعدادي':n<18?'الثانوي':n<22?'بداية الجامعة والاستقلال':n<26?'بداية الحياة المهنية':'شخص بالغ';
+}
+function ensureChildGrowthProfile(c){
+ if(!c||typeof c!=='object')return null;const age=Math.max(0,Number(c.age)||0);
+ if(!Number.isFinite(Number(c.smart)))c.smart=40;if(!Number.isFinite(Number(c.health)))c.health=75;if(!Number.isFinite(Number(c.happiness)))c.happiness=70;
+ if(!Number.isFinite(Number(c.schoolPerformance)))c.schoolPerformance=clamp(38+Number(c.smart)*.32+(Number(c.relationshipLevel)||50)*.12);
+ if(!Number.isFinite(Number(c.careerPotential)))c.careerPotential=clamp(24+Number(c.smart)*.42+Number(c.schoolPerformance)*.22+(Number(c.relationshipLevel)||50)*.08);
+ if(!Number.isFinite(Number(c.independence)))c.independence=age>=18?clamp(30+Number(c.careerPotential)*.45):0;
+ if(!Number.isFinite(Number(c.schoolSupport)))c.schoolSupport=0;
+ if(typeof c.educationStatus!=='string')c.educationStatus=age<6?'قبل الدراسة':age<18?'طالب في المدرسة':age<22?'لم يُحدد المسار بعد':'بالغ';
+ if(typeof c.interest!=='string'||!c.interest)c.interest=pick(['العلوم والتقنية','الفنون والإبداع','الرياضة','الأعمال','المجتمع']);
+ if(!Array.isArray(c.growthHistory))c.growthHistory=[];if(!Array.isArray(c.interactions))c.interactions=[];
+ c.age=Math.min(100,Math.floor(age));c.schoolPerformance=clamp(c.schoolPerformance);c.careerPotential=clamp(c.careerPotential);c.independence=clamp(c.independence);c.schoolSupport=clamp(c.schoolSupport);return c;
+}
+function childCareerFromInterest(interest){
+ return ({'العلوم والتقنية':'متخصص تقنية مبتدئ','الفنون والإبداع':'مساعد في مجال إبداعي','الرياضة':'مدرب أو رياضي مبتدئ','الأعمال':'موظف أعمال مبتدئ','المجتمع':'مساعد مجتمعي'})[interest]||'موظف مبتدئ';
+}
+function advanceChildren(){
+ (state.children||[]).forEach(c=>{
+  if(!c||typeof c!=='object')return;ensureChildGrowthProfile(c);c.age=Math.min(100,c.age+1);
+  const age=c.age,smart=clamp(c.smart),rel=clamp(c.relationshipLevel??50),support=c.schoolSupport;
+  c.schooling=age<4?'قبل الدراسة':age<6?'الروضة':age<12?'المرحلة الابتدائية':age<15?'المرحلة الإعدادية':age<18?'المرحلة الثانوية':c.educationStatus;
+  if(age===4)log('🧸','مرحلة جديدة في حياة '+c.name,'بدأ '+c.name+' يتعلم الاعتماد على النفس والتواصل.','special');
+  if(age===6){c.schooling='المرحلة الابتدائية';c.educationStatus='طالب في المدرسة';c.schoolPerformance=clamp(c.schoolPerformance+3);log('🏫','أول يوم مدرسة','بدأ '+c.name+' رحلته الدراسية. تحصيله الحالي '+c.schoolPerformance+'%.','special');}
+  if(age>=7&&age<=17){if(chance(Math.min(.9,.42+smart/260+support/500)))c.schoolPerformance=clamp(c.schoolPerformance+(smart>=65?2:1)+(support>=8?1:0));else if(smart<35&&support<5)c.schoolPerformance=clamp(c.schoolPerformance-1);if(age>=13)c.careerPotential=clamp(c.careerPotential+(smart>=60?1:0)+1);c.schoolSupport=Math.max(0,support-2);}
+  if(age===12){c.schooling='المرحلة الإعدادية';log('📚','مرحلة دراسية جديدة','انتقل '+c.name+' إلى المرحلة الإعدادية.','special');}
+  if(age===15){c.schooling='المرحلة الثانوية';log('🎓','المرحلة الثانوية','دخل '+c.name+' المرحلة الثانوية، وبدأت اهتماماته تحدد مستقبله.','special');}
+  if(age===16)log('🧭','اهتمامات المستقبل','اهتمام '+c.name+' الحالي هو '+c.interest+'. التوجيه ممكن يفتح له فرصًا أفضل.','special');
+  if(age===18){const ready=clamp(c.schoolPerformance*.36+smart*.31+c.careerPotential*.23+rel*.1);c.independence=clamp(Math.max(c.independence,ready));if(c.schoolPerformance>=63&&smart>=48){c.educationStatus='طالب جامعي';c.schooling='التعليم الجامعي';c.universityYears=0;c.job='طالب جامعي';}else if(c.careerPotential>=53){c.educationStatus='يبدأ المسار المهني';c.job='موظف مبتدئ';}else{c.educationStatus='يبحث عن أول فرصة';c.job='باحث عن فرصة عمل';}log('🎓','بداية استقلال الابن','وصل '+c.name+' لسن الرشد. المسار الحالي: '+c.educationStatus+'، والاستقلال '+c.independence+'%.','good');}
+  if(age>=19&&age<=22&&c.educationStatus==='طالب جامعي'){c.universityYears=(Number(c.universityYears)||0)+1;if(age===22){c.educationStatus='خريج جامعي';c.schooling='خريج جامعي';c.job='خريج جامعي';c.careerPotential=clamp(c.careerPotential+10);c.independence=clamp(c.independence+8);log('🎓','تخرج من الجامعة','أنهى '+c.name+' دراسته الجامعية وارتفعت فرصه المهنية.','good');}}
+  if(age===21){if(c.educationStatus==='يبحث عن أول فرصة'&&c.careerPotential>=60){c.job=childCareerFromInterest(c.interest);c.educationStatus='بدأ أول وظيفة';c.independence=clamp(c.independence+8);log('💼','أول وظيفة للابن','حصل '+c.name+' على بداية مهنية في '+c.job+'.','good');}else if(c.educationStatus==='يبدأ المسار المهني'){c.independence=clamp(c.independence+6);log('🏡','خطوة نحو الاستقلال','بدأ '+c.name+' يتحمل مسؤوليات أكبر.','good');}}
+  if(age>=23&&age<=27&&c.independence<80)c.independence=clamp(c.independence+(c.job==='باحث عن فرصة عمل'?1:3));
+  if([4,6,12,15,16,18,21,22].includes(age)){c.growthHistory.push({age,stage:childDevelopmentStage(age),schoolPerformance:c.schoolPerformance,careerPotential:c.careerPotential,independence:c.independence});if(c.growthHistory.length>12)c.growthHistory.shift();}
+ });
+}
+function familyTreeNode(p){
+ const gone=!!p.deceased,level=clamp(p.relationshipLevel??0);
+ return '<article class="family-tree-node'+(gone?' family-tree-deceased':'')+'"><div class="family-tree-person"><span class="family-tree-avatar">'+esc(p.emoji||'👤')+'</span><span class="family-tree-copy"><strong>'+esc(p.name||'فرد من العائلة')+'</strong><small>'+esc(p.relation||'قريب')+(Number.isFinite(Number(p.age))?' · '+fmt(p.age)+' سنة':'')+(gone?' · متوفى':'')+'</small></span></div><div class="family-tree-meter"><span style="width:'+level+'%"></span></div><small class="family-tree-foot">العلاقة '+level+'%</small></article>';
+}
+function familyTreeMenu(){
+ if(!state)return;const fam=Array.isArray(state.family)?state.family:[],kids=Array.isArray(state.children)?state.children:[];
+ const siblings=fam.filter(p=>/(أخ|أخت)/.test(String(p.relation||''))),parents=fam.filter(p=>/(الأب|الأم|والد|والدة|جد|جدة|أب|أم)/.test(String(p.relation||''))&&!siblings.includes(p)),others=fam.filter(p=>!siblings.includes(p)&&!parents.includes(p));
+ const ex=(state.friends||[]).filter(p=>/(شريك سابق|زوج سابق|زوجة سابقة|الأم\/الأب)/.test(String(p.relation||'')));
+ const nodes=a=>a.length?a.map(familyTreeNode).join(''):'<div class="family-tree-empty">لا توجد بيانات مسجلة في هذا الجيل حتى الآن.</div>';
+ const partner=state.partner?familyTreeNode({...state.partner,relation:state.married?'الزوج/الزوجة':'الشريك الحالي'}):'<div class="family-tree-empty">لا يوجد شريك حالي.</div>';
+ const childNodes=kids.length?kids.map(c=>familyTreeNode({...ensureChildGrowthProfile(c),relation:(c.adopted?'ابن/ابنة بالتبنّي':'ابن/ابنة')+' · '+childDevelopmentStage(c.age)})).join(''):'<div class="family-tree-empty">لم يتكوّن جيل الأبناء بعد.</div>';
+ const extra='<div class="family-tree-view"><section class="family-tree-generation"><h3>الجيل السابق والعائلة</h3><div class="family-tree-branches">'+nodes([...parents,...others])+'</div></section><div class="family-tree-connector">↓</div><section class="family-tree-generation"><h3>الشخصية الحالية</h3><div class="family-tree-node family-tree-player"><div class="family-tree-person"><span class="family-tree-avatar">'+(state.gender==='female'?'👩':'👨')+'</span><span class="family-tree-copy"><strong>'+esc(state.name)+'</strong><small>أنت · '+fmt(state.age)+' سنة</small></span></div><small class="family-tree-foot">الجيل الحالي</small></div><div class="family-tree-connector">↔</div><div class="family-tree-branches">'+partner+'</div></section><div class="family-tree-connector">↓</div><section class="family-tree-generation"><h3>جيل الأبناء · '+kids.length+'</h3><div class="family-tree-branches">'+childNodes+'</div></section>'+(siblings.length?'<section class="family-tree-generation"><h3>الإخوة والأخوات</h3><div class="family-tree-branches">'+nodes(siblings)+'</div></section>':'')+(ex.length?'<section class="family-tree-generation"><h3>العلاقات السابقة</h3><div class="family-tree-branches">'+nodes(ex)+'</div></section>':'')+'</div>';
+ const opts=[];
+ [...parents,...others,...siblings,...ex].forEach(p=>opts.push(choice(p.deceased?'🕯️':(p.emoji||'👤'),(p.name||'فرد من العائلة')+' · '+(p.relation||'قريب'),'العمر '+fmt(p.age||0)+' · العلاقة '+clamp(p.relationshipLevel??0)+'%',()=>{closeModal();if(p.deceased)info('🕯️',p.name||'ذكرى عائلية','الشخص ده محفوظ في سجل الأسرة.');else personModal(p);},clamp(p.relationshipLevel??0)+'%')));
+ if(state.partner)opts.push(choice('💞',state.partner.name+' · الشريك','العلاقة '+clamp(state.partner.relationshipLevel)+'%',()=>{closeModal();personModal(state.partner)}));
+ kids.forEach((c,i)=>opts.push(choice(c.emoji||'🧒',c.name+' · '+childDevelopmentStage(c.age),'العمر '+fmt(c.age)+' سنة · التحصيل '+clamp(c.schoolPerformance??50)+'%',()=>{closeModal();childMenu(i)},clamp(c.relationshipLevel??0)+'%')));
+ opts.push(choice('📜','إدارة الوصية والإرث','',willMenu),choice('↩️','رجوع للعلاقات','',relations));
+ modal('🌳','شجرة العائلة','استعرض الجيل السابق وشخصيتك الحالية والشريك والأبناء، واضغط على فرد من القائمة لإدارة علاقتك به.',opts,true,extra);
+}
+
 function advanceAge(){
  if(!validState())return;
  state.age++;state.yearCount++;
  if(state.specialCareer&&state.specialCareer.id==='fighter'&&state.combatCareer){const cc=ensureCombatCareer();cc.energy=100;if(cc.injuryYears>0){cc.injuryYears--;cc.injury=clamp(cc.injury-28);if(cc.injuryYears===0||cc.injury===0){cc.injury=0;cc.injuryYears=0;log('🩹','التعافي من الإصابة','تعافيت من إصابة القتال وعدت جاهزًا للتدريب.','good');}}if(cc.coach&&cc.coach.yearsLeft>0){const annualCost=cc.coach.annualCost||0;if(state.bank<annualCost){log('💳','تعذر دفع مصاريف المدرب','الرصيد لا يكفي مصاريف المدرب السنوية؛ انتهى التعاقد دون خصم المصروف.','bad');cc.coach=null;}else{state.bank-=annualCost;cc.coach.yearsLeft--;if(cc.coach.yearsLeft<=0){log('🧑‍🏫','انتهاء عقد المدرب','انتهى عقد المدرب. يمكنك تجديده من مسيرة القتال.');cc.coach=null;}}}}
- (state.children||[]).forEach(c=>{c.age=(c.age||0)+1;if(c.age===6)log('🏫','أول يوم مدرسة','بدأ '+c.name+' رحلته الدراسية.','special');if(c.age===18){c.job='بداية المسار المهني';log('🎓','ابنك/بنتك كبر','وصل '+c.name+' لسن الرشد وبدأ يرسم طريقه.','good');}});
+ advanceChildren();
  (state.family||[]).forEach(relative=>{if(relative.deceased)return;relative.age=(relative.age||0)+1;const oldest=relative.age>=100;const parent=/(الأب|الأم|والد|والدة)/.test(relative.relation||'');const risk=relative.age>75?Math.min(.45,.012+(relative.age-75)*.012):0;if(oldest||(risk&&chance(risk))){relative.deceased=true;const close=(relative.relationshipLevel||50)>=70;state.stats.happiness=clamp(state.stats.happiness-(close?12:5));log('🕯️','وفاة أحد أفراد العائلة','توفي '+relative.name+' بعد رحلة من العمر. الخبر أثر عليك وعلى علاقتك بالعائلة.','bad');achievement('وداع '+relative.name);}});
  if(state.partner&&typeof state.partner.age==='number'){
   state.partner.age++;
@@ -957,7 +1015,7 @@ function relations(){
  opts.push(choice('👤','إضافة شخص مخصص','أدخل اسم شخص تعرفه ليظهر في شبكة علاقاتك.',()=>{closeModal();addCustomFriend();}));
  if(state.age>=16&&!state.partner)opts.push(choice('💞','التعرف على شريك','تبدأ علاقة بالتعارف والاحترام المتبادل.',()=>{closeModal();meetPartner();}));
  opts.push(choice('👪','الزواج والأسرة','الزواج، الأبناء، إدارة العلاقة وشجرة العائلة.',familyMenu));
- opts.push(choice('📜','شجرة العائلة والإرث','استعرض أفراد الأسرة، الأبناء وخيارات الوصية.',willMenu));
+ opts.push(choice('📜','شجرة العائلة والإرث','استعرض أفراد الأسرة، الأبناء وخيارات الوصية.',familyTreeMenu));
  modal('💞','العلاقات والأسرة','العلاقات تتغير بمرور السنين. اهتم بالناس القريبين منك، لأن اختياراتك بتأثر على قوة العلاقة.',opts);
 }
 
@@ -1068,6 +1126,7 @@ function applyCoParentingAnnualEffects(){
 
 function familyMenu(){
  const opts=[];
+ opts.push(choice('🌳','شجرة العائلة','الأجيال المسجلة والأبناء وتطورهم.',familyTreeMenu));
  if(state.partner&&state.age>=18&&!state.married)opts.push(choice('💍','الزواج','تقدروا تتجوزوا لو العلاقة مستقرة ومعاكم تكلفة البداية.',marry,'4,500 '+state.place.unit));
  if(state.partner&&state.married)opts.push(choice('💔','الانفصال أو الطلاق','إنهاء الزواج وتغيير وضع الأسرة.',divorce));
  if(state.partner&&!state.married)opts.push(choice('💔','إنهاء العلاقة','إنهاء العلاقة الحالية والاحتفاظ بسجل الشريك السابق.',breakUp));
@@ -1132,23 +1191,36 @@ function breakUp(){
  info('💔','انتهت العلاقة','تقدر تفتح صفحة جديدة في وقت لاحق، مع الاحتفاظ بسجل العلاقة السابقة.');
 }
 function childMenu(i){
- const child=state.children[i];if(!child)return;
- modal(child.emoji||'🧒',child.name+' · '+child.age+' سنة','فرد من عائلتك، ومستوى العلاقة الحالي '+child.relationshipLevel+'%.',[
-  choice('🧸','قضاء وقت معاه','تقوية الارتباط وتحسين المزاج.',()=>childAction(i,'time')),
-  choice('💬','الاستماع لمشكلته','دعم عاطفي وتواصل.',()=>childAction(i,'talk')),
-  choice('🎁','هدية','هدية مناسبة بميزانية 500 '+state.place.unit+'.',()=>childAction(i,'gift'),'500 '+state.place.unit),
-  choice('📚','دعم التعليم','مساهمة في التعلم لو عمره يسمح.',()=>childAction(i,'school'),'1,000 '+state.place.unit),
-  choice('↩️','رجوع','',()=>{closeModal();relations();})
- ]);
+ const c=ensureChildGrowthProfile(state.children[i]);if(!c)return;const stage=childDevelopmentStage(c.age);
+ const extra='<div class="child-growth-panel"><div class="child-growth-heading">تطور '+esc(c.name)+'</div><div class="pillrow"><span class="pill">🎂 '+fmt(c.age)+' سنة</span><span class="pill">📚 '+esc(c.schooling||stage)+'</span><span class="pill">🧭 '+esc(c.interest)+'</span></div><div class="child-growth-metric"><div><span>التحصيل الدراسي</span><b>'+c.schoolPerformance+'%</b></div><div class="progressline"><div style="width:'+c.schoolPerformance+'%"></div></div></div><div class="child-growth-metric"><div><span>الاستعداد المهني</span><b>'+c.careerPotential+'%</b></div><div class="progressline"><div style="width:'+c.careerPotential+'%"></div></div></div><div class="child-growth-metric"><div><span>الاستقلال</span><b>'+c.independence+'%</b></div><div class="progressline"><div style="width:'+c.independence+'%"></div></div></div></div>';
+ const opts=[choice('🧸','قضاء وقت معاه','تقوية الارتباط وتحسين المزاج.',()=>childAction(i,'time')),choice('💬','الاستماع لمشكلته','دعم عاطفي وتواصل.',()=>childAction(i,'talk')),choice('🎁','هدية','هدية بميزانية 500 '+state.place.unit+'.',()=>childAction(i,'gift'),'500 '+state.place.unit),choice('📚','دعم التعليم','مساهمة في التعلم من سن 4 سنوات.',()=>childAction(i,'school'),'1,000 '+state.place.unit)];
+ if(c.age>=6&&c.age<18)opts.push(choice('🎓','دعم التفوق الدراسي','يرفع التحصيل الدراسي والذكاء وفرص المستقبل.',()=>childAction(i,'study'),'1,500 '+state.place.unit,c.schoolPerformance));
+ if(c.age>=16)opts.push(choice('🧭','توجيه مهني','اربط اهتماماته بخيارات الدراسة والعمل.',()=>childAction(i,'career'),'مجانًا',c.careerPotential));
+ if(c.age>=18)opts.push(choice('🚀','مساعدته على الاستقلال','ساعده في بداية حياته العملية.',()=>childAction(i,'launch'),'3,000 '+state.place.unit,c.independence));
+ opts.push(choice('🌳','شجرة العائلة','',familyTreeMenu),choice('↩️','رجوع للعلاقات','',()=>{closeModal();relations();}));
+ modal(c.emoji||'🧒',c.name+' · '+c.age+' سنة',stage+' · '+(c.adopted?'ابن/ابنة بالتبنّي':'فرد من الأسرة')+' · العلاقة '+c.relationshipLevel+'%. '+(c.job?'الوضع الحالي: '+c.job+'.':'مستقبله بيتأثر بالتحصيل والاهتمام والتوجيه.'),opts,true,extra);
 }
 function childAction(i,action){
- closeModal();const c=state.children[i];if(!c)return;
- let cost=action==='gift'?500:action==='school'?1000:0;if(state.bank<cost){info('💳','الرصيد مش كفاية','الاختيار محتاج '+cash(cost)+'.');return;}
- if(action==='school'&&c.age<4){info('📚','لسه صغير','التعليم المنظم هيكون أنسب لما يكبر شوية.');return;}state.bank-=cost;const petulance=clamp(c.petulance??40),reliability=clamp(c.reliability??55);let delta=action==='time'?7+Math.floor(reliability/45):action==='talk'?5+Math.floor(reliability/55):action==='gift'?7+Math.floor(clamp(c.generosity??50)/30):4;if(petulance>=75)delta-=2;if(c.personality==='حنون'&&(action==='time'||action==='talk'))delta+=2;if(c.personality==='فضولي'&&action==='school')delta+=2;c.relationshipLevel=clamp(c.relationshipLevel+delta);
- if(action==='school'){c.smart=clamp((c.smart||40)+5);}
- if(action==='gift')stat('happiness',2);
- const text=action==='time'?'قضيت وقت مع '+c.name+' وبنيتوا ذكرى جديدة.':action==='talk'?'سمعت '+c.name+' باهتمام وخلّيته يحكي اللي مضايقه.':action==='gift'?'قدمت هدية لـ'+c.name+'.':'ساهمت في تعليم '+c.name+' وتنمية مهاراته.';if(!Array.isArray(c.interactions))c.interactions=[];c.interactions.push({age:state.age,action,delta,levelAfter:c.relationshipLevel});if(c.interactions.length>12)c.interactions.shift();
- log('👪','وقت مع الأسرة',text,'good');save();render();info('💞','العلاقة مع '+c.name,c.name+' بقى مستوى العلاقة بينكم '+c.relationshipLevel+'%.');
+ closeModal();const c=ensureChildGrowthProfile(state.children[i]);if(!c)return;
+ const cost={gift:500,school:1000,study:1500,career:0,launch:3000}[action]||0;
+ if(state.bank<cost){info('💳','الرصيد مش كفاية','الاختيار محتاج '+cash(cost)+'.');return;}
+ if(action==='school'&&c.age<4){info('📚','لسه صغير','التعليم المنظم مناسب من سن 4 سنوات.');return;}
+ if(action==='study'&&(c.age<6||c.age>=18)){info('🎓','الدعم الدراسي غير متاح','متاح من سن 6 إلى 17 سنة.');return;}
+ if(action==='career'&&c.age<16){info('🧭','لسه بدري','التوجيه المهني متاح من سن 16 سنة.');return;}
+ if(action==='launch'&&c.age<18){info('🚀','لسه بدري','دعم الاستقلال متاح بعد سن 18.');return;}
+ state.bank-=cost;const petulance=clamp(c.petulance??40),reliability=clamp(c.reliability??55);
+ let delta=action==='time'?7+Math.floor(reliability/45):action==='talk'?5+Math.floor(reliability/55):action==='gift'?7+Math.floor(clamp(c.generosity??50)/30):action==='study'?7:action==='career'?6:action==='launch'?4:4;
+ if(petulance>=75)delta-=2;if(c.personality==='حنون'&&(action==='time'||action==='talk'))delta+=2;if(c.personality==='فضولي'&&(action==='school'||action==='study'||action==='career'))delta+=2;c.relationshipLevel=clamp(c.relationshipLevel+delta);
+ let text='';
+ if(action==='school'){c.smart=clamp(c.smart+5);c.schoolPerformance=clamp(c.schoolPerformance+4);c.schoolSupport=clamp(c.schoolSupport+5);text='ساهمت في تعليم '+c.name+'، وارتفع التحصيل إلى '+c.schoolPerformance+'%.';
+ }else if(action==='study'){c.smart=clamp(c.smart+4);c.schoolPerformance=clamp(c.schoolPerformance+9);c.schoolSupport=clamp(c.schoolSupport+12);c.careerPotential=clamp(c.careerPotential+3);text='استثمرت في تفوق '+c.name+' الدراسي، فارتفع التحصيل إلى '+c.schoolPerformance+'%.';
+ }else if(action==='career'){c.careerPotential=clamp(c.careerPotential+10);c.independence=clamp(c.independence+3);c.careerGuidanceCount=(Number(c.careerGuidanceCount)||0)+1;text='ناقشت مع '+c.name+' اهتمامه بـ'+c.interest+' وخياراته المهنية. الاستعداد المهني '+c.careerPotential+'%.';
+ }else if(action==='launch'){c.independence=clamp(c.independence+12);c.careerPotential=clamp(c.careerPotential+3);if(c.job==='باحث عن فرصة عمل'&&c.careerPotential>=55){c.job=childCareerFromInterest(c.interest);c.educationStatus='بدأ أول وظيفة بدعم الأسرة';}text='ساعدت '+c.name+' في خطوة الاستقلال. مستوى الاستقلال '+c.independence+'%.';
+ }else if(action==='time'){stat('happiness',2);text='قضيت وقت مع '+c.name+' وبنيتوا ذكرى جديدة.';}else if(action==='talk'){text='سمعت '+c.name+' باهتمام وخلّيته يحكي اللي مضايقه.';}else{stat('happiness',2);text='قدمت هدية لـ'+c.name+' بتكلفة '+cash(cost)+'.';}
+ if(!Array.isArray(c.interactions))c.interactions=[];c.interactions.push({age:state.age,action,delta,levelAfter:c.relationshipLevel,schoolPerformance:c.schoolPerformance,careerPotential:c.careerPotential,independence:c.independence});if(c.interactions.length>12)c.interactions.shift();
+ const icon=action==='study'||action==='school'?'🎓':action==='career'?'🧭':action==='launch'?'🚀':'👪';
+ log(icon,action==='study'?'استثمار في التعليم':action==='school'?'دعم تعليم الأبناء':action==='career'?'توجيه مهني':action==='launch'?'دعم استقلال الابن':'وقت مع الأسرة',text,'good');
+ save();render();info('💞','التطور الجديد لـ'+c.name,text+' العلاقة '+c.relationshipLevel+'% · التحصيل '+c.schoolPerformance+'% · الاستعداد المهني '+c.careerPotential+'% · الاستقلال '+c.independence+'%.',[choice('👪','متابعة تطوره','',()=>{closeModal();childMenu(i)}),choice('🌳','شجرة العائلة','',familyTreeMenu)]);
 }
 function personModal(n){
  const relationName=String(n.relation||'');
@@ -1724,6 +1796,7 @@ function prisonEvent(){
 }
 function willMenu(){
  const opts=[
+   choice('🌳','عرض شجرة العائلة','استعراض أفراد الأسرة والأجيال المسجلة.',familyTreeMenu),
   choice('👪','الأسرة بالتساوي','اختيار افتراضي لتوزيع الإرث على الأسرة.',()=>setWill('الأسرة بالتساوي')),
   choice('🧒','الأبناء أولًا','تركيز الميراث على الأبناء إن وجدوا.',()=>setWill('الأبناء أولًا')),
   choice('❤️','الشريك أولًا','تفضيل الزوج/الزوجة في ترتيب الإرث.',()=>setWill('الشريك أولًا')),
@@ -1941,7 +2014,7 @@ function startAsChild(index){
  const estate=Math.max(0,previous.bank)+previous.assets.reduce((sum,a)=>sum+(a.value||0),0)+previous.investments.reduce((sum,a)=>sum+(a.value||0),0);
  const cashEstate=Math.max(0,previous.bank)+previous.investments.reduce((sum,a)=>sum+(a.value||0),0);
  const share=previous.willDistribution==='الأبناء أولًا'?.9:previous.willDistribution==='الشريك أولًا'?.55:previous.willDistribution==='التبرع بجزء'?.65:.8;
- const heir=newLife();heir.name=child.name;heir.gender=child.gender||'male';heir.age=typeof child.age==='number'?child.age:18;heir.place={...previous.place};heir.bank=Math.round(Math.max(0,previous.bank)*share);
+ const heir=newLife();ensureChildGrowthProfile(child);heir.name=child.name;heir.gender=child.gender||'male';heir.age=typeof child.age==='number'?child.age:18;heir.place={...previous.place};heir.bank=Math.round(Math.max(0,previous.bank)*share);heir.stats={...heir.stats,health:clamp(child.health??heir.stats.health),happiness:clamp(child.happiness??heir.stats.happiness),smart:clamp(child.smart??heir.stats.smart),looks:clamp(child.looks??heir.stats.looks)};heir.reputation=clamp((Number(child.schoolPerformance)||50)*.35+(Number(child.careerPotential)||40)*.35+(Number(child.relationshipLevel)||50)*.3);
  heir.family=[...previous.family];previous.children.forEach((sibling,i)=>{if(i!==index)heir.family.push({...sibling,relation:'أخ/أخت'});});heir.partner=null;heir.married=false;heir.children=[];heir.legacy={name:previous.name,inheritance:estate,heirloom:(previous.heirlooms||[])[0]?.name||null};
  heir.heirlooms=[...(previous.heirlooms||[])];heir.accomplishments=['بدأ حياة جديدة كامتداد لعائلة '+previous.name,'ورث '+cash(estate)];
  heir.job=null;heir.assets=previous.assets.map(a=>({...a,id:Date.now()+Math.random()}));heir.investments=previous.investments.map(a=>({...a,value:Math.round((a.value||0)*share),id:Date.now()+Math.random()}));
