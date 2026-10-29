@@ -489,7 +489,7 @@ vm.runInNewContext(exportTestApp, exportContext, { timeout: 3000 });
 vm.runInNewContext('globalThis.__testExportSave()', exportContext, { timeout: 3000 });
 assert.equal(exportClicked, true, 'export should trigger a download anchor');
 assert.equal(exportBlob.type, 'application/json', 'export should create a JSON file');
-assert.match(exportBlob.parts[0], /hekayat_hayah_save_v1|\\"version\\":1/, 'export should serialize the current life state');
+assert.match(exportBlob.parts[0], /"version":\s*1/, 'export should serialize the current life state');
 assert.equal(revokedExportUrl, null, 'export URL must not be revoked immediately after the click');
 const exportCleanup = exportTimers.find(timer => timer.delay === 1000);
 assert.ok(exportCleanup, 'export should schedule delayed cleanup');
