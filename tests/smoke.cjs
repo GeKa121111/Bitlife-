@@ -10,8 +10,7 @@ assert.match(index, /href="style.css"/);
 assert.match(index, /src="app.js"/);
 assert.match(index, /id="ageUpBtn"/);
 assert.match(css, /max-width:500px/);
-assert.ok((app.match(/
-E\(\[/g) || []).length >= 25, 'at least 25 age-based events should exist');
+assert.ok((app.match(/\nE\(\[/g) || []).length >= 25, 'at least 25 age-based events should exist');
 assert.match(app, /events\.push\(/, 'expanded event library should be present');
 for (const system of ['function familyMenu()', 'function petsMenu()', 'function hobbiesMenu()', 'function investingMenu()', 'function crimeMenu()', 'function cemeteryMenu()', 'function newLifeSetup()', 'function startAsChild(index)']) {
   assert.ok(app.includes(system), 'missing gameplay system: ' + system);
@@ -94,4 +93,4 @@ assert.ok(get('modalRoot').innerHTML.includes('العلاقات'), 'relationship
 get('menuBtn').dispatch('click');
 assert.ok(get('modalRoot').innerHTML.includes('القائمة الرئيسية'), 'main menu opens from the top bar');
 assert.ok(get('modalRoot').innerHTML.includes('مقبرة الحيوات'), 'main menu provides access to the cemetery');
-console.log('Smoke tests passed: RTL page, assets, 40+ events, new life, autosave, age-up, career and relationship navigation.');
+console.log('Smoke tests passed: RTL page, responsive BitLife-inspired UI, 40+ events, new life, autosave, age-up, career and relationship navigation.');
