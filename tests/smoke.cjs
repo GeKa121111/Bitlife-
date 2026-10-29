@@ -18,6 +18,7 @@ assert.match(app, /choice\('🎯','تحديات اليوم'/, 'daily challenges 
 assert.match(app, /board\.claimed\.length===board\.ids\.length/, 'all daily challenge claims should trigger a completion bonus');
 assert.match(app, /dailyChallenges:null/, 'older saves should migrate to the daily challenge state');
 assert.match(app, /function timeMachineMenu\(\)/, 'the player should be able to review yearly rewind snapshots');
+assert.match(app, /const parsed=JSON\.parse\(history\[index\]\),snap=parsed&&parsed\.snapshotVersion===1\?parsed\.state:parsed/, 'rewind menu should support both compact and legacy snapshots');
 assert.match(app, /function rewindToSnapshot\(index\)/, 'time rewind should restore a selected prior state');
 assert.match(app, /timeMachineSnapshots:\[\]/, 'new lives should initialize the time-machine history');
 assert.match(app, /state\.timeMachineSnapshots\.push\(JSON\.stringify\(\{snapshotVersion:1,logLength,state:snapshot\}\)\)/, 'each age-up should preserve a compact rewind point');
