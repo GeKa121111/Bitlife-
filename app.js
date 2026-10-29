@@ -1322,7 +1322,7 @@ function familyMenu(){
  if(state.partner&&state.age>=18&&!state.married)opts.push(choice('💍','الزواج','تقدروا تتجوزوا لو العلاقة مستقرة ومعاكم تكلفة البداية.',marry,'4,500 '+state.place.unit));
  if(state.partner&&state.married)opts.push(choice('💔','الانفصال أو الطلاق','إنهاء الزواج وتغيير وضع الأسرة.',divorce));
  if(state.partner&&!state.married)opts.push(choice('💔','إنهاء العلاقة','إنهاء العلاقة الحالية والاحتفاظ بسجل الشريك السابق.',breakUp));
- if(state.partner&&state.age>=20&&(state.married||state.partner.relationshipLevel>=70))opts.push(choice('👶','إنجاب طفل','إضافة فرد جديد للعائلة مع تكاليف تربية سنوية.',haveChild,'8,000 '+state.place.unit));
+ if(state.partner&&state.age>=(perkEnabled('goldenPacifier')?18:20)&&(state.married||state.partner.relationshipLevel>=70)&&(state.children.length<6||perkEnabled('goldenPacifier')))opts.push(choice('👶','إنجاب طفل','اللهاية الذهبية تتيح اختيار العدد والنوع والموهبة الخاصة.',haveChild,perkEnabled('goldenPacifier')?'اختيار العدد':'8,000 '+state.place.unit));
  if(state.age>=21&&state.children.length<6)opts.push(choice('🧸','تبنّي طفل','توسيع الأسرة من خلال التبنّي، مع مصاريف بداية ورعاية مستمرة.',adoptChild,'12,000 '+state.place.unit));
  if((state.children||[]).length)opts.push(choice('🧒','أبنائي','الاطمئنان على الأبناء والتفاعل معاهم.',()=>{closeModal();relations();}));
  if((state.coParentingPlans||[]).some(p=>p&&p.active!==false))opts.push(choice('👪','رعاية الأبناء بعد الانفصال','إدارة ترتيب الرعاية والنفقة وسجل الاتفاق.',coParentingMenu));
@@ -1331,6 +1331,7 @@ function familyMenu(){
  opts.push(choice('↩️','رجوع للعلاقات','',relations));
  modal('👪','الزواج والأسرة','بناء الأسرة قرار طويل المدى؛ راعي استقرار العلاقة والصحة والميزانية.',opts);
 }
+
 function marry(){
  closeModal();
  if(state.age<18||!state.partner){info('🔒','الزواج غير متاح','تحتاج تكون بالغ وفيه شريك في حياتك.');return;}
@@ -1341,17 +1342,65 @@ function marry(){
  log('💍','بداية حياة زوجية','اتجوزت '+state.partner.name+'. مسؤولياتكم وأهدافكم المالية والعاطفية هتتطور مع الوقت.','special');
  render();info('💍','ألف مبروك','بدأتوا حياة جديدة مع بعض. حافظ على التواصل والميزانية المشتركة.',[choice('تمام','متابعة','',()=>{closeModal();relations();})]);
 }
+function goldenPacifierMenu(){
+ if(!perkEnabled('goldenPacifier')){closeModal();info('🍼','اللهاية الذهبية متوقفة','فعّلها من القائمة الرئيسية أو متجر المزايا.');return;}
+ if(state.age<18||!state.partner||(!state.married&&state.partner.relationshipLevel<70)){closeModal();info('👶','الشرط العائلي غير مكتمل','تحتاج أن تكون بالغًا مع شريك حالي وعلاقة مستقرة.');return;}
+ const opts=[1,2,3,4,5].map(n=>choice('👶',n===1?'طفل واحد':n+' أطفال','اختيار عدد المواليد في هذه الولادة.',()=>goldenPacifierGenderMenu(n)));
+ opts.push(choice('↩️','رجوع للأسرة','',familyMenu));
+ modal('🍼','اللهاية الذهبية · عدد الأبناء','حدد عدد المواليد، ثم النوع والموهبة الخاصة لكل طفل.',opts);
+}
+function goldenPacifierGenderMenu(count){
+ closeModal();const opts=[
+  choice('🎲','نوع عشوائي','تختار اللعبة النوع لكل طفل.',()=>goldenPacifierTalentMenu(count,'random')),
+  choice('👦','ذكور','كل المواليد في الاختيار ده ذكور.',()=>goldenPacifierTalentMenu(count,'male')),
+  choice('👧','إناث','كل المواليد في الاختيار ده إناث.',()=>goldenPacifierTalentMenu(count,'female'))
+ ];
+ modal('👶','اختيار النوع','عدد المواليد: '+count+'. اختار النوع.',opts);
+}
+function goldenPacifierTalentMenu(count,gender){
+ closeModal();const opts=[
+  choice('🧠','ذكاء استثنائي','ذكاء مرتفع ومساعدة تعليمية داخل اللعبة.',()=>planGoldenBirth(count,gender,'ذكاء استثنائي')),
+  choice('🏅','موهبة رياضية','صحة ولياقة مرتفعة.',()=>planGoldenBirth(count,gender,'موهبة رياضية')),
+  choice('🎨','موهبة فنية','مظهر وإبداع أعلى.',()=>planGoldenBirth(count,gender,'موهبة فنية')),
+  choice('🍀','محظوظ','بداية قوية في العلاقات والسعادة.',()=>planGoldenBirth(count,gender,'محظوظ')),
+  choice('🌱','بدون موهبة خاصة','طفل بسمات طبيعية عشوائية.',()=>planGoldenBirth(count,gender,'عادية'))
+ ];
+ modal('✨','اختيار الموهبة الخاصة','نوع الأطفال: '+(gender==='random'?'عشوائي':gender==='male'?'ذكور':'إناث')+' · العدد '+count+'.',opts);
+}
+function planGoldenBirth(count,gender,talent){
+ closeModal();if(!perkEnabled('goldenPacifier')){info('🍼','اللهاية الذهبية متوقفة','فعّل الميزة ثم حاول مرة أخرى.');return;}
+ if(state.age<18||!state.partner||(!state.married&&state.partner.relationshipLevel<70)){info('👶','الشرط العائلي غير مكتمل','تحتاج علاقة مستقرة مع الشريك الحالي.');return;}
+ const cost=count*8000;if(state.bank<cost){info('💳','الرصيد مش كفاية','التكلفة الإجمالية '+cash(cost)+' لعدد '+count+' مواليد.');return;}
+ if(state.children.length+count>30){info('👶','عدد الأبناء كبير','تقدر تضيف حتى 30 ابن/ابنة للحفاظ على سلاسة اللعبة على الهاتف.');return;}
+ state.bank-=cost;const created=[];
+ for(let i=0;i<count;i++){
+  const g=gender==='random'?pick(['male','female']):gender;
+  const child=makePerson(g,g==='male'?'ابن':'ابنة','👶🏻',0,78);
+  child.gender=g;child.job='طفل';child.specialTalent=talent;child.generosity=50+Math.floor(Math.random()*30);child.bornAt=state.age;child.otherParentId=state.partner.id||null;child.otherParentName=state.partner.name;
+  if(talent==='ذكاء استثنائي'){child.smart=100;child.careerPotential=90;}
+  else if(talent==='موهبة رياضية'){child.health=100;child.looks=clamp((child.looks||50)+12);}
+  else if(talent==='موهبة فنية'){child.looks=100;child.smart=clamp((child.smart||50)+12);}
+  else if(talent==='محظوظ'){child.generosity=100;child.relationshipLevel=90;}
+  state.children.push(child);created.push(child);
+ }
+ state.partner.relationshipLevel=clamp(state.partner.relationshipLevel+Math.min(12,count*2));stat('happiness',Math.min(20,count*5));achievement('إنجاب أبناء باللهاية الذهبية');
+ log('🍼','ولادة مخططة','أضفت '+count+' إلى الأسرة؛ النوع '+(gender==='random'?'عشوائي':gender==='male'?'ذكور':'إناث')+'، والموهبة '+talent+'. تكلفة الرعاية الأولية '+cash(cost)+'.','special');
+ save();render();info('🎉','مبروك الأسرة الجديدة',created.map(c=>c.name+' · '+(c.gender==='male'?'ذكر':'أنثى')+' · '+talent).join('، ')+'.',[choice('👪','متابعة الأسرة','',familyMenu),choice('🧒','عرض الأبناء','',relations)]);
+}
 function haveChild(){
  closeModal();
- if(state.age<20||!state.partner||(!state.married&&state.partner.relationshipLevel<70)){info('👶','مش الوقت المناسب','لازم تكون بالغ وعندك شريك بعلاقة مستقرة.');return;}
+ const minimumAge=perkEnabled('goldenPacifier')?18:20;
+ if(state.age<minimumAge||!state.partner||(!state.married&&state.partner.relationshipLevel<70)){info('👶','مش الوقت المناسب','لازم تكون بالغ وعندك شريك بعلاقة مستقرة.');return;}
+ if(perkEnabled('goldenPacifier')){goldenPacifierMenu();return;}
  if(state.bank<8000){info('💳','جهّز الميزانية','بداية تكاليف الطفل حوالي 8,000 '+state.place.unit+'.');return;}
  state.bank-=8000;
- const gender=pick(['male','female']),child=makePerson(gender,gender==='male'?'ابن':'ابنة',gender==='male'?'👶🏻':'👶🏻',0,78);
+ const gender=pick(['male','female']),child=makePerson(gender,gender==='male'?'ابن':'ابنة','👶🏻',0,78);
  child.gender=gender;child.job='طفل';child.generosity=50+Math.floor(Math.random()*30);child.bornAt=state.age;child.otherParentId=state.partner.id||null;child.otherParentName=state.partner.name;
  state.children.push(child);state.partner.relationshipLevel=clamp(state.partner.relationshipLevel+4);stat('happiness',7);achievement('إنجاب طفل');
  log('👶','فرد جديد في الأسرة','اتولد '+child.name+'، وبدأ فصل جديد من حياتكم. تربية الأطفال لها مصاريف ووقت ومسؤولية.','special');
  render();info('🎉','مبروك المولود الجديد','اتضاف '+child.name+' لشجرة العائلة. احتياجاته وتعليمه وعلاقتك بيه هتتغير مع العمر.');
 }
+
 function adoptChild(){
  closeModal();if(state.age<21){info('🔒','لسه بدري','التبنّي متاح من سن 21 داخل اللعبة.');return;}
  if(state.children.length>=6){info('👪','الأسرة كبيرة بالفعل','النسخة الحالية تدعم حتى ستة أبناء لكل حياة.');return;}
@@ -1390,8 +1439,9 @@ function childMenu(i){
  if(c.age>=16)opts.push(choice('🧭','توجيه مهني','اربط اهتماماته بخيارات الدراسة والعمل.',()=>childAction(i,'career'),'مجانًا',c.careerPotential));
  if(c.age>=18)opts.push(choice('🚀','مساعدته على الاستقلال','ساعده في بداية حياته العملية.',()=>childAction(i,'launch'),'3,000 '+state.place.unit,c.independence));
  opts.push(choice('🌳','شجرة العائلة','',familyTreeMenu),choice('↩️','رجوع للعلاقات','',()=>{closeModal();relations();}));
- modal(c.emoji||'🧒',c.name+' · '+c.age+' سنة',stage+' · '+(c.adopted?'ابن/ابنة بالتبنّي':'فرد من الأسرة')+' · العلاقة '+c.relationshipLevel+'%. '+(c.job?'الوضع الحالي: '+c.job+'.':'مستقبله بيتأثر بالتحصيل والاهتمام والتوجيه.'),opts,true,extra);
+ modal(c.emoji||'🧒',c.name+' · '+c.age+' سنة',stage+' · '+(c.adopted?'ابن/ابنة بالتبنّي':'فرد من الأسرة')+' · العلاقة '+c.relationshipLevel+'%. '+(c.specialTalent?'الموهبة الخاصة: '+c.specialTalent+'. ':'')+(c.job?'الوضع الحالي: '+c.job+'.':'مستقبله بيتأثر بالتحصيل والاهتمام والتوجيه.'),opts,true,extra);
 }
+
 function childAction(i,action){
  closeModal();const c=ensureChildGrowthProfile(state.children[i]);if(!c)return;
  const cost={gift:500,school:1000,study:1500,career:0,launch:3000}[action]||0;
@@ -1501,12 +1551,15 @@ function relationshipAction(n,act){
 }
 function addFriend(){
  const g=pick(['male','female']),f=person(g,'صديق',g==='male'?'🧑':'👩',Math.max(8,state.age+Math.floor(Math.random()*7)-3),45+Math.floor(Math.random()*38));
+ if(perkOwned('friendshipBracelet'))f.relationshipLevel=100;
  state.friends.push(f);stat('happiness',3);log('🤝','صداقة جديدة','اتعرفت على '+f.name+'، وبداية الصداقة كانت لطيفة.','good');render();info('🤝','صديق جديد','بقي عندك حد جديد ممكن تقضي معاه وقت وتبني علاقة قوية.');
 }
+
 function addCustomFriend(){
  if(typeof prompt!=='function'){addFriend();return;}const entered=prompt('اسم الشخص');if(!entered||!entered.trim()){relations();return;}
- const g=pick(['male','female']),f=person(g,'صديق',g==='male'?'🧑':'👩',Math.max(8,state.age),55);f.name=entered.trim().slice(0,50);state.friends.push(f);log('🤝','إضافة شخص إلى العلاقات','أضفت '+f.name+' إلى شبكة علاقاتك.','good');render();info('🤝','تمت الإضافة','تقدر تتفاعل مع '+f.name+' من شاشة العلاقات.');
+ const g=pick(['male','female']),f=person(g,'صديق',g==='male'?'🧑':'👩',Math.max(8,state.age),55);f.name=entered.trim().slice(0,50);if(perkOwned('friendshipBracelet'))f.relationshipLevel=100;state.friends.push(f);log('🤝','إضافة شخص إلى العلاقات','أضفت '+f.name+' إلى شبكة علاقاتك.','good');render();info('🤝','تمت الإضافة','تقدر تتفاعل مع '+f.name+' من شاشة العلاقات.');
 }
+
 function meetPartner(){
  const g=state.gender==='male'?'female':'male',p=person(g,'شريك الحياة',g==='male'?'🧑':'👩',Math.max(18,state.age+Math.floor(Math.random()*5)-2),32+Math.floor(Math.random()*28));
  modal('💞','فرصة تعارف','قابلت '+p.name+'، وشخصيته '+p.personality+'. تحب تبدأوا تتعرفوا على بعض؟',[
