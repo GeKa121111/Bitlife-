@@ -64,6 +64,30 @@ const assetShop=[
  {kind:'car',title:'عربية جديدة',emoji:'🚙',value:850000,upkeep:29000,desc:'راحة أكتر ومصاريف أعلى.'},
  {kind:'business',title:'مشروع صغير',emoji:'🏪',value:150000,upkeep:5000,desc:'أصل يمكن أن ينمو مع مخاطرة تشغيل.'}
 ];
+
+const dailyChallengeDefs=[
+ {id:'healthy',title:'صحة أولًا',desc:'حافظ على صحتك عند 85% أو أعلى.',reward:1600,rewardStat:'health',available:s=>true,done:s=>(s.stats.health||0)>=85},
+ {id:'happy',title:'يوم إيجابي',desc:'وصل السعادة إلى 80% أو أعلى.',reward:1400,rewardStat:'happiness',available:s=>true,done:s=>(s.stats.happiness||0)>=80},
+ {id:'smart',title:'نمّي ذكاءك',desc:'وصل الذكاء إلى 65% أو أعلى.',reward:1700,rewardStat:'smart',available:s=>true,done:s=>(s.stats.smart||0)>=65},
+ {id:'age-one',title:'افتح فصلًا جديدًا',desc:'تقدّم سنة واحدة في سجل حياتك.',reward:1200,rewardStat:'happiness',available:s=>s.age===0,done:s=>s.age>=1},
+ {id:'family',title:'قرّب المسافات',desc:'ارفع علاقتك بأحد أفراد العائلة إلى 65% أو أكثر.',reward:1800,rewardStat:'happiness',available:s=>(s.family||[]).some(n=>!n.deceased),done:s=>(s.family||[]).some(n=>!n.deceased&&(n.relationshipLevel||0)>=65)},
+ {id:'friend',title:'كوّن صداقة',desc:'كوّن صداقة واحدة على الأقل.',reward:1500,rewardStat:'happiness',available:s=>true,done:s=>(s.friends||[]).length>=1},
+ {id:'hobby',title:'خصص وقتًا لنفسك',desc:'ابدأ هواية واحدة على الأقل.',reward:1500,rewardStat:'happiness',available:s=>true,done:s=>(s.hobbies||[]).length>=1},
+ {id:'pet',title:'رفيق وفيّ',desc:'تبنَّ حيوانًا أليفًا وابدأ رعايته.',reward:1800,rewardStat:'happiness',available:s=>true,done:s=>(s.pets||[]).length>=1},
+ {id:'career',title:'خطوة مهنية',desc:'احصل على وظيفة أو ابدأ مسارًا مهنيًا خاصًا.',reward:2200,rewardStat:'smart',available:s=>s.age>=18,done:s=>!!s.job||!!s.specialCareer},
+ {id:'study',title:'استثمار في التعليم',desc:'وصل إلى المستوى التعليمي الثاني أو أعلى.',reward:2000,rewardStat:'smart',available:s=>s.age>=15,done:s=>(s.education&&s.education.level||0)>=2},
+ {id:'asset',title:'أول أصل',desc:'امتلك أصلًا واحدًا على الأقل.',reward:2200,rewardStat:'smart',available:s=>s.age>=18,done:s=>(s.assets||[]).length>=1},
+ {id:'travel',title:'اكتشف مكانًا جديدًا',desc:'سجّل رحلة واحدة على الأقل.',reward:2000,rewardStat:'happiness',available:s=>s.age>=18,done:s=>(s.travelHistory||[]).length>=1},
+ {id:'invest',title:'فكّر كمستثمر',desc:'ابدأ استثمارًا واحدًا على الأقل.',reward:2400,rewardStat:'smart',available:s=>s.age>=18,done:s=>(s.investments||[]).length>=1},
+ {id:'fame',title:'اسمك بدأ ينتشر',desc:'وصل الشهرة إلى 15% أو أعلى.',reward:2500,rewardStat:'happiness',available:s=>s.age>=13,done:s=>(s.fame||0)>=15},
+ {id:'partner',title:'رابطة مهمة',desc:'ابدأ علاقة مع شريك.',reward:1800,rewardStat:'happiness',available:s=>s.age>=18,done:s=>!!s.partner},
+ {id:'business',title:'فكرة تتحول لمشروع',desc:'امتلك مشروعًا تجاريًا واحدًا على الأقل.',reward:2800,rewardStat:'smart',available:s=>s.age>=18,done:s=>!!s.business},
+ {id:'license',title:'جاهز للطريق',desc:'احصل على رخصة قيادة.',reward:1500,rewardStat:'smart',available:s=>s.age>=18,done:s=>!!s.driversLicense},
+ {id:'child',title:'بداية جيل جديد',desc:'أنجب أو تبنَّ طفلًا.',reward:2400,rewardStat:'happiness',available:s=>s.age>=20,done:s=>(s.children||[]).length>=1},
+ {id:'savings',title:'وسادة مالية',desc:'احتفظ برصيد قدره 30,000 أو أكثر.',reward:1800,rewardStat:'smart',available:s=>s.age>=18,done:s=>(s.bank||0)>=30000},
+ {id:'debt-free',title:'سيطرة مالية',desc:'حافظ على عدم وجود ديون ورصيد موجب لا يقل عن 20,000.',reward:2200,rewardStat:'smart',available:s=>s.age>=18,done:s=>(s.debt||0)<=0&&(s.bank||0)>=20000},
+ {id:'club',title:'نشاط خارج الفصل',desc:'انضم إلى نادٍ أو نشاط مدرسي.',reward:1400,rewardStat:'smart',available:s=>s.age>=10&&s.age<23,done:s=>!!(s.education&&s.education.clubs&&s.education.clubs.length)}
+];
 // Events are compact data records; each choice has effects, an optional cost, and optional risk outcome.
 const E=(range,icon,title,text,choices)=>({range,icon,title,text,choices});
 const C=(label,desc,effects,result,extra={})=>Object.assign({label,desc,effects,result},extra);
@@ -347,7 +371,7 @@ function newLife(){
  const father=makePerson('male','الأب','👨',28+Math.floor(Math.random()*12),68+Math.floor(Math.random()*28));
  const mother=makePerson('female','الأم','👩',25+Math.floor(Math.random()*12),72+Math.floor(Math.random()*26));
  const sibling=makePerson(gender,'الأخ/الأخت','🧒',Math.floor(Math.random()*8),55+Math.floor(Math.random()*35));
- return {version:1,lifeId:Date.now()+Math.random(),cemeterySaved:false,name:pick(names[gender])+' '+pick(names.family),gender,age:0,place,bank:place.start,stats:{happiness:65+Math.floor(Math.random()*26),health:76+Math.floor(Math.random()*22),smart:35+Math.floor(Math.random()*41),looks:35+Math.floor(Math.random()*51)},education:{level:0,school:'لم تبدأ الدراسة',major:null,yearsLeft:0,tuition:0},job:null,jobHistory:[],specialCareer:null,performance:50,assets:[],investments:[],business:null,family:[father,mother,sibling],friends:[],partner:null,married:false,children:[],pets:[],hobbies:[],fame:0,followers:0,socialMediaAccount:false,socialMediaPosts:0,reputation:50,crimeRecord:0,prison:null,debt:0,willDistribution:'الأسرة بالتساوي',heirlooms:[],dailyRewardDate:null,legacy:{name:null,inheritance:0,heirloom:null},driversLicense:false,travelHistory:[],log:[],accomplishments:['بدأت رحلة الحياة'],status:'حي',cause:null,retired:false,yearCount:0,wealthPeak:place.start};
+ return {version:1,lifeId:Date.now()+Math.random(),cemeterySaved:false,name:pick(names[gender])+' '+pick(names.family),gender,age:0,place,bank:place.start,stats:{happiness:65+Math.floor(Math.random()*26),health:76+Math.floor(Math.random()*22),smart:35+Math.floor(Math.random()*41),looks:35+Math.floor(Math.random()*51)},education:{level:0,school:'لم تبدأ الدراسة',major:null,yearsLeft:0,tuition:0},job:null,jobHistory:[],specialCareer:null,performance:50,assets:[],investments:[],business:null,family:[father,mother,sibling],friends:[],partner:null,married:false,children:[],pets:[],hobbies:[],fame:0,followers:0,socialMediaAccount:false,socialMediaPosts:0,reputation:50,crimeRecord:0,prison:null,debt:0,willDistribution:'الأسرة بالتساوي',heirlooms:[],dailyRewardDate:null,dailyChallenges:null,legacy:{name:null,inheritance:0,heirloom:null},driversLicense:false,travelHistory:[],log:[],accomplishments:['بدأت رحلة الحياة'],status:'حي',cause:null,retired:false,yearCount:0,wealthPeak:place.start};
 }
 function save(){
  try{localStorage.setItem(KEY,JSON.stringify(state));$('saveStatus').textContent='● محفوظة';}
@@ -355,7 +379,7 @@ function save(){
 }
 function load(){
  try{const x=JSON.parse(localStorage.getItem(KEY)||'null');if(x&&x.version===1&&x.stats&&Array.isArray(x.log)){
-  const defaults={lifeId:Date.now()+Math.random(),cemeterySaved:false,jobHistory:[],specialCareer:null,investments:[],business:null,married:false,children:[],pets:[],hobbies:[],fame:0,followers:0,socialMediaAccount:false,socialMediaPosts:0,reputation:50,crimeRecord:0,prison:null,debt:0,willDistribution:'الأسرة بالتساوي',heirlooms:[],dailyRewardDate:null,legacy:{name:null,inheritance:0,heirloom:null},driversLicense:false,travelHistory:[]};
+  const defaults={lifeId:Date.now()+Math.random(),cemeterySaved:false,jobHistory:[],specialCareer:null,investments:[],business:null,married:false,children:[],pets:[],hobbies:[],fame:0,followers:0,socialMediaAccount:false,socialMediaPosts:0,reputation:50,crimeRecord:0,prison:null,debt:0,willDistribution:'الأسرة بالتساوي',heirlooms:[],dailyRewardDate:null,dailyChallenges:null,legacy:{name:null,inheritance:0,heirloom:null},driversLicense:false,travelHistory:[]};
   Object.keys(defaults).forEach(k=>{if(x[k]===undefined||x[k]===null)x[k]=defaults[k];});
   if(!Array.isArray(x.family))x.family=[];if(!Array.isArray(x.friends))x.friends=[];if(!Array.isArray(x.assets))x.assets=[];
   if(!x.education||typeof x.education!=='object')x.education={level:0,school:'لم تبدأ الدراسة',major:null,yearsLeft:0,tuition:0};
@@ -1185,11 +1209,67 @@ function dailyReward(){
  if(chance(.28)){const trinkets=['ساعة قديمة','ميدالية عائلية','كاميرا كلاسيكية','كتاب نادر','خاتم موروث'];item=pick(trinkets);state.heirlooms.push({name:item,value:500+Math.floor(Math.random()*4500),age:state.age});}
  log('🎁','هدية اليوم','استلمت '+cash(amount)+(item?' وعثرت على مقتنى نادر: '+item:'')+'.','good');achievement('استلام مكافأة يومية');render();info('🎁','مكافأة اليوم','حصلت على '+cash(amount)+(item?'، وأضيف '+item+' إلى مقتنياتك.':'.'));
 }
+
+function challengeDateKey(date){
+ return date.getFullYear()+'-'+String(date.getMonth()+1).padStart(2,'0')+'-'+String(date.getDate()).padStart(2,'0');
+}
+function challengeYesterdayKey(date){
+ const d=new Date(date);d.setDate(d.getDate()-1);return challengeDateKey(d);
+}
+function ensureDailyChallengeBoard(){
+ if(!state)return null;
+ const now=new Date(),today=challengeDateKey(now),old=state.dailyChallenges&&typeof state.dailyChallenges==='object'?state.dailyChallenges:null;
+ if(!old||old.date!==today||!Array.isArray(old.ids)||old.ids.length!==3||!Array.isArray(old.claimed)){
+  const eligible=dailyChallengeDefs.filter(c=>c.available(state));
+  for(let i=eligible.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[eligible[i],eligible[j]]=[eligible[j],eligible[i]];}
+  const streak=old&&old.lastCompletionDate===challengeYesterdayKey(now)?Number(old.streak)||0:0;
+  state.dailyChallenges={date:today,ids:eligible.slice(0,3).map(c=>c.id),claimed:[],streak,lastCompletionDate:old&&old.lastCompletionDate||null};
+  save();
+ }
+ return state.dailyChallenges;
+}
+function dailyChallengesMenu(){
+ if(!validState())return;
+ const board=ensureDailyChallengeBoard();
+ const completed=board.claimed.length;
+ const opts=board.ids.map(id=>{
+  const c=dailyChallengeDefs.find(x=>x.id===id);
+  if(!c)return null;
+  const done=!!c.done(state),claimed=board.claimed.includes(id);
+  const status=claimed?'تم استلام المكافأة':(done?'اكتملت — استلم مكافأتك':'لم تكتمل بعد');
+  return choice(claimed?'✅':(done?'🎁':'🎯'),c.title,c.desc+' الحالة: '+status+'. المكافأة: '+cash(c.reward)+'.',()=>{
+   if(claimed){closeModal();info('✅','المهمة مكتملة','استلمت مكافأة هذه المهمة بالفعل.');return;}
+   if(!c.done(state)){closeModal();info('🎯','كمّل المهمة الأول',c.desc+' وبعدها ارجع هنا لاستلام المكافأة.');return;}
+   claimDailyChallenge(id);
+  });
+ }).filter(Boolean);
+ opts.unshift(choice('🔥','سلسلة الإنجاز','أكملت '+completed+' من 3 مهام اليوم. سلسلة الأيام الكاملة: '+(board.streak||0)+'.',()=>{closeModal();info('🔥','سلسلة الإنجاز','استكمل المهام الثلاث في اليوم نفسه للحفاظ على سلسلة التحديات.');}));
+ modal('🎯','تحديات اليوم','ثلاث مهام متجددة كل يوم، بمكافآت داخل اللعبة. تقدمك يُحفظ مع الحياة الحالية.',opts);
+}
+function claimDailyChallenge(id){
+ if(!validState())return;
+ const board=ensureDailyChallengeBoard(),c=dailyChallengeDefs.find(x=>x.id===id);
+ if(!c||!board.ids.includes(id)||board.claimed.includes(id)||!c.done(state)){closeModal();info('🎯','المهمة غير جاهزة','تأكد من شروط المهمة قبل المطالبة بالمكافأة.');return;}
+ closeModal();
+ board.claimed.push(id);state.bank=(state.bank||0)+c.reward;stat(c.rewardStat||'happiness',3);
+ log('🎯','مكافأة تحدي يومي','أكملت مهمة «'+c.title+'» وحصلت على '+cash(c.reward)+'.','good');
+ achievement('أكملت تحديًا يوميًا');
+ if(board.claimed.length===board.ids.length){
+  const now=new Date(),today=challengeDateKey(now),yesterday=challengeYesterdayKey(now);
+  board.streak=board.lastCompletionDate===yesterday?(Number(board.streak)||0)+1:1;
+  board.lastCompletionDate=today;
+  const bonus=2500+Math.min(10,board.streak)*250;state.bank+=bonus;
+  log('🏆','اكتملت تحديات اليوم','أنهيت المهام الثلاث وحصلت على مكافأة إضافية '+cash(bonus)+'. سلسلة الإنجاز: '+board.streak+' يوم.','special');
+ }
+ save();render();dailyChallengesMenu();
+}
+
 function achievementsMenu(){
  const opts=(state.accomplishments||[]).slice().reverse().map(a=>choice('🏆',a,'إنجاز مسجل في هذه الحياة.',()=>{closeModal();info('🏆',a,'ده واحد من إنجازات رحلتك الحالية.');}));
  if(!opts.length)opts.push(choice('🌱','لسه مفيش إنجازات','تقدم بالعمر وجرّب أنظمة اللعبة المختلفة.',closeModal));
  opts.unshift(choice('🎁','مكافأة اليوم','مكافأة مرة كل يوم مع احتمال مقتنى موروث.',dailyReward));
  opts.unshift(choice('🏅','شريط حياتك','تصنيف ختامي يعتمد على إنجازاتك.',()=>{closeModal();info('🏅','شريط الحياة',lifeRibbon()+'. هيتسجل التصنيف النهائي عند نهاية الرحلة.');}));
+ opts.unshift(choice('🎯','تحديات اليوم','أنجز مهام قصيرة واحصل على مكافآت يومية.',dailyChallengesMenu));
  opts.unshift(choice('🪦','المقبرة والحيوات السابقة','راجع ملخصات الشخصيات التي انتهت حياتها على هذا الجهاز.',cemeteryMenu));
  modal('🏆','الإنجازات والمقتنيات','إنجازاتك بتتراكم خلال الحياة. المقتنيات النادرة ممكن تصبح إرثًا للأجيال القادمة.',opts);
 }
@@ -1272,6 +1352,7 @@ function mainMenu(){
   choice('🌱','حياة جديدة','ابدأ شخصية جديدة أو خصّص بلد الميلاد.',()=>newLifeSetup()),
   choice('🪦','مقبرة الحيوات','استعرض الشخصيات السابقة وأعمارها ونهاياتها.',()=>cemeteryMenu()),
   choice('🏆','الإنجازات والأشرطة','الأهداف التي حققتها في رحلتك.',()=>achievementsMenu()),
+  choice('🎯','تحديات اليوم','ثلاث مهام يومية ومكافآت إضافية عند إكمالها.',()=>dailyChallengesMenu()),
   choice('🎁','المكافأة اليومية','احصل على مكافأتك اليومية إن كانت متاحة.',()=>dailyReward()),
   choice('🪪','ملف الشخصية','تعديل الاسم وإعدادات الشخصية.',()=>customizeMenu()),
   choice('💾','تصدير الحفظ','نزّل نسخة احتياطية من حياتك الحالية.',()=>exportSave()),
@@ -1423,7 +1504,7 @@ function importSave(){
    try{
     const data=JSON.parse(String(reader.result||''));
     if(!data||data.version!==1||!data.stats||!Array.isArray(data.log)||!Array.isArray(data.family)||!data.place)throw new Error('invalid');
-    const defaults={lifeId:Date.now()+Math.random(),cemeterySaved:false,jobHistory:[],specialCareer:null,investments:[],business:null,married:false,children:[],pets:[],hobbies:[],fame:0,followers:0,socialMediaAccount:false,socialMediaPosts:0,reputation:50,crimeRecord:0,prison:null,debt:0,willDistribution:'الأسرة بالتساوي',heirlooms:[],dailyRewardDate:null,legacy:{name:null,inheritance:0,heirloom:null},driversLicense:false,travelHistory:[],retired:false,yearCount:data.age||0,assets:[],friends:[],accomplishments:[],status:'حي'};
+    const defaults={lifeId:Date.now()+Math.random(),cemeterySaved:false,jobHistory:[],specialCareer:null,investments:[],business:null,married:false,children:[],pets:[],hobbies:[],fame:0,followers:0,socialMediaAccount:false,socialMediaPosts:0,reputation:50,crimeRecord:0,prison:null,debt:0,willDistribution:'الأسرة بالتساوي',heirlooms:[],dailyRewardDate:null,dailyChallenges:null,legacy:{name:null,inheritance:0,heirloom:null},driversLicense:false,travelHistory:[],retired:false,yearCount:data.age||0,assets:[],friends:[],accomplishments:[],status:'حي'};
     Object.keys(defaults).forEach(k=>{if(data[k]===undefined||data[k]===null)data[k]=defaults[k];});
     if(!Array.isArray(data.assets))data.assets=[];data.assets.forEach(a=>{if((a.kind==='car'||a.kind==='property')&&!Number.isFinite(Number(a.condition)))a.condition=100;});
     if(!data.education||typeof data.education!=='object')data.education={level:0,school:'لم تبدأ الدراسة',major:null,yearsLeft:0,tuition:0};data.education.clubs=Array.isArray(data.education.clubs)?data.education.clubs:[];
