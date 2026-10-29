@@ -1626,7 +1626,8 @@ function zooMenu(){
   opts.push(choice('✨','رحلة اكتشاف نادر','رحلة ميدانية بتكلفة 12,000 قد تكشف نوعًا أسطوريًا.',discoverZooAnimal,'12,000 '+state.place.unit));
   opts.push(choice('💰','صندوق حديقة الحيوان','الصندوق '+cash(z.funds||0)+' · اسحب الأرباح المتاحة.',zooTreasuryMenu));
   opts.push(choice('📊','تقرير الحديقة','الحيوانات '+z.animals.length+' · الموائل '+z.habitats.length+' · اكتشافات نادرة '+(z.rareDiscoveries||0)+'.',()=>{closeModal();info('🦁','تقرير الحديقة','الأنواع المسجلة '+zooSpeciesCatalog.length+' · الحيوانات '+z.animals.length+' · الموائل '+z.habitats.length+' · الاكتشافات الأسطورية '+(z.rareDiscoveries||0)+' · صندوق التشغيل '+cash(z.funds||0)+'.');}));
-  z.animals.forEach((animal,i)=>opts.push(choice(animal.emoji||'🐾',animal.name+' · '+animal.species,'العمر '+animal.age+' سنة · '+((animal.accessories||[]).length)+' إكسسوار',()=>zooAnimalDetails(i))));
+  z.animals.slice(-8).forEach((animal,offset)=>{const i=z.animals.length-Math.min(8,z.animals.length)+offset;opts.push(choice(animal.emoji||'🐾',animal.name+' · '+animal.species,'العمر '+animal.age+' سنة · '+((animal.accessories||[]).length)+' إكسسوار',()=>zooAnimalDetails(i)));});
+  if(z.animals.length>8)opts.push(choice('📖','سجل الحيوانات الكامل','عرض قائمة مقسمة إلى صفحات لتظل الواجهة سريعة على الهاتف.',()=>zooOwnedAnimalsMenu(0)));
  }
  opts.push(choice('↩️','رجوع للأنشطة','',activities));modal('🦁','إدارة حديقة الحيوان',z.opened?'موائل تتطلب صيانة، حيوانات لها احتياجات، وصندوق تمويل يبدأ بمنحة مجانية.':'ابدأ مشروع الحديقة عندما تسمح ميزانيتك، ثم افتح الموائل واشترِ أنواعًا مناسبة لها.',opts);
 }
@@ -1663,6 +1664,14 @@ function buyZooAnimal(speciesId){
  log('🐾','حيوان جديد في الحديقة','أضفت '+animal.name+' إلى موئل '+(zooHabitatCatalog.find(h=>h.id===s.habitat)||{title:s.habitat}).title+'.','good');save();render();zooMenu();
 }
 
+function zooOwnedAnimalsMenu(page=0){
+ const z=state.zoo;if(!z||!z.opened){zooMenu();return;}
+ const pageSize=10,total=z.animals.length,totalPages=Math.max(1,Math.ceil(total/pageSize)),safePage=Math.max(0,Math.min(totalPages-1,page));
+ const start=safePage*pageSize,opts=z.animals.slice(start,start+pageSize).map((animal,offset)=>{const index=start+offset;return choice(animal.emoji||'🐾',animal.name+' · '+animal.species,'العمر '+animal.age+' · الصحة '+(animal.health||80)+'% · السعادة '+(animal.happiness||70)+'%.',()=>zooAnimalDetails(index));});
+ if(safePage>0)opts.push(choice('⬅️','الصفحة السابقة','',()=>zooOwnedAnimalsMenu(safePage-1)));
+ if(safePage<totalPages-1)opts.push(choice('➡️','الصفحة التالية','',()=>zooOwnedAnimalsMenu(safePage+1)));
+ opts.push(choice('↩️','رجوع للحديقة','',zooMenu));modal('📖','سجل حيوانات الحديقة','الصفحة '+(safePage+1)+' من '+totalPages+' · إجمالي الحيوانات '+total+'.',opts);
+}
 function zooHabitatMenu(){
  const z=state.zoo;if(!z||!z.opened){zooMenu();return;}
  const actions=zooHabitatCatalog.map(h=>{const built=z.habitats.includes(h.id);return choice(built?'🟢':h.emoji,h.title+(built?' · مبني':' · غير متاح'),built?'حالة الموئل '+((z.habitatHealth&&z.habitatHealth[h.id])??100)+'% · الصيانة السنوية '+cash(h.upkeep)+'.':'تكلفة البناء '+cash(h.cost)+'.',()=>built?repairZooHabitat(h.id):buildZooHabitat(h.id),built?'صيانة':cash(h.cost));});
@@ -1728,7 +1737,7 @@ function installZooAccessory(index,accessoryId){
 function discoverZooAnimal(){
  closeModal();const z=state.zoo;if(!z||!z.opened)return;const cost=12000;
  if(state.bank<cost){info('💳','الرصيد مش كفاية','رحلة الاكتشاف تكلف '+cash(cost)+'.');return;}state.bank-=cost;
- if(chance(.28)){const species=pick(zooSpeciesCatalog.filter(s=>s.legendary));z.animals.push({id:Date.now()+Math.random(),name:species.name+' مكتشف',species:species.name,emoji:species.emoji,habitat:species.habitat,age:0,legendary:true,accessories:[],happiness:85,health:100});z.rareDiscoveries=(z.rareDiscoveries||0)+1;log('✨','اكتشاف أسطوري','اكتشفت '+species.name+' وأضفته للحديقة.','special');achievement('اكتشاف حيوان أسطوري');}
+ if(z.animals.length>=120){info('🐾','وصلت لحد الحديقة','وصلت للحد الأقصى البالغ 120 حيوانًا.');return;}if(chance(.28)){const species=pick(zooSpeciesCatalog.filter(s=>s.legendary));z.animals.push({id:Date.now()+Math.random(),name:species.name+' مكتشف',species:species.name,emoji:species.emoji,habitat:species.habitat,age:0,legendary:true,accessories:[],happiness:85,health:100});z.rareDiscoveries=(z.rareDiscoveries||0)+1;log('✨','اكتشاف أسطوري','اكتشفت '+species.name+' وأضفته للحديقة.','special');achievement('اكتشاف حيوان أسطوري');}
  else log('🔎','رحلة بحث','لم تعثر على نوع نادر هذه المرة؛ فريق الحديقة جمع معلومات مفيدة.','');
  save();render();zooMenu();
 }
@@ -3038,8 +3047,7 @@ function godModeMenu(){
  modal('⚡','وضع الإله','وضع تخصيص اختياري داخل اللعبة. كل التغييرات تخص ملف الحفظ الحالي.',opts);
 }
 function startRoyalLife(){
- closeModal();if(state&&state.status==='حي'&&state.age>0)archiveLife('بدء حياة ملكية');
- startNew();const title=pick(['الأمير','الأميرة','الوريث الملكي','الوريثة الملكية']),house=pick(['آل النور','آل الياقوت','آل النيل','آل الشروق']);
+ closeModal();startNew();const title=pick(['الأمير','الأميرة','الوريث الملكي','الوريثة الملكية']),house=pick(['آل النور','آل الياقوت','آل النيل','آل الشروق']);
  state.royalty={active:true,title,house};state.bank+=5000000;state.fame=45;state.reputation=75;
  state.assets.push({id:Date.now()+Math.random(),title:'قصر '+house,emoji:'🏰',kind:'property',value:4500000,upkeep:125000,bought:0,condition:100,rented:false,amenities:['حدائق ملكية','حراسة']});
  state.family[0].relation='الملك';state.family[1].relation='الملكة';state.family[0].job='حاكم';state.family[1].job='حاكمة';
@@ -3283,7 +3291,7 @@ function advanceCultSystem(){
  const donations=inside.reduce((n,m)=>n+Math.round(250+Math.random()*650+(m.loyalty||50)*3),0);
  const upkeep=2500+inside.length*450;c.fund=Math.max(-30000,(c.fund||0)+donations-upkeep);
  inside.forEach(m=>{m.loyalty=clamp(m.loyalty+(c.doctrine==='المعرفة'?2:1)-(c.discipline<25?2:0));if(m.loyalty<20&&chance(.18))m.status='غادر المجتمع';});
- if(c.fund<0){const deficit=Math.min(state.bank,Math.abs(c.fund));state.bank-=deficit;c.fund+=deficit;log('💳','عجز مالي في المجتمع','اضطررت لتغطية جزء من تكاليف المجتمع من حسابك الشخصي.','bad');}
+ if(c.fund<0){const deficit=Math.min(Math.max(0,state.bank),Math.abs(c.fund));state.bank-=deficit;c.fund+=deficit;log('💳','عجز مالي في المجتمع','اضطررت لتغطية جزء من تكاليف المجتمع من حسابك الشخصي.','bad');}
  log('🛕','تقرير المجتمع السنوي','المساهمات '+cash(donations)+' · التكاليف '+cash(upkeep)+' · الأعضاء داخل المقر '+inside.filter(m=>m.status==='داخل المجتمع').length+'.','');
 }
 function advanceCasinoSystem(){
