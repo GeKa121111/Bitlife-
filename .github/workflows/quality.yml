@@ -30,3 +30,5 @@ jobs:
         run: node tests/smoke.cjs
       - name: Run regression checks
         run: node --test tests/quality.test.cjs
+      - name: Test offline service-worker behavior
+        run: node --test tests/service-worker.test.cjs
