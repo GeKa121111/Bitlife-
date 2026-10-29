@@ -225,6 +225,7 @@ assert.ok(get('modalRoot').innerHTML.includes('لسه بدري'), 'career naviga
 panels.find(p => p.dataset.panel === 'relations').dispatch('click');
 assert.ok(get('modalRoot').innerHTML.includes('العلاقات'), 'relationships navigation opens its panel');
 get('menuBtn').dispatch('click');
+assert.ok(get('modalRoot').innerHTML.includes('إعدادات العرض'), 'display settings should be reachable from the main menu');
 assert.ok(get('modalRoot').innerHTML.includes('القائمة الرئيسية'), 'main menu opens from the top bar');
 assert.ok(get('modalRoot').innerHTML.includes('مقبرة الحيوات'), 'main menu provides access to the cemetery');
 console.log('Smoke tests passed: RTL page, responsive Arabic life-sim UI, offline PWA shell, 40+ events, new life, autosave, age-up, career and relationship navigation.');
