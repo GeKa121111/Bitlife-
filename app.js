@@ -1175,7 +1175,7 @@ if($('profileBtn'))$('profileBtn').addEventListener('click',()=>customizeMenu())
 function init(){
  state=load();
  if(state){dead=state.status==='متوفى';render();if(dead)death(state.cause||'نهاية رحلة الحياة');}
- else{state=newLife();log('👶','أول يوم في الدنيا','اتولدت في '+state.place.city+'، '+state.place.country+'. أهلك '+state.family[0].name+' و'+state.family[1].name+' بيبدأوا معاك أول فصل في الحكاية.','special');log('🏡','البيت والعيلة','أبوك '+state.family[0].name+' شخص '+state.family[0].personality+'، وأمك '+state.family[1].name+' شخصيتها '+state.family[1].personality+'. دي أول شبكة أمان ليك.');achievement('بدأت رحلة الحياة');render();}
+ else{state=newLife();log('👶','أول يوم في الدنيا','اتولدت في '+state.place.city+'، '+state.place.country+'. أهلك '+state.family[0].name+' و'+state.family[1].name+' بيبدأوا معاك أول فصل في الحكاية.','special');log('🏡','البيت والعيلة','أبوك '+state.family[0].name+' شخص '+state.family[0].personality+'، وأمك '+state.family[1].name+' شخصيتها '+state.family[1].personality+'. دي أول شبكة أمان ليك.');achievement('بدأت رحلة الحياة');render();newLifeSetup();}
 }
 init();
 })();
