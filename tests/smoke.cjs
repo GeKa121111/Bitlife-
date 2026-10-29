@@ -381,7 +381,7 @@ const esportsContext = {
   alert() {},
   console
 };
-const esportsTestApp = app.replace("function enterEsportsTournament(){", "globalThis.__testEnterEsportsTournament=function(){");
+const esportsTestApp = app.replace("function enterEsportsTournament(){", "globalThis.__testEnterEsportsTournament=function(){").replace("\nfunction negotiateEsportsSponsorship(){", ";\nfunction negotiateEsportsSponsorship(){");
 assert.notEqual(esportsTestApp, app, 'test harness should expose the tournament action only inside its isolated VM');
 vm.runInNewContext(esportsTestApp, esportsContext, { timeout: 3000 });
 vm.runInNewContext('globalThis.__testEnterEsportsTournament()', esportsContext, { timeout: 3000 });
