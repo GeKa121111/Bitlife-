@@ -22,7 +22,11 @@ function functionSource(name, nextName) {
 
 test('واجهة حياة عربية RTL وتحافظ على اسمها المستقل', () => {
   assert.match(html, /<html lang="ar" dir="rtl">/);
-  assert.match(html, /class="brandlogo" aria-label="حياة \| محاكي الحياة">حياة/);
+  assert.match(html, /class="brandlogo" aria-label="حياة"/);
+  assert.match(html, /class="brand-symbol"/);
+  assert.match(html, /id="identityFlag"/);
+  assert.match(html, /id="characterInfoBtn"/);
+  assert.match(html, /id="stageNavLabel"/);
   assert.doesNotMatch(html, /BITLIFE|BitLife|Candywriter/);
 });
 
@@ -77,7 +81,7 @@ test('تخطيط الهاتف وإمكانية الوصول ما زالا موج
   assert.match(css, /@media\(max-width:380px\)/);
   assert.match(css, /@media\(prefers-reduced-motion:reduce\)/);
   assert.match(css, /button:focus-visible/);
-  assert.match(css, /\.brandlogo\{[^}]*color:#fff/);
+  assert.match(css, /\.brand-symbol\{/);
 });
 
 test('تطبيق الويب قابل للتثبيت ويحتفظ بملفات الواجهة للعمل دون اتصال', () => {
@@ -90,7 +94,7 @@ test('تطبيق الويب قابل للتثبيت ويحتفظ بملفات ا
   assert.ok(manifest.icons.some(item => item.src === './icon.svg'));
   assert.match(html, /rel="manifest" href="manifest\.webmanifest"/);
   assert.match(app, /navigator\.serviceWorker\.register\('\.\/sw\.js'\)/);
-  assert.match(worker, /const CACHE_NAME = 'hayah-shell-v4'/);
+  assert.match(worker, /const CACHE_NAME = 'hayah-shell-v5'/);
   assert.match(worker, /cache\.addAll\(APP_SHELL\)/);
   assert.match(worker, /caches\.match\(APP_SHELL\[0\]\)/);
   assert.match(icon, /حياة/);
@@ -140,15 +144,20 @@ test('إعدادات العرض منفصلة عن حفظ الحياة ويمكن
 });
 
 
-test('تخطيط الهاتف يطابق ترتيب BitLife المرجعي: التبويبات فوق مؤشرات الحالة', () => {
-  const finalUi = css.slice(css.lastIndexOf('/* BitLife reference layout pass 2'));
-  assert.ok(finalUi.length > 0, 'the latest reference layout block should exist');
-  assert.match(finalUi, /--life-nav:#0667a9/);
-  assert.match(finalUi, /\.bottom-dock\s*\{[^}]*position:fixed[^}]*left:50%/s);
+test('واجهة الهاتف تقرّب الشاشة الرئيسية من ترتيب BitLife مع اسم حياة المستقل', () => {
+  const finalUi = css.slice(css.lastIndexOf('/* BitLife-like main screen: narrow brand bar'));
+  assert.ok(finalUi.length > 0, 'the latest reference screen block should exist');
+  assert.match(finalUi, /--reference-red:#f02e12/);
+  assert.match(finalUi, /--reference-blue:#075c98/);
+  assert.match(finalUi, /\.identity-line\{/);
   assert.match(finalUi, /\.nav\s*\{[^}]*order:0/s);
   assert.match(finalUi, /\.stats\s*\{[^}]*order:1/s);
-  assert.match(finalUi, /\.statrow\s*\{[^}]*grid-template-columns:80px minmax\(0,1fr\)/s);
-  assert.match(finalUi, /\.fill\s*\{[^}]*position:absolute[^}]*right:0/s);
+  assert.match(finalUi, /\.navbtn:first-child \.navico\{background:#f47a20/);
+  assert.match(finalUi, /\.agebtn\s*\{[^}]*border-radius:50%/s);
   assert.match(finalUi, /\.statvalue\s*\{[^}]*position:absolute[^}]*z-index:1/s);
+  assert.match(finalUi, /\.nav\{direction:ltr\}/);
+  assert.match(finalUi, /\.fill\{left:0;right:auto\}/);
+  assert.ok(app.includes("const rows=[['happiness','😄','السعادة'],['health','❤️','الصحة'],['smart','🧠','الذكاء'],['looks','😎','المظهر']];"));
   assert.match(finalUi, /body\.theme-dark \.nav\{[^}]*background:#075078/);
+  assert.match(finalUi, /@media\(max-width:380px\)/);
 });

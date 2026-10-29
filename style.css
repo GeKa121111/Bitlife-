@@ -935,3 +935,244 @@ body.theme-dark .statlabel{color:#dce6ec}
 body.theme-dark .track{background:#344651}
 body.theme-dark .statvalue{color:#fff;text-shadow:0 1px #0009}
 body.theme-dark .agebtn{border-color:#17232c}
+
+
+/* BitLife-like main screen: narrow brand bar, inline profile, stage tab and stacked meters. */
+:root{
+  --reference-red:#f02e12;
+  --reference-blue:#075c98;
+  --reference-blue-deep:#00477d;
+  --reference-aqua:#03bec1;
+  --reference-green:#079f3c;
+  --reference-track:#d8e2e9;
+}
+html,body{height:100%;min-height:0}
+body{overflow:hidden;align-items:stretch;justify-content:center;background:#edf0f3}
+.app{
+  width:100%;max-width:450px;height:100dvh;min-height:0;padding:0;
+  display:flex;flex-direction:column;overflow:hidden;background:#fff;
+  border:0;border-radius:0;box-shadow:0 0 22px #19304312;
+}
+.topbar{
+  position:relative;top:auto;z-index:30;height:53px;min-height:53px;flex:0 0 53px;
+  padding:0 8px;display:grid;grid-template-columns:38px minmax(0,1fr) 38px;
+  align-items:center;gap:3px;background:var(--reference-red);color:#fff;
+  border:0;box-shadow:none;border-radius:0;
+}
+.menu-trigger,.header-action{
+  width:32px;height:32px;border-radius:50%;display:grid;place-items:center;
+  border:1px solid #ffffff73;background:transparent;color:#fff;font-size:18px;
+  padding:0;box-shadow:none;
+}
+.menu-trigger:active,.header-action:active{background:#ffffff24;transform:scale(.97)}
+.brandlogo{
+  display:flex;align-items:center;justify-content:center;gap:6px;min-width:0;
+  color:#ffdf26;font-size:23px;font-weight:1000;white-space:nowrap;
+  text-align:center;letter-spacing:-.6px;text-shadow:none;
+}
+.brandlogo strong{font-weight:1000;color:#ffdf26}
+.brand-symbol{
+  width:27px;height:27px;flex:0 0 27px;display:grid;place-items:center;
+  border:2px solid #fff;border-radius:50%;background:#fff;color:var(--reference-red);
+  font-size:17px;line-height:1;font-weight:1000;box-shadow:0 1px 0 #a82112;
+}
+.top-actions{min-width:0;width:38px;display:flex;align-items:center;justify-content:center}
+.top-actions .header-action{width:32px;height:32px;flex:0 0 32px}
+.topbar #saveStatus,.topbar #heirloomBtn{position:absolute!important}
+
+/* Keep the original character node for game logic, but use a compact inline flag/name like the reference. */
+.hero{
+  position:relative;height:68px;min-height:68px;flex:0 0 68px;
+  display:flex;flex-direction:row;direction:ltr;align-items:center;justify-content:space-between;
+  gap:8px;padding:6px 10px;background:#e5edf3;border-top:1px solid #c8d7e2;border-bottom:1px solid #cad8e2;
+}
+.profile{display:flex;direction:rtl;align-items:center;gap:6px;min-width:0;flex:1}
+.avatar{
+  position:absolute!important;left:-10000px!important;top:auto!important;
+  width:1px!important;height:1px!important;min-width:1px!important;min-height:1px!important;
+  padding:0!important;margin:0!important;overflow:hidden!important;clip:rect(0,0,0,0)!important;
+  white-space:nowrap!important;border:0!important;border-radius:0!important;
+}
+.identity{display:flex;flex-direction:column;justify-content:center;gap:1px;min-width:0;flex:1}
+.identity-line{display:flex;align-items:center;justify-content:flex-start;gap:4px;min-width:0;line-height:1.15}
+.identity-flag{flex:0 0 auto;display:inline-grid;place-items:center;font-size:15px;line-height:1}
+.name{
+  min-width:0;flex:0 1 auto;font-size:15px;line-height:1.15;font-weight:950;
+  color:var(--reference-blue);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.fame-star{font-size:11px;vertical-align:middle}
+.identity-info{
+  flex:0 0 15px;width:15px;height:15px;min-width:15px;padding:0;
+  display:inline-grid;place-items:center;border:0;border-radius:50%;
+  background:var(--reference-blue);color:#fff;font-family:Georgia,serif;
+  font-size:11px;font-weight:900;line-height:1;
+}
+.identity-role{display:flex;align-items:center;gap:4px;min-width:0;margin:1px 0 0;font-size:10px;line-height:1.2;color:#3d5768}
+.identity-role .role-tag{display:block;min-width:0;max-width:100%;padding:0;border:0;background:transparent;color:#31546d;border-radius:0;font-size:10px;font-weight:650;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.identity-meta{display:flex;align-items:center;gap:5px;margin:1px 0 0;min-width:0;font-size:8px;line-height:1.1;color:#60798a;flex-wrap:nowrap}
+.identity-meta span{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.wealth{
+  min-width:82px;max-width:118px;flex:0 0 auto;display:flex;flex-direction:column;
+  justify-content:center;align-items:flex-end;gap:1px;margin:0;padding:0;
+  background:transparent;border:0;border-radius:0;box-shadow:none;
+}
+.wealthnum{
+  order:0;max-width:100%;font-size:17px;line-height:1.05;font-weight:1000;
+  color:var(--reference-blue);white-space:nowrap;direction:ltr;text-align:right;
+  letter-spacing:-.35px;overflow-wrap:normal;
+}
+.wealthnum.negative{color:#c62828}
+.wealthlabel{order:1;font-size:9px;line-height:1.1;font-weight:650;color:#4b687c}
+.wealthsmall{display:none!important}
+
+/* The story area is a plain scrolling diary rather than a deck of cards. */
+.feed{
+  flex:1 1 0%;min-height:0;height:auto;max-height:none;overflow-x:hidden;overflow-y:auto;
+  padding:5px 12px 12px;gap:0;background:#fff;overscroll-behavior:contain;
+  scrollbar-width:thin;scrollbar-color:#d7e1e8 transparent;
+}
+.feed::-webkit-scrollbar{width:3px}
+.feed::-webkit-scrollbar-thumb{background:#d7e1e8;border-radius:99px}
+.agegroup{padding:11px 0 5px;margin:0;display:flex;align-items:center;gap:0;font-size:13px;font-weight:850;color:var(--reference-blue)}
+.agegroup:after{display:none}
+.logcard,.logcard.good,.logcard.bad,.logcard.special{
+  display:block;margin:0;padding:2px 0 6px;border:0;border-radius:0;
+  border-bottom:0;background:#fff;box-shadow:none;animation:none;
+}
+.logicon{display:none!important}
+.logcontent{display:block;min-width:0}
+.logtitle{
+  margin:0 0 2px;font-size:12.5px;line-height:1.35;font-weight:750;
+  color:#3f5968;overflow-wrap:anywhere;
+}
+.logtext{margin:0;font-size:12.5px;line-height:1.5;color:#5f6f78;overflow-wrap:anywhere}
+.logcard.good .logtitle,.logcard.good .logtext{color:#286d40}
+.logcard.bad .logtitle,.logcard.bad .logtext{color:#b52b2b}
+.logcard.special .logtitle{color:#3f5968}
+.logcard.special .logtext{color:#5f6f78}
+.empty{border:0;border-radius:0;padding:20px 8px;margin:0;text-align:center;background:#fff;color:#657680;line-height:1.7}
+
+/* Match the classic five-item bottom dock: life stage, assets, age, relationships, activities. */
+.bottom-dock{
+  position:fixed;left:50%;right:auto;bottom:0;inset:auto auto 0 50%;
+  transform:translateX(-50%);z-index:40;width:100%;max-width:450px;margin:0;
+  display:flex;flex-direction:column;padding:0 0 env(safe-area-inset-bottom);
+  border:0;background:#fff;box-shadow:none;
+}
+.nav{
+  order:0;height:73px;min-height:73px;flex:0 0 73px;padding:0 3px;
+  display:grid;grid-template-columns:1fr 1fr 82px 1fr 1fr;
+  align-items:center;gap:0;overflow:visible;background:var(--reference-blue);
+  border:0;border-top:1px solid var(--reference-blue-deep);
+}
+.navbtn{
+  min-width:0;min-height:64px;padding:4px 1px 2px;border:0;border-radius:0;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
+  background:transparent;color:#fff;font-size:9px;font-weight:750;line-height:1.1;
+}
+.navbtn .navico{
+  width:34px;height:34px;flex:0 0 34px;border:1px solid #ffffff8c;border-radius:50%;
+  background:var(--reference-aqua);color:#fff;display:grid;place-items:center;
+  font-size:18px;line-height:1;filter:none;box-shadow:0 1px 2px #003c6844;
+}
+.navbtn:first-child .navico{background:#f47a20}
+.navbtn.active{background:#004e83;color:#fff;box-shadow:inset 0 2px 0 #ffffff16}
+.navbtn.active .navico{box-shadow:0 0 0 2px #ffffff47}
+.agebtn{
+  position:relative;z-index:5;justify-self:center;align-self:center;
+  width:78px;height:78px;min-width:78px;flex:0 0 78px;
+  margin-top:-14px;padding:0;border:3px solid #fff;border-radius:50%;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0;
+  color:#fff;background:var(--reference-green);box-shadow:0 1px 4px #002d3d75;
+  font-size:12px;font-weight:1000;line-height:1.05;
+}
+.agebtn span:first-child{font-size:35px;line-height:.9;font-weight:400}
+.agebtn:active{transform:scale(.96);background:#07832f}
+.stats{
+  order:1;display:flex;flex-direction:column;gap:4px;margin:0;
+  padding:8px 10px 9px;background:#f1f2f2;border:0;border-top:1px solid #d0d5d8;border-radius:0;
+}
+.statrow{
+  display:grid;grid-template-columns:78px minmax(0,1fr);align-items:center;
+  gap:7px;width:100%;min-width:0;height:14px;
+}
+.stathead{width:auto;min-width:0;flex:initial;display:flex;align-items:center;justify-content:flex-start;margin:0;font-size:10px}
+.statlabel{font-size:10px;line-height:1;color:#455660;font-weight:700;white-space:nowrap}
+.statbar{width:100%;min-width:0}
+.track{position:relative;isolation:isolate;display:block;width:100%;height:14px;background:#cbd7df;border-radius:0;overflow:hidden}
+.fill{position:absolute;top:0;right:0;bottom:0;z-index:0;height:100%;border-radius:0;transition:width .2s ease}
+.statvalue{
+  position:absolute;inset:0;z-index:1;width:100%;display:flex;align-items:center;justify-content:center;
+  font-size:9px;font-weight:900;line-height:1;color:#fff;direction:ltr;
+  text-shadow:0 1px 1px #10232d55;pointer-events:none;
+}
+@media(max-width:380px){
+  .topbar{height:50px;min-height:50px;flex-basis:50px;grid-template-columns:34px minmax(0,1fr) 34px;padding-inline:5px}
+  .menu-trigger,.top-actions .header-action{width:30px;height:30px}
+  .brandlogo{font-size:21px}.brand-symbol{width:25px;height:25px;flex-basis:25px;font-size:15px}
+  .hero{height:64px;min-height:64px;flex-basis:64px;padding:5px 7px;gap:4px}
+  .identity-line{gap:3px}.name{font-size:13px}.identity-role .role-tag{font-size:9px}
+  .identity-meta{font-size:7.5px;gap:4px}.wealth{min-width:75px;max-width:96px}.wealthnum{font-size:14px}.wealthlabel{font-size:8px}
+  .nav{height:67px;min-height:67px;flex-basis:67px;grid-template-columns:1fr 1fr 70px 1fr 1fr;padding-inline:1px}
+  .navbtn{min-height:59px;font-size:8px;gap:2px}.navbtn .navico{width:30px;height:30px;flex-basis:30px;font-size:16px}
+  .agebtn{width:66px;height:66px;min-width:66px;flex-basis:66px;margin-top:-11px}.agebtn span:first-child{font-size:30px}
+  .stats{padding:7px 7px 8px;gap:3px}.statrow{grid-template-columns:68px minmax(0,1fr);gap:5px;height:13px}
+  .statlabel{font-size:8.5px}.track{height:12px}.statvalue{font-size:8px}
+}
+@media(max-height:680px){
+  .nav{height:63px;min-height:63px;flex-basis:63px}
+  .navbtn{min-height:57px}.navbtn .navico{width:29px;height:29px;flex-basis:29px}
+  .agebtn{width:62px;height:62px;min-width:62px;flex-basis:62px;margin-top:-10px}.agebtn span:first-child{font-size:28px}
+  .stats{padding-top:5px;padding-bottom:5px;gap:2px}.statrow{height:12px}.track{height:11px}
+}
+@media(min-width:451px){.bottom-dock{left:50%;right:auto;transform:translateX(-50%)}}
+body.theme-dark .topbar{background:#d92711}
+body.theme-dark .brandlogo strong{color:#ffdf26}
+body.theme-dark .hero{background:#263b48;border-color:#3c5563}
+body.theme-dark .name{color:#80c8f1}
+body.theme-dark .identity-info{background:#80c8f1;color:#17303d}
+body.theme-dark .identity-role .role-tag,body.theme-dark .identity-meta,body.theme-dark .wealthlabel{color:#c4d5df}
+body.theme-dark .wealthnum{color:#80c8f1}
+body.theme-dark .feed,body.theme-dark .logcard,body.theme-dark .logcard.good,body.theme-dark .logcard.bad,body.theme-dark .logcard.special{background:#17232c}
+body.theme-dark .agegroup{color:#80c8f1}
+body.theme-dark .logtitle,body.theme-dark .logtext,body.theme-dark .logcard.special .logtitle,body.theme-dark .logcard.special .logtext{color:#dce6ec}
+body.theme-dark .logcard.good .logtitle,body.theme-dark .logcard.good .logtext{color:#8cdaad}
+body.theme-dark .logcard.bad .logtitle,body.theme-dark .logcard.bad .logtext{color:#ff9ba5}
+body.theme-dark .nav{background:#075078;border-color:#204658}
+body.theme-dark .navbtn.active{background:#123b54}
+body.theme-dark .stats{background:#1f2d36;border-color:#354651}
+body.theme-dark .statlabel{color:#dce6ec}
+body.theme-dark .track{background:#344651}
+body.theme-dark .statvalue{color:#fff;text-shadow:0 1px #0009}
+body.theme-dark .agebtn{border-color:#17232c}
+body.theme-dark .empty{background:#17232c;color:#dce6ec}
+body.text-large .logtitle,body.text-large .logtext{font-size:14px;line-height:1.7}
+body.text-large .name{font-size:15px}
+body.text-large .statlabel{font-size:10px}
+body.text-large .navbtn{font-size:9px}
+@media(prefers-reduced-motion:reduce){.agebtn,.fill,.logcard{animation:none!important;transition:none!important}}
+
+
+/* Preserve the classic left-to-right tab and meter geometry while text remains Arabic. */
+.topbar{direction:ltr}
+.brandlogo{direction:rtl}
+.nav{direction:ltr}
+.navbtn{direction:rtl}
+.stats,.statrow{direction:ltr}
+.stathead{direction:ltr}
+.statlabel{direction:rtl;text-align:right}
+.fill{left:0;right:auto}
+
+
+/* Final reference geometry: left-to-right tabs, inline identity, and left-origin status bars. */
+:root{--reference-red:#f02e12;--reference-blue:#075c98}
+.topbar{direction:ltr}
+.brandlogo{direction:rtl}
+.hero{direction:ltr}
+.profile{direction:rtl}
+.nav{direction:ltr}
+.navbtn{direction:rtl}
+.stats,.statrow{direction:ltr}
+.stathead{direction:ltr}
+.statlabel{direction:rtl;text-align:right}
+.fill{left:0;right:auto}

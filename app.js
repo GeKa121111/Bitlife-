@@ -548,8 +548,19 @@ function avatar(){
  if(state.age<60)return state.gender==='male'?'🧑🏻':'👩🏻';
  return state.gender==='male'?'👴🏻':'👵🏻';
 }
+function stageTabLabel(){
+ if(state.status==='متوفى')return 'نهاية';
+ if(state.prison)return 'سجين';
+ if(state.retired||state.age>=65)return 'مسن';
+ if(state.age<2)return 'رضيع';
+ if(state.age<6)return 'طفل';
+ if(state.age<18||state.education.yearsLeft>0)return 'طالب';
+ if(state.age<25)return 'شاب';
+ return 'بالغ';
+}
 function renderHeader(){
  $('avatar').childNodes[0].nodeValue=avatar();$('flag').textContent=state.place.flag;
+ if($('identityFlag'))$('identityFlag').textContent=state.place.flag;
  $('characterName').innerHTML=esc(state.name)+((state.fame||0)>=25?' <span class="fame-star" aria-label="مشهور">⭐</span>':'');
  $('ageTag').textContent='العمر '+fmt(state.age)+' سنة';$('titleTag').textContent=title();
  $('cityTag').textContent=state.place.city+'، '+state.place.country;$('bankBalance').textContent=cash(state.bank);
@@ -559,11 +570,13 @@ function renderHeader(){
  if($('fameTag'))$('fameTag').textContent='⭐ الشهرة '+clamp(state.fame||0)+'%';
  if($('familyTag'))$('familyTag').textContent='👪 الأبناء '+fmt((state.children||[]).length);
  const careerNav=Array.from(document.querySelectorAll('[data-panel]')).find(b=>b.dataset.panel==='career');
- if(careerNav&&careerNav.querySelector){const ico=careerNav.querySelector('.navico');if(ico)ico.textContent=(state.age<18||state.education.yearsLeft>0)?'🎓':'💼';}
+ if(careerNav&&careerNav.querySelector){
+  const ico=careerNav.querySelector('.navico');if(ico)ico.textContent=avatar();
+  const label=$('stageNavLabel');if(label)label.textContent=stageTabLabel();
+ }
 }
 function renderStats(){
  const rows=[['happiness','😄','السعادة'],['health','❤️','الصحة'],['smart','🧠','الذكاء'],['looks','😎','المظهر']];
- if((state.fame||0)>0)rows.push(['fame','⭐','الشهرة']);
  $('statsPanel').innerHTML=rows.map(r=>{
   const v=clamp(r[0]==='fame'?(state.fame||0):state.stats[r[0]]);
   const color=r[0]==='fame'?'#FDD835':v>=31?'#43A047':v>=13?'#FB8C00':'#E53935';
@@ -2277,6 +2290,15 @@ document.querySelectorAll('[data-panel]').forEach(btn=>btn.addEventListener('cli
 $('ageUpBtn').addEventListener('click',ageUp);
 if($('menuBtn'))$('menuBtn').addEventListener('click',()=>mainMenu());
 if($('profileBtn'))$('profileBtn').addEventListener('click',()=>achievementsMenu());
+if($('characterInfoBtn'))$('characterInfoBtn').addEventListener('click',()=>{
+ if(!state)return;
+ const occupation=state.job?state.job.title:state.specialCareer?state.specialCareer.title:state.education.yearsLeft>0?'طالب جامعي':title();
+ const details='العمر: '+fmt(state.age)+' سنة · '+state.place.city+'، '+state.place.country+'. الحالة: '+occupation+'. الرصيد: '+cash(state.bank)+'. الصحة '+clamp(state.stats.health)+'% · السعادة '+clamp(state.stats.happiness)+'% · الذكاء '+clamp(state.stats.smart)+'% · المظهر '+clamp(state.stats.looks)+'%.';
+ info('👤','ملف الشخصية',details,[
+  choice('🪪','تعديل بيانات الشخصية','الاسم وبيانات الحياة.',()=>{closeModal();customizeMenu();}),
+  choice('✓','تمام','',closeModal)
+ ]);
+});
 if($('heirloomBtn'))$('heirloomBtn').addEventListener('click',()=>dailyReward());
 function init(){
  loadUiSettings();
