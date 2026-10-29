@@ -73,7 +73,7 @@ for (const system of ['function familyMenu()', 'function petsMenu()', 'function 
 }
 assert.match(index, /id="fameTag"/);
 assert.match(index, /id="profileBtn"/);
-assert.match(index, /حياة <span>\|<\/span> BITLIFE/);
+assert.match(index, /حياة <span>\|<\/span> محاكي الحياة/);
 assert.match(index, /id="heirloomBtn"/);
 assert.match(index, /class="bottom-dock">[\s\S]*<nav class="nav"[\s\S]*id="statsPanel"/);
 assert.match(css, /height:54px;min-height:54px;flex:0 0 54px/);
@@ -165,4 +165,4 @@ assert.ok(get('modalRoot').innerHTML.includes('العلاقات'), 'relationship
 get('menuBtn').dispatch('click');
 assert.ok(get('modalRoot').innerHTML.includes('القائمة الرئيسية'), 'main menu opens from the top bar');
 assert.ok(get('modalRoot').innerHTML.includes('مقبرة الحيوات'), 'main menu provides access to the cemetery');
-console.log('Smoke tests passed: RTL page, responsive BitLife-inspired UI, 40+ events, new life, autosave, age-up, career and relationship navigation.');
+console.log('Smoke tests passed: RTL page, responsive Arabic life-sim UI, 40+ events, new life, autosave, age-up, career and relationship navigation.');

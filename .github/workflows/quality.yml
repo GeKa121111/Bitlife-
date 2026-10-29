@@ -26,3 +26,5 @@ jobs:
         run: node --check tests/smoke.cjs
       - name: Run game smoke tests
         run: node tests/smoke.cjs
+      - name: Run regression checks
+        run: node --test tests/quality.test.cjs
