@@ -18,7 +18,13 @@ const places=[
  {country:'مصر',city:'القاهرة',flag:'🇪🇬',start:18000,unit:'ج.م'},
  {country:'مصر',city:'الإسكندرية',flag:'🇪🇬',start:16000,unit:'ج.م'},
  {country:'السعودية',city:'جدة',flag:'🇸🇦',start:18000,unit:'ر.س'},
- {country:'الإمارات',city:'دبي',flag:'🇦🇪',start:18000,unit:'د.إ'}
+ {country:'الإمارات',city:'دبي',flag:'🇦🇪',start:18000,unit:'د.إ'},
+ {country:'الولايات المتحدة',city:'نيويورك',flag:'🇺🇸',start:26000,unit:'دولار'},
+ {country:'المملكة المتحدة',city:'لندن',flag:'🇬🇧',start:22000,unit:'£'},
+ {country:'كندا',city:'تورونتو',flag:'🇨🇦',start:21000,unit:'دولار كندي'},
+ {country:'ألمانيا',city:'برلين',flag:'🇩🇪',start:20000,unit:'€'},
+ {country:'فرنسا',city:'باريس',flag:'🇫🇷',start:19000,unit:'€'},
+ {country:'المغرب',city:'الدار البيضاء',flag:'🇲🇦',start:14000,unit:'د.م'}
 ];
 const parentJobs=['مدرس','محاسب','مهندسة','طبيب','موظف حكومي','صاحب محل','ممرضة','موظف بنك','سائق','محامية','فني كهرباء','ربة منزل'];
 const jobs=[
@@ -30,7 +36,18 @@ const jobs=[
  {id:'teacher',title:'مدرس',salary:132000,age:22,smart:50,edu:2,emoji:'📚',desc:'تعليم ومساعدة أجيال جديدة.'},
  {id:'engineer',title:'مهندس',salary:216000,age:22,smart:58,edu:4,emoji:'🦺',desc:'يحتاج دراسة هندسية.'},
  {id:'doctor',title:'طبيب',salary:300000,age:25,smart:76,edu:5,emoji:'🩺',desc:'مسار طويل ومسؤولية كبيرة.'},
- {id:'founder',title:'صاحب مشروع',salary:180000,age:23,smart:52,edu:0,emoji:'🚀',desc:'فرصة للنمو مع مخاطرة أعلى.'}
+ {id:'founder',title:'صاحب مشروع',salary:180000,age:23,smart:52,edu:0,emoji:'🚀',desc:'فرصة للنمو مع مخاطرة أعلى.'},
+ {id:'nurse',title:'ممرض',salary:168000,age:22,smart:52,edu:2,emoji:'🩹',desc:'رعاية المرضى والعمل ضمن فريق طبي.'},
+ {id:'lawyer',title:'محامي',salary:264000,age:24,smart:68,edu:4,emoji:'⚖️',desc:'دراسة قانونية وتفاوض ودفاع عن العملاء.'},
+ {id:'accountant',title:'محاسب',salary:144000,age:21,smart:48,edu:2,emoji:'🧾',desc:'إدارة الميزانيات والمراجعة المالية.'},
+ {id:'chef',title:'طاهٍ محترف',salary:150000,age:20,smart:38,edu:1,emoji:'👨‍🍳',desc:'مهارة وخبرة وترقٍ داخل المطابخ.'},
+ {id:'journalist',title:'صحفي',salary:156000,age:21,smart:55,edu:2,emoji:'📰',desc:'بحث وكتابة ومقابلات.'},
+ {id:'pilot',title:'طيار',salary:360000,age:25,smart:70,edu:4,emoji:'✈️',desc:'تدريب مكلف ومسؤولية عالية.'},
+ {id:'police',title:'ضابط شرطة',salary:180000,age:21,smart:42,edu:2,emoji:'👮',desc:'خدمة عامة وانضباط ومخاطر مهنية.'},
+ {id:'scientist',title:'باحث علمي',salary:276000,age:25,smart:80,edu:5,emoji:'🔬',desc:'بحث وتجارب ومسار أكاديمي طويل.'},
+ {id:'athlete',title:'رياضي محترف',salary:220000,age:18,smart:25,edu:0,emoji:'🏅',desc:'الموهبة والتدريب والصحة تحدد مستقبلك.'},
+ {id:'artist',title:'فنان',salary:120000,age:18,smart:38,edu:0,emoji:'🎭',desc:'الدخل متغير ويعتمد على الموهبة والسمعة.'},
+ {id:'politician',title:'سياسي',salary:240000,age:28,smart:62,edu:3,emoji:'🏛️',desc:'سمعة عامة وعلاقات وقرارات صعبة.'}
 ];
 const majors=[
  {id:'commerce',title:'تجارة وإدارة',min:35,edu:2,cost:18000,years:4,emoji:'📊',desc:'إدارة ومال وأعمال.'},
@@ -258,14 +275,19 @@ function newLife(){
  const father=makePerson('male','الأب','👨',28+Math.floor(Math.random()*12),68+Math.floor(Math.random()*28));
  const mother=makePerson('female','الأم','👩',25+Math.floor(Math.random()*12),72+Math.floor(Math.random()*26));
  const sibling=makePerson(gender,'الأخ/الأخت','🧒',Math.floor(Math.random()*8),55+Math.floor(Math.random()*35));
- return {version:1,name:pick(names[gender])+' '+pick(names.family),gender,age:0,place,bank:place.start,stats:{happiness:65+Math.floor(Math.random()*26),health:76+Math.floor(Math.random()*22),smart:35+Math.floor(Math.random()*41),looks:35+Math.floor(Math.random()*51)},education:{level:0,school:'لم تبدأ الدراسة',major:null,yearsLeft:0,tuition:0},job:null,performance:50,assets:[],family:[father,mother,sibling],friends:[],partner:null,log:[],accomplishments:['بدأت رحلة الحياة'],status:'حي',cause:null,retired:false,yearCount:0,wealthPeak:place.start};
+ return {version:1,name:pick(names[gender])+' '+pick(names.family),gender,age:0,place,bank:place.start,stats:{happiness:65+Math.floor(Math.random()*26),health:76+Math.floor(Math.random()*22),smart:35+Math.floor(Math.random()*41),looks:35+Math.floor(Math.random()*51)},education:{level:0,school:'لم تبدأ الدراسة',major:null,yearsLeft:0,tuition:0},job:null,jobHistory:[],specialCareer:null,performance:50,assets:[],investments:[],business:null,family:[father,mother,sibling],friends:[],partner:null,married:false,children:[],pets:[],hobbies:[],fame:0,reputation:50,crimeRecord:0,prison:null,debt:0,willDistribution:'الأسرة بالتساوي',heirlooms:[],dailyRewardDate:null,legacy:{name:null,inheritance:0,heirloom:null},driversLicense:false,travelHistory:[],log:[],accomplishments:['بدأت رحلة الحياة'],status:'حي',cause:null,retired:false,yearCount:0,wealthPeak:place.start};
 }
 function save(){
  try{localStorage.setItem(KEY,JSON.stringify(state));$('saveStatus').textContent='● محفوظة';}
  catch(e){$('saveStatus').textContent='⚠ الحفظ غير متاح';}
 }
 function load(){
- try{const x=JSON.parse(localStorage.getItem(KEY)||'null');if(x&&x.version===1&&x.stats&&Array.isArray(x.log))return x;}catch(e){}
+ try{const x=JSON.parse(localStorage.getItem(KEY)||'null');if(x&&x.version===1&&x.stats&&Array.isArray(x.log)){
+  const defaults={jobHistory:[],specialCareer:null,investments:[],business:null,married:false,children:[],pets:[],hobbies:[],fame:0,reputation:50,crimeRecord:0,prison:null,debt:0,willDistribution:'الأسرة بالتساوي',heirlooms:[],dailyRewardDate:null,legacy:{name:null,inheritance:0,heirloom:null},driversLicense:false,travelHistory:[]};
+  Object.keys(defaults).forEach(k=>{if(x[k]===undefined||x[k]===null)x[k]=defaults[k];});
+  if(!Array.isArray(x.family))x.family=[];if(!Array.isArray(x.friends))x.friends=[];if(!Array.isArray(x.assets))x.assets=[];
+  return x;
+ }}catch(e){}
  return null;
 }
 function flash(text,bad=false){
@@ -317,6 +339,8 @@ function renderHeader(){
  $('bankBalance').classList.toggle('negative',state.bank<0);
  $('wealthNote').textContent=state.bank<0?'رصيدك بالسالب — راجع مصاريفك':state.bank>100000?'بتبني أمان مالي كويس':'كل سنة فرصة جديدة';
  $('lifeMeta').textContent='السنة '+fmt(state.yearCount+1)+' من حكايتك';
+ if($('fameTag'))$('fameTag').textContent='⭐ الشهرة '+clamp(state.fame||0)+'%';
+ if($('familyTag'))$('familyTag').textContent='👪 الأبناء '+fmt((state.children||[]).length);
 }
 function renderStats(){
  const rows=[['happiness','😄','السعادة'],['health','❤️','الصحة'],['smart','🧠','الذكاء'],['looks','✨','المظهر']];
@@ -377,6 +401,7 @@ function chooseAdaptiveEvent(pool){
 }
 function randomEvent(){
  if(!validState())return;
+ if(state.prison){prisonEvent();return;}
  const pool=availableEvents();if(!pool.length){info('🌤️','سنة هادئة','عدّت السنة من غير حدث استثنائي، بس اختياراتك اليومية لسه بتبني مستقبلك.');return;}
  const e=chooseAdaptiveEvent(pool);
  modal(e.icon,e.title,e.text,e.choices.map(c=>choice('›',c.label,c.desc,()=>{
@@ -396,6 +421,9 @@ function afterDecision(){if(!validState())return;if(state.stats.health<=0){death
 function ageUp(){
  if(!validState())return;
  state.age++;state.yearCount++;
+ (state.children||[]).forEach(c=>{c.age=(c.age||0)+1;if(c.age===6)log('🏫','أول يوم مدرسة','بدأ '+c.name+' رحلته الدراسية.','special');if(c.age===18)log('🎓','ابنك/بنتك كبر','وصل '+c.name+' لسن الرشد وبدأ يرسم طريقه.','good');});
+ if(state.partner&&typeof state.partner.age==='number')state.partner.age++;
+ if(state.prison&&state.prison.years>0){state.prison.years--;state.stats.happiness=clamp(state.stats.happiness-5);state.stats.health=clamp(state.stats.health-2);if(state.prison.years===0){log('🔓','انتهاء العقوبة','انتهت مدة العقوبة وعُدت لحياتك خارج السجن.','special');state.prison=null;}}
  const assetUpkeep=state.assets.reduce((s,a)=>s+a.upkeep,0);
  if(state.job&&!state.retired){
    const salary=Math.round(state.job.salary*state.performance/100);state.bank+=salary;flash('+'+cash(salary));
@@ -407,6 +435,14 @@ function ageUp(){
    log('🧾','مصاريف المعيشة','دفعت '+cash(living)+' لمصاريف السنة من أكل ومواصلات واحتياجات أساسية.');
  }
  if(assetUpkeep){state.bank-=assetUpkeep;flash('-'+cash(assetUpkeep),true);log('🔧','صيانة الأصول','صيانة ممتلكاتك كلّفتك '+cash(assetUpkeep)+'.','bad');}
+ if(state.debt>0){const interest=Math.max(100,Math.round(state.debt*.08));state.debt+=interest;state.bank-=interest;log('🏦','فوائد الديون','زادت ديونك بمقدار '+cash(interest)+' بسبب الفوائد. إجمالي الدين '+cash(state.debt)+'.','bad');}
+ if((state.investments||[]).length){let totalGain=0;state.investments.forEach(inv=>{const before=inv.value;const move=inv.kind==='مخاطرة عالية'?(Math.random()*.46-.18):(Math.random()*.24-.04);inv.value=Math.max(0,Math.round(inv.value*(1+move)));totalGain+=inv.value-before;});if(totalGain)log('📈','تقرير الاستثمارات',(totalGain>=0?'استثماراتك زادت بقيمة ':'استثماراتك خسرت بقيمة ')+cash(Math.abs(totalGain))+'. السوق بيتحرك صعودًا وهبوطًا. ',totalGain>=0?'good':'bad');}
+ if(state.business){const revenue=Math.round(state.business.value*(.03+Math.random()*.08));const costs=Math.round(state.business.value*(.02+Math.random()*.05));const profit=revenue-costs;state.bank+=profit;state.business.value=Math.max(1000,Math.round(state.business.value*(profit>=0?1.04:.97)));log('🏪','نتيجة المشروع',(profit>=0?'حققت أرباحًا ':'حققت خسارة ')+cash(Math.abs(profit))+' من مشروعك هذا العام.','special');}
+ if((state.pets||[]).length){const care=state.pets.length*350;state.bank-=care;state.pets.forEach(p=>{p.age=(p.age||0)+1;p.happiness=clamp((p.happiness||70)+(chance(.7)?3:-6));});if(state.bank<0)log('🐾','مصاريف الحيوانات','رعاية الحيوانات كلفتك '+cash(care)+' هذا العام.','bad');}
+ if((state.hobbies||[]).length&&chance(.7)){state.stats.happiness=clamp(state.stats.happiness+1);if(state.hobbies.some(h=>h.id==='reading'||h.id==='writing'))state.stats.smart=clamp(state.stats.smart+1);}
+ if(state.partner){const drift=state.partner.relationshipLevel<35?-3:(chance(.65)?1:-1);state.partner.relationshipLevel=clamp((state.partner.relationshipLevel||50)+drift);if(state.married&&state.partner.relationshipLevel<15&&chance(.25)){state.married=false;log('💔','أزمة زوجية','الخلافات زادت بينك وبين '+state.partner.name+'. محتاجين حوار واهتمام قبل ما العلاقة تنهار.','bad');}}
+ if(state.specialCareer){const income=Math.round((state.specialCareer.income||0)*(0.6+(state.fame||0)/120));if(income>0){state.bank+=income;log('🌟','دخل من الشهرة','جالك دخل بقيمة '+cash(income)+' من مسارك في '+state.specialCareer.title+'.','good');}state.fame=clamp((state.fame||0)+(chance(.6)?2:-1));}
+ if(state.age>=18&&state.bank<0){state.debt+=Math.min(20000,Math.abs(state.bank)*.12);}
  if(state.age>=3){
    state.stats.health=clamp(state.stats.health+(chance(.5)?1:-1)+(state.age>55?-2:0));
    state.stats.happiness=clamp(state.stats.happiness+(chance(.5)?2:-1));
