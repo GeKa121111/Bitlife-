@@ -2036,7 +2036,7 @@ function ensureDailyChallengeBoard(){
   let streak=old&&old.lastCompletionDate===yesterday?Number(old.streak)||0:0;
   let streakSaved=false;
   const twoDaysAgo=challengeYesterdayKey(new Date(now.getTime()-86400000));
-  if(!streak&&old&&old.date===yesterday&&(Number(old.streak)||0)>0&&old.lastCompletionDate===twoDaysAgo&&(permanentPerks.streakSavers||0)>0){
+  if(!streak&&old&&(Number(old.streak)||0)>0&&old.lastCompletionDate===twoDaysAgo&&(permanentPerks.streakSavers||0)>0){
    streak=Number(old.streak)||0;streakSaved=true;permanentPerks.streakSavers--;persistPermanentPerks();
   }
   state.dailyChallenges={date:today,ids:eligible.slice(0,3).map(c=>c.id),claimed:[],streak,lastCompletionDate:old&&old.lastCompletionDate||null,streakSaved};
@@ -2348,7 +2348,7 @@ function loadUiSettings(){
  try{
   const raw=JSON.parse(localStorage.getItem(SETTINGS_KEY)||'null');
   if(raw&&typeof raw==='object'&&!Array.isArray(raw)){
-   if(raw.theme==='dark'||raw.theme==='light')uiSettings.theme=raw.theme;
+   if(raw.theme==='dark'||raw.theme==='light'||raw.theme==='gold')uiSettings.theme=raw.theme;
    if(raw.textScale==='large'||raw.textScale==='normal')uiSettings.textScale=raw.textScale;
   }
  }catch(e){}
