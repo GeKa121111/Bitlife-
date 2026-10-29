@@ -40,6 +40,7 @@ assert.match(app, /function editCharacterTraits\(\)/, 'player traits editor shou
 assert.match(app, /function editNpcMenu\(\)/, 'NPC trait editor should exist');
 assert.match(app, /function specialCareerHistoryMenu\(\)/, 'specialist career history should be accessible');
 assert.match(app, /\{id:'esports',title:'الرياضات الإلكترونية',emoji:'🎮',min:16/, 'the original esports career should be available from age 16');
+assert.match(app, /function ensureGamingTalent\(\)/, 'gaming talent should be normalized after loading or rewinding older saves');
 assert.match(app, /function createEsportsCareer\(\)/, 'esports profile should have a dedicated persisted state');
 assert.match(app, /function ensureEsportsCareer\(\)/, 'esports profile should normalize older or incomplete data');
 assert.match(app, /function esportsCareerMenu\(\)/, 'esports should have a dedicated career hub');
