@@ -30,9 +30,10 @@ assert.match(app, /function timeMachineMenu\(\)/, 'the player should be able to 
 assert.match(app, /const parsed=JSON\.parse\(history\[index\]\),snap=parsed&&parsed\.snapshotVersion===1\?parsed\.state:parsed/, 'rewind menu should support both compact and legacy snapshots');
 assert.match(app, /function rewindToSnapshot\(index\)/, 'time rewind should restore a selected prior state');
 assert.match(app, /timeMachineSnapshots:\[\]/, 'new lives should initialize the time-machine history');
-assert.match(app, /state\.timeMachineSnapshots\.push\(JSON\.stringify\(\{snapshotVersion:1,logLength,state:snapshot\}\)\)/, 'each age-up should preserve a compact rewind point');
+assert.match(app, /const checkpoint=\{snapshotVersion:1,logLength,state:snapshot\};if\(logSnapshot\)checkpoint\.logSnapshot=logSnapshot;\s*state\.timeMachineSnapshots\.push\(JSON\.stringify\(checkpoint\)\)/, 'each age-up should preserve a compact rewind point and an exact log checkpoint near the rolling-log cap');
+assert.match(app, /const logSnapshot=logLength>=280&&Array\.isArray\(state\.log\)\?JSON\.parse\(JSON\.stringify\(state\.log\)\):null/, 'rewind should checkpoint the full log before later events can trim it');
 assert.match(app, /delete snapshot\.log/, 'rewind snapshots should omit duplicated event logs');
-assert.match(app, /restored\.log=Array\.isArray\(state\.log\)\?state\.log\.slice\(0,Math\.max\(0,Number\(parsedSnapshot\.logLength\)\|\|0\)\):\[\]/, 'rewind should restore the event log to the saved length');
+assert.match(app, /restored\.log=Array\.isArray\(parsedSnapshot\.logSnapshot\)\?parsedSnapshot\.logSnapshot:\(Array\.isArray\(state\.log\)\?state\.log\.slice\(0,Math\.max\(0,Number\(parsedSnapshot\.logLength\)\|\|0\)\):\[\]\)/, 'rewind should prefer the exact saved log and retain fallback support for older snapshots');
 assert.match(app, /else\{restored=parsedSnapshot;\}/, 'legacy raw snapshots should remain readable');
 assert.match(app, /timeMachineDeathBtn/, 'the end-of-life panel should offer a rewind path when available');
 assert.match(app, /function editCharacterTraits\(\)/, 'player traits editor should exist');
@@ -243,4 +244,42 @@ get('menuBtn').dispatch('click');
 assert.ok(get('modalRoot').innerHTML.includes('إعدادات العرض'), 'display settings should be reachable from the main menu');
 assert.ok(get('modalRoot').innerHTML.includes('القائمة الرئيسية'), 'main menu opens from the top bar');
 assert.ok(get('modalRoot').innerHTML.includes('مقبرة الحيوات'), 'main menu provides access to the cemetery');
-console.log('Smoke tests passed: RTL page, responsive Arabic life-sim UI, offline PWA shell, 40+ events, new life, autosave, age-up, career and relationship navigation.');
+
+// Exercise backup recovery in a fresh app context, not just source-text assertions.
+const backupKey = 'hekayat_hayah_save_backup_v1';
+assert.ok(store.has(backupKey), 'age-up should create a last-known-good backup');
+const recoveryStore = new Map(store);
+recoveryStore.set('hekayat_hayah_save_v1', '{corrupted-json');
+const recoveryElements = new Map();
+const recoveryGet = id => {
+  if (!recoveryElements.has(id)) recoveryElements.set(id, new FakeElement(id));
+  return recoveryElements.get(id);
+};
+const recoveryPanels = ['career','assets','relations','activities'].map(panel => {
+  const el = new FakeElement(panel + 'RecoveryNav'); el.dataset.panel = panel; return el;
+});
+const recoveryContext = {
+  document: {
+    getElementById: recoveryGet,
+    querySelectorAll(selector) {
+      if (selector === '[data-panel]' || selector === '.navbtn') return recoveryPanels;
+      return [];
+    },
+    createElement(tag) { return new FakeElement(tag); }
+  },
+  localStorage: {
+    getItem(key) { return recoveryStore.has(key) ? recoveryStore.get(key) : null; },
+    setItem(key, value) { recoveryStore.set(key, String(value)); }
+  },
+  requestAnimationFrame(cb) { cb(); },
+  confirm() { return true; },
+  alert() {},
+  console
+};
+vm.runInNewContext(app, recoveryContext, { timeout: 3000 });
+const recovered = JSON.parse(recoveryStore.get('hekayat_hayah_save_v1'));
+const expectedBackup = JSON.parse(store.get(backupKey));
+assert.equal(recovered.lifeId, expectedBackup.lifeId, 'corrupt primary save should recover the previous life');
+assert.equal(recovered.age, expectedBackup.age, 'recovery should restore the checkpoint age');
+assert.match(recoveryGet('saveStatus').textContent, /نسخة مستردة/, 'the interface should disclose that recovery occurred');
+console.log('Smoke tests passed: RTL page, responsive Arabic life-sim UI, offline PWA shell, age-up, autosave, recovery from a corrupted primary save, career and relationship navigation.');

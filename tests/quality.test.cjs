@@ -161,3 +161,13 @@ test('واجهة الهاتف تقرّب الشاشة الرئيسية من تر
   assert.match(finalUi, /body\.theme-dark \.nav\{[^}]*background:#075078/);
   assert.match(finalUi, /@media\(max-width:380px\)/);
 });
+
+
+test('الرجوع بالزمن يستعيد سجل الأحداث الصحيح بعد بلوغ حد السجل الدوّار', () => {
+  const ageUp = functionSource('ageUp', 'age18Choice');
+  const rewind = functionSource('rewindToSnapshot', 'customizeMenu');
+  assert.match(ageUp, /const logSnapshot=logLength>=280&&Array\.isArray\(state\.log\)\?JSON\.parse\(JSON\.stringify\(state\.log\)\):null/);
+  assert.match(ageUp, /if\(logSnapshot\)checkpoint\.logSnapshot=logSnapshot/);
+  assert.match(rewind, /Array\.isArray\(parsedSnapshot\.logSnapshot\)\?parsedSnapshot\.logSnapshot/);
+  assert.match(rewind, /Number\(parsedSnapshot\.logLength\)/, 'older snapshots without a log checkpoint remain supported');
+});
