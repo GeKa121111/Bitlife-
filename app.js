@@ -1170,7 +1170,7 @@ function jobAcceptanceChance(){
 function jobRequirementsMenu(job,requirements){
  const opts=[];
  if((Number(state.education&&state.education.level)||0)<job.edu)opts.push(choice('🎓','التعليم والجامعة','استكشف التخصصات التي ترفع مؤهلك.',()=>{closeModal();university(false);}));
- if(state.stats.smart<job.smart)opts.push(choice('📚','تطوير الذكاء','نشاط تعليمي مجاني يرفع الذكاء 4 نقاط.',()=>{closeModal();stat('smart',4);log('📚','تطوير المهارات','خصصت وقتًا للتعلم لتحسين فرصك المهنية.','good');render();info('📚','خطوة للأمام','ذكاؤك الحالي '+clamp(state.stats.smart)+'%. راجع الوظائف مرة أخرى.');}));
+ if(state.stats.smart<job.smart)opts.push(choice('📚','الهوايات والمهارات','طوّر مهاراتك من خلال القراءة والكتابة والممارسة.',()=>{closeModal();hobbiesMenu();}));
  opts.push(choice('↩️','رجوع للوظائف','',()=>{closeModal();showCareer();}));
  modal('🔒','متطلبات '+job.title,'لسه مش مؤهل للتقديم. '+requirements.join('؛ ')+'.',opts);
 }
