@@ -77,7 +77,7 @@ assert.match(app, /state\.partner\.relationshipLevel<45&&chance\(\.12\)/, 'high 
 assert.match(app, /function editNpcTraits\(n\)/);
 assert.match(app, /function eligibleChildrenForCoParent\(ex\)/, 'custody plans should only attach eligible minor children to the appropriate parent');
 assert.match(app, /function custodyChoiceMenu\(ex\)/, 'divorce should offer parenting arrangements for eligible minor children');
-assert.match(app, /function breakUp\(\)[\s\S]*eligibleChildrenForCoParent\(ex\)\)\{custodyChoiceMenu\(ex\);return;\}/, 'ending an unmarried relationship should also offer a parenting arrangement when shared minors exist');
+assert.match(app, /function breakUp\(\)[\s\S]*eligibleChildrenForCoParent\(ex\)\.length\)\{custodyChoiceMenu\(ex\);return;\}/, 'ending an unmarried relationship should also offer a parenting arrangement when shared minors exist');
 assert.match(app, /function createCoParentingPlan\(ex,mode\)/, 'custody agreements should be stored with the life');
 assert.match(app, /function coParentingMenu\(\)/, 'saved custody agreements should be manageable later');
 assert.match(app, /function coParentingPlanDetails\(plan\)/, 'custody agreements should have an editable details screen');
