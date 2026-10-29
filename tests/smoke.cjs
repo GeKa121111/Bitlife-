@@ -77,7 +77,7 @@ saved = JSON.parse(store.get('hekayat_hayah_save_v1'));
 assert.equal(saved.age, 1, 'age button increments the character age');
 assert.ok(saved.log.length >= 2, 'life log persists after an action');
 panels.find(p => p.dataset.panel === 'career').dispatch('click');
-assert.ok(get('modalRoot').innerHTML.includes('الدراسة والشغل'), 'career navigation opens the career panel');
+assert.ok(get('modalRoot').innerHTML.includes('لسه بدري'), 'career navigation blocks official work for a one-year-old');
 panels.find(p => p.dataset.panel === 'relations').dispatch('click');
 assert.ok(get('modalRoot').innerHTML.includes('العلاقات'), 'relationships navigation opens its panel');
 console.log('Smoke tests passed: RTL page, assets, 40+ events, new life, autosave, age-up, career and relationship navigation.');
