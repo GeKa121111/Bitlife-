@@ -135,20 +135,24 @@ for (const system of ['function familyMenu()', 'function petsMenu()', 'function 
 }
 assert.match(index, /id="fameTag"/);
 assert.match(index, /id="profileBtn"/);
-assert.match(index, /حياة <span>\|<\/span> محاكي الحياة/);
+assert.match(index, /class="brandlogo" aria-label="حياة"/);
+assert.match(index, /class="brand-symbol"/);
+assert.match(index, /id="identityFlag"/);
+assert.match(index, /id="characterInfoBtn"/);
+assert.match(index, /id="stageNavLabel"/);
 assert.match(index, /id="heirloomBtn"/);
 assert.match(index, /class="bottom-dock">[\s\S]*<nav class="nav"[\s\S]*id="statsPanel"/);
 assert.match(css, /height:54px;min-height:54px;flex:0 0 54px/);
-const finalUi = css.slice(css.lastIndexOf('/* BitLife reference layout pass 2'));
+const finalUi = css.slice(css.lastIndexOf('/* BitLife-like main screen: narrow brand bar'));
 assert.ok(finalUi.length > 0, 'the reference layout block should exist');
-assert.match(finalUi, /--life-nav:#0667a9/, 'the five-tab navigation should use the blue BitLife-style strip');
+assert.match(finalUi, /--reference-blue:#075c98/, 'the five-tab navigation should use the blue BitLife-style strip');
 assert.match(finalUi, /\.bottom-dock\s*\{[^}]*position:fixed[^}]*left:50%/s, 'the bottom dock should stay anchored to the device viewport');
 assert.match(finalUi, /\.nav\s*\{[^}]*order:0/s, 'tabs should appear above the meters');
 assert.match(finalUi, /\.stats\s*\{[^}]*order:1/s, 'status meters should appear beneath the tabs');
 assert.match(finalUi, /\.statrow\s*\{[^}]*grid-template-columns:80px minmax\(0,1fr\)/s, 'status bars should use the full row width');
 assert.match(finalUi, /\.fill\s*\{[^}]*position:absolute[^}]*right:0/s, 'status fills should render inside the track');
 assert.match(finalUi, /\.statvalue\s*\{[^}]*position:absolute[^}]*z-index:1/s, 'status values should overlay the progress bars');
-assert.match(serviceWorker, /hayah-shell-v4/, 'the app shell cache should refresh the new styles');
+assert.match(serviceWorker, /hayah-shell-v5/, 'the app shell cache should refresh the new styles');
 assert.match(app, /function schoolHub\(\)/);
 assert.match(app, /function maintainAsset\(index\)/);
 assert.match(app, /function schoolClubs\(\)/, 'student clubs should have interactive actions');
