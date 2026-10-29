@@ -2673,6 +2673,379 @@ function settingsMenu(){
  modal('⚙️','إعدادات العرض','الإعدادات دي بتتخزن على الجهاز بشكل مستقل عن ملف حياتك، ومش بتغيّر صيغة الحفظ القديم.',opts);
 }
 
+
+function cultMenu(){
+ if(!perkOwned('cultPack')){closeModal();info('🛕','توسعة المجتمع مقفولة','افتحها من متجر مزايا حياة.');return;}
+ const c=state.cult||(state.cult={founded:false,name:'',doctrine:'',members:[],fund:0,ceremonies:0,discipline:50});
+ if(!c.founded){
+  modal('🛕','تأسيس مجتمعك','أنشئ مقرًا لمجتمعك الخيالي، وحدد مبادئه وابدأ بتجنيد الأعضاء.',[
+   choice('🌱','مجتمع المعرفة','يركز على التعليم والتعاون؛ يجذب أعضاء أكثر استقرارًا.',()=>foundCult('المعرفة')),
+   choice('🌿','مجتمع الطبيعة','يركز على الطبيعة والرعاية والأنشطة المشتركة.',()=>foundCult('الطبيعة')),
+   choice('🎭','مجتمع الفن','يركز على الاحتفالات والأنشطة الإبداعية.',()=>foundCult('الفن')),
+   choice('↩️','رجوع للمتجر','',premiumPerksMenu)
+  ]);return;
+ }
+ const opts=[
+  choice('👥','الأعضاء والتجنيد','الأعضاء '+c.members.length+' · الرصيد المجتمعي '+cash(c.fund)+'.',cultMembersMenu),
+  choice('📦','نقل الأتباع إلى المقر','انقل الأعضاء الجدد من قائمة المنتظرين إلى المجتمع.',moveCultFollowers),
+  choice('📜','القواعد والمبادئ','المبدأ الحالي: '+c.doctrine+'.',cultRulesMenu),
+  choice('🎉','إقامة مراسم','تنظم اجتماعًا عامًا لرفع الروح المعنوية والتبرعات.',cultCeremonyMenu),
+  choice('🧭','إدارة الانضباط','انضباط المجتمع '+c.discipline+'%. فرض قيود امتيازات رمزية له تبعات على الولاء.',cultDisciplineMenu),
+  choice('💰','إدارة أموال المجتمع','رصيد المجتمع '+cash(c.fund)+' · تحويل الفائض لحسابك أو تمويل نشاط.',cultTreasuryMenu),
+  choice('↩️','رجوع للأنشطة','',activities)
+ ];
+ modal('🛕',c.name,'مجتمع خيالي · المبدأ '+c.doctrine+' · الأعضاء '+c.members.length+' · المراسم '+c.ceremonies+'.',opts);
+}
+function foundCult(doctrine){
+ closeModal();if(state.age<18){info('🔒','لسه بدري','تقدر تأسس مجتمعك من سن 18.');return;}
+ const cost=60000;if(state.bank<cost){info('💳','الميزانية غير كافية','تجهيز المقر يحتاج '+cash(cost)+'.');return;}
+ state.bank-=cost;state.cult={founded:true,name:'مجتمع '+doctrine,doctrine,members:[],fund:10000,ceremonies:0,discipline:65};
+ log('🛕','تأسيس مجتمع جديد','أنشأت '+state.cult.name+' بعد استثمار '+cash(cost)+'. بدأ المجتمع برصيد تأسيسي '+cash(state.cult.fund)+'.','special');
+ achievement('تأسيس مجتمع خيالي');save();render();cultMenu();
+}
+function cultMembersMenu(){
+ closeModal();const c=state.cult;if(!c||!c.founded){cultMenu();return;}
+ const opts=[
+  choice('➕','تجنيد عضو واحد','التكلفة 2,000 '+state.place.unit+'.',()=>recruitCultMembers(1),'2,000 '+state.place.unit),
+  choice('👥','تجنيد 3 أعضاء','التكلفة 5,000 '+state.place.unit.',()=>recruitCultMembers(3),'5,000 '+state.place.unit),
+  choice('👥','تجنيد 5 أعضاء','التكلفة 8,000 '+state.place.unit+'.',()=>recruitCultMembers(5),'8,000 '+state.place.unit)
+ ];
+ c.members.forEach((m,i)=>opts.push(choice('🧑',m.name+' · '+m.role,'الولاء '+m.loyalty+'% · الحالة '+m.status+'.',()=>cultFollowerMenu(i),m.loyalty+'%',m.loyalty)));
+ opts.push(choice('↩️','رجوع للمجتمع','',cultMenu));
+ modal('👥','الأعضاء والتجنيد','عدد الأعضاء الحالي '+c.members.length+' من 100.',opts);
+}
+function recruitCultMembers(count){
+ closeModal();const c=state.cult;if(!c||!c.founded)return;
+ if(c.members.length+count>100){info('👥','وصلت للحد الأقصى','المجتمع يدعم حتى 100 عضو للحفاظ على الأداء على الهاتف.');return;}
+ const cost=count===1?2000:count===3?5000:8000;if(state.bank<cost){info('💳','الرصيد مش كفاية','التجنيد يحتاج '+cash(cost)+'.');return;}
+ state.bank-=cost;const first=c.members.length;
+ for(let i=0;i<count;i++)c.members.push({id:Date.now()+Math.random()+i,name:pick(['أحمد','مريم','عمر','نور','يوسف','ليلى','كريم','سلمى','سيف','فريدة']),role:'عضو جديد',loyalty:45+Math.floor(Math.random()*30),status:'منتظر',joinedAge:state.age});
+ log('👥','تجنيد أعضاء','انضم '+count+' أعضاء محتملين إلى قائمة الانتظار في '+c.name+'. انقلهم للمقر إذا كنت تريد ضمّهم.', 'good');
+ save();render();cultMembersMenu();
+}
+function moveCultFollowers(){
+ closeModal();const c=state.cult;if(!c||!c.founded)return;
+ const waiting=c.members.map((m,i)=>({m,i})).filter(x=>x.m.status==='منتظر');
+ if(!waiting.length){info('👥','مفيش أتباع منتظرين','جند أعضاء جدد أولًا من قائمة الأعضاء.');return;}
+ modal('🏡','نقل الأتباع إلى المجتمع','نقل العضو يستهلك 500 من رصيد المجتمع للرعاية والتجهيز.',waiting.map(({m,i})=>choice('🏡',m.name,'الولاء '+m.loyalty+'%.',()=>{closeModal();if(c.fund<500){info('💳','صندوق المجتمع غير كافٍ','محتاج '+cash(500)+' في حساب المجتمع.');return;}c.fund-=500;m.status='داخل المجتمع';m.role='عضو';m.loyalty=clamp(m.loyalty+8);log('🏡','انتقل عضو إلى المقر','انتقل '+m.name+' إلى '+c.name+'.','good');save();render();cultMembersMenu();})) );
+}
+function cultFollowerMenu(index){
+ const c=state.cult,m=c&&c.members[index];if(!m){cultMembersMenu();return;}
+ modal('🧑',m.name,'الرتبة '+m.role+' · الحالة '+m.status+' · الولاء '+m.loyalty+'%.',[
+  choice('🏡','نقله إلى المقر','نقل العضو إلى المجتمع.',()=>moveSingleCultFollower(index)),
+  choice('🎓','تدريب قيادي','تكلفة 1,500 ترفع الولاء والقدرة على التنظيم.',()=>{closeModal();if(state.bank<1500){info('💳','الرصيد مش كفاية','التدريب يحتاج '+cash(1500)+'.');return;}state.bank-=1500;m.loyalty=clamp(m.loyalty+12);m.role='منظم';log('🎓','تدريب عضو','أصبح '+m.name+' منظمًا داخل المجتمع.','good');save();render();cultMembersMenu();},'1,500 '+state.place.unit),
+  choice('⚖️','إجراء انضباط رمزي','تقليل امتيازات العضو لفترة؛ قد يتراجع ولاؤه.',()=>cultDisciplineFollower(index)),
+  choice('↩️','رجوع للأعضاء','',cultMembersMenu)
+ ]);
+}
+function moveSingleCultFollower(index){
+ closeModal();const c=state.cult,m=c&&c.members[index];if(!m||m.status!=='منتظر'){cultMembersMenu();return;}
+ if(c.fund<500){info('💳','صندوق المجتمع غير كافٍ','محتاج '+cash(500)+' في حساب المجتمع.');return;}
+ c.fund-=500;m.status='داخل المجتمع';m.role='عضو';m.loyalty=clamp(m.loyalty+8);log('🏡','انتقل عضو إلى المقر','انتقل '+m.name+' إلى '+c.name+'.','good');save();render();cultMembersMenu();
+}
+function cultRulesMenu(){
+ const c=state.cult;if(!c||!c.founded){cultMenu();return;}
+ modal('📜','قواعد المجتمع','تغيير المبادئ يغيّر سهولة التجنيد وولاء الأعضاء.',[
+  choice('📚','المعرفة والتعاون','زيادة ولاء الأعضاء عند التدريب.',()=>setCultDoctrine('المعرفة')),
+  choice('🌿','الطبيعة والرعاية','تكاليف رعاية أقل قليلًا.',()=>setCultDoctrine('الطبيعة')),
+  choice('🎭','الفن والمراسم','تأثير أكبر للمراسم على المعنويات.',()=>setCultDoctrine('الفن')),
+  choice('↩️','رجوع','',cultMenu)
+ ]);
+}
+function setCultDoctrine(doctrine){
+ closeModal();const c=state.cult;if(!c||!c.founded)return;
+ c.doctrine=doctrine;c.members.forEach(m=>{m.loyalty=clamp(m.loyalty+(doctrine==='المعرفة'?3:doctrine==='الطبيعة'?2:1));});
+ log('📜','تحديث قواعد المجتمع','أصبحت مبادئ المجتمع '+doctrine+'.','good');save();render();cultMenu();
+}
+function cultCeremonyMenu(){
+ const c=state.cult;if(!c||!c.founded){cultMenu();return;}
+ modal('🎉','مراسم المجتمع','كل مراسم لها تكاليف تنظيمية وقد تجذب تبرعات من الحاضرين.',[
+  choice('☕','لقاء مجتمعي','تكلفة 2,000 · معنويات أفضل وتبرعات صغيرة.',()=>holdCultCeremony('لقاء مجتمعي',2000,3500)),
+  choice('🎨','مهرجان فني','تكلفة 6,000 · أثر أقوى عند اختيار مبدأ الفن.',()=>holdCultCeremony('مهرجان فني',6000,8500)),
+  choice('🌿','يوم تطوعي','تكلفة 3,000 · يحسن السمعة ويزيد ولاء الأعضاء.',()=>holdCultCeremony('يوم تطوعي',3000,4800)),
+  choice('↩️','رجوع','',cultMenu)
+ ]);
+}
+function holdCultCeremony(title,cost,donation){
+ closeModal();const c=state.cult;if(!c||!c.founded)return;
+ if(state.bank<cost){info('💳','الميزانية غير كافية','تنظيم المراسم يحتاج '+cash(cost)+'.');return;}
+ state.bank-=cost;const received=Math.round(donation*(.5+Math.random()*.8)+(c.doctrine==='الفن'&&title==='مهرجان فني'?2500:0));
+ c.fund+=received;c.ceremonies++;c.members.forEach(m=>{if(m.status==='داخل المجتمع')m.loyalty=clamp(m.loyalty+(title==='يوم تطوعي'?8:5));});
+ stat('happiness',3);log('🎉','إقامة '+title,'أنفقت '+cash(cost)+' وتلقى المجتمع تبرعات '+cash(received)+'.','good');save();render();cultMenu();
+}
+function cultDisciplineMenu(){
+ const c=state.cult;if(!c||!c.founded){cultMenu();return;}
+ const opts=c.members.filter(m=>m.status==='داخل المجتمع').map(m=>choice('⚖️',m.name,'الولاء '+m.loyalty+'% · فرض قيود امتيازات رمزية لفترة.',()=>cultDisciplineFollower(c.members.indexOf(m))));
+ if(!opts.length)opts.push(choice('👥','لا يوجد أعضاء داخل المقر','انقل الأعضاء أولًا.',moveCultFollowers));
+ opts.push(choice('↩️','رجوع','',cultMenu));modal('⚖️','إدارة الانضباط','استخدم الإجراءات الرمزية بحذر: قد ينخفض الولاء وسمعة المجتمع.',opts);
+}
+function cultDisciplineFollower(index){
+ closeModal();const c=state.cult,m=c&&c.members[index];if(!m||m.status!=='داخل المجتمع'){cultMenu();return;}
+ m.loyalty=clamp(m.loyalty-12);c.discipline=clamp(c.discipline+4);if(chance(.2)){m.status='غادر المجتمع';c.discipline=clamp(c.discipline-7);}
+ state.reputation=clamp(state.reputation-2);log('⚖️','إجراء انضباط رمزي','اتخذت إجراءً تنظيميًا ضد '+m.name+'. الولاء الآن '+m.loyalty+'%، وقد يغادر العضو إذا شعر أن القواعد غير عادلة.','bad');save();render();cultMembersMenu();
+}
+function cultTreasuryMenu(){
+ const c=state.cult;if(!c||!c.founded){cultMenu();return;}
+ modal('💰','خزينة المجتمع','رصيد المجتمع '+cash(c.fund)+'.',[
+  choice('💵','تحويل 5,000 لحسابك','لو صندوق المجتمع يسمح، اسحب جزءًا من الفائض.',()=>{closeModal();if(c.fund<5000){info('💳','الرصيد غير كافٍ','محتاج 5,000 في صندوق المجتمع.');return;}c.fund-=5000;state.bank+=5000;log('💵','تحويل من صندوق المجتمع','حوّلت '+cash(5000)+' لحسابك الشخصي.','');save();render();cultMenu();}),
+  choice('🏗️','دعم المجتمع','تبرع بـ 3,000 لرفع الولاء وتحسين الاستقرار.',()=>{closeModal();if(state.bank<3000){info('💳','الرصيد مش كفاية','الدعم يحتاج '+cash(3000)+'.');return;}state.bank-=3000;c.fund+=3000;c.members.forEach(m=>m.loyalty=clamp(m.loyalty+2));log('🏗️','دعم المجتمع','أضفت '+cash(3000)+' لصندوق المجتمع.','good');save();render();cultMenu();},'3,000 '+state.place.unit),
+  choice('↩️','رجوع','',cultMenu)
+ ]);
+}
+
+const casinoGameCatalog=[
+ {id:'roulette',title:'روليت',emoji:'🎡',cost:25000,desc:'جولة دوارة بنتائج عشوائية.'},
+ {id:'blackjack',title:'بلاك جاك',emoji:'🂡',cost:30000,desc:'لعبة أوراق سريعة.'},
+ {id:'slots',title:'ماكينات الحظ',emoji:'🎰',cost:22000,desc:'جولات قصيرة بنتائج متقلبة.'},
+ {id:'poker',title:'بوكر تكساس',emoji:'🃏',cost:45000,desc:'منافسة أوراق افتراضية.'},
+ {id:'dice',title:'النرد',emoji:'🎲',cost:12000,desc:'تحديات تعتمد على رمية افتراضية.'},
+ {id:'bingo',title:'بينجو',emoji:'🎟️',cost:15000,desc:'جولة أرقام ترفيهية.'},
+ {id:'wheel',title:'عجلة الجوائز',emoji:'🎁',cost:18000,desc:'عجلة مكافآت للزوار.'},
+ {id:'race',title:'سباق افتراضي',emoji:'🏁',cost:35000,desc:'سباق خيالي قصير داخل الكازينو.'}
+];
+const casinoAmenities=[
+ {id:'hotel',title:'فندق',emoji:'🏨',cost:90000},
+ {id:'stage',title:'مسرح',emoji:'🎤',cost:65000},
+ {id:'restaurant',title:'مطعم فاخر',emoji:'🍽️',cost:45000},
+ {id:'lounge',title:'صالة كبار الزوار',emoji:'🥂',cost:55000},
+ {id:'security',title:'نظام أمن',emoji:'🛡️',cost:35000}
+];
+function casinoMenu(){
+ if(!perkOwned('casinoPack')){closeModal();info('🎰','توسعة الكازينو مقفولة','افتحها من متجر مزايا حياة.');return;}
+ const c=state.casino||(state.casino={opened:false,games:[],amenities:[],celebrityHires:0,accessories:[],funds:0});
+ if(!c.opened){modal('🎰','افتتاح الكازينو','الكازينو مشروع كبير. تكلفة الافتتاح 450,000 '+state.place.unit+'، ويتضمن التمويل الأولي 75,000 من أموال تشغيل الكازينو.',[
+  choice('🏨','افتتاح وتجهيز','استثمار صافٍ 375,000 بعد التمويل التأسيسي.',openCasino,'375,000 '+state.place.unit),
+  choice('↩️','رجوع','',premiumPerksMenu)
+ ]);return;}
+ modal('🎰','إدارة الكازينو','ألعاب مثبتة '+c.games.length+'/8 · المرافق '+c.amenities.length+'/5 · صندوق التشغيل '+cash(c.funds)+'.',[
+  choice('🎲','تركيب ألعاب','اختار الألعاب التي تريد إضافتها للكازينو.',casinoInstallGames),
+  choice('🏨','المرافق والخدمات','فندق ومسرح ومطعم وصالة وأمن.',casinoAmenitiesMenu),
+  choice('🌟','استضافة مشاهير','اجذب زوارًا أكثر واستثمر في الترفيه.',hireCasinoCelebrity),
+  choice('🎮','تجربة لعبة','اختبر جولة بأموال افتراضية داخل اللعبة واكسب إكسسوارات.',casinoPlayMenu),
+  choice('🎁','إكسسوارات الكازينو','مقتنيات مفتوحة بعد الفوز في الألعاب.',casinoAccessoryMenu),
+  choice('💰','تقرير الإيرادات','عرض دخل وتكاليف السنة الحالية.',casinoReport),
+  choice('↩️','رجوع للأنشطة','',activities)
+ ]);
+}
+function openCasino(){
+ closeModal();if(!perkOwned('casinoPack'))return;const cost=375000;
+ if(state.age<18){info('🔒','الافتتاح من سن 18','ابدأ مشروعك التجاري بعد سن 18.');return;}
+ if(state.bank<cost){info('💳','الميزانية غير كافية','الافتتاح يحتاج '+cash(cost)+'.');return;}
+ state.bank-=cost;state.casino={opened:true,games:[],amenities:[],celebrityHires:0,accessories:[],funds:75000};
+ log('🎰','افتتاح كازينو','دفعت '+cash(cost)+' وبدأت بصندوق تشغيل '+cash(75000)+'. كل الألعاب تستخدم أموالًا افتراضية داخل اللعبة فقط.','special');achievement('افتتاح كازينو');save();render();casinoMenu();
+}
+function casinoInstallGames(){
+ const c=state.casino;if(!c||!c.opened){casinoMenu();return;}
+ const opts=casinoGameCatalog.filter(g=>!c.games.includes(g.id)).map(g=>choice(g.emoji,g.title,g.desc+' تكلفة التركيب '+cash(g.cost)+'.',()=>{closeModal();if(state.bank<g.cost){info('💳','الرصيد مش كفاية','تركيب اللعبة يحتاج '+cash(g.cost)+'.');return;}state.bank-=g.cost;c.games.push(g.id);log('🎰','تركيب لعبة','أضفت '+g.title+' إلى الكازينو.','good');save();render();casinoMenu();},cash(g.cost)));
+ if(!opts.length)opts.push(choice('✅','كل الألعاب متاحة','تم تركيب الألعاب الثماني.',closeModal));
+ opts.push(choice('↩️','رجوع','',casinoMenu));modal('🎲','تركيب الألعاب','تركيب الألعاب يفتحها لاختبارات افتراضية ويزيد زيارات الكازينو السنوية.',opts);
+}
+function casinoAmenitiesMenu(){
+ const c=state.casino;if(!c||!c.opened){casinoMenu();return;}
+ const opts=casinoAmenities.filter(a=>!c.amenities.includes(a.id)).map(a=>choice(a.emoji,a.title,'تكلفة الإنشاء '+cash(a.cost)+'.',()=>{closeModal();if(state.bank<a.cost){info('💳','الرصيد مش كفاية','المرفق يحتاج '+cash(a.cost)+'.');return;}state.bank-=a.cost;c.amenities.push(a.id);log('🏨','إضافة مرفق','أضفت '+a.title+' للكازينو.','good');save();render();casinoMenu();},cash(a.cost)));
+ if(!opts.length)opts.push(choice('✅','كل المرافق جاهزة','اكتملت المرافق المتاحة.',closeModal));
+ opts.push(choice('↩️','رجوع','',casinoMenu));modal('🏨','مرافق الكازينو','المرافق ترفع دخل الزوار، لكن بعضها يضيف تكلفة سنوية.',opts);
+}
+function hireCasinoCelebrity(){
+ closeModal();const c=state.casino;if(!c||!c.opened){casinoMenu();return;}
+ const cost=18000+((c.celebrityHires||0)*5000);if(state.bank<cost){info('💳','الرصيد مش كفاية','استضافة نجم خيالي تكلف '+cash(cost)+'.');return;}
+ state.bank-=cost;c.celebrityHires++;state.fame=clamp(state.fame+4);log('🌟','ليلة مشاهير','استضفت فنانًا خياليًا مقابل '+cash(cost)+'. زادت شهرة الكازينو وجاذبيته.','good');save();render();casinoMenu();
+}
+function casinoPlayMenu(){
+ const c=state.casino;if(!c||!c.opened){casinoMenu();return;}
+ const games=casinoGameCatalog.filter(g=>c.games.includes(g.id));
+ const opts=games.map(g=>choice(g.emoji,g.title,g.desc,()=>casinoBetMenu(g.id)));
+ if(!opts.length)opts.push(choice('🎰','لا توجد ألعاب مثبتة','ركّب لعبة واحدة على الأقل قبل بدء جولة.',casinoInstallGames));
+ opts.push(choice('↩️','رجوع','',casinoMenu));modal('🎮','تجربة لعبة افتراضية','جميع الرهانات نقاط نقدية افتراضية داخل اللعبة، ولا يوجد أي دفع حقيقي.',opts);
+}
+function casinoBetMenu(gameId){
+ const g=casinoGameCatalog.find(x=>x.id===gameId);if(!g)return casinoPlayMenu();
+ modal(g.emoji,g.title,'اختار مبلغًا افتراضيًا للجولة.',[
+  choice('🪙','رهان 500','جولة بسيطة.',()=>casinoPlay(gameId,500)),
+  choice('💵','رهان 2,000','جولة متوسطة.',()=>casinoPlay(gameId,2000)),
+  choice('💎','رهان 5,000','جولة أعلى مخاطرة.',()=>casinoPlay(gameId,5000)),
+  choice('↩️','رجوع','',casinoPlayMenu)
+ ]);
+}
+function casinoPlay(gameId,bet){
+ closeModal();const c=state.casino,g=casinoGameCatalog.find(x=>x.id===gameId);if(!c||!c.opened||!c.games.includes(gameId))return;
+ if(state.bank<bet){info('💳','الرصيد مش كفاية','رصيدك لا يغطي الرهان الافتراضي '+cash(bet)+'.');return;}
+ state.bank-=bet;const win=chance(gameId==='bingo'?.5:gameId==='roulette'?.34:gameId==='blackjack'?.43:gameId==='slots'?.25:gameId==='poker'?.32:.38);
+ const payout=win?Math.round(bet*(gameId==='slots'?3:gameId==='roulette'?2.1:gameId==='poker'?2.5:1.9)):0;state.bank+=payout;
+ if(win&&chance(.22)){const item=pick(['بطاقة ذهبية','تميمة نرد','كأس الروليت','وشاح الكازينو','عملة تذكارية']);c.accessories.push({id:Date.now()+Math.random(),name:item,game:g.title});}
+ log(win?'🎉':'🎲','جولة '+g.title,win?'كسبت '+cash(payout)+' في المحاكاة الافتراضية.':'انتهت الجولة بخسارة '+cash(bet)+' من رصيد اللعبة.',''+(win?'good':'bad'));
+ save();render();info(win?'🎉':'🎲',win?'جولة ناجحة':'جولة انتهت',win?'رصيد الجائزة '+cash(payout)+'. '+(c.accessories.length?'قد تفتح إكسسوارًا بعد بعض الانتصارات.':''):'تقدر تدير أموال الكازينو وتثبت ألعابًا أخرى.',[choice('🎮','جولة جديدة','',casinoPlayMenu),choice('↩️','إدارة الكازينو','',casinoMenu)]);
+}
+function casinoAccessoryMenu(){
+ const c=state.casino;if(!c||!c.opened){casinoMenu();return;}
+ const opts=(c.accessories||[]).map(a=>choice('🎁',a.name,'تم الحصول عليه من '+a.game+'.',()=>{closeModal();info('🎁',a.name,'إكسسوار تجميلي من مجموعة الكازينو داخل اللعبة.');}));
+ if(!opts.length)opts.push(choice('🎲','لسه مفيش إكسسوارات','يمكن الحصول عليها من جولات الفوز.',casinoPlayMenu));
+ opts.push(choice('↩️','رجوع','',casinoMenu));modal('🎁','إكسسوارات الكازينو','عدد الإكسسوارات '+c.accessories.length+'.',opts);
+}
+function casinoReport(){
+ closeModal();const c=state.casino;if(!c||!c.opened)return;
+ info('📊','تقرير الكازينو','ألعاب مثبتة '+c.games.length+'/8 · المرافق '+c.amenities.length+'/5 · استضافات المشاهير '+c.celebrityHires+' · صندوق التشغيل '+cash(c.funds)+'. دخل التشغيل يتأثر بالألعاب والمرافق والشهرة.');
+}
+
+function dealerMenu(){
+ if(!perkOwned('dealerPack')){closeModal();info('🃏','حزمة التاجر مقفولة','افتحها من متجر مزايا حياة.');return;}
+ const d=state.dealer||(state.dealer={joined:false,rank:0,rep:0,earnings:0,territory:1});
+ const ranks=['مبتدئ','تاجر محلي','منسق شبكة','مدير منطقة','رئيس الشبكة'];
+ if(!d.joined){modal('🃏','مسار التاجر الخيالي','مسار قصصي افتراضي عالي المخاطر، من دون تعليمات أو إرشادات واقعية. قراراته قد تسبب فقدان المال أو عقوبات قانونية داخل اللعبة.',[
+  choice('🃏','ابدأ المسار','عمر 18 سنة فأكثر.',joinDealer),
+  choice('↩️','رجوع للأنشطة','',activities)
+ ]);return;}
+ modal('🃏','مسار التاجر',ranks[d.rank]+' · السمعة '+d.rep+'% · نطاق الشبكة '+d.territory+' · إجمالي الأرباح '+cash(d.earnings)+'.',[
+  choice('📦','مهمة شبكة افتراضية','مهمة سردية تعتمد على الحظ والمهارات.',dealerMission),
+  choice('🧭','توسيع النطاق','استثمار 12,000 لزيادة نطاق العمل الافتراضي.',expandDealerTerritory,'12,000 '+state.place.unit),
+  choice('📊','تقرير المسار','رتبتك وأرباحك ومخاطرك.',()=>{closeModal();info('📊','تقرير التاجر','الرتبة '+ranks[d.rank]+' · السمعة '+d.rep+'% · النطاق '+d.territory+' · إجمالي الأرباح '+cash(d.earnings)+'.');}),
+  choice('🚪','ترك المسار','إنهاء المسار القصصي مع الاحتفاظ بالسجل.',()=>{closeModal();d.joined=false;log('🚪','ترك مسار التاجر','اخترت الابتعاد عن الشبكة الخيالية والبدء من جديد.','good');save();render();dealerMenu();}),
+  choice('↩️','رجوع للأنشطة','',activities)
+ ]);
+}
+function joinDealer(){
+ closeModal();if(state.age<18){info('🔒','لسه بدري','المسار متاح من سن 18.');return;}
+ state.dealer={joined:true,rank:0,rep:10,earnings:0,territory:1};log('🃏','بدأ مسار التاجر','دخلت مسارًا قصصيًا خياليًا. النتائج مبنية على الاحتمالات داخل اللعبة وقد تؤدي إلى عواقب قانونية.', 'special');save();render();dealerMenu();
+}
+function dealerMission(){
+ closeModal();const d=state.dealer;if(!d||!d.joined)return;
+ const success=chance(Math.min(.82,.43+state.stats.smart*.0025+d.rep*.001+d.territory*.025-d.rank*.012));
+ if(success){const gain=5000+Math.floor(Math.random()*18000)+d.territory*700;state.bank+=gain;d.earnings+=gain;d.rep=clamp(d.rep+12);if(d.rep>=35&&d.rank<4){d.rep=0;d.rank++;}log('📦','نجحت المهمة القصصية','حققت '+cash(gain)+' داخل اللعبة وتقدمت في المسار الافتراضي.','good');}
+ else{d.rep=clamp(d.rep-12);state.crimeRecord=(state.crimeRecord||0)+1;if(chance(.22)){state.prison={years:1+Math.floor(Math.random()*3),kind:'قضية من مسار التاجر الخيالي'};state.job=null;state.specialCareer=null;log('🚔','فشلت المهمة','تسببت المهمة في عقوبة قانونية داخل اللعبة.','bad');}else log('⚠️','مهمة غير ناجحة','خسرت فرصة ربح وانخفضت سمعة الشبكة.','bad');}
+ save();render();if(state.prison)prisonEvent();else dealerMenu();
+}
+function expandDealerTerritory(){
+ closeModal();const d=state.dealer;if(!d||!d.joined)return;const cost=12000;
+ if(state.bank<cost){info('💳','الرصيد مش كفاية','التوسع يحتاج '+cash(cost)+'.');return;}
+ if(d.territory>=10){info('🧭','أقصى نطاق','وصلت للحد الأقصى داخل محاكاة اللعبة.');return;}
+ state.bank-=cost;d.territory++;d.rep=clamp(d.rep+3);log('🧭','توسيع النطاق','زاد النطاق الافتراضي إلى '+d.territory+'.','good');save();render();dealerMenu();
+}
+
+function godModeMenu(){
+ if(!perkOwned('godMode')||!perkEnabled('godMode')){closeModal();info('⚡','وضع الإله متوقف','فعّل وضع الإله من متجر المزايا أو القائمة الرئيسية.');return;}
+ const opts=[
+  choice('🌱','تخصيص حياة جديدة','اختيار النوع وبلد الميلاد من البداية.',newLifeSetup),
+  choice('👑','ابدأ حياة ملكية','ابدأ حياة جديدة بثروة وقصر وألقاب ملكية.',startRoyalLife),
+  choice('👥','محرر الشخصيات','عدّل سمات أفراد العائلة والأصدقاء.',editNpcMenu),
+  choice('🧬','مواهب خاصة','اختيار موهبة مميزة لشخصيتك الحالية.',godModeTalentsMenu),
+  ...(state.children&&state.children.length?[choice('🌳','التحول إلى حياة أحد الأبناء','استكمل قصة أحد الأبناء كوريث جديد.',godModeHeirMenu)]:[]),
+  choice('🧑‍🦱','سمات شخصيتي','تعديل الصحة والسعادة والذكاء والمظهر.',editCharacterTraits),
+  choice('↩️','رجوع','',mainMenu)
+ ];
+ modal('⚡','وضع الإله','وضع تخصيص اختياري داخل اللعبة. كل التغييرات تخص ملف الحفظ الحالي.',opts);
+}
+function startRoyalLife(){
+ closeModal();if(state&&state.status==='حي'&&state.age>0)archiveLife('بدء حياة ملكية');
+ startNew();const title=pick(['الأمير','الأميرة','الوريث الملكي','الوريثة الملكية']),house=pick(['آل النور','آل الياقوت','آل النيل','آل الشروق']);
+ state.royalty={active:true,title,house};state.bank+=5000000;state.fame=45;state.reputation=75;
+ state.assets.push({id:Date.now()+Math.random(),title:'قصر '+house,emoji:'🏰',kind:'property',value:4500000,upkeep:125000,bought:0,condition:100,rented:false,amenities:['حدائق ملكية','حراسة']});
+ state.family[0].relation='الملك';state.family[1].relation='الملكة';state.family[0].job='حاكم';state.family[1].job='حاكمة';
+ log('👑','بدأت حياة ملكية','أصبحت '+title+' من '+house+' مع موارد ملكية وبداية مختلفة.','special');achievement('بدء حياة ملكية');save();render();info('👑','أهلًا بالعائلة الملكية','بدأت حياة ملكية جديدة. تقدر تستكملها طبيعيًا أو تغيّر مصيرك عبر الأنشطة ووضع الإله.');
+}
+function godModeTalentsMenu(){
+ if(!perkOwned('godMode')||!perkEnabled('godMode')){godModeMenu();return;}
+ modal('🧬','اختيار موهبة خاصة','اختيار موهبة يرفع السمات المرتبطة بها داخل لعبة المحاكاة.',[
+  choice('🧠','عبقري','ذكاء مرتفع جدًا.',()=>applyGodTalent('عبقري')),
+  choice('🏅','رياضي استثنائي','صحة ومظهر بدني أفضل.',()=>applyGodTalent('رياضي استثنائي')),
+  choice('🎨','فنان','مظهر وشهرة ابتدائية أعلى.',()=>applyGodTalent('فنان')),
+  choice('🍀','محظوظ','سعادة وسمعة أعلى.',()=>applyGodTalent('محظوظ')),
+  choice('🎮','عبقري ألعاب','موهبة الألعاب عالية.',()=>applyGodTalent('عبقري ألعاب')),
+  choice('↩️','رجوع','',godModeMenu)
+ ]);
+}
+function applyGodTalent(talent){
+ closeModal();state.talents=state.talents||{};
+ if(talent==='عبقري')state.stats.smart=100;
+ else if(talent==='رياضي استثنائي')state.stats.health=100;
+ else if(talent==='فنان'){state.stats.looks=100;state.fame=clamp(state.fame+15);}
+ else if(talent==='محظوظ'){state.stats.happiness=100;state.reputation=clamp(state.reputation+20);}
+ else if(talent==='عبقري ألعاب')state.talents.gaming=100;
+ state.specialTalent=talent;log('🧬','تفعيل موهبة خاصة','اخترت موهبة '+talent+' لوضع التخصيص.','special');save();render();info('✨','الموهبة اتفعلت','تم تطبيق '+talent+' على الشخصية الحالية.');
+}
+function godModeHeirMenu(){
+ const opts=(state.children||[]).map((c,i)=>choice(c.emoji||'🧒',c.name+' · '+c.age+' سنة','متابعة حياة الابن/الابنة كوريث.',()=>{closeModal();startAsChild(i);}));
+ opts.push(choice('↩️','رجوع','',godModeMenu));modal('🌳','اختيار وريث','استكمل حياتك من منظور أحد الأبناء. الثروة تتبع قواعد الإرث الحالية.',opts);
+}
+function bitizenshipMenu(){
+ if(!perkOwned('bitizenship')||!perkEnabled('bitizenship')){closeModal();info('🌟','عضوية Bitizen متوقفة','فعّل العضوية من متجر المزايا.');return;}
+ modal('🌟','عضوية Bitizen','وصول مميز داخل اللعبة: أجيال متعددة، محرر الشخصيات، المظهر والأنشطة. النسخة الحالية لا تحتوي على إعلانات قسرية أصلًا.',[
+  choice('👥','محرر الشخصيات','تعديل سمات أفراد العائلة والأصدقاء.',editNpcMenu),
+  choice('🧬','سمات شخصيتي','تحكم في السمات الأساسية.',editCharacterTraits),
+  choice('💈','الصالون والمظهر','',salonMenu),
+  choice('🐾','الحيوانات الأليفة','',petsMenu),
+  choice('🌳','متابعة حياة ابن/ابنة','استكمل قصة أحد الأبناء لو كان عندك أبناء.',()=>{if(state.children&&state.children.length)godModeHeirMenu();else info('🌳','لا يوجد أبناء','ابدأ حياة عائلية ثم عد هنا.');}),
+  choice('🗣️','التفاعل مع المعلم أو المدير','محادثة تؤثر على الدراسة أو الأداء المهني.',bitizenshipInteractionMenu),
+  choice('⚙️','المظهر الداكن','تغيير مظهر التطبيق.',settingsMenu),
+  choice('↩️','رجوع','',mainMenu)
+ ]);
+}
+function bitizenshipInteractionMenu(){
+ const opts=[];
+ if(state.age>=6&&state.age<18)opts.push(choice('🏫','التحدث إلى المعلم','تحسين تقييم الدراسة أو الذكاء.',()=>{closeModal();state.education.studyScore=clamp((state.education.studyScore||50)+10);stat('smart',2);log('🏫','حديث مع المعلم','طلبت نصائح دراسية وحصلت على توجيه لتحسين مستواك.','good');save();render();info('🏫','نصيحة مفيدة','ارتفع تقييم الدراسة 10 نقاط والذكاء نقطتين.');}));
+ if(state.job)opts.push(choice('💼','التحدث إلى المدير','رفع الأداء وفرصة علاوة في وقت لاحق.',()=>{closeModal();state.performance=clamp(state.performance+8);state.reputation=clamp(state.reputation+2);log('💼','محادثة مع المدير','ناقشت تقدمك وخططك المهنية مع مديرك.','good');save();render();info('💼','تمت المحادثة','أداءك المهني الحالي '+state.performance+'%.');}));
+ if(!opts.length)opts.push(choice('🗣️','لا يوجد تفاعل متاح الآن','التفاعل مع المعلم يبدأ في المدرسة ومع المدير بعد التوظيف.',closeModal));
+ opts.push(choice('↩️','رجوع للعضوية','',bitizenshipMenu));modal('🗣️','تفاعلات Bitizen','اختار تفاعلًا متاحًا حسب مرحلة حياتك.',opts);
+}
+function movieDirectorMenu(){
+ if(!perkOwned('movieDirectorPack')){closeModal();info('🎥','حزمة مخرج الأفلام مقفولة','افتحها من متجر مزايا حياة.');return;}
+ if(state.specialCareer&&state.specialCareer.id==='director'){filmStudioMenu();return;}
+ modal('🎥','حزمة مخرج الأفلام','المسار متاح من سن 25. بعد بدئه يمكنك إنتاج أفلام أصلية عبر 11 نوعًا سينمائيًا.',[
+  choice('🎬','بدء مسار الإخراج','تحتاج سن 25 سنة.',()=>startSpecialCareer({id:'director',title:'إخراج الأفلام',emoji:'🎥',min:25,looks:0,income:26000,desc:'إدارة إنتاج أفلام أصلية.'})),
+  choice('🎞️','أفكار الأنواع السينمائية','استعرض أنواع الأفلام المتاحة.',()=>{closeModal();info('🎞️','الأنواع السينمائية','دراما، أكشن، كوميديا، خيال علمي، غموض، عائلي، وثائقي، رعب، رومانسية، إثارة، ورسوم متحركة.');}),
+  choice('↩️','رجوع للمتجر','',premiumPerksMenu)
+ ]);
+}
+function landlordPortfolioMenu(){
+ if(!perkOwned('landlordPack')){closeModal();info('🏘️','توسعة العقارات مقفولة','افتحها من متجر مزايا حياة أو باقة الملياردير.');return;}
+ const opts=[
+  choice('🏙️','منزل ذكي مستقبلي','عقار مزود بتقنيات تحكم واستهلاك وصيانة أعلى.',()=>buyLandlordProperty('منزل ذكي مستقبلي','🏠',2600000,52000),'2,600,000 '+state.place.unit),
+  choice('🏰','فيلا فاخرة ذكية','فيلا كبيرة مع إمكانية تركيب مرافق.',()=>buyLandlordProperty('فيلا فاخرة ذكية','🏰',4800000,95000),'4,800,000 '+state.place.unit),
+  choice('🏢','مبنى سكني','عقار متعدد الوحدات ودخل إيجار أعلى.',()=>buyLandlordProperty('مبنى سكني','🏢',7000000,140000),'7,000,000 '+state.place.unit),
+  choice('📦','إدارة جميع العقارات','عقود الإيجار والمرافق والإخلاء والصيانة.',manageAssets)
+ ];
+ (state.assets||[]).forEach((a,i)=>{if(a.kind==='property')opts.push(choice(a.emoji||'🏠',a.title,'قيمة '+cash(a.value)+' · مرافق '+((a.amenities||[]).length)+' · '+(a.tenant?'مؤجر إلى '+a.tenant.name:'غير مؤجر'),()=>landlordPropertyMenu(i)));});
+ opts.push(choice('↩️','رجوع','',premiumPerksMenu));modal('🏘️','العقارات والملاك','اشترِ عقارات خاصة وأضف مرافق واستخدم العقود أو أخلِ المستأجرين عند الحاجة.',opts);
+}
+function buyLandlordProperty(title,emoji,value,upkeep){
+ closeModal();if(state.age<18){info('🔒','الشراء بعد سن 18','');return;}if(state.bank<value){info('💳','الرصيد مش كفاية','شراء '+title+' يحتاج '+cash(value)+'.');return;}
+ const id=Date.now()+Math.random();state.bank-=value;state.assets.push({id,title,emoji,kind:'property',value,upkeep,bought:state.age,condition:100,rented:false,tenant:null,amenities:[],futuristic:true});
+ log('🏘️','شراء عقار جديد','اشتريت '+title+' مقابل '+cash(value)+'. تقدر تضيف مرافق من قائمة إدارة العقار.','good');save();render();landlordPortfolioMenu();
+}
+function landlordPropertyMenu(index){
+ const p=(state.assets||[])[index];if(!p||p.kind!=='property'){landlordPortfolioMenu();return;}
+ const options=[
+  choice('🛠️','تخصيص المرافق','تركيب غرفة آمنة أو قبو نبيذ أو سينما أو حديقة ذكية.',customizePropertyAmenities.bind(null,index)),
+  choice('🔑','إدارة المستأجرين',p.tenant?'المستأجر '+p.tenant.name+' · '+cash(p.tenant.rent)+' سنويًا.':'العقار غير مؤجر؛ ابحث عن مستأجر.',()=>{closeModal();landlordTenantMenu(index);}),
+  ...(p.tenant?[choice('🚪','إخلاء المستأجر','إنهاء العقد قد يخفض السمعة أو يتطلب تعويضًا داخل اللعبة.',()=>evictTenant(index))]:[]),
+  choice('📊','تفاصيل العقار','القيمة الحالية '+cash(p.value)+' · الصيانة '+cash(p.upkeep)+' سنويًا.',()=>{closeModal();info('🏘️',p.title,'القيمة '+cash(p.value)+' · المرافق '+((p.amenities||[]).join('، ')||'لا توجد')+' · '+(p.tenant?'المستأجر '+p.tenant.name:'غير مؤجر')+'.');}),
+  choice('↩️','رجوع للعقارات','',landlordPortfolioMenu)
+ ];
+ modal('🏘️',p.title,'العقار ومرافقه تؤثر على قيمته والإيجار وتكاليف الصيانة.',options);
+}
+const propertyAmenities=[
+ {id:'panic-room',title:'غرفة آمنة',emoji:'🛡️',cost:85000,bonus:.008},
+ {id:'wine-cellar',title:'قبو نبيذ',emoji:'🍷',cost:60000,bonus:.006},
+ {id:'home-cinema',title:'سينما منزلية',emoji:'🎬',cost:50000,bonus:.005},
+ {id:'smart-garden',title:'حديقة ذكية',emoji:'🌿',cost:42000,bonus:.004},
+ {id:'smart-security',title:'أمن ذكي',emoji:'🔐',cost:70000,bonus:.007}
+];
+function customizePropertyAmenities(index){
+ const p=(state.assets||[])[index];if(!p||p.kind!=='property'){landlordPortfolioMenu();return;}
+ const owns=p.amenities||(p.amenities=[]),opts=propertyAmenities.filter(a=>!owns.includes(a.id)).map(a=>choice(a.emoji,a.title,'تكلفة التركيب '+cash(a.cost)+'. يزيد الإيجار المحتمل قليلًا.',()=>installPropertyAmenity(index,a.id),cash(a.cost)));
+ if(!opts.length)opts.push(choice('✅','المرافق مكتملة','تم تركيب كل المرافق المتاحة.',closeModal));
+ opts.push(choice('↩️','رجوع للعقار','',()=>landlordPropertyMenu(index)));modal('🛠️','تخصيص المرافق','المرافق ترفع القيمة والإيجار المحتمل، وتضيف مصروفًا أوليًا.',opts);
+}
+function installPropertyAmenity(index,amenityId){
+ closeModal();const p=(state.assets||[])[index],a=propertyAmenities.find(x=>x.id===amenityId);if(!p||!a)return;
+ if((p.amenities||[]).includes(a.id)){landlordPropertyMenu(index);return;}if(state.bank<a.cost){info('💳','الرصيد مش كفاية','التركيب يحتاج '+cash(a.cost)+'.');return;}
+ state.bank-=a.cost;p.amenities=p.amenities||[];p.amenities.push(a.id);p.value=Math.round(p.value*(1+a.bonus));p.upkeep=(p.upkeep||0)+Math.round(a.cost*.025);
+ log('🛠️','تركيب مرفق','أضفت '+a.title+' إلى '+p.title+'.','good');save();render();landlordPropertyMenu(index);
+}
+function evictTenant(index){
+ closeModal();const p=(state.assets||[])[index];if(!p||!p.tenant)return;
+ const compensation=Math.round((p.tenant.rent||0)*.15);if(state.bank<compensation){info('💳','الرصيد مش كفاية','تعويض الإخلاء الرمزي يحتاج '+cash(compensation)+'.');return;}
+ state.bank-=compensation;const name=p.tenant.name;p.tenant=null;p.rented=false;state.reputation=clamp(state.reputation-4);log('🚪','إنهاء عقد وإخلاء','أنهيت عقد '+name+' بعد دفع تعويض '+cash(compensation)+'.','bad');save();render();landlordPortfolioMenu();
+}
 function premiumPerksMenu(){
  if(!state)return;
  const catalog=[
