@@ -107,6 +107,17 @@ const assetShop=[
  {kind:'car',title:'عربية جديدة',emoji:'🚙',value:850000,upkeep:29000,desc:'راحة أكتر ومصاريف أعلى.'},
  {kind:'business',title:'مشروع صغير',emoji:'🏪',value:150000,upkeep:5000,desc:'أصل يمكن أن ينمو مع مخاطرة تشغيل.'}
 ];
+const SOCIAL_PLATFORM_CATALOG=[
+ {id:'facebook',title:'Facebook',emoji:'📘',desc:'شارك تحديثاتك وصورك مع الأصدقاء.',minAge:10},
+ {id:'instagram',title:'Instagram',emoji:'📸',desc:'ابنِ جمهورًا من الصور والقصص.',minAge:10},
+ {id:'onlyfans',title:'OnlyFans',emoji:'🪙',desc:'منصة اشتراكات مدفوعة للبالغين فقط.',minAge:18},
+ {id:'tiktok',title:'TikTok',emoji:'🎵',desc:'انشر مقاطع قصيرة وحاول الوصول لجمهور جديد.',minAge:13},
+ {id:'twitch',title:'Twitch',emoji:'🟣',desc:'ابدأ البث المباشر وتفاعل مع المتابعين.',minAge:13},
+ {id:'twitter',title:'Twitter',emoji:'🐦',desc:'انشر أفكارًا وتحديثات قصيرة.',minAge:13},
+ {id:'soundcloud',title:'SoundCloud',emoji:'☁️',desc:'شارك الموسيقى والأعمال الصوتية.',minAge:13},
+ {id:'podcast',title:'Podcast',emoji:'🎙️',desc:'ابدأ برنامجًا صوتيًا واستضف ضيوفًا.',minAge:13},
+ {id:'youtube',title:'YouTube',emoji:'▶️',desc:'انشر فيديوهات وابنِ قناة.',minAge:13}
+];
 
 const dailyChallengeDefs=[
  {id:'healthy',title:'صحة أولًا',desc:'حافظ على صحتك عند 85% أو أعلى.',reward:1600,rewardStat:'health',available:s=>true,done:s=>(s.stats.health||0)>=85},
@@ -462,7 +473,7 @@ function newLife(){
  const father=makePerson('male','الأب','👨',28+Math.floor(Math.random()*12),68+Math.floor(Math.random()*28));
  const mother=makePerson('female','الأم','👩',25+Math.floor(Math.random()*12),72+Math.floor(Math.random()*26));
  const sibling=makePerson(gender,'الأخ/الأخت','🧒',Math.floor(Math.random()*8),55+Math.floor(Math.random()*35));
- return {version:1,lifeId:Date.now()+Math.random(),cemeterySaved:false,name:pick(names[gender])+' '+pick(names.family),gender,age:0,place,bank:(perkOwned('goldenPiggyBank')?Math.max(1000000,place.start):place.start),stats:{happiness:65+Math.floor(Math.random()*26),health:76+Math.floor(Math.random()*22),smart:35+Math.floor(Math.random()*41),looks:35+Math.floor(Math.random()*51)},education:{level:0,school:'لم تبدأ الدراسة',major:null,yearsLeft:0,tuition:0},job:null,jobHistory:[],specialCareer:null,specialCareerHistory:[],combatCareer:null,filmStudio:null,esportsCareer:null,talents:{gaming:15+Math.floor(Math.random()*71)},performance:50,assets:[],investments:[],business:null,companies:[],mafia:{joined:false,rank:0,rep:0,earnings:0},museum:{opened:false,displayed:[]},zoo:{opened:false,animals:[],rareDiscoveries:0},assassinBladeLastUsedAge:null,cult:{founded:false,name:'',doctrine:'',members:[],fund:0,ceremonies:0,discipline:50},casino:{opened:false,games:[],amenities:[],celebrityHires:0,accessories:[]},dealer:{joined:false,rank:0,rep:0,earnings:0,territory:1},royalty:{active:false,title:null,house:null},investmentAdvisor:{hired:false,yearsLeft:0,fee:4500},marketTip:null,family:[father,mother,sibling],friends:[],partner:null,married:false,children:[],coParentingPlans:[],pets:[],hobbies:[],fame:0,followers:0,socialMediaAccount:false,socialMediaPosts:0,reputation:50,sti:false,crimeRecord:0,prison:null,debt:0,willDistribution:'الأسرة بالتساوي',heirlooms:[],dailyRewardDate:null,dailyChallenges:null,challengeArchive:[],timeMachineSnapshots:[],legacy:{name:null,inheritance:0,heirloom:null},driversLicense:false,travelHistory:[],log:[],accomplishments:['بدأت رحلة الحياة'],status:'حي',cause:null,retired:false,yearCount:0,wealthPeak:place.start};
+ return {version:1,lifeId:Date.now()+Math.random(),cemeterySaved:false,name:pick(names[gender])+' '+pick(names.family),gender,age:0,place,bank:(perkOwned('goldenPiggyBank')?Math.max(1000000,place.start):place.start),stats:{happiness:65+Math.floor(Math.random()*26),health:76+Math.floor(Math.random()*22),smart:35+Math.floor(Math.random()*41),looks:35+Math.floor(Math.random()*51)},education:{level:0,school:'لم تبدأ الدراسة',major:null,yearsLeft:0,tuition:0},job:null,jobHistory:[],specialCareer:null,specialCareerHistory:[],combatCareer:null,filmStudio:null,esportsCareer:null,talents:{gaming:15+Math.floor(Math.random()*71)},performance:50,assets:[],investments:[],business:null,companies:[],mafia:{joined:false,rank:0,rep:0,earnings:0},museum:{opened:false,displayed:[]},zoo:{opened:false,animals:[],rareDiscoveries:0},assassinBladeLastUsedAge:null,cult:{founded:false,name:'',doctrine:'',members:[],fund:0,ceremonies:0,discipline:50},casino:{opened:false,games:[],amenities:[],celebrityHires:0,accessories:[]},dealer:{joined:false,rank:0,rep:0,earnings:0,territory:1},royalty:{active:false,title:null,house:null},investmentAdvisor:{hired:false,yearsLeft:0,fee:4500},marketTip:null,family:[father,mother,sibling],friends:[],partner:null,married:false,children:[],coParentingPlans:[],pets:[],hobbies:[],fame:0,followers:0,socialMediaAccount:false,socialMediaPosts:0,socialPlatforms:{},reputation:50,sti:false,crimeRecord:0,prison:null,debt:0,willDistribution:'الأسرة بالتساوي',heirlooms:[],dailyRewardDate:null,dailyChallenges:null,challengeArchive:[],timeMachineSnapshots:[],legacy:{name:null,inheritance:0,heirloom:null},driversLicense:false,travelHistory:[],log:[],accomplishments:['بدأت رحلة الحياة'],status:'حي',cause:null,retired:false,yearCount:0,wealthPeak:place.start};
 }
 
 function isValidSaveData(data){
@@ -501,6 +512,15 @@ function normalizeCoreState(data){
  data.age=Number.isFinite(Number(data.age))?Math.max(0,Math.min(120,Math.floor(Number(data.age)))):0;
  data.bank=Number.isFinite(Number(data.bank))?Number(data.bank):Number(data.place.start)||0;
  data.sti=typeof data.sti==='boolean'?data.sti:false;
+ if(!data.socialPlatforms||typeof data.socialPlatforms!=='object'||Array.isArray(data.socialPlatforms))data.socialPlatforms={};
+ const rawSocialPlatforms=data.socialPlatforms,normalizedSocialPlatforms={};
+ SOCIAL_PLATFORM_CATALOG.forEach(platform=>{const saved=rawSocialPlatforms[platform.id]&&typeof rawSocialPlatforms[platform.id]==='object'?rawSocialPlatforms[platform.id]:{};normalizedSocialPlatforms[platform.id]={active:!!saved.active,followers:Math.max(0,Number(saved.followers)||0),posts:Math.max(0,Number(saved.posts)||0)};});
+ if(data.socialMediaAccount&&!SOCIAL_PLATFORM_CATALOG.some(platform=>normalizedSocialPlatforms[platform.id].active)){
+  normalizedSocialPlatforms.instagram={active:true,followers:Math.max(0,Number(data.followers)||10),posts:Math.max(0,Number(data.socialMediaPosts)||0)};
+ }
+ data.socialPlatforms=normalizedSocialPlatforms;
+ data.followers=Math.max(0,Number(data.followers)||0);data.socialMediaPosts=Math.max(0,Number(data.socialMediaPosts)||0);
+ data.socialMediaAccount=SOCIAL_PLATFORM_CATALOG.some(platform=>data.socialPlatforms[platform.id].active);
  if(!Array.isArray(data.companies))data.companies=[];
  if(!data.mafia||typeof data.mafia!=='object'||Array.isArray(data.mafia))data.mafia={joined:false,rank:0,rep:0,earnings:0};
  data.mafia.joined=!!data.mafia.joined;data.mafia.rank=clamp(Number(data.mafia.rank)||0,0,4);data.mafia.rep=clamp(Number(data.mafia.rep)||0,0,100);data.mafia.earnings=Math.max(0,Number(data.mafia.earnings)||0);
@@ -681,17 +701,19 @@ function section(title){return {section:true,title};}
 function choice(icon,title,desc,action,price='',progress=null,locked=false){return {icon,title,desc,action,price,progress,locked};}
 function modal(icon,title,desc,choices,closable=true,extra=''){
  const root=$('modalRoot');
- const isDrawer=['الدراسة والشغل','الأصول','الأصول والمشتريات','العلاقات','العلاقات والأسرة','الأنشطة والحياة اليومية'].includes(title);
+ const isDrawer=['الدراسة والشغل','الأصول','الأصول والمشتريات','العلاقات','العلاقات والأسرة','الأنشطة والحياة اليومية','السوشيال ميديا','التسوق'].includes(title)||SOCIAL_PLATFORM_CATALOG.some(p=>p.title===title);
  const context=String(title||'')+' '+String(desc||'')+' '+String(extra||'');
  const symptom=/(عرض|أعراض|صداع|غثيان|حمى|حُمّى|زكام|سعال|ألم|وجع|دوخة|symptom|headache|nausea|flu|diagnosis)/i.test(context);
  const crime=/(جريمة|سرقة|سجن|مخدر|عصابة|شرطة|اختلاس|سطو|crime|robbery|prison)/i.test(context);
  const education=/(جامعة|تخصص|مدرسة|تعليم|تخرج|دراسة|شهادة|امتحان|التعليم|education|graduation|school|university|major)/i.test(context);
  const license=/(رخصة|قيادة|اختبار قيادة|license|driving test|road sign)/i.test(context);
  const racing=/(سباق|رالي|تحدي الطريق|drifting|racing|road race|street race)/i.test(context);
- const film=/(فيلم|السينما|مخرج|ممثل|تصوير|استوديو|movie|actor|director|screenplay)/i.test(context);
+ const film=/(فيلم|السينما|مخرج|ممثل|تصوير|استوديو|movie|film|filming|actor|director|screenplay|on the set|costume|production assistant)/i.test(context);
  const money=/(مهنة|الشغل|وظيفة|عمل|مال|بنك|استثمار|مشروع|ترقية|راتب|أصول|دخل|ثروة|قرض|money|bank|investment)/i.test(context);
  const relations=/(صديق|صداقة|علاقة|شريك|زواج|طلاق|أب|أم|أخ|أخت|ابن|عائلة|علاقات|حبيب|friend|relationship|mother|father)/i.test(context);
  const healthcare=/(طبيب|صحة|إصابة|خطر|مرض|وفاة|علاج|تشخيص|مستشفى|جراحة|healthcare|doctor|medical|injury|illness)/i.test(context);
+ const social=/(سوشيال|تواصل|بودكاست|منصة|متابع|حساب|social|podcast|instagram|facebook|tiktok|youtube|twitch|soundcloud)/i.test(context);
+ const supernatural=/(مصاص دماء|مصاصو الدماء|شبح|أشباح|كائن فضائي|سحر|vampire|ghost|alien|supernatural)/i.test(context);
  const special=/(شهرة|إنجاز|مقتنيات|ملك|أمير|جائزة|تاج|بطولة|وسام|achievement|award)/i.test(context);
  const category=symptom?'success':(crime||healthcare)?'danger':special?'special':'normal';
  let categoryLabel='موقف من الحياة';
@@ -702,6 +724,8 @@ function modal(icon,title,desc,choices,closable=true,extra=''){
  else if(license)categoryLabel='الرخصة';
  else if(racing)categoryLabel='السباق';
  else if(film)categoryLabel='الإخراج السينمائي';
+ else if(social)categoryLabel='التواصل الاجتماعي';
+ else if(supernatural)categoryLabel='ما وراء الطبيعة';
  else if(money)categoryLabel='المال والعمل';
  else if(relations)categoryLabel='العلاقات';
  else if(special)categoryLabel='إنجاز خاص';
@@ -709,23 +733,25 @@ function modal(icon,title,desc,choices,closable=true,extra=''){
  const hasSelect=/<select[\s>]/i.test(extra||'');
  const isNotice=!isDrawer&&actualChoices.length<=1&&!hasSelect;
  const hasRandomChoice=actualChoices.length>1||hasSelect;
+ const showSurprise=hasRandomChoice&&!film&&!license;
  const hasQuestion=/(هتعمل إيه|ماذا ستفعل|ماذا ستختار|هتختار إيه|؟|\?)/.test(String(desc||''));
  const questionPrompt=!isNotice&&!hasSelect&&actualChoices.length>1&&!hasQuestion?'هتعمل إيه؟':'';
  const list=choices.map((c,i)=>{
   if(c&&c.section)return '<div class="list-section" role="heading" aria-level="2">'+esc(c.title||'')+'</div>';
+  if(c&&c.banner)return '<button class="drawer-action-banner" data-i="'+i+'"><span class="banner-emoji">'+(c.icon||'🛍️')+'</span><span class="banner-copy"><strong>'+esc(c.title||'تسوّق الآن')+'</strong>'+(c.desc?'<small>'+esc(c.desc)+'</small>':'')+'</span></button>';
   return '<button class="choice'+(c&&c.locked?' locked-choice':'')+'" data-i="'+i+'" '+(c&&c.disabled?'disabled':'')+'>'+
    '<span class="choiceico">'+(c&&c.icon||'›')+'</span>'+
    '<span class="ctext"><span class="ctitle">'+esc(c&&(c.title||c.label)||'اختيار')+'</span>'+
    (c&&c.desc?'<span class="cdesc">'+esc(c.desc)+'</span>':'')+
    (c&&c.progress!==null&&c&&c.progress!==undefined&&Number.isFinite(Number(c.progress))?'<span class="choice-progress"><span style="width:'+clamp(c.progress)+'%"></span></span>':'')+
    '</span>'+(c&&c.price?'<span class="price">'+esc(c.price)+'</span>':'')+
-   (isDrawer?'<span class="choice-chevron" aria-hidden="true">›</span>':'')+
+   (isDrawer?(c&&c.menuDots?'<span class="choice-dots" aria-hidden="true">•••</span>':'<span class="choice-chevron" aria-hidden="true">›</span>'):'')+
   '</button>';
  }).join('');
  if(isDrawer){
   root.innerHTML='<div class="overlay drawer-overlay" id="overlay"><section class="modal drawer" role="dialog" aria-modal="true" aria-label="'+esc(title)+'"><div class="modalhead drawer-head"><div class="modalicon">'+icon+'</div><div class="modaltitle">'+esc(title)+'</div>'+(closable?'<button class="closebtn" id="closeModal" aria-label="إغلاق">×</button>':'')+'</div><div class="modalbody drawer-body">'+(desc?'<p class="desc">'+esc(desc)+'</p>':'')+extra+'<div class="choicegrid">'+list+'</div></div></section></div>';
  }else{
-  root.innerHTML='<div class="overlay event-overlay" id="overlay"><section class="modal event-modal banner-'+category+(isNotice?' notice-modal':'')+'" role="dialog" aria-modal="true" aria-label="'+esc(title)+'"><div class="event-banner banner-'+category+'"><span>'+categoryLabel+'</span>'+(closable?'<button class="closebtn" id="closeModal" aria-label="إغلاق">×</button>':'')+'</div><div class="event-summary"><div class="event-icon">'+icon+'</div><h2 class="event-title">'+esc(title)+'</h2>'+(desc?'<p class="desc">'+esc(desc)+'</p>':'')+(questionPrompt?'<div class="event-question">'+questionPrompt+'</div>':'')+'</div><div class="modalbody event-body">'+extra+'<div class="choicegrid">'+list+'</div>'+(hasRandomChoice?'<button class="surprise-choice" id="surpriseChoice" type="button"><span aria-hidden="true">🎲</span> فاجئني!</button>':'')+'</div></section></div>';
+  root.innerHTML='<div class="overlay event-overlay" id="overlay"><section class="modal event-modal banner-'+category+(isNotice?' notice-modal':'')+'" role="dialog" aria-modal="true" aria-label="'+esc(title)+'"><div class="event-banner banner-'+category+'"><span>'+categoryLabel+'</span>'+(closable?'<button class="closebtn" id="closeModal" aria-label="إغلاق">×</button>':'')+'</div><div class="event-summary"><div class="event-icon">'+icon+'</div><h2 class="event-title">'+esc(title)+'</h2>'+(desc?'<p class="desc">'+esc(desc)+'</p>':'')+(questionPrompt?'<div class="event-question">'+questionPrompt+'</div>':'')+'</div><div class="modalbody event-body">'+extra+'<div class="choicegrid">'+list+'</div>'+(showSurprise?'<button class="surprise-choice" id="surpriseChoice" type="button"><span aria-hidden="true">🎲</span> فاجئني!</button>':'')+'</div></section></div>';
  }
  const overlay=$('overlay');
  overlay.addEventListener('click',e=>{if(e.target===overlay&&closable)closeModal();});
@@ -1105,28 +1131,118 @@ function university(from18){
 function assets(){
  const opts=[
   section('المالية'),
-  choice('💰','الحسابات والمالية','الرصيد '+cash(state.bank)+' · صافي الثروة التقديري '+cash(state.bank+(state.assets||[]).reduce((s,a)=>s+(a.value||0),0)+(state.investments||[]).reduce((s,a)=>s+(a.value||0),0)-(state.debt||0))+'.',()=>{closeModal();financeMenu();}),
+  markMenuRow(choice('💰','الحسابات والمالية','الرصيد '+cash(state.bank)+' · صافي الثروة '+cash(state.bank+(state.assets||[]).reduce((sum,a)=>sum+(a.value||0),0)+(state.investments||[]).reduce((sum,a)=>sum+(a.value||0),0)-(state.debt||0))+'.',()=>{closeModal();financeMenu();})),
   choice('📊','الاستثمارات','إدارة محفظة الأسهم والسندات والأصول المالية.',()=>{closeModal();investingMenu();}),
-  choice('💎','نمط الحياة الفاخر','مشتريات وأصول تؤثر على مستوى المعيشة.',()=>{closeModal();manageAssets();}),
+  choice('💎','نمط الحياة الفاخر','صافي ثروتك الحالية '+cash(Math.max(0,state.bank+(state.assets||[]).reduce((sum,a)=>sum+(a.value||0),0)-(state.debt||0)))+'.',()=>{closeModal();manageAssets();},'',clamp(Math.round(Math.log10(Math.max(1,state.bank+(state.assets||[]).reduce((sum,a)=>sum+(a.value||0),0)))*13))),
+  section('مزايا خاصة ليك'),
+  choice('🎬','حزمة مخرج الأفلام','أخرج أفلامًا، اختبر الممثلين، واكسب الجوائز.',()=>routePack('movieDirectorPack',movieDirectorMenu),'',null,!perkOwned('movieDirectorPack')),
+  choice('🎲','توسعة الكازينو','امتلك كازينو وأدر الألعاب والمرافق.',()=>routePack('casinoPack',casinoMenu),'',null,!perkOwned('casinoPack')),
+  choice('🏘️','العقارات والملاك','أدر المستأجرين والعقود والعقارات المتقدمة.',()=>routePack('landlordPack',landlordPortfolioMenu),'',null,!perkOwned('landlordPack')),
   section('الأصول المميزة'),
   choice('🔨','بيوت المزادات','اقتناء المقتنيات النادرة وعرضها.',()=>routePack('blackMarketPack',blackMarketMenu),'',null,!perkOwned('blackMarketPack')),
-  choice('🎰','الكازينو','إدارة كازينو وألعاب ومرافق.',()=>routePack('casinoPack',casinoMenu),'',null,!perkOwned('casinoPack')),
+  choice('🎰','الكازينو','إدارة الألعاب والمرافق داخل الكازينو.',()=>routePack('casinoPack',casinoMenu),'',null,!perkOwned('casinoPack')),
   choice('🏛️','المتحف','اعرض مقتنياتك واجذب الزوار.',()=>routePack('blackMarketPack',museumMenu),'',null,!perkOwned('blackMarketPack')),
-  choice('🏎️','مرآب سيارات السباق','شراء وإدارة السيارات من متجر الأصول.',()=>{closeModal();manageAssets();},'',null,false),
-  choice('🦁','حديقة الحيوانات','شراء حيوانات وبناء الموائل وإدارة الرعاية.',()=>routePack('zooExpansionPack',zooMenu),'',null,!perkOwned('zooExpansionPack')),
-  choice('🏢','محفظة الشركات','شراء شركات إضافية وإدارة أعمالك.',()=>routePack('businessPack',companyPortfolioMenu),'',null,!perkOwned('businessPack')),
-  choice('🏘️','العقارات والملاك','شراء وإدارة العقارات والمستأجرين.',()=>routePack('landlordPack',landlordPortfolioMenu),'',null,!perkOwned('landlordPack')),
+  choice('🏎️','مرآب سيارات السباق','شراء سيارات سباق وإدارة المركبات.',()=>{closeModal();shoppingMenu();},'',null,false),
+  choice('🦁','حديقة الحيوانات','امتلك حديقة حيوان واعتنِ بالحيوانات.',()=>routePack('zooExpansionPack',zooMenu),'',null,!perkOwned('zooExpansionPack')),
+  ...((state.assets||[]).some(a=>a.kind==='property')?[section('العقارات'),...(state.assets||[]).filter(a=>a.kind==='property').map(a=>choice(a.emoji||'🏠',a.title,'القيمة '+cash(a.value)+' · '+(a.tenant?'مؤجر':'غير مؤجر'),manageAssets,cash(a.value)))]:[]),
+  ...((state.assets||[]).some(a=>['car','bike','racecar','aircraft','helicopter','boat'].includes(a.kind))?[section('المركبات'),...(state.assets||[]).filter(a=>['car','bike','racecar','aircraft','helicopter','boat'].includes(a.kind)).map(a=>choice(a.emoji||'🚘',a.title,(Number.isFinite(Number(a.condition))?'الحالة '+clamp(a.condition)+'% · ':'')+'القيمة '+cash(a.value||0),manageAssets,cash(a.value||0),Number.isFinite(Number(a.condition))?clamp(a.condition):null))]:[section('المركبات'),choice('🚘','لا توجد مركبات بعد','تصفّح معارض السيارات والمركبات.',shoppingMenu)]),
   section('المقتنيات'),
   choice('🎒','ممتلكاتي','إدارة الممتلكات والأصول التي تملكها بالفعل.',manageAssets),
   choice('🐾','الحيوانات الأليفة','عرض الحيوانات الأليفة ورعايتها.',petsMenu),
-  section('إضافات'),
-  choice('📱','السوشيال ميديا','إدارة هويتك وحساباتك الإلكترونية.',()=>{closeModal();socialMediaMenu();}),
-  section('المتجر'),
-  ...assetShop.map(a=>choice(a.emoji,a.title,a.desc+' التكلفة '+cash(a.value)+'. صيانة سنوية '+cash(a.upkeep)+'.',()=>buyAsset(a),cash(a.value)))
+  ...(state.business?[choice('🏪','إدارة مشروعي','قيمة المشروع '+cash(state.business.value)+' · المستوى '+(state.business.level||1)+'.',businessMenu)]:[]),
+  section('متفرقات'),
+  choice('📱','السوشيال ميديا','أنشئ حسابات على منصات مختلفة وتابع جمهورك.',()=>{closeModal();socialMediaMenu();}),
+  choice('🏢','محفظة الشركات','اشترِ شركات إضافية وراجع تقاريرها.',()=>routePack('businessPack',companyPortfolioMenu),'',null,!perkOwned('businessPack'))
  ];
- if(state.business)opts.splice(2,0,choice('🏪','إدارة مشروعي','قيمة المشروع '+cash(state.business.value)+' · مستوى الإدارة '+(state.business.level||1)+'.',businessMenu));
- if(state.assets.length)opts.push(choice('📦','إدارة الأصول المملوكة','بيع الأصول وصيانتها وإدارة العقارات المؤجرة.',manageAssets));
- modal('🏠','الأصول','إدارة المال، الأصول المميزة، المقتنيات والممتلكات التي تملكها بالفعل.',opts);
+ const shopBanner=choice('🛍️','التسوّق','دراجات، سيارات، مجوهرات، آلات موسيقية، عقارات ومركبات خاصة.',shoppingMenu);shopBanner.banner=true;opts.push(shopBanner);
+ modal('🏠','الأصول','إدارة المال والأصول والمقتنيات والمركبات التي تملكها.',opts);
+}
+function markMenuRow(row){row.menuDots=true;return row;}
+function shoppingMenu(){
+ const opts=[
+  section('الدراجات'),
+  markMenuRow(choice('🚲','دراجات نجوى','تسوّق الدراجات الهوائية والكهربائية.',()=>storeDealerMenu('bicycles'))),
+  section('معارض السيارات'),
+  markMenuRow(choice('🏁','جيرجس موتور وورلد','سيارات سباق ومركبات عالية الأداء.',()=>storeDealerMenu('racing'))),
+  markMenuRow(choice('🚗','حنانيا للسيارات','سيارات سيدان وسيارات جديدة.',()=>storeDealerMenu('hanania'))),
+  markMenuRow(choice('🚘','الأقصر للسيارات','سيارات فاخرة ورياضية.',()=>storeDealerMenu('luxor'))),
+  markMenuRow(choice('🚙','ناصر موتورز','سيارات عائلية ودفع رباعي.',()=>storeDealerMenu('naser'))),
+  section('محلات المجوهرات'),
+  markMenuRow(choice('💎','جاليلا للمجوهرات','خواتم وقلائد ومقتنيات ثمينة.',()=>storeDealerMenu('jewelry'))),
+  markMenuRow(choice('🖤','أوليمبوس للمجوهرات البديلة','إكسسوارات ومجوهرات اقتصادية.',()=>storeDealerMenu('fashionJewelry'))),
+  section('محلات الموسيقى'),
+  markMenuRow(choice('🎺','ثيوريز للموسيقى','آلات موسيقية للهوايات والمقتنيات.',()=>storeDealerMenu('music'))),
+  section('سماسرة العقارات'),
+  markMenuRow(choice('🏠','كاديت للعقارات','شقق ومنازل للمرة الأولى.',()=>storeDealerMenu('cadet'))),
+  markMenuRow(choice('🏢','صديقي عماري للعقارات','منازل أوسع وعقارات استثمارية.',()=>storeDealerMenu('sadiki'))),
+  section('معارض المركبات الخاصة'),
+  markMenuRow(choice('✈️','بيناكل للطائرات','طائرات خاصة ومركبات جوية.',()=>storeDealerMenu('aircraft'))),
+  markMenuRow(choice('🚁','ماونتن للطائرات المروحية','مروحيات ومركبات جوية خاصة.',()=>storeDealerMenu('helicopter'))),
+  markMenuRow(choice('⛵','مبارك مارين','قوارب ويخوت للترفيه.',()=>storeDealerMenu('marine'))),
+  choice('↩️','رجوع للأصول','',()=>{closeModal();assets();})
+ ];
+ modal('🛍️','التسوق','اختار المتجر واستعرض الأسعار قبل الشراء. كل المشتريات تخص ملف حياتك الحالي.',opts);
+}
+function storeDealerMenu(kind){
+ const shops={
+  bicycles:{title:'دراجات نجوى',emoji:'🚲',desc:'اختار دراجة تناسب ميزانيتك.',items:[
+   {kind:'bike',title:'دراجة هوائية',emoji:'🚲',value:12000,upkeep:500,desc:'دراجة عملية للتنقل اليومي.'},
+   {kind:'bike',title:'دراجة كهربائية',emoji:'🚴',value:38000,upkeep:1300,desc:'تنقل أسرع مع تكلفة صيانة أعلى.'}
+  ]},
+  racing:{title:'جيرجس موتور وورلد',emoji:'🏁',desc:'مركبات سباق للمهتمين بالأداء العالي.',items:[
+   {kind:'racecar',title:'سيارة سباق مستعملة',emoji:'🏎️',value:1200000,upkeep:65000,desc:'سيارة سباق تحتاج صيانة سنوية مرتفعة.'},
+   {kind:'racecar',title:'سيارة سباق احترافية',emoji:'🏎️',value:7500000,upkeep:240000,desc:'مركبة متقدمة لهواة السباق.'}
+  ]},
+  hanania:{title:'حنانيا للسيارات',emoji:'🚗',desc:'اختار من مجموعة السيارات اليومية.',items:[
+   {kind:'car',title:'سيدان مستعملة',emoji:'🚗',value:260000,upkeep:17000,desc:'سيارة مستعملة اقتصادية نسبيًا.'},
+   {kind:'car',title:'سيدان جديدة',emoji:'🚙',value:850000,upkeep:29000,desc:'سيارة جديدة براحة ومصاريف أعلى.'}
+  ]},
+  luxor:{title:'الأقصر للسيارات',emoji:'🚘',desc:'موديلات فاخرة ورياضية.',items:[
+   {kind:'car',title:'سيارة فاخرة',emoji:'🚘',value:2200000,upkeep:72000,desc:'راحة وفخامة مع مصاريف سنوية مرتفعة.'},
+   {kind:'car',title:'سيارة رياضية',emoji:'🏎️',value:3200000,upkeep:105000,desc:'سيارة رياضية قوية وتكاليف تشغيل عالية.'}
+  ]},
+  naser:{title:'ناصر موتورز',emoji:'🚙',desc:'سيارات عائلية ورحلات طويلة.',items:[
+   {kind:'car',title:'سيارة دفع رباعي',emoji:'🚙',value:1350000,upkeep:51000,desc:'سيارة واسعة للطرق المختلفة.'},
+   {kind:'car',title:'سيارة عائلية',emoji:'🚐',value:970000,upkeep:35000,desc:'مساحة عملية للعائلة.'}
+  ]},
+  jewelry:{title:'جاليلا للمجوهرات',emoji:'💎',desc:'مقتنيات ثمينة يمكنك الاحتفاظ بها أو بيعها.',items:[
+   {kind:'collectible',title:'خاتم فضة',emoji:'💍',value:4500,upkeep:0,desc:'قطعة بسيطة من المجوهرات.'},
+   {kind:'collectible',title:'قلادة ذهبية',emoji:'📿',value:22000,upkeep:0,desc:'قلادة ثمينة قابلة لإعادة البيع.'},
+   {kind:'collectible',title:'حجر كريم نادر',emoji:'💎',value:85000,upkeep:0,desc:'مقتنى نادر مرتفع القيمة.'}
+  ]},
+  fashionJewelry:{title:'أوليمبوس للمجوهرات البديلة',emoji:'🖤',desc:'إكسسوارات اقتصادية للمظهر اليومي.',items:[
+   {kind:'collectible',title:'سوار إكسسوار',emoji:'📿',value:900,upkeep:0,desc:'إكسسوار بسيط منخفض السعر.'},
+   {kind:'collectible',title:'خاتم بديل',emoji:'💍',value:1500,upkeep:0,desc:'قطعة زينة اقتصادية.'}
+  ]},
+  music:{title:'ثيوريز للموسيقى',emoji:'🎺',desc:'اشترِ آلة وتعلم العزف أو احتفظ بها كمقتنى.',items:[
+   {kind:'instrument',title:'جيتار صوتي',emoji:'🎸',value:2500,upkeep:100,desc:'آلة مناسبة لبداية تعلم الموسيقى.'},
+   {kind:'instrument',title:'بيانو',emoji:'🎹',value:9000,upkeep:350,desc:'آلة موسيقية تحتاج مساحة وعناية.'},
+   {kind:'instrument',title:'بوق موسيقي',emoji:'🎺',value:1800,upkeep:80,desc:'آلة نفخ للموسيقى والتدريب.'},
+   {kind:'instrument',title:'كمان',emoji:'🎻',value:6000,upkeep:220,desc:'آلة وترية تحتاج تدريبًا وصيانة.'}
+  ]},
+  cadet:{title:'كاديت للعقارات',emoji:'🏠',desc:'عقارات للمبتدئين والاستقرار.',items:[
+   {kind:'property',title:'شقة متوسطة',emoji:'🏢',value:950000,upkeep:14000,desc:'مساحة أكبر ومسؤوليات أعلى.'},
+   {kind:'property',title:'بيت عائلي',emoji:'🏡',value:2400000,upkeep:34000,desc:'بيت واسع يحتاج ميزانية قوية.'}
+  ]},
+  sadiki:{title:'صديقي عماري للعقارات',emoji:'🏘️',desc:'عقارات أوسع وفرص استثمارية.',items:[
+   {kind:'property',title:'فيلا عائلية',emoji:'🏡',value:5500000,upkeep:115000,desc:'فيلا كبيرة بمصاريف صيانة مرتفعة.'},
+   {kind:'property',title:'مبنى سكني صغير',emoji:'🏢',value:7000000,upkeep:140000,desc:'عقار متعدد الوحدات وتكاليف تشغيل كبيرة.'}
+  ]},
+  aircraft:{title:'بيناكل للطائرات',emoji:'✈️',desc:'مركبات جوية خاصة مرتفعة التكلفة.',items:[
+   {kind:'aircraft',title:'طائرة خاصة صغيرة',emoji:'✈️',value:12000000,upkeep:650000,desc:'طائرة خاصة بتكاليف تشغيل مرتفعة.'}
+  ]},
+  helicopter:{title:'ماونتن للطائرات المروحية',emoji:'🚁',desc:'مركبات جوية خاصة للاستخدام الفاخر.',items:[
+   {kind:'helicopter',title:'مروحية خاصة',emoji:'🚁',value:4500000,upkeep:280000,desc:'مروحية بمصاريف صيانة سنوية عالية.'}
+  ]},
+  marine:{title:'مبارك مارين',emoji:'⛵',desc:'قوارب ويخوت للترفيه.',items:[
+   {kind:'boat',title:'قارب ترفيهي',emoji:'⛵',value:1200000,upkeep:68000,desc:'قارب يحتاج مرسى وصيانة سنوية.'},
+   {kind:'boat',title:'يخت فاخر',emoji:'🛥️',value:3300000,upkeep:190000,desc:'يخت فاخر بتكاليف تشغيل مرتفعة.'}
+  ]}
+ };
+ const shop=shops[kind];if(!shop){shoppingMenu();return;}
+ const opts=shop.items.map(item=>choice(item.emoji,item.title,item.desc+' التكلفة '+cash(item.value)+' · الصيانة السنوية '+cash(item.upkeep)+'.',()=>buyAsset(item),cash(item.value)));
+ opts.push(choice('↩️','رجوع للتسوق','',shoppingMenu));
+ modal(shop.emoji,shop.title,shop.desc,opts);
 }
 
 function companyPortfolioMenu(){
@@ -3220,7 +3336,7 @@ function bitizenshipInteractionMenu(){
  opts.push(choice('↩️','رجوع للعضوية','',bitizenshipMenu));modal('🗣️','تفاعلات Bitizen','اختار تفاعلًا متاحًا حسب مرحلة حياتك.',opts);
 }
 function movieDirectorMenu(){
- if(!perkOwned('movieDirectorPack')){closeModal();info('🎥','حزمة مخرج الأفلام مقفولة','افتحها من متجر مزايا حياة.');return;}
+ if(!perkOwned('movieDirectorPack')){closeModal();showMovieDirectorOffer();return;}
  if(state.specialCareer&&state.specialCareer.id==='director'){filmStudioMenu();return;}
  modal('🎥','حزمة مخرج الأفلام','المسار متاح من سن 25. بعد بدئه يمكنك إنتاج أفلام أصلية عبر 11 نوعًا سينمائيًا.',[
   choice('🎬','بدء مسار الإخراج','تحتاج سن 25 سنة.',()=>startSpecialCareer({id:'director',title:'إخراج الأفلام',emoji:'🎥',min:25,looks:0,income:26000,desc:'إدارة إنتاج أفلام أصلية.'})),
@@ -3529,7 +3645,7 @@ function buyPremiumPerk(id){
   if(id==='landlordPack')grantLandlordStarterProperty();
   persistPermanentPerks();log('✨','ميزة جديدة: '+item.title,'فتحت '+item.title+' من رصيد اللعبة. تقدر تدير المزايا من المتجر والقائمة الرئيسية.','special');
  }
- save();render();premiumPerksMenu();
+ save();render();if(id==='movieDirectorPack'){movieDirectorMenu();return;}premiumPerksMenu();
 }
 
 function perkAction(id){
@@ -3585,7 +3701,18 @@ function auraRingMenu(){
 function routePack(id,openAction){
  closeModal();
  if(perkOwned(id)){openAction();return;}
+ if(id==='movieDirectorPack'){showMovieDirectorOffer();return;}
  premiumPerksMenu();
+}
+function showMovieDirectorOffer(){
+ if(perkOwned('movieDirectorPack')){movieDirectorMenu();return;}
+ const root=$('modalRoot');
+ root.innerHTML='<div class="overlay pack-offer-overlay" id="packOfferOverlay" role="presentation"><button class="pack-offer-close" id="packOfferClose" type="button" aria-label="إغلاق">×</button><section class="pack-offer-card" role="dialog" aria-modal="true" aria-label="حزمة مخرج الأفلام"><div class="pack-offer-hero"><div class="pack-offer-lights" aria-hidden="true">✦　🎥　✦</div><div class="pack-offer-avatar" aria-hidden="true">🎬</div><div class="pack-offer-ribbon">حزمة مخرج الأفلام</div><p>حوّل أفكارك إلى أفلام ناجحة</p></div><div class="pack-offer-features"><div class="pack-offer-feature"><span>🎬</span><strong>أخرج أفلامًا في 11 نوعًا مختلفًا</strong></div><div class="pack-offer-feature"><span>🎭</span><strong>اعمل اختبارات أداء واختار فريقك</strong></div><div class="pack-offer-feature"><span>🎞️</span><strong>تعامل مع المواقف والدراما خلف الكواليس</strong></div><div class="pack-offer-feature"><span>🏆</span><strong>نافس على الجوائز وراجع تقييمات أفلامك</strong></div><div class="pack-offer-feature"><span>🎟️</span><strong>اعرض إنتاجك في المهرجانات</strong></div><div class="pack-offer-feature"><span>🌟</span><strong>ابنِ مسيرة مخرج سينمائي ناجح</strong></div></div><div class="pack-offer-actions"><button class="pack-offer-buy" id="moviePackBuyButton" type="button"><span>افتحها الآن!</span><small>'+cash(65000)+' من رصيد اللعبة</small></button><p class="pack-offer-note">شراء داخل اللعبة فقط — لا توجد مدفوعات حقيقية</p><button class="pack-offer-later" id="packOfferLater" type="button">ليس الآن</button></div></section></div>';
+ const overlay=$('packOfferOverlay'),close=()=>{root.innerHTML='';};
+ overlay.addEventListener('click',event=>{if(event.target===overlay)close();});
+ $('packOfferClose').addEventListener('click',close);
+ $('packOfferLater').addEventListener('click',close);
+ $('moviePackBuyButton').addEventListener('click',()=>buyPremiumPerk('movieDirectorPack'));
 }
 function activities(){
  const opts=[
@@ -3640,35 +3767,97 @@ function healthMenu(){
  ]);
 }
 
-function socialMediaMenu(){
- const opts=[];
- if(!state.socialMediaAccount)opts.push(choice('📱','إنشاء حساب','ابدأ حسابًا باسمك بدون تكلفة.',createSocialAccount));
- else{
-  opts.push(choice('📸','نشر صورة أو قصة','محتوى بسيط قد يزيد التفاعل والمتابعين.',()=>publishSocialContent('story')));
-  opts.push(choice('🎥','نشر فيديو','جهد أكبر وفرصة انتشار أوسع.',()=>publishSocialContent('video')));
-  opts.push(choice('🤝','تعاون مدفوع','حملة برعاية شركة، تحتاج سمعة وجمهورًا.',()=>publishSocialContent('sponsor')));
-  opts.push(choice('📊','إحصاءات الحساب','تابع المتابعين والمنشورات والشهرة.',()=>{closeModal();info('📊','إحصاءات حسابك','المتابعون: '+fmt(state.followers||0)+'. المنشورات: '+fmt(state.socialMediaPosts||0)+'. الشهرة: '+clamp(state.fame||0)+'%. السمعة: '+clamp(state.reputation||50)+'%.');}));
-  opts.push(choice('🗑️','إيقاف الحساب','إغلاق الحساب وإيقاف النمو العضوي.',()=>{closeModal();state.socialMediaAccount=false;log('📱','إغلاق حساب التواصل','قررت توقف نشاطك على السوشيال ميديا.','');render();info('📱','تم إغلاق الحساب','المتابعون محفوظون في سجل حياتك لكن النمو توقف.');}));
+function ensureSocialPlatforms(){
+ if(!state.socialPlatforms||typeof state.socialPlatforms!=='object'||Array.isArray(state.socialPlatforms))state.socialPlatforms={};
+ const raw=state.socialPlatforms,normalized={};
+ SOCIAL_PLATFORM_CATALOG.forEach(platform=>{
+  const saved=raw[platform.id]&&typeof raw[platform.id]==='object'?raw[platform.id]:{};
+  normalized[platform.id]={active:!!saved.active,followers:Math.max(0,Number(saved.followers)||0),posts:Math.max(0,Number(saved.posts)||0)};
+ });
+ if(state.socialMediaAccount&&!SOCIAL_PLATFORM_CATALOG.some(platform=>normalized[platform.id].active)){
+  normalized.instagram={active:true,followers:Math.max(0,Number(state.followers)||10),posts:Math.max(0,Number(state.socialMediaPosts)||0)};
  }
- modal('📱','السوشيال ميديا','ابنِ جمهورًا بالتدريج. المحتوى قد ينتشر أو يتعرض لانتقاد حسب اختياراتك وسمعتك.',opts);
+ state.socialPlatforms=normalized;
+ state.followers=Math.max(0,Number(state.followers)||0);
+ state.socialMediaPosts=Math.max(0,Number(state.socialMediaPosts)||0);
+ state.socialMediaAccount=SOCIAL_PLATFORM_CATALOG.some(platform=>normalized[platform.id].active);
+ return normalized;
 }
-function createSocialAccount(){
- closeModal();if(state.age<10){info('🔒','لسه بدري','إنشاء حساب شخصي متاح من سن 10 داخل اللعبة.');return;}
- state.socialMediaAccount=true;state.followers=Math.max(state.followers||0,10+Math.floor(Math.random()*90));state.socialMediaPosts=0;log('📱','إنشاء حساب جديد','بدأت حسابًا على السوشيال ميديا. النمو هيعتمد على المحتوى والاستمرار.','good');render();info('📱','حسابك جاهز','انشر أول محتوى عشان تبدأ في بناء جمهور.');
+function socialMediaMenu(){
+ const platforms=ensureSocialPlatforms(),active=SOCIAL_PLATFORM_CATALOG.filter(platform=>platforms[platform.id].active),inactive=SOCIAL_PLATFORM_CATALOG.filter(platform=>!platforms[platform.id].active);
+ const opts=[];
+ if(active.length){
+  opts.push(section('القنوات النشطة'));
+  active.forEach(platform=>{
+   const data=platforms[platform.id],row=choice(platform.emoji,platform.title,'المتابعون '+fmt(data.followers)+' · المنشورات '+fmt(data.posts),()=>socialPlatformMenu(platform.id));
+   row.menuDots=true;opts.push(row);
+  });
+ }
+ if(inactive.length){
+  opts.push(section('القنوات غير النشطة'));
+  inactive.forEach(platform=>{
+   const subtitle=state.age<platform.minAge?'التسجيل متاح من سن '+platform.minAge+' سنة':'إنشاء حساب على '+platform.title;
+   const row=choice(platform.emoji,platform.title,subtitle,()=>signUpSocialPlatform(platform.id));
+   row.menuDots=true;opts.push(row);
+  });
+ }
+ if(active.length){
+  opts.push(section('إحصاءات عامة'));
+  opts.push(choice('📊','إحصاءات كل الحسابات','إجمالي المتابعين '+fmt(state.followers||0)+' · المنشورات '+fmt(state.socialMediaPosts||0)+'.',()=>{closeModal();info('📊','إحصاءات السوشيال ميديا','إجمالي المتابعين '+fmt(state.followers||0)+'. إجمالي المنشورات '+fmt(state.socialMediaPosts||0)+'. الشهرة '+clamp(state.fame||0)+'%. السمعة '+clamp(state.reputation||50)+'%.');}));
+ }
+ modal('📱','السوشيال ميديا','أنشئ حسابات على منصات مختلفة، وانشر محتوى، وراقب نمو الجمهور.',opts);
 }
-function publishSocialContent(kind){
- closeModal();if(!state.socialMediaAccount){socialMediaMenu();return;}
+function signUpSocialPlatform(id){
+ closeModal();const platforms=ensureSocialPlatforms(),platform=SOCIAL_PLATFORM_CATALOG.find(item=>item.id===id);if(!platform)return;
+ if(state.age<platform.minAge){info('🔒','التسجيل غير متاح بعد','تقدر تنشئ حساب '+platform.title+' من سن '+platform.minAge+' سنة.');return;}
+ const account=platforms[id];
+ if(account.active){socialPlatformMenu(id);return;}
+ account.active=true;
+ if(account.followers<=0){account.followers=10+Math.floor(Math.random()*91);state.followers+=account.followers;}
+ state.socialMediaAccount=true;
+ log('📱','إنشاء حساب على '+platform.title,'بدأت حسابًا جديدًا. النمو هيعتمد على نوع المحتوى والاستمرار.','good');
+ save();render();socialPlatformMenu(id);
+}
+function createSocialAccount(){signUpSocialPlatform('instagram');}
+function socialPlatformMenu(id){
+ const platforms=ensureSocialPlatforms(),platform=SOCIAL_PLATFORM_CATALOG.find(item=>item.id===id),account=platforms[id];
+ if(!platform||!account||!account.active){socialMediaMenu();return;}
+ const opts=[
+  choice('📸','نشر صورة أو قصة','محتوى بسيط قد يزيد التفاعل والمتابعين.',()=>publishSocialContent('story',id)),
+  choice('🎥','نشر فيديو','جهد أكبر وفرصة انتشار أوسع.',()=>publishSocialContent('video',id)),
+  choice('🤝','تعاون مدفوع','حملة برعاية شركة، تحتاج سمعة وجمهورًا.',()=>publishSocialContent('sponsor',id),'2,000 '+state.place.unit),
+  section('إحصاءات القناة'),
+  choice('📊','أداء '+platform.title,'المتابعون '+fmt(account.followers)+' · المنشورات '+fmt(account.posts)+'.',()=>{closeModal();info('📊',platform.title,'المتابعون: '+fmt(account.followers)+'. المنشورات: '+fmt(account.posts)+'. الشهرة '+clamp(state.fame||0)+'%.');}),
+  choice('⏸️','إيقاف القناة','إخفاء القناة من قائمة النشطة مع الاحتفاظ بسجلها.',()=>{closeModal();account.active=false;state.socialMediaAccount=SOCIAL_PLATFORM_CATALOG.some(item=>platforms[item.id].active);log('📱','إيقاف قناة '+platform.title,'أوقفت النشر على '+platform.title+'. بيانات القناة محفوظة.','');save();render();socialMediaMenu();}),
+  choice('↩️','رجوع للقنوات','',socialMediaMenu)
+ ];
+ modal(platform.emoji,platform.title,'إدارة القناة ومحتواها. الانتشار غير مضمون ومرتبط بالاختيارات.',opts);
+}
+function publishSocialContent(kind,platformId){
+ closeModal();const platforms=ensureSocialPlatforms(),activeId=platformId||(SOCIAL_PLATFORM_CATALOG.find(platform=>platforms[platform.id].active)||{}).id,platform=SOCIAL_PLATFORM_CATALOG.find(item=>item.id===activeId),account=platforms[activeId];
+ if(!state.socialMediaAccount||!platform||!account||!account.active){socialMediaMenu();return;}
  const costs={story:0,video:250,sponsor:2000},cost=costs[kind]||0;
  if(state.bank<cost){info('💳','الرصيد مش كفاية','النشاط محتاج '+cash(cost)+'.');return;}
- if(state.age<13&&kind==='sponsor'){info('🔒','التعاون التجاري متاح للبالغين','تعاونات العلامات التجارية متاحة من سن 18 داخل اللعبة.');return;}
- if(kind==='sponsor'&&state.age<18){info('🔒','التعاون التجاري متاح للبالغين','تعاونات العلامات التجارية متاحة من سن 18 داخل اللعبة.');return;}
- state.bank-=cost;state.socialMediaPosts=(state.socialMediaPosts||0)+1;
+ if(kind==='sponsor'&&state.age<18){info('🔒','التعاون التجاري متاح للبالغين','التعاونات التجارية متاحة من سن 18 داخل اللعبة.');return;}
+ if(platform.id==='onlyfans'&&state.age<18){info('🔒','القناة متاحة للبالغين','النشر على هذه المنصة متاح من سن 18 داخل اللعبة.');return;}
+ state.bank-=cost;state.socialMediaPosts=(state.socialMediaPosts||0)+1;account.posts=(account.posts||0)+1;
  const strength=(state.stats.smart/200)+(state.stats.looks/250)+(state.fame/180)+(state.reputation/220);
- let viral=chance(Math.min(.78,.12+strength)),gain=0;
- if(viral){gain=kind==='sponsor'?Math.round(1500+state.followers*.05+Math.random()*5000):kind==='video'?Math.round(40+Math.random()*400+state.fame*6):Math.round(8+Math.random()*100);state.followers=Math.max(0,(state.followers||0)+gain);state.fame=clamp(state.fame+(kind==='video'?4:2));state.reputation=clamp(state.reputation+2);if(kind==='sponsor')state.bank+=gain;log('📱',kind==='sponsor'?'تعاون تجاري ناجح':kind==='video'?'فيديو انتشر':'تفاعل مع منشور','زاد جمهورك بمقدار '+fmt(gain)+' متابع.'+(kind==='sponsor'?' وكسبت '+cash(gain)+'.':''),'good');}
- else{state.stats.happiness=clamp(state.stats.happiness-1);if(chance(.25))state.reputation=clamp(state.reputation-3);log('📱','تفاعل محدود','المحتوى ماوصلش لجمهور كبير المرة دي. راجع التوقيت والأسلوب وجرب تاني.','');}
- if(state.followers>=1000)achievement('بناء جمهور على السوشيال ميديا');if(state.followers>=100000)achievement('وصلت إلى مئة ألف متابع');render();info(viral?'⭐':'📱',viral?'المحتوى انتشر':'المحتوى لم ينتشر',viral?'إجمالي المتابعين '+fmt(state.followers)+'. الشهرة '+state.fame+'%.':'المتابعون الحاليون '+fmt(state.followers)+'. الانتشار مش مضمون وكل منشور تجربة جديدة.');
+ const viral=chance(Math.min(.78,.12+strength));let gain=0;
+ if(viral){
+  gain=kind==='sponsor'?Math.round(1500+state.followers*.05+Math.random()*5000):kind==='video'?Math.round(40+Math.random()*400+state.fame*6):Math.round(8+Math.random()*100);
+  state.followers=Math.max(0,(state.followers||0)+gain);account.followers=Math.max(0,(account.followers||0)+gain);
+  state.fame=clamp(state.fame+(kind==='video'?4:2));state.reputation=clamp(state.reputation+2);
+  if(kind==='sponsor')state.bank+=gain;
+  log('📱',kind==='sponsor'?'تعاون تجاري ناجح':kind==='video'?'فيديو انتشر':'تفاعل مع منشور','زاد جمهور '+platform.title+' بمقدار '+fmt(gain)+' متابع.'+(kind==='sponsor'?' وكسبت '+cash(gain)+'.':''),'good');
+ }else{
+  state.stats.happiness=clamp(state.stats.happiness-1);if(chance(.25))state.reputation=clamp(state.reputation-3);
+  log('📱','تفاعل محدود','المحتوى على '+platform.title+' ماوصلش لجمهور كبير المرة دي. راجع التوقيت والأسلوب وجرب تاني.','');
+ }
+ if(state.followers>=1000)achievement('بناء جمهور على السوشيال ميديا');if(state.followers>=100000)achievement('وصلت إلى مئة ألف متابع');render();
+ info(viral?'⭐':'📱',viral?'المحتوى انتشر':'المحتوى لم ينتشر',viral?'متابعو '+platform.title+': '+fmt(account.followers)+'. إجمالي المتابعين '+fmt(state.followers)+'. الشهرة '+state.fame+'%.':'متابعو '+platform.title+': '+fmt(account.followers)+'. الانتشار مش مضمون وكل منشور تجربة جديدة.');
 }
+
+
 function salonMenu(){
  const opts=[
   choice('💈','قَصّة شعر جديدة','تعديل بسيط في المظهر مقابل 400 '+state.place.unit+'.',()=>salonAction('hair'),'400 '+state.place.unit),
