@@ -234,3 +234,13 @@ test('حماة سلسلة التحديات يعملون عند تفويت يوم
   assert.match(app, /state\.challengeArchive=state\.challengeArchive\.slice\(0,60\)/);
   assert.match(app, /data\.challengeArchive=data\.challengeArchive\.filter\([\s\S]*?\.slice\(0,60\)/);
 });
+
+
+test('مركز المهن يفتح حزمة التمثيل ودرع العافية يحمي ويُعالج الحالة المحاكية', () => {
+  assert.match(app, /id==='actorPack'&&!!\(permanentPerks&&permanentPerks\.owned&&permanentPerks\.owned\.bossMode\)/);
+  assert.match(app, /data\.sti=typeof data\.sti==='boolean'\?data\.sti:false/);
+  assert.match(app, /const infection=!protectedByShield&&!state\.sti&&chance\(\.14\)/);
+  assert.match(app, /if\(infection\)\{state\.sti=true;state\.stats\.health=clamp\(state\.stats\.health-12\);\}/);
+  assert.match(app, /const treatedCondition=state\.sti===true;if\(treatedCondition\)state\.sti=false/);
+  assert.match(app, /عدوى منقولة جنسيًا في محاكاة اللعبة/);
+});
