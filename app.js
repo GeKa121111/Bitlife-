@@ -512,9 +512,10 @@ function ageUp(){
    log('🧾','مصاريف المعيشة','دفعت '+cash(living)+' لمصاريف السنة من أكل ومواصلات واحتياجات أساسية.');
  }
  if(assetUpkeep){state.bank-=assetUpkeep;flash('-'+cash(assetUpkeep),true);log('🔧','صيانة الأصول','صيانة ممتلكاتك كلّفتك '+cash(assetUpkeep)+'.','bad');}
+ const rentIncome=(state.assets||[]).filter(a=>a.kind==='property'&&a.rented).reduce((total,a)=>total+Math.round((a.value||0)*.045),0);if(rentIncome>0){state.bank+=rentIncome;log('🏠','دخل إيجار سنوي','دخل لك '+cash(rentIncome)+' من تأجير العقارات.','good');}
  if(state.debt>0){const interest=Math.max(100,Math.round(state.debt*.08));state.debt+=interest;log('🏦','فوائد الديون','زادت ديونك بمقدار '+cash(interest)+' بسبب الفوائد. إجمالي الدين '+cash(state.debt)+'.','bad');}
  if((state.investments||[]).length){let totalGain=0;state.investments.forEach(inv=>{const before=inv.value;const move=inv.kind==='مخاطرة عالية'?(Math.random()*.46-.18):(Math.random()*.24-.04);inv.value=Math.max(0,Math.round(inv.value*(1+move)));totalGain+=inv.value-before;});if(totalGain)log('📈','تقرير الاستثمارات',(totalGain>=0?'استثماراتك زادت بقيمة ':'استثماراتك خسرت بقيمة ')+cash(Math.abs(totalGain))+'. السوق بيتحرك صعودًا وهبوطًا. ',totalGain>=0?'good':'bad');}
- if(state.business){const revenue=Math.round(state.business.value*(.03+Math.random()*.08));const costs=Math.round(state.business.value*(.02+Math.random()*.05));const profit=revenue-costs;state.bank+=profit;state.business.value=Math.max(1000,Math.round(state.business.value*(profit>=0?1.04:.97)));log('🏪','نتيجة المشروع',(profit>=0?'حققت أرباحًا ':'حققت خسارة ')+cash(Math.abs(profit))+' من مشروعك هذا العام.','special');}
+ if(state.business){const level=Math.max(1,state.business.level||1);const revenue=Math.round(state.business.value*(.03+Math.random()*.08)*(.8+level*.15));const costs=Math.round(state.business.value*(.02+Math.random()*.05)*(1+Math.max(0,level-1)*.08));const profit=revenue-costs;state.bank+=profit;state.business.value=Math.max(1000,Math.round(state.business.value*(profit>=0?1.04:.97)));log('🏪','التقرير السنوي للمشروع',(profit>=0?'صافي الأرباح ':'صافي الخسارة ')+cash(Math.abs(profit))+' · مستوى الإدارة '+level+'.','special');}
  if((state.pets||[]).length){const care=state.pets.length*350;state.bank-=care;state.pets.forEach(p=>{p.age=(p.age||0)+1;p.happiness=clamp((p.happiness||70)+(chance(.7)?3:-6));p.health=clamp((p.health||70)-(p.age>10?2:0)+(p.happiness>40&&chance(.5)?1:-1));});const lost=state.pets.filter(p=>(p.species==='طائر'?p.age>19:p.age>15)&&chance(.35));if(lost.length){state.pets=state.pets.filter(p=>!lost.includes(p));lost.forEach(p=>log('🐾','وداع صديق','توفي '+p.name+' بعد سنوات من الرفقة. ستفضل ذكراه جزءًا من حكايتك.','bad'));}if(state.bank<0)log('🐾','مصاريف الحيوانات','رعاية الحيوانات كلفتك '+cash(care)+' هذا العام.','bad');}
  if((state.hobbies||[]).length&&chance(.7)){state.stats.happiness=clamp(state.stats.happiness+1);if(state.hobbies.some(h=>h.id==='reading'||h.id==='writing'))state.stats.smart=clamp(state.stats.smart+1);}
  if(state.partner){const drift=state.partner.relationshipLevel<35?-3:(chance(.65)?1:-1);state.partner.relationshipLevel=clamp((state.partner.relationshipLevel||50)+drift);if(state.married&&state.partner.relationshipLevel<15&&chance(.25)){state.married=false;log('💔','أزمة زوجية','الخلافات زادت بينك وبين '+state.partner.name+'. محتاجين حوار واهتمام قبل ما العلاقة تنهار.','bad');}}
@@ -622,8 +623,41 @@ function university(from18){
 }
 function assets(){
  const opts=assetShop.map(a=>choice(a.emoji,a.title,a.desc+' التكلفة '+cash(a.value)+'. صيانة سنوية '+cash(a.upkeep)+'.',()=>buyAsset(a),cash(a.value)));
- if(state.assets.length)opts.push(choice('📦','إدارة أصولي','شوف ممتلكاتك وبع اللي مش محتاجه.',manageAssets));
- modal('🏠','الأصول والمشتريات','اشتري لما ميزانيتك تسمح. بيع أي أصل بيرجع لك 80% من سعره الأصلي، ولا تنسَ الصيانة السنوية.',opts);
+ if(state.business)opts.unshift(choice('🏪','إدارة مشروعي','قيمة المشروع '+cash(state.business.value)+' · مستوى الإدارة '+(state.business.level||1)+'.',businessMenu));
+ if(state.assets.length)opts.push(choice('📦','إدارة أصولي','شوف ممتلكاتك وبع اللي مش محتاجه أو أجّر العقارات.',manageAssets));
+ modal('🏠','الأصول والمشتريات','العقارات ممكن تجيب دخل إيجار، والسيارات تنخفض قيمتها مع الوقت، والمشروع يحتاج إدارة سنوية.',opts);
+}
+function businessMenu(){
+ if(!state.business){info('🏪','مفيش مشروع حاليًا','اشتري مشروعًا صغيرًا من قائمة الأصول عشان تبدأ الإدارة.');return;}
+ const b=state.business,level=Math.max(1,b.level||1);
+ modal('🏪','إدارة '+(b.title||'مشروعك'),'قيمة المشروع '+cash(b.value)+' · مستوى الإدارة '+level+' · الشهرة '+(state.fame||0)+'%. اختيارات الإدارة تؤثر على دخل السنوات القادمة.',[
+  choice('📊','التقرير السنوي','عرض تقديري عن قيمة المشروع وأرباحه المتوقعة.',()=>{closeModal();const forecast=Math.round(b.value*(.02+level*.015));info('📊','تقرير المشروع','القيمة الحالية '+cash(b.value)+'. الدخل التقريبي المحتمل '+cash(forecast)+' إلى '+cash(forecast*3)+' قبل التكاليف. النتائج مش مضمونة.');}),
+  choice('📣','حملة تسويق','حملة تكلف 2,500 '+state.place.unit+' قد ترفع المبيعات والسمعة.',()=>businessAction('marketing'),'2,500 '+state.place.unit),
+  choice('👔','تعيين مدير','تحسين الإدارة مقابل 5,000 '+state.place.unit+'؛ يزيد الكفاءة السنوية.',()=>businessAction('manager'),'5,000 '+state.place.unit),
+  choice('🏗️','توسيع المشروع','استثمار 10,000 '+state.place.unit+' لزيادة قيمة النشاط.',()=>businessAction('expand'),'10,000 '+state.place.unit),
+  choice('🧾','تقليل النفقات','مراجعة العمليات لتقليل المصاريف السنوية.',()=>businessAction('costs')),
+  choice('↩️','رجوع للأصول','',()=>{closeModal();assets();})
+ ]);
+}
+function businessAction(action){
+ closeModal();if(!state.business)return;
+ const b=state.business;
+ if(action==='marketing'){
+  if(state.bank<2500){info('💳','الرصيد مش كفاية','حملة التسويق تكلف 2,500 '+state.place.unit+'.');return;}
+  state.bank-=2500;const win=chance(.7),gain=win?Math.round(b.value*(.04+Math.random()*.12)):0;state.fame=clamp((state.fame||0)+(win?3:1));state.reputation=clamp((state.reputation||50)+(win?4:-1));if(gain)b.value+=gain;
+  log('📣','حملة تسويقية',win?'الحملة جابت عملاء جدد ورفعت قيمة المشروع التقديرية '+cash(gain)+'.':'الحملة ما جابتش النتيجة المتوقعة، لكنك عرفت جمهورك أفضل.',win?'good':'bad');render();info('📣','انتهت الحملة',win?'قيمة المشروع بقت '+cash(b.value)+'.':'راجع الجمهور والميزانية قبل الحملة الجاية.');return;
+ }
+ if(action==='manager'){
+  if(state.bank<5000){info('💳','الرصيد مش كفاية','تعيين مدير يكلف 5,000 '+state.place.unit+'.');return;}
+  state.bank-=5000;b.level=clamp((b.level||1)+1,1,20);b.value=Math.round(b.value*1.06);log('👔','تعيين مدير','استثمرت في الإدارة وارتفع مستوى المشروع إلى '+b.level+'. التكاليف السنوية هتزيد قليلًا، لكن الكفاءة تتحسن.','good');render();info('👔','الإدارة اتحسنت','مستوى المشروع بقى '+b.level+'، وده هيؤثر على التقرير السنوي.');return;
+ }
+ if(action==='expand'){
+  if(state.bank<10000){info('💳','الرصيد مش كفاية','توسيع المشروع يكلف 10,000 '+state.place.unit+'.');return;}
+  state.bank-=10000;b.value=Math.round(b.value*1.25);b.level=clamp((b.level||1)+1,1,20);log('🏗️','توسيع المشروع','وسّعت النشاط واستثمرت في النمو. القيمة التقديرية الجديدة '+cash(b.value)+'.','special');render();info('🏗️','التوسع اكتمل','المشروع بقى أكبر، لكنه محتاج متابعة للمصاريف.');return;
+ }
+ if(action==='costs'){
+  const saved=Math.round(b.value*(.015+Math.random()*.025));b.value=Math.max(1000,Math.round(b.value*1.01));state.reputation=clamp((state.reputation||50)+(chance(.75)?2:-2));log('🧾','مراجعة المصاريف','راجعت الموردين والعمليات وخفضت تكاليفًا تقديرية بقيمة '+cash(saved)+' في التقرير السنوي.','good');render();info('🧾','تمت مراجعة العمليات','التوفير أثره هيبان على الربح السنوي المتوقع.');
+ }
 }
 function buyAsset(a){
  closeModal();if(state.age<18){info('🔒','الشراء مش متاح دلوقتي','تقدر تشتري أصولك بعد سن 18.');return;}
@@ -631,7 +665,7 @@ function buyAsset(a){
  state.bank-=a.value;flash('-'+cash(a.value),true);state.assets.push({id:Date.now()+Math.random(),title:a.title,emoji:a.emoji,kind:a.kind,value:a.value,upkeep:a.upkeep,bought:state.age});if(a.kind==='business')state.business={title:a.title,value:a.value,level:1};stat('happiness',6);log(a.emoji,'اشتريت '+a.title,'دفعت '+cash(a.value)+'. خلي بالك من مصاريف الصيانة كل سنة.','good');achievement('امتلاك '+a.title);render();info('🎉','مبروك الأصل الجديد','الأصل اتضاف لممتلكاتك، وتقدر تبيعه لاحقًا مقابل 80% من قيمته الأصلية.');
 }
 function manageAssets(){
- const opts=state.assets.map((a,i)=>choice(a.emoji,a.title,'القيمة '+cash(a.value)+' · الصيانة '+cash(a.upkeep)+' سنويًا',()=>{closeModal();const sale=Math.round(a.value*.8);info('💰','بيع '+a.title,'هتبيع الأصل مقابل '+cash(sale)+'.',[choice('💵','أبيع الأصل','',()=>{closeModal();state.assets.splice(i,1);if(a.kind==='business')state.business=null;state.bank+=sale;log('💵','بيع أصل','بعت '+a.title+' مقابل '+cash(sale)+'.','good');render();}),choice('↩️','أحتفظ بيه','',closeModal)]);},cash(Math.round(a.value*.8))));
+ const opts=state.assets.map((a,i)=>choice(a.emoji,a.title,'القيمة '+cash(a.value)+' · الصيانة '+cash(a.upkeep)+' سنويًا'+(a.kind==='property'?(a.rented?' · مؤجّر':' · غير مؤجّر'):''),()=>{closeModal();const sale=Math.round(a.value*.8);const actions=[choice('💵','أبيع الأصل','استرداد '+cash(sale),()=>{closeModal();state.assets.splice(i,1);if(a.kind==='business')state.business=null;state.bank+=sale;log('💵','بيع أصل','بعت '+a.title+' مقابل '+cash(sale)+'.','good');render();})];if(a.kind==='property')actions.push(choice('🔑',a.rented?'إيقاف التأجير':'عرض العقار للإيجار','دخل إيجار سنوي تقديري '+cash(Math.round(a.value*.045))+'.',()=>{closeModal();a.rented=!a.rented;log('🏠',a.rented?'تأجير عقار':'إيقاف تأجير العقار',a.rented?'عرضت '+a.title+' للإيجار وبدأ احتساب دخل سنوي.':'أوقفت التأجير للعقار '+a.title+'.',a.rented?'good':'');render();manageAssets();}));actions.push(choice('↩️','أحتفظ بيه','',closeModal));info('💰','إدارة '+a.title,'اختار الإجراء اللي يناسبك.',actions);},cash(Math.round(a.value*.8))));
  if(!opts.length)opts.push(choice('📦','مفيش أصول لسه','ابدأ بالشراء لما ميزانيتك تسمح.',()=>{closeModal();assets();}));
  opts.push(choice('↩️','رجوع للأصول','',()=>{closeModal();assets();}));modal('📦','إدارة الممتلكات','كل أصل له قيمة ومصاريف تشغيل.',opts);
 }
@@ -854,7 +888,7 @@ function specialCareers(){
   {id:'director',title:'إخراج الأفلام',emoji:'🎥',min:25,looks:0,income:26000,desc:'قيادة إنتاج فني ومشاريع كبيرة.'}
  ];
  const opts=catalog.map(c=>choice(c.emoji,c.title,c.desc+' الحد الأدنى للعمر '+c.min+'.',()=>startSpecialCareer(c)));
- if(state.specialCareer){opts.unshift(choice('⭐','التدريب والعمل في '+state.specialCareer.title,'الشهرة الحالية '+state.fame+'%.',()=>trainSpecialCareer()));opts.unshift(choice('🎟️','اختبار أداء / فرصة جديدة','اختبر حظك في فرصة جديدة.',()=>tryAudition()));}
+ if(state.specialCareer){opts.unshift(choice('🎬','تنفيذ نشاط تخصصي','إنتاج عمل أو إصدار أو منافسة مرتبطة بمسارك.',()=>specialCareerActivity()));opts.unshift(choice('⭐','التدريب والعمل في '+state.specialCareer.title,'الشهرة الحالية '+state.fame+'%.',()=>trainSpecialCareer()));opts.unshift(choice('🎟️','اختبار أداء / فرصة جديدة','اختبر حظك في فرصة جديدة.',()=>tryAudition()));}
  modal('🌟','المهن الخاصة والشهرة','المسارات دي مختلفة عن الوظيفة التقليدية؛ النجاح فيها غير مضمون وقد يحتاج سنوات.',opts);
 }
 function startSpecialCareer(c){
@@ -867,6 +901,32 @@ function trainSpecialCareer(){
  closeModal();if(state.bank<800){info('💳','الرصيد مش كفاية','التدريب يكلف 800 '+state.place.unit+'.');return;}
  state.bank-=800;state.specialCareer.level=clamp((state.specialCareer.level||1)+1,1,100);state.fame=clamp(state.fame+3);stat('happiness',2);
  log('🌟','تدريب في '+state.specialCareer.title,'طورت مهاراتك في المسار الفني أو الاحترافي ورفعت مستوى الخبرة إلى '+state.specialCareer.level+'.','good');render();info('⭐','تدريب ناجح','مستوى المسار '+state.specialCareer.level+'، والشهرة '+state.fame+'%.');
+}
+function specialCareerActivity(){
+ closeModal();if(!state.specialCareer){specialCareers();return;}
+ const c=state.specialCareer;const level=Math.max(1,c.level||1);
+ const costs={actor:7000,musician:3500,influencer:1800,athlete:1500,fighter:2200,writer:1500,director:12000};
+ const cost=costs[c.id]||1500;
+ if(state.bank<cost){info('💳','الرصيد مش كفاية','النشاط الخاص محتاج '+cash(cost)+'.');return;}
+ state.bank-=cost;
+ const power=(state.stats.smart/100)+(state.stats.health/140)+(state.fame/180)+(level/22)+(state.reputation/220);
+ let gain=0,fame=0,success=chance(Math.min(.9,.18+power*.22));
+ let title='',text='';
+ if(c.id==='actor'||c.id==='director'){
+  title=c.id==='director'?'إنتاج فيلم جديد':'تصوير عمل فني';gain=success?Math.round(5000+Math.random()*30000+state.fame*180):0;fame=success?5+Math.floor(Math.random()*12):0;text=success?'العمل حقق استجابة إيجابية ووصل لجمهور أوسع.':'العمل ما حققش النجاح المتوقع، واتعلمت من التجربة.';
+ }else if(c.id==='musician'){
+  title='إصدار أغنية';gain=success?Math.round(1500+Math.random()*18000+state.fame*120):0;fame=success?4+Math.floor(Math.random()*10):0;text=success?'الأغنية انتشرت وبدأ يوصلك اهتمام جديد.':'التفاعل كان أقل من المتوقع، ومحتاج تطوّر أسلوبك.';
+ }else if(c.id==='influencer'){
+  title='نشر حملة محتوى';gain=success?Math.round(1000+Math.random()*11000+state.fame*100):0;fame=success?3+Math.floor(Math.random()*12):0;text=success?'المحتوى وصل لمتابعين أكتر وجالك عرض تعاون.':'المحتوى ما انتشرش بالشكل المتوقع.';
+ }else if(c.id==='athlete'||c.id==='fighter'){
+  title=c.id==='fighter'?'منافسة قتالية':'منافسة رياضية';gain=success?Math.round(4000+Math.random()*26000+level*500):0;fame=success?5+Math.floor(Math.random()*10):0;state.stats.health=clamp(state.stats.health+(success?-2:-8));text=success?'قدمت أداءً قويًا وفزت بمكافأة المنافسة.':'خسرت المنافسة واحتجت وقتًا للتعافي والتدريب.';
+ }else{
+  title='نشر عمل مكتوب';gain=success?Math.round(800+Math.random()*14000+state.stats.smart*90):0;fame=success?2+Math.floor(Math.random()*8):0;text=success?'العمل وصل لقراء جدد وبدأ يحقق دخلًا من المبيعات.':'العمل محتاج مراجعة وتسويق أفضل قبل الإصدار القادم.';
+ }
+ state.fame=clamp(state.fame+fame);state.specialCareer.level=clamp(level+(success?1:0),1,100);
+ if(success){state.bank+=gain;state.reputation=clamp((state.reputation||50)+3);achievement('نشاط ناجح في '+c.title);}else{state.stats.happiness=clamp(state.stats.happiness-3);state.reputation=clamp((state.reputation||50)-2);}
+ log(c.id==='director'?'🎥':c.id==='actor'?'🎬':c.id==='musician'?'🎤':c.id==='influencer'?'📱':c.id==='athlete'?'🏅':c.id==='fighter'?'🥊':'✍️',title,text+(success?' الدخل: '+cash(gain)+'.':''),success?'good':'bad');
+ render();info(success?'⭐':'🔁',success?'نشاط ناجح':'تجربة جديدة',text+(success?' الشهرة الحالية '+state.fame+'%.':' جرب التدريب أو نشاطًا مختلفًا في المرة القادمة.'));
 }
 function tryAudition(){
  closeModal();if(!state.specialCareer){specialCareers();return;}
