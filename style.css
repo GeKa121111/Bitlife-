@@ -1151,3 +1151,14 @@ body.text-large .name{font-size:15px}
 body.text-large .statlabel{font-size:10px}
 body.text-large .navbtn{font-size:9px}
 @media(prefers-reduced-motion:reduce){.agebtn,.fill,.logcard{animation:none!important;transition:none!important}}
+
+
+/* Preserve the classic left-to-right tab and meter geometry while text remains Arabic. */
+.topbar{direction:ltr}
+.brandlogo{direction:rtl}
+.nav{direction:ltr}
+.navbtn{direction:rtl}
+.stats,.statrow{direction:ltr}
+.stathead{direction:ltr}
+.statlabel{direction:rtl;text-align:right}
+.fill{left:0;right:auto}
