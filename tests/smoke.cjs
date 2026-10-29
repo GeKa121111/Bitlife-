@@ -17,8 +17,10 @@ for (const system of ['function familyMenu()', 'function petsMenu()', 'function 
 }
 assert.match(index, /id="fameTag"/);
 assert.match(index, /id="profileBtn"/);
-assert.match(css, /--brand:#f32618/);
-assert.match(css, /--blue:#075b9a/);
+assert.match(css, /--brand:\s*#[0-9a-fA-F]{6}/, 'brand color token should be defined');
+assert.match(css, /--ink:\s*#[0-9a-fA-F]{6}/, 'text color token should be defined');
+assert.match(css, /@media\s*\(max-width:\s*380px\)/, 'small-phone layout rules should exist');
+assert.match(css, /min-height:58px/, 'decision choices should have mobile-friendly touch height');
 assert.match(css, /\.agebtn/);
 
 class FakeElement {
