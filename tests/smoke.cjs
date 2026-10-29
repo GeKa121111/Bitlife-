@@ -52,6 +52,23 @@ assert.match(app, /function startCombatBout\(mode\)/, 'street and league fights 
 assert.match(app, /function resolveCombatBout\(mode,opponent,moveId\)/, 'bouts should resolve using player stats and move matchups');
 assert.match(app, /function recoverCombatInjury\(\)/, 'combat injuries should have a recovery system');
 assert.match(app, /function combatBoutHistory\(\)/, 'recent fight results should be inspectable');
+assert.match(app, /const filmGenreCatalog=\[/, 'director career should have a film genre catalog');
+assert.match(app, /const filmBudgetCatalog=\[/, 'film production budgets should be configurable');
+assert.match(app, /function filmStudioMenu\(\)/, 'director career should have a dedicated studio hub');
+assert.match(app, /function filmGenreMenu\(\)/, 'director should choose a film genre');
+assert.match(app, /function filmBudgetMenu\(genreId\)/, 'director should choose a production budget');
+assert.match(app, /function filmCreativeMenu\(genreId,budgetId\)/, 'director should choose a creative direction');
+assert.match(app, /function filmCastMenu\(genreId,budgetId,creativeId\)/, 'director should choose a cast package');
+assert.match(app, /function filmMarketingMenu\(genreId,budgetId,creativeId,castId\)/, 'director should choose a marketing package');
+assert.match(app, /function releaseFilm\(genreId,budgetId,creativeId,castId,marketingId\)/, 'film releases should resolve costs and outcomes');
+assert.match(app, /function filmographyMenu\(\)/, 'director should be able to review a filmography');
+assert.match(app, /state\.filmStudio=c\.id==='director'\?createFilmStudio\(\):null/, 'starting a directing career should initialize a studio');
+assert.match(app, /filmProfile:state\.specialCareer\.id==='director'\?JSON\.parse\(JSON\.stringify\(state\.filmStudio\|\|null\)\):null/, 'leaving the directing career should archive studio results');
+assert.match(app, /if\(state\.bank<totalCost\)/, 'production should verify the full combined budget before charging');
+assert.match(app, /studio\.filmography\.push\(film\)/, 'released films should be retained in the filmography');
+const filmGenreBlock = app.match(/const filmGenreCatalog=\[([\s\S]*?)\n\];/);
+assert.ok(filmGenreBlock && (filmGenreBlock[1].match(/\{id:'/g) || []).length >= 7, 'the studio should offer at least seven original film genres');
+
 assert.match(app, /restUsedYear:-1/, 'fighter state should track the yearly rest cooldown');
 assert.match(app, /c\.restUsedYear===state\.yearCount/, 'free recovery should not be infinitely repeatable in the same year');
 assert.match(app, /rating:mode==='league'\?34\+c\.rank\*8\+Math\.floor\(Math\.random\(\)\*13\):18\+Math\.floor\(Math\.random\(\)\*31\)/, 'street and league opponents should have separate difficulty ranges');

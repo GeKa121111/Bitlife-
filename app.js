@@ -419,7 +419,7 @@ function newLife(){
  const father=makePerson('male','الأب','👨',28+Math.floor(Math.random()*12),68+Math.floor(Math.random()*28));
  const mother=makePerson('female','الأم','👩',25+Math.floor(Math.random()*12),72+Math.floor(Math.random()*26));
  const sibling=makePerson(gender,'الأخ/الأخت','🧒',Math.floor(Math.random()*8),55+Math.floor(Math.random()*35));
- return {version:1,lifeId:Date.now()+Math.random(),cemeterySaved:false,name:pick(names[gender])+' '+pick(names.family),gender,age:0,place,bank:place.start,stats:{happiness:65+Math.floor(Math.random()*26),health:76+Math.floor(Math.random()*22),smart:35+Math.floor(Math.random()*41),looks:35+Math.floor(Math.random()*51)},education:{level:0,school:'لم تبدأ الدراسة',major:null,yearsLeft:0,tuition:0},job:null,jobHistory:[],specialCareer:null,specialCareerHistory:[],combatCareer:null,performance:50,assets:[],investments:[],business:null,family:[father,mother,sibling],friends:[],partner:null,married:false,children:[],pets:[],hobbies:[],fame:0,followers:0,socialMediaAccount:false,socialMediaPosts:0,reputation:50,crimeRecord:0,prison:null,debt:0,willDistribution:'الأسرة بالتساوي',heirlooms:[],dailyRewardDate:null,dailyChallenges:null,timeMachineSnapshots:[],legacy:{name:null,inheritance:0,heirloom:null},driversLicense:false,travelHistory:[],log:[],accomplishments:['بدأت رحلة الحياة'],status:'حي',cause:null,retired:false,yearCount:0,wealthPeak:place.start};
+ return {version:1,lifeId:Date.now()+Math.random(),cemeterySaved:false,name:pick(names[gender])+' '+pick(names.family),gender,age:0,place,bank:place.start,stats:{happiness:65+Math.floor(Math.random()*26),health:76+Math.floor(Math.random()*22),smart:35+Math.floor(Math.random()*41),looks:35+Math.floor(Math.random()*51)},education:{level:0,school:'لم تبدأ الدراسة',major:null,yearsLeft:0,tuition:0},job:null,jobHistory:[],specialCareer:null,specialCareerHistory:[],combatCareer:null,filmStudio:null,performance:50,assets:[],investments:[],business:null,family:[father,mother,sibling],friends:[],partner:null,married:false,children:[],pets:[],hobbies:[],fame:0,followers:0,socialMediaAccount:false,socialMediaPosts:0,reputation:50,crimeRecord:0,prison:null,debt:0,willDistribution:'الأسرة بالتساوي',heirlooms:[],dailyRewardDate:null,dailyChallenges:null,timeMachineSnapshots:[],legacy:{name:null,inheritance:0,heirloom:null},driversLicense:false,travelHistory:[],log:[],accomplishments:['بدأت رحلة الحياة'],status:'حي',cause:null,retired:false,yearCount:0,wealthPeak:place.start};
 }
 function save(){
  try{localStorage.setItem(KEY,JSON.stringify(state));$('saveStatus').textContent='● محفوظة';}
@@ -448,7 +448,7 @@ function normalizeCoreState(data){
 function load(){
  try{const x=JSON.parse(localStorage.getItem(KEY)||'null');if(x&&x.version===1&&x.stats&&typeof x.stats==='object'&&!Array.isArray(x.stats)&&Array.isArray(x.log)){
   normalizeCoreState(x);
-  const defaults={lifeId:Date.now()+Math.random(),cemeterySaved:false,jobHistory:[],specialCareer:null,specialCareerHistory:[],combatCareer:null,investments:[],business:null,married:false,children:[],pets:[],hobbies:[],fame:0,followers:0,socialMediaAccount:false,socialMediaPosts:0,reputation:50,crimeRecord:0,prison:null,debt:0,willDistribution:'الأسرة بالتساوي',heirlooms:[],dailyRewardDate:null,dailyChallenges:null,timeMachineSnapshots:[],legacy:{name:null,inheritance:0,heirloom:null},driversLicense:false,travelHistory:[]};
+  const defaults={lifeId:Date.now()+Math.random(),cemeterySaved:false,jobHistory:[],specialCareer:null,specialCareerHistory:[],combatCareer:null,filmStudio:null,investments:[],business:null,married:false,children:[],pets:[],hobbies:[],fame:0,followers:0,socialMediaAccount:false,socialMediaPosts:0,reputation:50,crimeRecord:0,prison:null,debt:0,willDistribution:'الأسرة بالتساوي',heirlooms:[],dailyRewardDate:null,dailyChallenges:null,timeMachineSnapshots:[],legacy:{name:null,inheritance:0,heirloom:null},driversLicense:false,travelHistory:[]};
   Object.keys(defaults).forEach(k=>{if(x[k]===undefined||x[k]===null)x[k]=defaults[k];});
   if(!Array.isArray(x.family))x.family=[];if(!Array.isArray(x.friends))x.friends=[];if(!Array.isArray(x.assets))x.assets=[];if(!Array.isArray(x.timeMachineSnapshots))x.timeMachineSnapshots=[];
   if(!x.education||typeof x.education!=='object')x.education={level:0,school:'لم تبدأ الدراسة',major:null,yearsLeft:0,tuition:0};
@@ -1336,6 +1336,122 @@ function combatBoutHistory(){
  modal('📜','سجل النزالات','آخر 30 نزالًا محفوظة في الحياة الحالية.',opts);
 }
 
+
+const filmGenreCatalog=[
+ {id:'drama',title:'دراما إنسانية',emoji:'🎭',critic:10,audience:0,desc:'قصة شخصيات وقرارات صعبة.',titles:['آخر رسالة','نوافذ مغلقة','قبل أن ننسى']},
+ {id:'action',title:'أكشن ومغامرة',emoji:'💥',critic:-2,audience:10,desc:'إيقاع سريع ومغامرة كبيرة.',titles:['طريق الصفر','الساعة الأخيرة','خارج الحدود']},
+ {id:'comedy',title:'كوميديا',emoji:'😂',critic:1,audience:12,desc:'مواقف خفيفة وفرصة للوصول لجمهور أوسع.',titles:['يوم مش عادي','جارنا الجديد','ممنوع الضحك']},
+ {id:'scifi',title:'خيال علمي',emoji:'🚀',critic:7,audience:4,desc:'عالم مختلف وفكرة مستقبلية.',titles:['مدينة الغد','إشارة من بعيد','بعد المدار']},
+ {id:'mystery',title:'غموض وتحقيق',emoji:'🕵️',critic:8,audience:5,desc:'لغز بتفاصيل مترابطة ونهاية مفاجئة.',titles:['الممر رقم سبعة','ظل على الزجاج','الشاهد الأخير']},
+ {id:'family',title:'عائلي ومغامرات',emoji:'🏡',critic:2,audience:9,desc:'قصة تناسب المشاهدة العائلية.',titles:['رحلة إلى البيت','أصدقاء الصيف','سر الحديقة']},
+ {id:'documentary',title:'وثائقي',emoji:'📽️',critic:12,audience:-2,desc:'عمل واقعي يعتمد على البحث والتوثيق.',titles:['حكاية مكان','ناس من الشارع','أثر قديم']}
+];
+const filmBudgetCatalog=[
+ {id:'indie',title:'إنتاج مستقل',cost:5000,reach:0,desc:'طاقم صغير ومخاطرة مالية أقل.'},
+ {id:'standard',title:'إنتاج متوسط',cost:15000,reach:1,desc:'فريق أكبر وفرصة توزيع أوسع.'},
+ {id:'blockbuster',title:'إنتاج ضخم',cost:35000,reach:2,desc:'إنفاق أكبر وتوقعات أعلى ومخاطرة مالية أعلى.'}
+];
+const filmCreativeCatalog=[
+ {id:'commercial',title:'أسلوب جماهيري',successBonus:5,audienceBonus:12,criticBonus:-4,desc:'تركيز على إيقاع سهل الوصول لجمهور واسع.'},
+ {id:'artistic',title:'أسلوب فني',successBonus:0,audienceBonus:1,criticBonus:13,desc:'تركيز على جودة الفكرة والتفاصيل والأداء.'},
+ {id:'experimental',title:'أسلوب تجريبي',successBonus:-3,audienceBonus:5,criticBonus:8,desc:'فكرة غير تقليدية؛ قد تثير إعجاب النقاد أو تنقسم حولها الآراء.'}
+];
+const filmCastCatalog=[
+ {id:'newcomers',title:'وجوه جديدة',cost:0,successBonus:0,criticBonus:0,fameBonus:0,desc:'ميزانية تمثيل أقل وفرصة لاكتشاف مواهب.'},
+ {id:'experienced',title:'طاقم محترف',cost:6500,successBonus:8,criticBonus:5,fameBonus:2,desc:'خبرة تساعد على تماسك الإنتاج.'},
+ {id:'stars',title:'نجوم معروفون',cost:17000,successBonus:12,criticBonus:3,fameBonus:6,desc:'تكلفة أعلى وقوة تسويقية أكبر.'}
+];
+const filmMarketingCatalog=[
+ {id:'organic',title:'انتشار طبيعي',cost:0,successBonus:0,audienceBonus:0,desc:'تعتمد على جودة العمل والتوصيات.'},
+ {id:'social',title:'حملة منصات',cost:2500,successBonus:2,audienceBonus:8,desc:'حملة رقمية بميزانية متوسطة.'},
+ {id:'wide',title:'إطلاق واسع',cost:8500,successBonus:5,audienceBonus:18,desc:'توزيع وتسويق أوسع وتكلفة أكبر.'}
+];
+function createFilmStudio(){
+ return {filmography:[],projects:0,totalBudget:0,totalBoxOffice:0,awards:0,bestCritic:0,genreFocus:null};
+}
+function ensureFilmStudio(){
+ if(!state)return null;
+ if(!state.filmStudio||typeof state.filmStudio!=='object')state.filmStudio=createFilmStudio();
+ const defaults={filmography:[],projects:0,totalBudget:0,totalBoxOffice:0,awards:0,bestCritic:0,genreFocus:null};
+ Object.keys(defaults).forEach(k=>{if(state.filmStudio[k]===undefined||state.filmStudio[k]===null)state.filmStudio[k]=defaults[k];});
+ if(!Array.isArray(state.filmStudio.filmography))state.filmStudio.filmography=[];
+ state.filmStudio.projects=Math.max(0,Number(state.filmStudio.projects)||0);state.filmStudio.awards=Math.max(0,Number(state.filmStudio.awards)||0);
+ if(state.filmStudio.genreFocus&&!filmGenreCatalog.some(g=>g.id===state.filmStudio.genreFocus))state.filmStudio.genreFocus=null;
+ return state.filmStudio;
+}
+
+function filmStudioMenu(){
+ if(!validState()||!state.specialCareer||state.specialCareer.id!=='director'){info('🎬','استوديو الأفلام','ابدأ مسار إخراج الأفلام من المهن الخاصة أولًا.');return;}
+ const studio=ensureFilmStudio(),focus=filmGenreCatalog.find(g=>g.id===studio.genreFocus),r=state.specialCareer.record||{};
+ const summary='الأفلام '+studio.projects+' · الجوائز '+studio.awards+' · إجمالي شباك التذاكر '+cash(studio.totalBoxOffice)+' · أفضل تقييم '+studio.bestCritic+'%'+(focus?' · تخصص الاستوديو '+focus.title:' · من غير تخصص ثابت');
+ modal('🎥','استوديو الأفلام',summary,[
+  choice('🎬','إنتاج فيلم جديد','اختار النوع والميزانية واتجاه القصة والطاقم والتسويق.',filmGenreMenu),
+  choice('🎭','تحديد تخصص الاستوديو','اختار نوعًا يمنحك خبرة إضافية عندما تنتج فيه.',filmFocusMenu),
+  choice('🏆','سجل الأفلام','راجع الميزانيات والإيرادات وتقييم النقاد والجوائز.',filmographyMenu),
+  choice('📊','تقرير الاستوديو','المستوى الإخراجي '+fmt(state.specialCareer.level||1)+' · محاولات '+fmt(r.attempts||0)+' · نجاحات '+fmt(r.wins||0)+' · إخفاقات '+fmt(r.losses||0)+'.',()=>{closeModal();info('📊','تقرير الاستوديو',summary+' · دخل المسار المسجل '+cash(r.totalEarnings||0)+'.');}),
+  choice('⭐','تدريب الإخراج','جلسة تدريب للمسار المتخصص.',trainSpecialCareer),
+  choice('↩️','المهن الخاصة','',specialCareers)
+ ]);
+}
+function filmFocusMenu(){
+ const studio=ensureFilmStudio(),opts=filmGenreCatalog.map(g=>choice(g.emoji,g.title,g.desc+' اختيار النوع ده كتخصص يزيد كفاءة مشاريع النوع نفسه.',()=>{closeModal();studio.genreFocus=g.id;log('🎬','تخصص الاستوديو','اخترت '+g.title+' كتخصص لاستوديو الأفلام.','good');save();render();filmStudioMenu();},'',g.id===studio.genreFocus?100:undefined));
+ opts.unshift(choice('🎞️','استوديو متنوع','إلغاء التخصص للحصول على نفس الفرص في كل الأنواع.',()=>{closeModal();studio.genreFocus=null;save();render();filmStudioMenu();}));
+ modal('🎭','تخصص الاستوديو','التخصص يمنح مكافأة عند إنتاج النوع المختار، لكنه لا يمنعك من تجربة الأنواع الأخرى.',opts);
+}
+function filmGenreMenu(){
+ const studio=ensureFilmStudio(),opts=filmGenreCatalog.map(g=>choice(g.emoji,g.title,g.desc+(studio.genreFocus===g.id?' · النوع المفضل للاستوديو.':''),()=>filmBudgetMenu(g.id)));
+ modal('🎬','اختار نوع الفيلم','ابدأ بإحدى الأفكار الأصلية. النوع يغير توقعات الجمهور والنقاد.',opts);
+}
+function filmBudgetMenu(genreId){
+ const genre=filmGenreCatalog.find(g=>g.id===genreId);if(!genre){closeModal();filmStudioMenu();return;}
+ const opts=filmBudgetCatalog.map(b=>choice(b.id==='blockbuster'?'💎':b.id==='standard'?'🎞️':'🎬',b.title,b.desc+' تكلفة الإنتاج '+cash(b.cost)+'.',()=>filmCreativeMenu(genreId,b.id),cash(b.cost),state.bank>=b.cost?100:35));
+ modal('💰','ميزانية الفيلم','الفيلم: '+genre.title+'. اختر مستوى المخاطرة قبل إضافة الطاقم والتسويق. الميزانية لا تُخصم إلا عند إصدار الفيلم.',opts);
+}
+function filmCreativeMenu(genreId,budgetId){
+ const genre=filmGenreCatalog.find(g=>g.id===genreId),budget=filmBudgetCatalog.find(b=>b.id===budgetId);if(!genre||!budget){closeModal();filmStudioMenu();return;}
+ const opts=filmCreativeCatalog.map(style=>choice('✍️',style.title,style.desc,()=>filmCastMenu(genreId,budgetId,style.id),'',style.criticBonus+20));
+ modal('📝','اتجاه القصة','اختار شكل الحكاية؛ قرارك يوازن بين فرصة النجاح الجماهيري وتقييم النقاد.',opts);
+}
+function filmCastMenu(genreId,budgetId,creativeId){
+ const budget=filmBudgetCatalog.find(b=>b.id===budgetId),style=filmCreativeCatalog.find(x=>x.id===creativeId);if(!budget||!style){closeModal();filmStudioMenu();return;}
+ const opts=filmCastCatalog.map(cast=>choice('🎭',cast.title,cast.desc+' تكلفة الطاقم '+cash(cast.cost)+'.',()=>filmMarketingMenu(genreId,budgetId,creativeId,cast.id),cash(cast.cost),cast.cost===0?100:Math.round(cast.cost/(cast.cost+budget.cost)*100)));
+ modal('🎭','اختيار طاقم التمثيل','اتزان تكلفة الطاقم مع الميزانية قد يحدد نجاح الإنتاج.',opts);
+}
+function filmMarketingMenu(genreId,budgetId,creativeId,castId){
+ const opts=filmMarketingCatalog.map(marketing=>choice('📣',marketing.title,marketing.desc+' تكلفة التسويق '+cash(marketing.cost)+'.',()=>releaseFilm(genreId,budgetId,creativeId,castId,marketing.id),cash(marketing.cost)));
+ modal('📣','خطة إطلاق الفيلم','اختار التسويق. إجمالي التكلفة هيظهر ويتراجع قبل تنفيذ الإنتاج.',opts);
+}
+function releaseFilm(genreId,budgetId,creativeId,castId,marketingId){
+ const genre=filmGenreCatalog.find(g=>g.id===genreId),budget=filmBudgetCatalog.find(b=>b.id===budgetId),style=filmCreativeCatalog.find(x=>x.id===creativeId),cast=filmCastCatalog.find(x=>x.id===castId),marketing=filmMarketingCatalog.find(x=>x.id===marketingId);
+ if(!genre||!budget||!style||!cast||!marketing){closeModal();info('🎬','تفاصيل الفيلم غير مكتملة','ارجع لاختيار النوع والميزانية والطاقم من جديد.');return;}
+ const studio=ensureFilmStudio(),totalCost=budget.cost+cast.cost+marketing.cost;
+ if(state.bank<totalCost){closeModal();info('💳','الميزانية مش كفاية','إنتاج '+budget.title+' مع '+cast.title+' وتسويق '+marketing.title+' يحتاج '+cash(totalCost)+'. اختار حزمة أقل تكلفة.',[choice('💰','اختيار ميزانية أخرى','',()=>filmBudgetMenu(genreId)),choice('↩️','الاستوديو','',filmStudioMenu)]);return;}
+ closeModal();
+ const focusBonus=studio.genreFocus===genre.id?5:0,level=Math.max(1,state.specialCareer.level||1);
+ const probability=clamp(42+level*2.4+state.stats.smart*.14+(state.fame||0)*.07+(state.reputation||50)*.04+style.successBonus+cast.successBonus+marketing.successBonus+focusBonus+Math.floor(Math.random()*15)-7,12,90);
+ const success=chance(probability/100);
+ const criticScore=clamp(38+state.stats.smart*.22+level*1.8+genre.critic+style.criticBonus+cast.criticBonus+(success?6:-7)+Math.floor(Math.random()*31)-15+(studio.genreFocus===genre.id?4:0),5,100);
+ const audienceModifier=(genre.audience+style.audienceBonus+marketing.audienceBonus+budget.reach*3)/100;
+ const revenueMultiplier=success?1.3+level*.075+Math.max(-.04,audienceModifier)*.55+Math.random()*.55:.22+Math.random()*.36;
+ const boxOffice=Math.max(0,Math.round(totalCost*revenueMultiplier));
+ const title=pick(genre.titles),award=success&&criticScore>=82;
+ const film={id:Date.now()+Math.random(),title,genre:genre.title,budget:budget.cost,totalCost,creative:style.title,cast:cast.title,marketing:marketing.title,releaseAge:state.age,criticScore,probability,success,boxOffice,net:boxOffice-totalCost,award};
+ state.bank-=totalCost;state.bank+=boxOffice;studio.projects++;studio.totalBudget+=totalCost;studio.totalBoxOffice+=boxOffice;studio.bestCritic=Math.max(studio.bestCritic,criticScore);if(award)studio.awards++;studio.filmography.push(film);if(studio.filmography.length>20)studio.filmography.shift();
+ state.fame=clamp((state.fame||0)+(success?3+Math.floor(criticScore/25)+cast.fameBonus: -1));state.reputation=clamp((state.reputation||50)+(success?3:-2));
+ if(!state.specialCareer.record||typeof state.specialCareer.record!=='object')state.specialCareer.record={attempts:0,wins:0,losses:0,projects:0,totalEarnings:0,bestLevel:level};
+ const record=state.specialCareer.record;record.attempts=(record.attempts||0)+1;record.wins=(record.wins||0)+(success?1:0);record.losses=(record.losses||0)+(success?0:1);record.projects=(record.projects||0)+1;record.totalEarnings=(record.totalEarnings||0)+boxOffice;
+ if(success)state.specialCareer.level=clamp(level+1,1,100);
+ if(!Array.isArray(state.specialCareer.history))state.specialCareer.history=[];state.specialCareer.history.push({age:state.age,title:'إنتاج فيلم: '+title,success,earnings:boxOffice,fameGain:success?3+Math.floor(criticScore/25):0});if(state.specialCareer.history.length>20)state.specialCareer.history.shift();
+ if(award){achievement('حصلت على جائزة نقدية في إخراج الأفلام');log('🏆','جائزة نقدية','فيلم «'+title+'» حصل على تقييم '+criticScore+'% ونال جائزة داخل اللعبة.','special');}
+ log(success?'🎥':'🎞️',success?'نجاح إصدار الفيلم':'إصدار فيلم لم يحقق التوقعات','«'+title+'» · '+genre.title+' · تقييم النقاد '+criticScore+'% · إيرادات '+cash(boxOffice)+' · صافي النتيجة '+cash(boxOffice-totalCost)+'.',success?'good':'bad');
+ save();render();info(success?'🎬':'🎞️',success?'صدر الفيلم بنجاح':'الفيلم لم يحقق التوقعات','«'+title+'» · احتمال النجاح قبل الإنتاج '+probability+'% · تقييم النقاد '+criticScore+'% · الميزانية الإجمالية '+cash(totalCost)+' · الإيرادات '+cash(boxOffice)+(award?' · فزت بجائزة نقدية!':'')+'.',[choice('📊','تفاصيل الإنتاج','الاتجاه '+style.title+' · الطاقم '+cast.title+' · التسويق '+marketing.title+'.',()=>{closeModal();filmStudioMenu();}),choice('🎥','الاستوديو','',()=>{closeModal();filmStudioMenu();})]);
+}
+function filmographyMenu(){
+ const studio=ensureFilmStudio(),opts=studio.filmography.slice().reverse().map(f=>choice(f.award?'🏆':f.success?'🎬':'🎞️',f.title+' · '+f.genre,'النقاد '+f.criticScore+'% · الإيرادات '+cash(f.boxOffice)+' · تكلفة '+cash(f.totalCost)+' · صافي '+cash(f.net)+(f.award?' · جائزة':'')+'.',()=>{closeModal();info(f.award?'🏆':f.success?'🎬':'🎞️',f.title,'النوع '+f.genre+' · الاتجاه '+f.creative+' · الطاقم '+f.cast+' · التسويق '+f.marketing+' · تقييم النقاد '+f.criticScore+'% · '+(f.success?'نجاح':'إخفاق')+' · صافي '+cash(f.net)+(f.award?' · جائزة نقدية':'')+'.');}));
+ if(!opts.length)opts.push(choice('🎬','لا توجد أفلام بعد','ابدأ إنتاج أول فيلم من قائمة الاستوديو.',closeModal));opts.push(choice('↩️','رجوع إلى الاستوديو','',filmStudioMenu));
+ modal('🏆','أرشيف الأفلام','آخر 20 فيلمًا مع تكلفة الإنتاج والإيرادات والتقييمات والجوائز.',opts);
+}
+
 function specialCareerHistoryMenu(){
  const history=Array.isArray(state.specialCareerHistory)?state.specialCareerHistory:[];
  const opts=history.map(c=>{const r=c.record||{};return choice('📜',(c.title||c.id||'مسار سابق')+' · انتهى بعمر '+fmt(c.endedAge??state.age),'المستوى '+fmt(c.level||1)+' · محاولات '+fmt(r.attempts||0)+' · نجاحات '+fmt(r.wins||0)+' · إخفاقات '+fmt(r.losses||0)+' · دخل مسجّل '+cash(r.totalEarnings||0),()=>{closeModal();info('📜','سجل مسار سابق',(c.title||'مسار')+' · المستوى '+fmt(c.level||1)+' · '+fmt(r.wins||0)+' نجاح · '+fmt(r.losses||0)+' إخفاق · دخل '+cash(r.totalEarnings||0)+(c.ending?' · سبب الانتهاء: '+c.ending:'')+'.');});});
@@ -1356,15 +1472,15 @@ function specialCareers(){
   {id:'crimeboss',title:'العالم السفلي',emoji:'🕶️',min:21,looks:0,income:18000,desc:'مسار خيالي محفوف بالمخاطر القانونية وقد ينتهي بالسجن.'}
  ];
  const opts=catalog.map(c=>choice(c.emoji,c.title,c.desc+' الحد الأدنى للعمر '+c.min+'.',()=>startSpecialCareer(c)));
- if(state.specialCareer){const r=state.specialCareer.record||{};opts.unshift(choice('📊','سجل المسار الحالي','المستوى '+fmt(state.specialCareer.level||1)+' · نجاحات '+fmt(r.wins||0)+' · إخفاقات '+fmt(r.losses||0)+' · دخل '+cash(r.totalEarnings||0)+'.',()=>{closeModal();info('📊','سجل '+state.specialCareer.title,'عدد المحاولات '+fmt(r.attempts||0)+' · النجاح '+fmt(r.wins||0)+' · الإخفاق '+fmt(r.losses||0)+' · المشاريع/الأنشطة '+fmt(r.projects||0)+' · إجمالي الدخل المسجل '+cash(r.totalEarnings||0)+' · أفضل مستوى '+fmt(r.bestLevel||1)+'.');}));opts.unshift(choice('📚','تاريخ المهن السابقة','اعرض المسارات التي أنهيتها ونتائجها.',specialCareerHistoryMenu));if(state.specialCareer.id==='fighter'){opts.unshift(choice('🥊','إدارة مسيرة القتال','تدريب وتكتيك ومنافسات وارتقاء نحو اللقب العالمي.',combatCareerMenu));}else{opts.unshift(choice('🎬','تنفيذ نشاط تخصصي','إنتاج عمل أو إصدار أو منافسة مرتبطة بمسارك.',()=>specialCareerActivity()));opts.unshift(choice('⭐','التدريب والعمل في '+state.specialCareer.title,'الشهرة الحالية '+state.fame+'%.',()=>trainSpecialCareer()));opts.unshift(choice('🎟️','اختبار أداء / فرصة جديدة','اختبر حظك في فرصة جديدة.',()=>tryAudition()));}}
+ if(state.specialCareer){const r=state.specialCareer.record||{};opts.unshift(choice('📊','سجل المسار الحالي','المستوى '+fmt(state.specialCareer.level||1)+' · نجاحات '+fmt(r.wins||0)+' · إخفاقات '+fmt(r.losses||0)+' · دخل '+cash(r.totalEarnings||0)+'.',()=>{closeModal();info('📊','سجل '+state.specialCareer.title,'عدد المحاولات '+fmt(r.attempts||0)+' · النجاح '+fmt(r.wins||0)+' · الإخفاق '+fmt(r.losses||0)+' · المشاريع/الأنشطة '+fmt(r.projects||0)+' · إجمالي الدخل المسجل '+cash(r.totalEarnings||0)+' · أفضل مستوى '+fmt(r.bestLevel||1)+'.');}));opts.unshift(choice('📚','تاريخ المهن السابقة','اعرض المسارات التي أنهيتها ونتائجها.',specialCareerHistoryMenu));if(state.specialCareer.id==='fighter'){opts.unshift(choice('🥊','إدارة مسيرة القتال','تدريب وتكتيك ومنافسات وارتقاء نحو اللقب العالمي.',combatCareerMenu));}else if(state.specialCareer.id==='director'){opts.unshift(choice('🎥','إدارة استوديو الأفلام','إنتاج أفلام، اختيار الميزانية والطاقم والتسويق، ومراجعة الإيرادات.',filmStudioMenu));opts.unshift(choice('⭐','التدريب والعمل في '+state.specialCareer.title,'الشهرة الحالية '+state.fame+'%.',()=>trainSpecialCareer()));}else{opts.unshift(choice('🎬','تنفيذ نشاط تخصصي','إنتاج عمل أو إصدار أو منافسة مرتبطة بمسارك.',()=>specialCareerActivity()));opts.unshift(choice('⭐','التدريب والعمل في '+state.specialCareer.title,'الشهرة الحالية '+state.fame+'%.',()=>trainSpecialCareer()));opts.unshift(choice('🎟️','اختبار أداء / فرصة جديدة','اختبر حظك في فرصة جديدة.',()=>tryAudition()));}}
  modal('🌟','المهن الخاصة والشهرة','المسارات دي مختلفة عن الوظيفة التقليدية؛ النجاح فيها غير مضمون وقد يحتاج سنوات.',opts);
 }
 function startSpecialCareer(c){
  closeModal();if(state.age<c.min){info('🔒','لسه بدري','المسار ده متاح من سن '+c.min+'.');return;}
  if(c.looks&&state.stats.looks<c.looks&&c.id==='actor'){info('🎭','طوّر مهاراتك','فرص التمثيل تزيد مع المظهر والتدريب، جرّب الهوايات والتدريب.');return;}
- if(state.specialCareer&&state.specialCareer.id===c.id){if(c.id==='fighter'){ensureCombatCareer();combatCareerMenu();}else info('🌟','أنت بالفعل في المسار ده','كمل تدريبك وأنشطتك عشان تتقدم بدل ما تبدأ من الصفر.');return;}
- if(state.specialCareer){if(!Array.isArray(state.specialCareerHistory))state.specialCareerHistory=[];state.specialCareerHistory.unshift(Object.assign({},state.specialCareer,{record:Object.assign({},state.specialCareer.record||{}),history:(state.specialCareer.history||[]).slice(),combatProfile:state.specialCareer.id==='fighter'?JSON.parse(JSON.stringify(state.combatCareer||null)):null,endedAge:state.age,ending:'تغيير المسار'}));state.specialCareerHistory=state.specialCareerHistory.slice(0,20);}
- state.specialCareer={id:c.id,title:c.title,income:c.income,level:1,startedAge:state.age,record:{attempts:0,wins:0,losses:0,projects:0,totalEarnings:0,bestLevel:1},history:[]};state.combatCareer=c.id==='fighter'?createCombatCareer():null;if(c.id==='influencer'){state.socialMediaAccount=true;state.followers=Math.max(state.followers||0,100);state.socialMediaPosts=(state.socialMediaPosts||0)+1;}state.fame=clamp((state.fame||0)+4);state.reputation=clamp((state.reputation||50)+2);achievement('بدأ مسار الشهرة: '+c.title);
+ if(state.specialCareer&&state.specialCareer.id===c.id){if(c.id==='fighter'){ensureCombatCareer();combatCareerMenu();}else if(c.id==='director'){ensureFilmStudio();filmStudioMenu();}else info('🌟','أنت بالفعل في المسار ده','كمل تدريبك وأنشطتك عشان تتقدم بدل ما تبدأ من الصفر.');return;}
+ if(state.specialCareer){if(!Array.isArray(state.specialCareerHistory))state.specialCareerHistory=[];state.specialCareerHistory.unshift(Object.assign({},state.specialCareer,{record:Object.assign({},state.specialCareer.record||{}),history:(state.specialCareer.history||[]).slice(),combatProfile:state.specialCareer.id==='fighter'?JSON.parse(JSON.stringify(state.combatCareer||null)):null,filmProfile:state.specialCareer.id==='director'?JSON.parse(JSON.stringify(state.filmStudio||null)):null,endedAge:state.age,ending:'تغيير المسار'}));state.specialCareerHistory=state.specialCareerHistory.slice(0,20);}
+ state.specialCareer={id:c.id,title:c.title,income:c.income,level:1,startedAge:state.age,record:{attempts:0,wins:0,losses:0,projects:0,totalEarnings:0,bestLevel:1},history:[]};state.combatCareer=c.id==='fighter'?createCombatCareer():null;state.filmStudio=c.id==='director'?createFilmStudio():null;if(c.id==='influencer'){state.socialMediaAccount=true;state.followers=Math.max(state.followers||0,100);state.socialMediaPosts=(state.socialMediaPosts||0)+1;}state.fame=clamp((state.fame||0)+4);state.reputation=clamp((state.reputation||50)+2);achievement('بدأ مسار الشهرة: '+c.title);
  log(c.emoji,'بداية مسار جديد','بدأت مسارك في '+c.title+'. النجاح محتاج تدريب واستمرارية، والدخل ممكن يتغير من سنة للتانية.','special');render();info('🌟','بدأت المسار','تقدر تتدرب أو تختبر فرص جديدة من قائمة المهن الخاصة.');
 }
 function trainSpecialCareer(){
@@ -1373,7 +1489,7 @@ function trainSpecialCareer(){
  log('🌟','تدريب في '+state.specialCareer.title,'طورت مهاراتك في المسار الفني أو الاحترافي ورفعت مستوى الخبرة إلى '+state.specialCareer.level+'.','good');render();info('⭐','تدريب ناجح','مستوى المسار '+state.specialCareer.level+'، والشهرة '+state.fame+'%.');
 }
 function specialCareerActivity(){
- closeModal();if(!state.specialCareer){specialCareers();return;}if(state.specialCareer.id==='fighter'){combatCareerMenu();return;}
+ closeModal();if(!state.specialCareer){specialCareers();return;}if(state.specialCareer.id==='fighter'){combatCareerMenu();return;}if(state.specialCareer.id==='director'){filmStudioMenu();return;}
  const c=state.specialCareer;const level=Math.max(1,c.level||1);
  if(!c.record||typeof c.record!=='object')c.record={attempts:0,wins:0,losses:0,projects:0,totalEarnings:0,bestLevel:level};if(!Array.isArray(c.history))c.history=[];
  const costs={actor:7000,musician:3500,influencer:1800,athlete:1500,fighter:2200,writer:1500,director:12000};
@@ -1410,7 +1526,7 @@ function specialCareerActivity(){
  render();info(success?'⭐':'🔁',success?'نشاط ناجح':'تجربة جديدة',text+(success?' الشهرة الحالية '+state.fame+'%.':' جرب التدريب أو نشاطًا مختلفًا في المرة القادمة.'));
 }
 function tryAudition(){
- closeModal();if(!state.specialCareer){specialCareers();return;}if(state.specialCareer.id==='fighter'){combatCareerMenu();return;}
+ closeModal();if(!state.specialCareer){specialCareers();return;}if(state.specialCareer.id==='fighter'){combatCareerMenu();return;}if(state.specialCareer.id==='director'){filmStudioMenu();return;}
  const chanceScore=.22+(state.stats.looks/500)+(state.stats.smart/700)+(state.fame/220)+((state.specialCareer.level||1)/200);
  if(chance(Math.min(.85,chanceScore))){const fameGain=5+Math.floor(Math.random()*10),income=5000+Math.floor(Math.random()*25000);state.fame=clamp(state.fame+fameGain);state.bank+=income;state.specialCareer.level=clamp((state.specialCareer.level||1)+1);log('🌟','فرصة ناجحة','نجحت في فرصة جديدة وكسبت '+cash(income)+'. شهرتك زادت '+fameGain+' نقاط.','good');achievement('نجاح مهني في '+state.specialCareer.title);render();info('🎉','فرصة ناجحة','شهرتك الحالية '+state.fame+'%.');}
  else{state.stats.happiness=clamp(state.stats.happiness-2);log('🎟️','رفض في اختبار أداء','الفرصة دي ما ظبطتش. راجع مهاراتك وحاول مرة تانية.','bad');render();info('🎟️','المرة الجاية','الرفض جزء طبيعي من المسار؛ التدريب يزيد فرصك.');}
@@ -1833,7 +1949,7 @@ function importSave(){
     const data=JSON.parse(String(reader.result||''));
     if(!data||typeof data!=='object'||Array.isArray(data)||data.version!==1||!data.stats||typeof data.stats!=='object'||Array.isArray(data.stats)||!Array.isArray(data.log)||!Array.isArray(data.family)||!data.place||typeof data.place!=='object'||Array.isArray(data.place))throw new Error('invalid');
     normalizeCoreState(data);
-    const defaults={lifeId:Date.now()+Math.random(),cemeterySaved:false,jobHistory:[],specialCareer:null,specialCareerHistory:[],combatCareer:null,investments:[],business:null,married:false,children:[],pets:[],hobbies:[],fame:0,followers:0,socialMediaAccount:false,socialMediaPosts:0,reputation:50,crimeRecord:0,prison:null,debt:0,willDistribution:'الأسرة بالتساوي',heirlooms:[],dailyRewardDate:null,dailyChallenges:null,timeMachineSnapshots:[],legacy:{name:null,inheritance:0,heirloom:null},driversLicense:false,travelHistory:[],retired:false,yearCount:data.age||0,assets:[],friends:[],accomplishments:[],status:'حي'};
+    const defaults={lifeId:Date.now()+Math.random(),cemeterySaved:false,jobHistory:[],specialCareer:null,specialCareerHistory:[],combatCareer:null,filmStudio:null,investments:[],business:null,married:false,children:[],pets:[],hobbies:[],fame:0,followers:0,socialMediaAccount:false,socialMediaPosts:0,reputation:50,crimeRecord:0,prison:null,debt:0,willDistribution:'الأسرة بالتساوي',heirlooms:[],dailyRewardDate:null,dailyChallenges:null,timeMachineSnapshots:[],legacy:{name:null,inheritance:0,heirloom:null},driversLicense:false,travelHistory:[],retired:false,yearCount:data.age||0,assets:[],friends:[],accomplishments:[],status:'حي'};
     Object.keys(defaults).forEach(k=>{if(data[k]===undefined||data[k]===null)data[k]=defaults[k];});
     if(!Array.isArray(data.assets))data.assets=[];if(!Array.isArray(data.timeMachineSnapshots))data.timeMachineSnapshots=[];data.assets.forEach(a=>{if((a.kind==='car'||a.kind==='property')&&!Number.isFinite(Number(a.condition)))a.condition=100;});
     if(!data.education||typeof data.education!=='object')data.education={level:0,school:'لم تبدأ الدراسة',major:null,yearsLeft:0,tuition:0};data.education.clubs=Array.isArray(data.education.clubs)?data.education.clubs:[];
