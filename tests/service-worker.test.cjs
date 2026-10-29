@@ -19,7 +19,7 @@ function makeHarness(fetchImpl = async () => { throw new Error('offline'); }) {
   const keyOf = key => typeof key === 'string' ? key : key.url;
   const makeCache = name => ({
     async addAll(urls) {
-      cacheCalls.added = urls.slice();
+      cacheCalls.added = [...urls];
       for (const url of urls) cacheStore.get(name).set(url, new Response('cached:' + url));
     },
     async put(key, response) {
