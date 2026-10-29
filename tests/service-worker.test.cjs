@@ -80,7 +80,7 @@ function makeHarness(fetchImpl = async () => { throw new Error('offline'); }) {
 }
 
 test('service worker installs a fresh shell cache and removes only obsolete Hayah caches', async () => {
-  assert.match(workerSource, /const CACHE_NAME = 'hayah-shell-v11'/);
+  assert.match(workerSource, /const CACHE_NAME = 'hayah-shell-v12'/);
   const harness = makeHarness();
   await harness.dispatchLifecycle('install');
 
