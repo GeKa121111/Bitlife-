@@ -368,10 +368,14 @@ function flash(text,bad=false){
 function stat(key,delta){
  if(!delta)return;
  if(key==='bank'){state.bank+=delta;flash((delta>0?'+':'')+cash(delta),delta<0);return;}
+ if(key==='fame'||key==='reputation'){
+  const before=Number(state[key]||0);state[key]=clamp(before+delta);
+  if(state[key]!==before)flash((delta>0?'+':'')+fmt(state[key]-before)+'% '+(key==='fame'?'شهرة':'سمعة'),delta<0);
+  return;
+ }
+ if(key==='debt'){state.debt=Math.max(0,(state.debt||0)+delta);return;}
  if(state.stats[key]===undefined)return;
  const labels={happiness:'سعادة',health:'صحة',smart:'ذكاء',looks:'مظهر'};
- if(key==='fame'||key==='reputation'){const before=Number(state[key]||0);state[key]=clamp(before+delta);if(state[key]!==before)flash((delta>0?'+':'')+fmt(state[key]-before)+'% '+(key==='fame'?'شهرة':'سمعة'),delta<0);return;}
- if(key==='debt'){state.debt=Math.max(0,(state.debt||0)+delta);return;}
  const before=state.stats[key];state.stats[key]=clamp(before+delta);const actual=state.stats[key]-before;
  if(actual)flash((actual>0?'+':'')+fmt(actual)+'% '+labels[key],actual<0);
 }
@@ -582,6 +586,8 @@ function startNew(){
 function showCareer(){
  if(state.job){
   const opts=[
+   choice('🌟','المهن الخاصة والشهرة','مسار إضافي بجانب وظيفتك التقليدية.',specialCareers),
+   choice('📚','سجل الوظائف السابقة','راجع الوظائف التي تركتها أو انتقلت منها.',()=>{closeModal();const records=(state.jobHistory||[]).map(j=>choice('💼',j.title,(j.startAge??'?')+'–'+(j.endAge??'؟')+' سنة · الراتب '+cash(j.salary),()=>{closeModal();info('💼',j.title,'وظيفة سابقة في سجل حياتك.');}));modal('📚','التاريخ الوظيفي','مسار العمل خلال حياتك.',records.length?records:[choice('📚','لا توجد وظائف سابقة','سيظهر السجل بعد تغيير وظيفة أو الاستقالة.',closeModal)]);}),
    choice('📈','طلب علاوة','أداءك الحالي '+state.performance+'%.',()=>{
     closeModal();
     if(state.performance<58){state.performance=clamp(state.performance+4);log('🗣️','مناقشة مع المدير','مديرك طلب منك تحسن الأداء شوية قبل زيادة المرتب.');info('🗣️','مش دلوقتي','حافظ على أداءك واطلب تاني بعد فترة.');return;}
