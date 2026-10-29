@@ -6,8 +6,21 @@ const BACKUP_KEY = 'hekayat_hayah_save_backup_v1';
 const CEMETERY_KEY = 'hekayat_hayah_cemetery_v1';
 const SETTINGS_KEY = 'hayah_ui_settings_v1';
 const PERKS_KEY = 'hayah_permanent_perks_v1';
-const PERK_IDS = ['challengeVault','goldTheme','expandedTime','actorPack','bossMode','healthShield','goldenWrench','goldenPassport','goldenPiggyBank','goldenNeko','fameFortuneBundle','billionairesBundle','crimePaysBundle','partyAnimalBundle','hollywoodStar','goldenResume','goldenDiploma','friendshipBracelet','goldenPacifier','jailCard','businessPack','landlordPack','investorPack','mafiaPack','blackMarketPack','assassinsBlade','zooExpansionPack','superstarMode','cultPack','casinoPack','godMode','bitizenship','movieDirectorPack','dealerPack','auraRing'];
+const PERK_IDS = ['challengeVault','goldTheme','expandedTime','actorPack','bossMode','healthShield','goldenWrench','goldenPassport','goldenPiggyBank','goldenNeko','fameFortuneBundle','billionairesBundle','crimePaysBundle','partyAnimalBundle','hollywoodStar','goldenResume','goldenDiploma','friendshipBracelet','goldenPacifier','jailCard','businessPack','landlordPack','investorPack','mafiaPack','blackMarketPack','assassinsBlade','zooExpansionPack','superstarMode','cultPack','casinoPack','godMode','bitizenship','movieDirectorPack','dealerPack','auraRing','fighterPack','proAthletePack','politicianPack','astronautPack'];
 const PERK_TOGGLE_IDS = ['goldTheme','healthShield','goldenWrench','bossMode','goldenNeko','hollywoodStar','goldenResume','goldenPacifier','godMode','bitizenship'];
+const JOB_PACK_IDS = ['actorPack','fighterPack','proAthletePack','politicianPack','astronautPack','businessPack','dealerPack','mafiaPack','movieDirectorPack'];
+const JOB_PACK_PROMOS = {
+ actorPack:{title:'Actor Job Pack',emoji:'🎭',cost:25000,description:'Are you the center of attention? Do you live for drama? Hire an agent, book an acting gig, and rise to fame with this job pack!',features:['Hire a professional agent!','Book auditions and acting gigs!','Film commercials and rise to fame!']},
+ fighterPack:{title:'Ultimate Fighter Mode',emoji:'🥊',cost:45000,description:'Step into the cage and fight your way to the top!',features:['Become a WORLD CHAMPION!','Brawl in STREET FIGHTS!','LEARN and level up 200+ moves!','FIGHT in an epic MMA mini game!','Hire a PROFESSIONAL coach!','ENGAGE with other fighters!']},
+ proAthletePack:{title:'Pro Athlete Job Pack',emoji:'🏀',cost:35000,description:'Are you a baller like LeBron? Are you the next Messi? Become the MVP of your favorite sport with this job pack!',features:['Train to become a professional athlete!','Join a team and compete for championships!','Earn contracts, trophies and fame!']},
+ politicianPack:{title:'Politician Job Pack',emoji:'🏛️',cost:30000,description:'Are you a natural-born leader? Do you dream of being President? Your rise to power begins with this job pack!',features:['Run for local office!','Campaign and build public trust!','Climb the political ladder!']},
+ astronautPack:{title:'Astronaut Job Pack',emoji:'🧑‍🚀',cost:50000,description:'Unlock the mysteries of the universe!',features:['Explore new planets!','Discover alien artifacts!','Train for missions in space!']},
+ businessPack:{title:'Business Job Pack',emoji:'💼',cost:60000,description:'Are you a natural-born leader with a hunger for profit? Start up, acquire, or lead a company in this job pack!',features:['Start or acquire companies!','Hire teams and manage expenses!','Build wealth through business decisions!']},
+ dealerPack:{title:'Street Hustler Job Pack',emoji:'🃏',cost:70000,description:'Do you dream in dollar signs? Swindle the masses out of their riches with this job pack!',features:['Start out on the street!','Build your reputation and territory!','Work your way up to the top!']},
+ mafiaPack:{title:'Mafia Job Pack',emoji:'🕶️',cost:70000,description:'Does being bad tempt you? Rise to notoriety and become Godfather!',features:['Join a fictional crime family!','Earn rank and reputation!','Try to become the Godfather!']},
+ movieDirectorPack:{title:'Movie Director',emoji:'🎥',cost:65000,description:'Become the next legendary filmmaker!',features:['Direct movies across 11 different genres!','Hold auditions to find the perfect actors!','Deal with actor drama behind the scenes!','Win awards for your movies!','Showcase your movies at festivals!']},
+ goldenDiploma:{title:'Golden Diploma',emoji:'🎓',cost:38000,description:'Become an overnight expert in the field of your dreams!',features:['Choose a university major instantly!','Unlock the highest education tier!','Improve eligibility for careers!']}
+};
 const fmt = n => new Intl.NumberFormat('ar-EG',{maximumFractionDigits:0}).format(Math.round(Number(n)||0));
 const cash = n => fmt(n)+' '+(state&&state.place?state.place.unit:'ج.م');
 const clamp = (n,min=0,max=100) => Math.max(min,Math.min(max,Math.round(n)));
@@ -28,7 +41,7 @@ function loadPermanentPerks(){
  return defaults;
 }
 function persistPermanentPerks(){try{localStorage.setItem(PERKS_KEY,JSON.stringify(permanentPerks));}catch(e){}}
-function perkOwned(id){return !!(permanentPerks&&permanentPerks.owned&&permanentPerks.owned[id])||(id==='actorPack'&&!!(permanentPerks&&permanentPerks.owned&&permanentPerks.owned.bossMode));}
+function perkOwned(id){return !!(permanentPerks&&permanentPerks.owned&&permanentPerks.owned[id])||!!(permanentPerks&&permanentPerks.owned&&permanentPerks.owned.bossMode&&JOB_PACK_IDS.includes(id));}
 function perkEnabled(id){return perkOwned(id)&&!!(permanentPerks.enabled&&permanentPerks.enabled[id]);}
 function careerIncomeMultiplier(){return perkEnabled('goldenNeko')?1.2:1;}
 function specialCareerIncomeMultiplier(){return careerIncomeMultiplier()*(perkEnabled('bossMode')?1.1:1);}
@@ -703,7 +716,7 @@ function section(title){return {section:true,title};}
 function choice(icon,title,desc,action,price='',progress=null,locked=false){return {icon,title,desc,action,price,progress,locked};}
 function modal(icon,title,desc,choices,closable=true,extra=''){
  const root=$('modalRoot');
- const isDrawer=['الدراسة والشغل','الأصول','الأصول والمشتريات','العلاقات','العلاقات والأسرة','الأنشطة والحياة اليومية','السوشيال ميديا','التسوق'].includes(title)||SOCIAL_PLATFORM_CATALOG.some(p=>p.title===title);
+ const isDrawer=['الدراسة والشغل','School','University','Class','Cliques','Faculty','الأصول','الأصول والمشتريات','العلاقات','العلاقات والأسرة','الأنشطة والحياة اليومية','السوشيال ميديا','التسوق'].includes(title)||SOCIAL_PLATFORM_CATALOG.some(p=>p.title===title);
  const context=String(title||'')+' '+String(desc||'')+' '+String(extra||'');
  const symptom=/(عرض|أعراض|صداع|غثيان|حمى|حُمّى|زكام|سعال|ألم|وجع|دوخة|symptom|headache|nausea|flu|diagnosis)/i.test(context);
  const crime=/(جريمة|سرقة|سجن|مخدر|عصابة|شرطة|اختلاس|سطو|crime|robbery|prison)/i.test(context);
@@ -751,7 +764,7 @@ function modal(icon,title,desc,choices,closable=true,extra=''){
   '</button>';
  }).join('');
  if(isDrawer){
-  root.innerHTML='<div class="overlay drawer-overlay" id="overlay"><section class="modal drawer" role="dialog" aria-modal="true" aria-label="'+esc(title)+'"><div class="modalhead drawer-head"><div class="modalicon">'+icon+'</div><div class="modaltitle">'+esc(title)+'</div>'+(closable?'<button class="closebtn" id="closeModal" aria-label="إغلاق">×</button>':'')+'</div><div class="modalbody drawer-body">'+(desc?'<p class="desc">'+esc(desc)+'</p>':'')+extra+'<div class="choicegrid">'+list+'</div></div></section></div>';
+  root.innerHTML='<div class="overlay drawer-overlay" id="overlay"><section class="modal drawer'+(title==='School'?' school-screen':'')+'" role="dialog" aria-modal="true" aria-label="'+esc(title)+'"><div class="modalhead drawer-head"><div class="modalicon">'+icon+'</div><div class="modaltitle">'+esc(title)+'</div>'+(closable?'<button class="closebtn" id="closeModal" aria-label="إغلاق">×</button>':'')+'</div><div class="modalbody drawer-body">'+(desc?'<p class="desc">'+esc(desc)+'</p>':'')+extra+'<div class="choicegrid">'+list+'</div></div></section></div>';
  }else{
   root.innerHTML='<div class="overlay event-overlay" id="overlay"><section class="modal event-modal banner-'+category+(isNotice?' notice-modal':'')+'" role="dialog" aria-modal="true" aria-label="'+esc(title)+'"><div class="event-banner banner-'+category+'"><span>'+categoryLabel+'</span>'+(closable?'<button class="closebtn" id="closeModal" aria-label="إغلاق">×</button>':'')+'</div><div class="event-summary"><div class="event-icon">'+icon+'</div><h2 class="event-title">'+esc(title)+'</h2>'+(desc?'<p class="desc">'+esc(desc)+'</p>':'')+(questionPrompt?'<div class="event-question">'+questionPrompt+'</div>':'')+'</div><div class="modalbody event-body">'+extra+'<div class="choicegrid">'+list+'</div>'+(showSurprise?'<button class="surprise-choice" id="surpriseChoice" type="button"><span aria-hidden="true">🎲</span> فاجئني!</button>':'')+'</div></section></div>';
  }
@@ -1010,59 +1023,118 @@ function grantGoldenDiploma(major){
  log('🎓','الحصول على الشهادة الذهبية','حصلت فورًا على شهادة دراسات عليا في '+major.title+' دون رسوم أو انتظار.','special');save();render();info('🎓','مبروك الشهادة','مستوى التعليم أصبح 6، وأصبحت مؤهلًا للوظائف التي تتطلب شهادة جامعية أو أعلى.');
 }
 function schoolHub(){
- const education=state.education||(state.education={level:0,school:'لم تبدأ الدراسة',major:null,yearsLeft:0,tuition:0});
- const isUniversity=(education.yearsLeft||0)>0;
- const stage=education.droppedOut?'ترك الدراسة':isUniversity?'طالب جامعي · '+education.major:(education.school||'المدرسة');
- const score=clamp(education.studyScore||50);
- const clubs=Array.isArray(education.clubs)?education.clubs:[];
- if(perkOwned('goldenDiploma')&&state.age>=18)options.unshift(choice('🎓','استخدام الشهادة الذهبية','شهادة فورية في تخصص تختاره، دون سنوات دراسة أو رسوم.',goldenDiplomaMenu));
- const options=[
-  choice('📚','ذاكر بجد','جلسة مذاكرة ترفع الذكاء والمستوى الدراسي، لكنها تحتاج مجهود.',()=>{
-   closeModal();if(education.droppedOut){info('🚪','تركت الدراسة','ارجع لمسار التعليم الأول عشان تقدر تستخدم المذاكرة المدرسية.');return;}education.studyScore=clamp((education.studyScore||50)+12);stat('smart',4);stat('happiness',-1);
-   log('📚','ذاكرت بجد','خصصت وقتًا للمذاكرة، وارتفع تقييمك الدراسي إلى '+education.studyScore+'%.','good');render();
-   info('📚','مجهودك فرق','الذكاء اتحسن وتقييمك الدراسي بقى '+education.studyScore+'%.');
+ const education=state.education||(state.education={level:0,school:'School',major:null,yearsLeft:0,tuition:0});
+ if(!Array.isArray(education.clubs))education.clubs=[];
+ if(!Array.isArray(education.cliques))education.cliques=[];
+ const isUniversity=(education.yearsLeft||0)>0&&!education.droppedOut;
+ const name=isUniversity?'University':state.age>=15?'High School':state.age>=12?'Middle School':'Primary School';
+ const grades=clamp(education.studyScore===undefined?50:education.studyScore);
+ const popularity=clamp(education.popularity===undefined?18:education.popularity);
+ const options=[];
+ const university=choice('🏛️',name,'Grades',()=>{closeModal();isUniversity?universityStatusMenu():university(false);},'',grades);
+ university.menuDots=true;options.push(university);
+ const diploma=choice('📜','Golden Diploma','Become an overnight expert in the field of your dreams!',()=>{closeModal();perkOwned('goldenDiploma')?goldenDiplomaMenu():showJobPackOffer('goldenDiploma');});
+ diploma.menuDots=true;options.push(diploma);
+ options.push(section('Activities'));
+ options.push(choice('⚽','Activities','Join an extracurricular activity',schoolClubs));
+ options.push(choice('✏️','Class','Popularity',schoolClassMenu,'',popularity));
+ options.push(choice('🤓','Cliques','Join a school clique',schoolCliqueMenu));
+ const leave=choice('👋',education.droppedOut?'Return to School':isUniversity?'Drop Out of university':'Drop Out of School',education.droppedOut?'Return to your education path':isUniversity?'Drop out of university':'Drop out of school',education.droppedOut?()=>{
+  closeModal();education.droppedOut=false;education.school=state.age<12?'Primary School':state.age<15?'Middle School':state.age<18?'High School':'University';
+  log('🎓','Back to school','You decided to return to your education.','good');save();render();schoolHub();
+ }:dropOutConfirm);
+ leave.menuDots=true;options.push(leave);
+ options.push(choice('👩‍🏫','Faculty','Interact with your teachers',schoolFacultyMenu));
+ const skip=choice('🤫','Skip School','Skip class and do something else',skipSchool);skip.menuDots=true;options.push(skip);
+ const study=choice('📚','Study Harder','Put in some extra effort',()=>{
+  closeModal();if(education.droppedOut){info('🚪','You left school','Return to school before studying.');return;}
+  education.studyScore=clamp((education.studyScore===undefined?50:education.studyScore)+12);education.popularity=clamp((education.popularity===undefined?18:education.popularity)-1);
+  stat('smart',4);stat('happiness',-1);log('📚','Study session','You studied hard. Your grade is now '+education.studyScore+'%.','good');save();render();info('📚','Study pays off','Your smarts improved and your grades are now '+education.studyScore+'%.');
+ });
+ study.menuDots=true;options.push(study);
+ if(isUniversity)options.push(choice('🎓','Major',(education.major||'Undeclared')+' · '+education.yearsLeft+' years remaining',()=>universityStatusMenu()));
+ options.push(choice('↩️','Back','Return to your current life.',()=>{closeModal();showCareer();}));
+ modal('🎓','School',isUniversity?'University · '+(education.major||'Undeclared')+' · '+education.yearsLeft+' years remaining':'Your education and school activities.',options,true,'<div class="school-progress"><div class="muted">Grades</div><div class="progressline"><div style="width:'+grades+'%"></div></div><div class="muted">'+education.clubs.length+' extracurricular activities</div></div>');
+}
+function universityStatusMenu(){
+ const education=state.education||(state.education={}),grade=clamp(education.studyScore===undefined?50:education.studyScore);
+ modal('🏛️','University','Major: '+(education.major||'Undeclared')+' · '+(education.yearsLeft||0)+' years remaining · annual tuition '+cash(education.tuition||0)+'.',[
+  choice('📚','Study Harder','Improve grades and smarts.',()=>{closeModal();education.studyScore=clamp(grade+12);stat('smart',4);stat('happiness',-1);log('📚','University study','You studied for your major and improved your grades.','good');save();render();schoolHub();}),
+  choice('⚽','Extracurricular Activities','Join a campus activity.',schoolClubs),
+  choice('👩‍🏫','Faculty','Ask a teacher for advice.',schoolFacultyMenu),
+  choice('👋','Drop Out of university','Leave your current program.',dropOutConfirm),
+  choice('↩️','Back to School','',()=>{closeModal();schoolHub();})
+ ]);
+}
+function schoolClassMenu(){
+ const education=state.education||(state.education={});
+ if(education.droppedOut){info('🚪','School is inactive','Return to school before interacting with your class.');return;}
+ const popularity=clamp(education.popularity===undefined?18:education.popularity);
+ modal('✏️','Class','Popularity · '+popularity+'%',[
+  choice('👋','Talk to classmates','Build friendships and school popularity.',()=>{
+   closeModal();education.popularity=clamp(popularity+5);
+   if(state.friends.length){const friend=pick(state.friends);friend.relationshipLevel=clamp((friend.relationshipLevel||50)+5);stat('happiness',2);log('🧑‍🤝‍🧑','Class time','You spent time talking with '+friend.name+'.','good');}
+   else{const friend=makePerson(pick(['male','female']),'Classmate','🧑',state.age,45+Math.floor(Math.random()*45));state.friends.push(friend);log('🧑‍🤝‍🧑','New classmate','You made friends with '+friend.name+'.','good');}
+   save();render();schoolHub();
   }),
-  choice('🧑‍🤝‍🧑','تفاعل مع زملاء الفصل','كوّن صداقة أو قوّي علاقة موجودة.',()=>{
-   closeModal();
-   if(state.friends.length){const n=pick(state.friends);n.relationshipLevel=clamp((n.relationshipLevel||50)+8);stat('happiness',3);log('🧑‍🤝‍🧑','وقت مع زملاء الفصل','قضيت وقت مع '+n.name+' واتقربتوا من بعض.','good');render();info('🧑‍🤝‍🧑','علاقات المدرسة','مستوى علاقتك بـ'+n.name+' بقى '+n.relationshipLevel+'%.');}
-   else addFriend();
-  }),
-  choice('🏫','الأنشطة الطلابية','رياضة، علوم، مسرح أو مجلس طلاب.',schoolClubs),
-  choice('🧭','التخصصات والجامعة','راجع شروط الجامعة ورسوم الدراسة.',()=>{closeModal();university(false);})
+  choice('🎭','Join a school event','Take part in class life.',()=>{closeModal();education.popularity=clamp(popularity+8);stat('happiness',3);if(chance(.25))stat('smart',1);log('🎭','School event','You joined a school event and became a little more popular.','good');save();render();schoolHub();}),
+  choice('📖','Focus on class','Small grade boost.',()=>{closeModal();education.studyScore=clamp((education.studyScore===undefined?50:education.studyScore)+4);stat('smart',2);log('📖','Focused in class','You paid attention and improved your grades.','good');save();render();schoolHub();}),
+  choice('↩️','Back to School','',()=>{closeModal();schoolHub();})
+ ]);
+}
+function schoolCliqueMenu(){
+ const education=state.education||(state.education={});if(!Array.isArray(education.cliques))education.cliques=[];
+ if(education.droppedOut){info('🚪','School is inactive','Return to school before joining a clique.');return;}
+ const catalog=[
+  {id:'sports',title:'Sports Clique',emoji:'⚽',desc:'Athletes and school competitions.'},
+  {id:'nerds',title:'Nerds',emoji:'🤓',desc:'Study groups and science.'},
+  {id:'popular',title:'Popular Kids',emoji:'😎',desc:'Social events and a wider school circle.'},
+  {id:'artists',title:'Arts Clique',emoji:'🎭',desc:'Music, drama and creative projects.'}
  ];
- if(isUniversity)options.unshift(choice('🎓','التقدم الدراسي','متبقي '+education.yearsLeft+' سنة · التخصص '+education.major+'.',()=>{closeModal();info('🎓','ملف الجامعة','المتبقي '+education.yearsLeft+' سنة. الرسوم السنوية '+cash(education.tuition||0)+'. حافظ على رصيدك وذاكر كل سنة.');},Math.round(education.tuition||0)?cash(education.tuition)+'/سنة':''));
- if(!education.droppedOut)options.push(choice('🚪','ترك الدراسة','الانسحاب يوقف التقدم التعليمي وقد يقلل فرص التوظيف.',()=>dropOutConfirm()));
- if(education.droppedOut)options.push(choice('🔁','العودة لمسار التعليم','تقدر تعيد فتح المسار الدراسي.',()=>{
-  closeModal();education.droppedOut=false;education.school=state.age<12?'المدرسة الابتدائية':state.age<15?'المرحلة الإعدادية':state.age<18?'المرحلة الثانوية':'التعليم المستمر';
-  log('🎓','العودة للتعليم','قررت ترجع لمسار التعليم وتكمل تطوير نفسك.','good');render();info('🎓','رجعت للدراسة','التعليم رجع متاح في ملف حياتك.');
- }));
- options.push(choice('↩️','رجوع','ارجع لقائمة المهنة والعمل.',()=>{closeModal();showCareer();}));
- modal('🎓', 'الدراسة والشغل',stage+' · المستوى الدراسي '+(education.level||0)+' · تقييم المذاكرة '+score+'%.',options,true,'<div class="school-progress"><div class="muted">التقييم الدراسي</div><div class="progressline"><div style="width:'+score+'%"></div></div><div class="muted">'+clubs.length+' نشاط طلابي</div></div>');
+ const opts=catalog.map(item=>{const joined=education.cliques.includes(item.id);return choice(item.emoji,(joined?'Spend time with ':'Join ')+item.title,item.desc+(joined?' · Already joined.':''),()=>{
+  closeModal();if(!education.cliques.includes(item.id)){education.cliques.push(item.id);education.popularity=clamp((education.popularity===undefined?18:education.popularity)+5);achievement('Joined the '+item.title+' clique');}
+  if(item.id==='sports'){stat('health',2);stat('happiness',2);}if(item.id==='nerds')stat('smart',3);if(item.id==='popular')stat('happiness',4);if(item.id==='artists')stat('looks',1);
+  log(item.emoji,'School Clique',(joined?'You spent time with the ':'You joined the ')+item.title+'.','good');save();render();info(item.emoji,joined?'Clique time':'Joined the clique',item.title+' · School popularity '+clamp(education.popularity===undefined?18:education.popularity)+'%.');
+ },'',null,joined);});
+ opts.push(choice('↩️','Back to School','',()=>{closeModal();schoolHub();}));
+ modal('🤓','Cliques','Choose a group that matches your interests.',opts);
+}
+function schoolFacultyMenu(){
+ const education=state.education||(state.education={}),relation=clamp(education.teacherRelationship===undefined?35:education.teacherRelationship);
+ modal('👩‍🏫','Faculty','Teacher relationship · '+relation+'%',[
+  choice('💬','Ask for advice','Get feedback on your grades and study habits.',()=>{closeModal();education.teacherRelationship=clamp(relation+5);education.studyScore=clamp((education.studyScore===undefined?50:education.studyScore)+4);stat('smart',2);log('👩‍🏫','Teacher advice','A teacher gave you some useful guidance.','good');save();render();schoolHub();}),
+  choice('👏','Compliment a teacher','A respectful compliment may improve your rapport.',()=>{closeModal();education.teacherRelationship=clamp(relation+(chance(.8)?6:-2));stat('happiness',1);log('👏','Faculty interaction','You spoke with one of your teachers.','good');save();render();info('👩‍🏫','Faculty','Teacher relationship is now '+education.teacherRelationship+'%.');}),
+  choice('📝','Ask to review a grade','A respectful review may raise a recent grade.',()=>{closeModal();if(chance(.52)){education.studyScore=clamp((education.studyScore===undefined?50:education.studyScore)+5);log('📝','Grade reviewed','Your teacher reviewed your work and adjusted your grade.','good');}else{education.teacherRelationship=clamp(relation-1);log('📝','Grade review','Your teacher kept the original grade.');}save();render();schoolHub();}),
+  choice('↩️','Back to School','',()=>{closeModal();schoolHub();})
+ ]);
+}
+function skipSchool(){
+ const education=state.education||(state.education={});closeModal();
+ if(education.droppedOut){info('🚪','School is inactive','Return to your education path before skipping classes.');return;}
+ education.absences=clamp((education.absences||0)+1,0,1000);education.studyScore=clamp((education.studyScore===undefined?50:education.studyScore)-5);
+ stat('happiness',chance(.5)?2:-1);
+ if(education.absences>=3&&chance(.35)){education.popularity=clamp((education.popularity===undefined?18:education.popularity)+4);log('🤫','Skipped class','You skipped another class. Your grades slipped, but you had more time for yourself.');}
+ else log('🤫','Skipped class','You skipped a class. Your grades fell to '+education.studyScore+'%.');
+ save();render();info('🤫','Class skipped','Missed classes: '+education.absences+' · Grades: '+education.studyScore+'%. Repeated absences could affect your education.');
 }
 
 function schoolClubs(){
- closeModal();if(state.education&&state.education.droppedOut){info('🚪','الأنشطة الطلابية غير متاحة','ارجع لمسار التعليم عشان تنضم للأندية والأنشطة.');return;}
+ closeModal();if(state.education&&state.education.droppedOut){info('🚪','School is inactive','Return to your education path before joining clubs.');return;}
  const catalog=[
-  {id:'sports',name:'النادي الرياضي',icon:'⚽',effect:'الصحة والروح الرياضية'},
-  {id:'science',name:'نادي العلوم',icon:'🔬',effect:'التعلم والفضول'},
-  {id:'arts',name:'نادي الفنون والمسرح',icon:'🎭',effect:'الإبداع والسعادة'},
-  {id:'leadership',name:'مجلس الطلاب',icon:'🏫',effect:'القيادة والعلاقات'}
+  {id:'sports',name:'Sports Club',icon:'⚽',effect:'health and teamwork'},
+  {id:'science',name:'Science Club',icon:'🔬',effect:'learning and curiosity'},
+  {id:'arts',name:'Arts & Drama Club',icon:'🎭',effect:'creativity and happiness'},
+  {id:'leadership',name:'Student Council',icon:'🏫',effect:'leadership and relationships'}
  ];
- const choices=catalog.map(c=>{
-  const joined=(state.education.clubs||[]).includes(c.id);
-  return choice(c.icon,joined?'ممارسة '+c.name:'الانضمام إلى '+c.name,'تطوير '+c.effect+'.'+(joined?' أنت عضو بالفعل.':''),()=>{
-   closeModal();if(!state.education.clubs)state.education.clubs=[];
-   if(!state.education.clubs.includes(c.id)){state.education.clubs.push(c.id);achievement('انضممت إلى '+c.name);}
-   if(c.id==='sports'){stat('health',4);stat('happiness',2);}
-   if(c.id==='science'){stat('smart',4);stat('happiness',1);}
-   if(c.id==='arts'){stat('happiness',4);stat('looks',1);}
-   if(c.id==='leadership'){stat('happiness',3);if(state.friends.length)state.friends[0].relationshipLevel=clamp((state.friends[0].relationshipLevel||50)+5);}
-   log(c.icon,c.name,joined?'شاركت في نشاط '+c.name+' وطورت مهاراتك.':'انضممت إلى '+c.name+'، وبدأت تبني مهارات خارج الفصل.','good');render();info(c.icon,joined?'نشاط طلابي':'تم الانضمام',c.name+' · '+c.effect+'.');
-  });
- });
- choices.push(choice('↩️','رجوع للدراسة','',()=>{closeModal();schoolHub();}));
- modal('🏫','الأنشطة الطلابية','اختار نشاطًا يناسب اهتماماتك. تقدر تجرب أكتر من نادي.',choices);
+ const choices=catalog.map(c=>{const joined=(state.education.clubs||[]).includes(c.id);return choice(c.icon,joined?'Participate in '+c.name:'Join '+c.name,'Build '+c.effect+'.'+(joined?' You are already a member.':''),()=>{
+  closeModal();if(!state.education.clubs)state.education.clubs=[];if(!state.education.clubs.includes(c.id)){state.education.clubs.push(c.id);achievement('Joined '+c.name);}
+  if(c.id==='sports'){stat('health',4);stat('happiness',2);}if(c.id==='science'){stat('smart',4);stat('happiness',1);}if(c.id==='arts'){stat('happiness',4);stat('looks',1);}if(c.id==='leadership'){stat('happiness',3);if(state.friends.length)state.friends[0].relationshipLevel=clamp((state.friends[0].relationshipLevel||50)+5);}
+  log(c.icon,c.name,joined?'You participated in '+c.name+' and improved your skills.':'You joined '+c.name+' and started building skills outside class.','good');save();render();info(c.icon,joined?'Activity complete':'You joined',c.name+' · '+c.effect+'.');
+ },'',null,joined);});
+ choices.push(choice('↩️','Back to School','',()=>{closeModal();schoolHub();}));
+ modal('🏫','Activities','Choose an extracurricular activity that fits your interests.',choices);
 }
+
 function dropOutConfirm(){
  closeModal();
  modal('🚪','تأكيد ترك الدراسة','الانسحاب هيوقف التقدم التعليمي الحالي، وممكن يصعّب التأهل لبعض الوظائف.',[
@@ -2437,25 +2509,40 @@ function esportsHistoryMenu(){
 
 function specialCareers(){
  const catalog=[
-  {id:'actor',title:'التمثيل',emoji:'🎬',min:16,looks:50,income:14000,desc:'اختبارات أداء وأدوار قد ترفع شهرتك.'},
-  {id:'musician',title:'الموسيقى',emoji:'🎤',min:14,looks:25,income:11000,desc:'تدريب ونشر أعمال وفرص حفلات.'},
-  {id:'influencer',title:'صانع محتوى',emoji:'📱',min:13,looks:30,income:7000,desc:'نشر مستمر وتفاعل جماهيري.'},
-  {id:'athlete',title:'الرياضة الاحترافية',emoji:'🏅',min:15,looks:0,income:18000,desc:'لياقة وتدريب ومنافسة.'},
-  {id:'esports',title:'الرياضات الإلكترونية',emoji:'🎮',min:16,looks:0,income:8500,desc:'بطولات تنافسية ورعايات تعتمد على المهارة والتدريب.'},
-  {id:'fighter',title:'مقاتل محترف',emoji:'🥊',min:18,looks:0,income:22000,desc:'تدريب بدني ومنافسات عالية المخاطر.'},
-  {id:'writer',title:'الكتابة والنشر',emoji:'✍️',min:16,looks:0,income:5000,desc:'بناء جمهور من الأعمال المنشورة.'},
-  {id:'director',title:'إخراج الأفلام',emoji:'🎥',min:25,looks:0,income:26000,desc:'قيادة إنتاج فني ومشاريع كبيرة.'},
-  {id:'military',title:'الخدمة العسكرية',emoji:'🪖',min:18,looks:0,income:16000,desc:'تدريب وانضباط ومهمات ميدانية ومخاطر.'},
-  {id:'politician',title:'الحياة السياسية',emoji:'🏛️',min:25,looks:0,income:28000,desc:'خدمة عامة وحملات انتخابية وسمعة وثقة.'},
-  {id:'crimeboss',title:'العالم السفلي',emoji:'🕶️',min:21,looks:0,income:18000,desc:'مسار خيالي محفوف بالمخاطر القانونية وقد ينتهي بالسجن.'}
+  {id:'actor',title:'Actor',emoji:'🎭',min:16,looks:50,income:14000,desc:'Auditions, acting gigs and new opportunities.',packId:'actorPack'},
+  {id:'musician',title:'Musician',emoji:'🎤',min:14,looks:25,income:11000,desc:'Train, release music and book performances.'},
+  {id:'influencer',title:'Influencer',emoji:'📱',min:13,looks:30,income:7000,desc:'Post consistently and grow your audience.'},
+  {id:'athlete',title:'Pro Athlete',emoji:'🏅',min:15,looks:0,income:18000,desc:'Fitness, training and championship competition.',packId:'proAthletePack'},
+  {id:'esports',title:'Esports Player',emoji:'🎮',min:16,looks:0,income:8500,desc:'Competitive events and sponsorships depend on practice.'},
+  {id:'fighter',title:'Professional Fighter',emoji:'🥊',min:18,looks:0,income:22000,desc:'Training, tactics and high-risk competitions.',packId:'fighterPack'},
+  {id:'writer',title:'Writer & Publisher',emoji:'✍️',min:16,looks:0,income:5000,desc:'Build an audience through published work.'},
+  {id:'director',title:'Movie Director',emoji:'🎥',min:25,looks:0,income:26000,desc:'Lead film productions and creative projects.',packId:'movieDirectorPack'},
+  {id:'military',title:'Military Service',emoji:'🪖',min:18,looks:0,income:16000,desc:'Training, discipline, field missions and risk.'},
+  {id:'politician',title:'Politician',emoji:'🏛️',min:25,looks:0,income:28000,desc:'Public service, campaigns and public trust.',packId:'politicianPack'},
+  {id:'astronaut',title:'Astronaut',emoji:'🧑‍🚀',min:21,looks:0,income:40000,desc:'Train for space missions and explore the universe.',packId:'astronautPack'},
+  {id:'crimeboss',title:'Mafia',emoji:'🕶️',min:21,looks:0,income:18000,desc:'A fictional underworld path with legal risks.',packId:'mafiaPack'},
+  {id:'dealer',title:'Street Hustler',emoji:'🃏',min:18,looks:0,income:14000,desc:'A fictional street hustle story with risks and a reputation ladder.',packId:'dealerPack'}
  ];
- const opts=catalog.map(c=>choice(c.emoji,c.title,c.desc+' الحد الأدنى للعمر '+c.min+'.',()=>startSpecialCareer(c)));
- if(perkOwned('actorPack'))opts.unshift(choice('🎬','حزمة التمثيل الاحترافية','إعلانات مدفوعة ووكيل أعمال واختبارات أداء.',actorPackMenu));
- if(perkOwned('bossMode'))opts.unshift(choice('🧰','مركز المهن الشامل','وصول سريع للمسارات الخاصة وعلاوة دخل قابلة للتفعيل.',bossModeMenu));
- if(state.specialCareer){const r=state.specialCareer.record||{};opts.unshift(choice('📊','سجل المسار الحالي','المستوى '+fmt(state.specialCareer.level||1)+' · نجاحات '+fmt(r.wins||0)+' · إخفاقات '+fmt(r.losses||0)+' · دخل '+cash(r.totalEarnings||0)+'.',()=>{closeModal();info('📊','سجل '+state.specialCareer.title,'عدد المحاولات '+fmt(r.attempts||0)+' · النجاح '+fmt(r.wins||0)+' · الإخفاق '+fmt(r.losses||0)+' · المشاريع/الأنشطة '+fmt(r.projects||0)+' · إجمالي الدخل المسجل '+cash(r.totalEarnings||0)+' · أفضل مستوى '+fmt(r.bestLevel||1)+'.');}));opts.unshift(choice('📚','تاريخ المهن السابقة','اعرض المسارات التي أنهيتها ونتائجها.',specialCareerHistoryMenu));if(state.specialCareer.id==='fighter'){opts.unshift(choice('🥊','إدارة مسيرة القتال','تدريب وتكتيك ومنافسات وارتقاء نحو اللقب العالمي.',combatCareerMenu));}else if(state.specialCareer.id==='director'){opts.unshift(choice('🎥','إدارة استوديو الأفلام','إنتاج أفلام، اختيار الميزانية والطاقم والتسويق، ومراجعة الإيرادات.',filmStudioMenu));opts.unshift(choice('⭐','التدريب والعمل في '+state.specialCareer.title,'الشهرة الحالية '+state.fame+'%.',()=>trainSpecialCareer()));}else if(state.specialCareer.id==='esports'){opts.unshift(choice('🎮','إدارة مسيرة الرياضات الإلكترونية','بطولات ورعايات وتجهيزات وسجل منافسات.',esportsCareerMenu));opts.unshift(choice('⭐','تدريب تنافسي','موهبة الألعاب '+clamp(state.talents&&state.talents.gaming)+'%.',()=>trainSpecialCareer()));}else{opts.unshift(choice('🎬','تنفيذ نشاط تخصصي','إنتاج عمل أو إصدار أو منافسة مرتبطة بمسارك.',()=>specialCareerActivity()));opts.unshift(choice('⭐','التدريب والعمل في '+state.specialCareer.title,'الشهرة الحالية '+state.fame+'%.',()=>trainSpecialCareer()));opts.unshift(choice('🎟️','اختبار أداء / فرصة جديدة','اختبر حظك في فرصة جديدة.',()=>tryAudition()));}}
- modal('🌟','المهن الخاصة والشهرة','المسارات دي مختلفة عن الوظيفة التقليدية؛ النجاح فيها غير مضمون وقد يحتاج سنوات.',opts);
+ const opts=catalog.map(c=>choice(c.emoji,c.title,c.desc+' Minimum age '+c.min+'.',()=>{
+  if(c.packId&&!perkOwned(c.packId)){showJobPackOffer(c.packId,c);return;}
+  if(c.id==='dealer'){dealerMenu();return;}if(c.id==='crimeboss'){mafiaMenu();return;}startSpecialCareer(c);
+ },'',null,!!(c.packId&&!perkOwned(c.packId))));
+ if(perkOwned('actorPack'))opts.unshift(choice('🎬','Actor Job Pack','Paid commercials, agents and advanced auditions.',actorPackMenu));
+ if(perkOwned('bossMode'))opts.unshift(choice('🧰','Boss Mode','Career-wide access and a toggleable 10% income bonus.',bossModeMenu));
+ if(state.specialCareer){const r=state.specialCareer.record||{};
+  opts.unshift(choice('📊','Current Career Record','Level '+fmt(state.specialCareer.level||1)+' · wins '+fmt(r.wins||0)+' · losses '+fmt(r.losses||0)+' · income '+cash(r.totalEarnings||0)+'.',()=>{closeModal();info('📊','Career Record','Attempts '+fmt(r.attempts||0)+' · wins '+fmt(r.wins||0)+' · losses '+fmt(r.losses||0)+' · projects '+fmt(r.projects||0)+' · total earnings '+cash(r.totalEarnings||0)+' · best level '+fmt(r.bestLevel||1)+'.');}));
+  opts.unshift(choice('📚','Previous Careers','Review careers you have completed.',specialCareerHistoryMenu));
+  if(state.specialCareer.id==='fighter')opts.unshift(choice('🥊','Manage Fighter Career','Training, tactics, competitions and the road to a title.',combatCareerMenu));
+  else if(state.specialCareer.id==='director'){opts.unshift(choice('🎥','Manage Film Studio','Produce films, select budgets and casts, and review revenue.',filmStudioMenu));opts.unshift(choice('⭐','Train as '+state.specialCareer.title,'Current fame '+state.fame+'%.',()=>trainSpecialCareer()));}
+  else if(state.specialCareer.id==='esports'){opts.unshift(choice('🎮','Manage Esports Career','Competitions, sponsorships, equipment and records.',esportsCareerMenu));opts.unshift(choice('⭐','Competitive Training','Gaming talent '+clamp(state.talents&&state.talents.gaming)+'%.',()=>trainSpecialCareer()));}
+  else{opts.unshift(choice('🎬','Specialized Activity','Create a work, release or competition linked to your career.',()=>specialCareerActivity()));opts.unshift(choice('⭐','Train as '+state.specialCareer.title,'Current fame '+state.fame+'%.',()=>trainSpecialCareer()));opts.unshift(choice('🎟️','Audition / New Opportunity','Try for another career opportunity.',()=>tryAudition()));}
+ }
+ modal('🌟','Special Careers','Explore careers beyond traditional employment. Success takes practice and time.',opts);
 }
+
 function startSpecialCareer(c){
+ const requiredPack=({actor:'actorPack',athlete:'proAthletePack',fighter:'fighterPack',director:'movieDirectorPack',politician:'politicianPack',astronaut:'astronautPack',crimeboss:'mafiaPack',dealer:'dealerPack'})[c.id]||c.packId;
+ if(requiredPack&&!perkOwned(requiredPack)){closeModal();showJobPackOffer(requiredPack,c);return;}
  closeModal();if(state.age<c.min){info('🔒','لسه بدري','المسار ده متاح من سن '+c.min+'.');return;}
  if(c.looks&&state.stats.looks<c.looks&&c.id==='actor'){info('🎭','طوّر مهاراتك','فرص التمثيل تزيد مع المظهر والتدريب، جرّب الهوايات والتدريب.');return;}
  if(state.specialCareer&&state.specialCareer.id===c.id){if(c.id==='fighter'){ensureCombatCareer();combatCareerMenu();}else if(c.id==='director'){ensureFilmStudio();filmStudioMenu();}else if(c.id==='esports'){ensureEsportsCareer();esportsCareerMenu();}else info('🌟','أنت بالفعل في المسار ده','كمل تدريبك وأنشطتك عشان تتقدم بدل ما تبدأ من الصفر.');return;}
@@ -3338,7 +3425,7 @@ function bitizenshipInteractionMenu(){
  opts.push(choice('↩️','رجوع للعضوية','',bitizenshipMenu));modal('🗣️','تفاعلات Bitizen','اختار تفاعلًا متاحًا حسب مرحلة حياتك.',opts);
 }
 function movieDirectorMenu(){
- if(!perkOwned('movieDirectorPack')){closeModal();showMovieDirectorOffer();return;}
+ if(!perkOwned('movieDirectorPack')){closeModal();showJobPackOffer('movieDirectorPack');return;}
  if(state.specialCareer&&state.specialCareer.id==='director'){filmStudioMenu();return;}
  modal('🎥','حزمة مخرج الأفلام','المسار متاح من سن 25. بعد بدئه يمكنك إنتاج أفلام أصلية عبر 11 نوعًا سينمائيًا.',[
   choice('🎬','بدء مسار الإخراج','تحتاج سن 25 سنة.',()=>startSpecialCareer({id:'director',title:'إخراج الأفلام',emoji:'🎥',min:25,looks:0,income:26000,desc:'إدارة إنتاج أفلام أصلية.'})),
@@ -3577,7 +3664,11 @@ function premiumPerksMenu(){
   {id:'goldTheme',title:'الطابع الذهبي',emoji:'⭐',cost:16000,desc:'افتح مظهرًا ذهبيًا أصليًا ويمكنك تشغيله أو إيقافه.'},
   {id:'streakSaver',title:'حماة السلسلة ×5',emoji:'🛡️',cost:8000,desc:'حزمة من 5 وسائل حماية للسلسلة عند تفويت يوم واحد.'},
   {id:'expandedTime',title:'ذاكرة الزمن الموسّعة',emoji:'⏳',cost:30000,desc:'ارفع عدد نقاط الرجوع من 8 إلى 60.'},
-  {id:'actorPack',title:'حزمة التمثيل الاحترافية',emoji:'🎬',cost:25000,desc:'اختبارات أداء موسعة وإعلانات مدفوعة ووكيل أعمال.'},
+  {id:'actorPack',title:'Actor Job Pack',emoji:'🎭',cost:25000,desc:'أدوار، اختبارات أداء، وإعلانات مدفوعة.'},
+  {id:'fighterPack',title:'Ultimate Fighter Mode',emoji:'🥊',cost:45000,desc:'مسار مقاتل احترافي وتدريب ومنافسات.'},
+  {id:'proAthletePack',title:'Pro Athlete Job Pack',emoji:'🏀',cost:35000,desc:'افتح مسار الرياضة الاحترافية.'},
+  {id:'politicianPack',title:'Politician Job Pack',emoji:'🏛️',cost:30000,desc:'افتح مسار الحياة السياسية.'},
+  {id:'astronautPack',title:'Astronaut Job Pack',emoji:'🧑‍🚀',cost:50000,desc:'افتح مسار استكشاف الفضاء.'},
   {id:'bossMode',title:'مركز المهن الشامل',emoji:'🧰',cost:45000,desc:'لوحة للمهن الخاصة وعلاوة دخل 10% عند التفعيل.'},
   {id:'healthShield',title:'درع العافية',emoji:'🩺',cost:18000,desc:'يمنع عدوى محاكية في خيار اختياري للبالغين داخل اللعبة.'},
   {id:'goldenWrench',title:'الورشة الذهبية',emoji:'🔧',cost:20000,desc:'صيانة السيارات مجانًا مع الحفاظ على حالتها.'},
@@ -3600,7 +3691,7 @@ function premiumPerksMenu(){
   if(item.id==='streakSaver')return choice(item.emoji,item.title+' · المتبقي '+(permanentPerks.streakSavers||0),item.desc+' التكلفة '+cash(item.cost)+'.',()=>buyPremiumPerk(item.id),cash(item.cost));
   if(perkOwned(item.id)){
    if(PERK_TOGGLE_IDS.includes(item.id))return choice(perkEnabled(item.id)?'🟢':'⚪',item.title+(perkEnabled(item.id)?' · مفعّل':' · متوقف'),item.desc,()=>togglePremiumPerk(item.id));
-   const actions={challengeVault:challengeVaultMenu,expandedTime:timeMachineMenu,actorPack:actorPackMenu,bossMode:bossModeMenu,superstarMode:()=>togglePremiumPerk('goldTheme'),zooExpansionPack:zooMenu,mafiaPack:mafiaMenu,blackMarketPack:blackMarketMenu,assassinsBlade:assassinBladeMission,goldenDiploma:goldenDiplomaMenu,businessPack:companyPortfolioMenu,landlordPack:landlordPortfolioMenu,investorPack:investingMenu,cultPack:cultMenu,casinoPack:casinoMenu,godMode:godModeMenu,bitizenship:bitizenshipMenu,movieDirectorPack:movieDirectorMenu,dealerPack:dealerMenu,auraRing:auraRingMenu};
+   const actions={challengeVault:challengeVaultMenu,expandedTime:timeMachineMenu,actorPack:actorPackMenu,bossMode:bossModeMenu,superstarMode:()=>togglePremiumPerk('goldTheme'),zooExpansionPack:zooMenu,mafiaPack:mafiaMenu,blackMarketPack:blackMarketMenu,assassinsBlade:assassinBladeMission,goldenDiploma:goldenDiplomaMenu,businessPack:companyPortfolioMenu,landlordPack:landlordPortfolioMenu,investorPack:investingMenu,cultPack:cultMenu,casinoPack:casinoMenu,godMode:godModeMenu,bitizenship:bitizenshipMenu,movieDirectorPack:movieDirectorMenu,dealerPack:dealerMenu,auraRing:auraRingMenu,fighterPack:()=>openJobPackDestination('fighterPack'),proAthletePack:()=>openJobPackDestination('proAthletePack'),politicianPack:()=>openJobPackDestination('politicianPack'),astronautPack:()=>openJobPackDestination('astronautPack')};
    return choice('✅',item.title+' · مفتوح',item.desc,actions[item.id]||(()=>info(item.emoji,item.title,item.desc)));
   }
   return choice(item.emoji,item.title,item.desc+' شراء مرة واحدة من رصيد اللعبة: '+cash(item.cost)+'.',()=>buyPremiumPerk(item.id),cash(item.cost));
@@ -3613,9 +3704,10 @@ function grantLandlordStarterProperty(){
  state.assets.push({id:'landlord-starter-'+Date.now(),title:'منزل مستقبلي حصري',emoji:'🏠',kind:'property',value:950000,upkeep:22000,bought:state.age,condition:100,rented:false,tenant:null,amenities:[],futuristic:true,landlordStarter:true});
  log('🏠','هدية العقار الحصري','حصلت على منزل مستقبلي حصري مجانًا مع توسعة العقارات.','good');
 }
-function buyPremiumPerk(id){
+function buyPremiumPerk(id,afterPurchase){
  const catalog={
   fameFortuneBundle:{cost:135000,title:'باقة الشهرة والثروة'},billionairesBundle:{cost:160000,title:'باقة الملياردير'},crimePaysBundle:{cost:145000,title:'باقة عالم الجريمة'},partyAnimalBundle:{cost:175000,title:'باقة الحيوان الحفّال'},
+  fighterPack:{cost:45000,title:'Ultimate Fighter Mode'},proAthletePack:{cost:35000,title:'Pro Athlete Job Pack'},politicianPack:{cost:30000,title:'Politician Job Pack'},astronautPack:{cost:50000,title:'Astronaut Job Pack'},
   challengeVault:{cost:22000,title:'خزنة التحديات'},goldTheme:{cost:16000,title:'الطابع الذهبي'},streakSaver:{cost:8000,title:'حماة السلسلة'},expandedTime:{cost:30000,title:'ذاكرة الزمن الموسّعة'},businessPack:{cost:60000,title:'حزمة الأعمال'},landlordPack:{cost:55000,title:'توسعة العقارات والملاك'},investorPack:{cost:55000,title:'حزمة المستثمر'},cultPack:{cost:72000,title:'توسعة الطائفة والمجتمع'},casinoPack:{cost:95000,title:'توسعة الكازينو'},godMode:{cost:110000,title:'وضع الإله'},bitizenship:{cost:85000,title:'عضوية المواطن Bitizen'},movieDirectorPack:{cost:65000,title:'حزمة مخرج الأفلام'},dealerPack:{cost:70000,title:'حزمة التاجر'},auraRing:{cost:32000,title:'خاتم الهالة'},
   actorPack:{cost:25000,title:'حزمة التمثيل الاحترافية'},bossMode:{cost:45000,title:'مركز المهن الشامل'},healthShield:{cost:18000,title:'درع العافية'},goldenWrench:{cost:20000,title:'الورشة الذهبية'},
   goldenPassport:{cost:30000,title:'جواز العالم'},goldenPiggyBank:{cost:75000,title:'حصالة المليون'},goldenNeko:{cost:55000,title:'تميمة الازدهار'},hollywoodStar:{cost:60000,title:'نجم هوليوود'},
@@ -3647,11 +3739,15 @@ function buyPremiumPerk(id){
   if(id==='landlordPack')grantLandlordStarterProperty();
   persistPermanentPerks();log('✨','ميزة جديدة: '+item.title,'فتحت '+item.title+' من رصيد اللعبة. تقدر تدير المزايا من المتجر والقائمة الرئيسية.','special');
  }
- save();render();if(id==='movieDirectorPack'){movieDirectorMenu();return;}premiumPerksMenu();
+ save();render();
+ if(typeof afterPurchase==='function'){afterPurchase();return;}
+ if(JOB_PACK_PROMOS[id]||id==='bossMode'){openJobPackDestination(id);return;}
+ premiumPerksMenu();
 }
 
 function perkAction(id){
  if(id==='challengeVault'){challengeVaultMenu();return;}if(id==='expandedTime'){timeMachineMenu();return;}if(id==='actorPack'){actorPackMenu();return;}if(id==='bossMode'){bossModeMenu();return;}
+ if(['fighterPack','proAthletePack','politicianPack','astronautPack','businessPack','dealerPack','mafiaPack','movieDirectorPack','goldenDiploma'].includes(id)){openJobPackDestination(id);return;}
  if(id==='goldenDiploma'){goldenDiplomaMenu();return;}if(id==='zooExpansionPack'){zooMenu();return;}if(id==='mafiaPack'){mafiaMenu();return;}if(id==='blackMarketPack'){blackMarketMenu();return;}if(id==='assassinsBlade'){assassinBladeMission();return;}if(id==='superstarMode'){togglePremiumPerk('goldTheme');return;}if(id==='businessPack'){companyPortfolioMenu();return;}if(id==='landlordPack'){landlordPortfolioMenu();return;}if(id==='investorPack'){investingMenu();return;}if(id==='cultPack'){cultMenu();return;}if(id==='casinoPack'){casinoMenu();return;}if(id==='godMode'){godModeMenu();return;}if(id==='bitizenship'){bitizenshipMenu();return;}if(id==='movieDirectorPack'){movieDirectorMenu();return;}if(id==='dealerPack'){dealerMenu();return;}
  if(PERK_TOGGLE_IDS.includes(id)){togglePremiumPerk(id);return;}
  const details={goldenPassport:'جواز العالم يلغي رسوم الهجرة للوجهات المتاحة داخل اللعبة.',goldenPiggyBank:'كل حياة جديدة تبدأ بمليون من عملة بلد الشخصية، بما فيها حياة الوارث.',friendshipBracelet:'كل صديق جديد يبدأ بعلاقة قوية مضمونة.',jailCard:'تقدر استخدام البطاقة مرة واحدة عند وجودك في السجن.',goldenNeko:'علاوة الراتب تزيد بنسبة 20% عند التفعيل.',businessPack:'تقدر فتح وإدارة شركات إضافية من قائمة الأصول.',landlordPack:'إدارة عقود المستأجرين متاحة من تفاصيل العقارات.',investorPack:'أسهم وسندات وعملات رقمية متاحة من قائمة الاستثمارات.'};
@@ -3703,19 +3799,34 @@ function auraRingMenu(){
 function routePack(id,openAction){
  closeModal();
  if(perkOwned(id)){openAction();return;}
- if(id==='movieDirectorPack'){showMovieDirectorOffer();return;}
+ if(JOB_PACK_PROMOS[id]){showJobPackOffer(id);return;}
  premiumPerksMenu();
 }
-function showMovieDirectorOffer(){
- if(perkOwned('movieDirectorPack')){movieDirectorMenu();return;}
- const root=$('modalRoot');
- root.innerHTML='<div class="overlay pack-offer-overlay" id="packOfferOverlay" role="presentation"><button class="pack-offer-close" id="packOfferClose" type="button" aria-label="إغلاق">×</button><section class="pack-offer-card" role="dialog" aria-modal="true" aria-label="حزمة مخرج الأفلام"><div class="pack-offer-hero"><div class="pack-offer-lights" aria-hidden="true">✦　🎥　✦</div><div class="pack-offer-avatar" aria-hidden="true">🎬</div><div class="pack-offer-ribbon">حزمة مخرج الأفلام</div><p>حوّل أفكارك إلى أفلام ناجحة</p></div><div class="pack-offer-features"><div class="pack-offer-feature"><span>🎬</span><strong>أخرج أفلامًا في 11 نوعًا مختلفًا</strong></div><div class="pack-offer-feature"><span>🎭</span><strong>اعمل اختبارات أداء واختار فريقك</strong></div><div class="pack-offer-feature"><span>🎞️</span><strong>تعامل مع المواقف والدراما خلف الكواليس</strong></div><div class="pack-offer-feature"><span>🏆</span><strong>نافس على الجوائز وراجع تقييمات أفلامك</strong></div><div class="pack-offer-feature"><span>🎟️</span><strong>اعرض إنتاجك في المهرجانات</strong></div><div class="pack-offer-feature"><span>🌟</span><strong>ابنِ مسيرة مخرج سينمائي ناجح</strong></div></div><div class="pack-offer-actions"><button class="pack-offer-buy" id="moviePackBuyButton" type="button"><span>افتحها الآن!</span><small>'+cash(65000)+' من رصيد اللعبة</small></button><p class="pack-offer-note">شراء داخل اللعبة فقط — لا توجد مدفوعات حقيقية</p><button class="pack-offer-later" id="packOfferLater" type="button">ليس الآن</button></div></section></div>';
- const overlay=$('packOfferOverlay'),close=()=>{root.innerHTML='';};
- overlay.addEventListener('click',event=>{if(event.target===overlay)close();});
- $('packOfferClose').addEventListener('click',close);
- $('packOfferLater').addEventListener('click',close);
- $('moviePackBuyButton').addEventListener('click',()=>buyPremiumPerk('movieDirectorPack'));
+function openJobPackDestination(id){
+ if(id==='goldenDiploma'){goldenDiplomaMenu();return;}if(id==='actorPack'){actorPackMenu();return;}if(id==='movieDirectorPack'){movieDirectorMenu();return;}if(id==='businessPack'){companyPortfolioMenu();return;}if(id==='dealerPack'){dealerMenu();return;}if(id==='mafiaPack'){mafiaMenu();return;}if(id==='bossMode'){bossModeMenu();return;}
+ const careers={
+  fighterPack:{id:'fighter',title:'Professional Fighter',emoji:'🥊',min:18,looks:0,income:22000,desc:'Training, tactical choices and high-risk competitions.'},
+  proAthletePack:{id:'athlete',title:'Pro Athlete',emoji:'🏅',min:15,looks:0,income:18000,desc:'Fitness, training and championship competition.'},
+  politicianPack:{id:'politician',title:'Politician',emoji:'🏛️',min:25,looks:0,income:28000,desc:'Public service, campaigns and building public trust.'},
+  astronautPack:{id:'astronaut',title:'Astronaut',emoji:'🧑‍🚀',min:21,looks:0,income:40000,desc:'Train for missions, explore space and build your flight record.'}
+ }[id];
+ if(careers){startSpecialCareer(careers);return;}premiumPerksMenu();
 }
+function showJobPackOffer(id,career){
+ const pack=JOB_PACK_PROMOS[id];if(!pack){premiumPerksMenu();return;}
+ if(perkOwned(id)){if(career)startSpecialCareer(career);else openJobPackDestination(id);return;}
+ const root=$('modalRoot');let selected=id;
+ const features=pack.features.map((f,i)=>'<div class="job-pack-feature"><span>'+['🥊','🏆','🎬','🎭','🌟','⭐'][i%6]+'</span><strong>'+esc(f)+'</strong></div>').join('');
+ root.innerHTML='<div class="overlay job-pack-offer-overlay" id="jobPackOfferOverlay"><button class="job-pack-close" id="jobPackClose" type="button" aria-label="Close">×</button><section class="job-pack-stage" role="dialog" aria-modal="true" aria-label="'+esc(pack.title)+'"><button class="job-pack-card selected" id="jobPackSelectCard" type="button"><div class="job-pack-card-head"><span class="job-pack-card-price">'+cash(pack.cost)+'</span><span class="job-pack-new">NEW!</span></div><div class="job-pack-card-icon">'+pack.emoji+'</div><h2>'+esc(pack.title)+'</h2><p>'+esc(pack.description)+'</p><div class="job-pack-card-features">'+features+'</div></button><button class="job-pack-boss-card" id="jobPackBossCard" type="button"><span class="job-pack-check" aria-hidden="true">✓</span><div class="job-pack-boss-head"><span>🏛️</span><span>📈</span><span>🧑‍🚀</span><span>🎮</span></div><h2>Boss Mode</h2><p>Unlock every single job pack, including the '+esc(pack.title)+'!</p><div class="job-pack-boss-extra"><span>🎼</span><span>🎭</span><span>🏀</span><span>🌿</span></div><small>'+cash(45000)+' · Unlock every career pack</small></button><div class="job-pack-actions"><button class="job-pack-buy" id="jobPackBuy" type="button"><span>Get it now!</span><small id="jobPackBuyPrice">'+cash(pack.cost)+'</small></button><button class="job-pack-restore" id="jobPackRestore" type="button">restore earlier purchase</button></div></section></div>';
+ const close=()=>{root.innerHTML='';},overlay=$('jobPackOfferOverlay'),packCard=$('jobPackSelectCard'),bossCard=$('jobPackBossCard'),price=$('jobPackBuyPrice');
+ overlay.addEventListener('click',e=>{if(e.target===overlay)close();});$('jobPackClose').addEventListener('click',close);
+ const select=choiceId=>{selected=choiceId;packCard.classList.toggle('selected',selected===id);bossCard.classList.toggle('selected',selected==='bossMode');price.textContent=cash(selected==='bossMode'?45000:pack.cost);};
+ packCard.addEventListener('click',()=>select(id));bossCard.addEventListener('click',()=>select('bossMode'));
+ $('jobPackBuy').addEventListener('click',()=>buyPremiumPerk(selected,()=>{if(career){startSpecialCareer(career);return;}openJobPackDestination(selected==='bossMode'?id:selected);}));
+ $('jobPackRestore').addEventListener('click',()=>{permanentPerks=loadPermanentPerks();if(perkOwned(id)||perkOwned('bossMode')){close();if(career)startSpecialCareer(career);else openJobPackDestination(id);}else{close();info('↻','No previous purchase found','Job packs in this version are unlocked with in-game currency saved on this device. There are no external payments to restore.');}});
+}
+function showMovieDirectorOffer(){showJobPackOffer('movieDirectorPack');}
+
 function activities(){
  const opts=[
   section('Premium Activities'),

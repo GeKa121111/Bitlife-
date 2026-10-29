@@ -2004,3 +2004,62 @@ body.theme-dark .ad-slot{background:#555}
  .pack-offer-buy{min-height:64px!important}
  .pack-offer-buy span{font-size:19px!important}
 }
+
+
+/* Reference-led School screen */
+.school-screen .drawer-head{height:58px!important;min-height:58px!important;background:#075b9a!important}
+.school-screen .drawer-body .desc{display:none!important}
+.school-screen .drawer-body .choice{min-height:78px!important;padding:12px 15px!important;gap:13px!important;background:#fff!important;border-bottom:1px solid #aeb9c3!important}
+.school-screen .drawer-body .choice .choiceico{width:44px!important;flex:0 0 44px!important;font-size:29px!important;text-align:center!important}
+.school-screen .drawer-body .choice .ctext{direction:ltr!important;text-align:left!important;align-items:flex-start!important}
+.school-screen .drawer-body .choice .ctitle{font-size:16px!important;line-height:1.25!important;color:#13598d!important;font-weight:950!important}
+.school-screen .drawer-body .choice .cdesc{font-size:13px!important;line-height:1.45!important;color:#587d99!important}
+.school-screen .drawer-body .choice .choice-chevron{color:#376b8d!important;font-size:30px!important}
+.school-screen .drawer-body .choice-dots{font-size:23px!important;letter-spacing:2px!important;color:#2b617f!important}
+.school-screen .drawer-body .choice .choice-progress{width:min(54%,190px)!important;height:8px!important;margin-top:4px!important;border-radius:0!important;background:#d8e0e5!important}
+.school-screen .drawer-body .choice .choice-progress span{border-radius:0!important;background:#239642!important}
+.school-screen .list-section{min-height:28px!important;padding:4px 10px!important;background:#7d7f82!important;color:#fff!important;font-size:13px!important;line-height:20px!important;text-align:center!important;font-weight:950!important}
+/* Job pack offer: navy expansion panel, blue Boss Mode panel and bordered green CTA. */
+.job-pack-offer-overlay{position:fixed!important;inset:0!important;z-index:1100!important;display:flex!important;align-items:center!important;justify-content:center!important;padding:calc(22px + env(safe-area-inset-top)) 10px calc(14px + env(safe-area-inset-bottom))!important;background:rgba(2,10,20,.88)!important;backdrop-filter:blur(2px)!important}
+.job-pack-stage{width:min(100%,410px)!important;max-height:91dvh!important;overflow-y:auto!important;display:flex!important;flex-direction:column!important;gap:13px!important;padding:0 0 10px!important;border:0!important;background:transparent!important;scrollbar-width:thin}
+.job-pack-close{position:fixed!important;left:16px!important;top:calc(12px + env(safe-area-inset-top))!important;z-index:1101!important;width:43px!important;height:43px!important;border:2px solid #fff!important;border-radius:50%!important;background:#080d14!important;color:#fff!important;font-size:29px!important;line-height:1!important}
+.job-pack-card,.job-pack-boss-card{position:relative!important;display:block!important;width:100%!important;flex:0 0 auto!important;border:4px solid #607d9e!important;border-radius:27px!important;background:#061d31!important;color:#fff!important;padding:17px 18px 15px!important;text-align:center!important;box-shadow:0 8px 22px #0005!important;overflow:visible!important}
+.job-pack-card.selected{border-color:#5995e8!important;box-shadow:0 0 0 1px #244b8a,0 8px 22px #0005!important}
+.job-pack-card-head{min-height:22px!important;display:flex!important;align-items:center!important;justify-content:space-between!important;direction:ltr!important;margin-bottom:5px!important}
+.job-pack-card-price{font-size:10px!important;color:#f1f3fa!important;font-weight:900!important}
+.job-pack-new{padding:4px 8px!important;background:#e41d22!important;color:#fff!important;border-radius:2px!important;font-size:11px!important;line-height:1!important;font-weight:1000!important}
+.job-pack-card-icon{display:grid!important;place-items:center!important;width:92px!important;height:92px!important;margin:0 auto 5px!important;border:3px solid #e2bf6a!important;border-radius:50%!important;background:radial-gradient(circle at 30% 20%,#3f679c,#0c1a36 72%)!important;font-size:50px!important;box-shadow:0 0 0 4px #13203e!important}
+.job-pack-card h2,.job-pack-boss-card h2{margin:5px 0 12px!important;color:#fff!important;font-size:20px!important;line-height:1.25!important;font-weight:1000!important;text-align:center!important}
+.job-pack-card p,.job-pack-boss-card p{margin:0 auto!important;max-width:340px!important;color:#fff!important;font-size:13px!important;font-weight:650!important;line-height:1.6!important;text-align:center!important}
+.job-pack-card-features{display:flex!important;flex-direction:column!important;margin:15px -18px -15px!important;border-top:1px solid #1e2c41!important;border-radius:0 0 21px 21px!important;overflow:hidden!important}
+.job-pack-feature{display:flex!important;align-items:center!important;gap:10px!important;min-height:46px!important;padding:10px 14px!important;direction:ltr!important;text-align:left!important;border-bottom:1px solid #1c2c40!important;background:#101c2a!important}
+.job-pack-feature:nth-child(even){background:#07111f!important}
+.job-pack-feature span{flex:0 0 25px!important;font-size:20px!important;text-align:center!important}
+.job-pack-feature strong{font-size:13px!important;font-weight:800!important;line-height:1.35!important;color:#fff!important}
+.job-pack-boss-card{border-color:#159b48!important;background:#1a3e70!important;padding:17px 18px 14px!important}
+.job-pack-boss-card.selected{border-color:#35d86d!important;box-shadow:0 0 0 1px #35d86d,0 8px 22px #0006!important}
+.job-pack-check{position:absolute!important;left:-22px!important;top:38%!important;display:grid!important;place-items:center!important;width:39px!important;min-height:73px!important;border:2px solid #58ed7f!important;border-radius:4px!important;background:#06a841!important;color:#fff!important;font-size:30px!important;font-weight:1000!important;text-shadow:0 2px 1px #075a27!important}
+.job-pack-boss-head,.job-pack-boss-extra{display:flex!important;align-items:center!important;justify-content:space-evenly!important;gap:12px!important;padding:4px 0!important;font-size:28px!important;line-height:1.4!important}
+.job-pack-boss-card h2{color:#ffeb4c!important;font-size:24px!important;margin:7px 0 5px!important}
+.job-pack-boss-card p{font-size:13px!important;line-height:1.5!important;margin-bottom:8px!important}
+.job-pack-boss-extra{border-top:1px solid #39577d!important;margin-top:8px!important;padding-top:8px!important}
+.job-pack-boss-card small{font-size:10px!important;color:#dce7fb!important;font-weight:850!important}
+.job-pack-actions{display:flex!important;flex-direction:column!important;align-items:stretch!important;gap:12px!important;padding:1px 0!important}
+.job-pack-buy{display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:center!important;gap:3px!important;width:100%!important;min-height:66px!important;padding:9px 15px!important;border:4px solid #fff!important;outline:2px solid #26c968!important;border-radius:22px!important;background:#08a642!important;color:#fff!important;box-shadow:inset 0 0 0 2px #71e99a,0 4px 0 #087630!important}
+.job-pack-buy span{font-size:22px!important;line-height:1.1!important;font-weight:1000!important}
+.job-pack-buy small{font-size:11px!important;font-weight:850!important;line-height:1.2!important;color:#e7ffed!important}
+.job-pack-buy:active{transform:translateY(2px)!important;box-shadow:inset 0 0 0 2px #71e99a,0 2px 0 #087630!important}
+.job-pack-restore{display:block!important;align-self:center!important;padding:4px 10px!important;border:0!important;background:transparent!important;color:#d6dce6!important;text-decoration:underline!important;font-size:12px!important;line-height:1.5!important}
+@media(max-width:380px){
+ .school-screen .drawer-body .choice{min-height:72px!important;padding:10px!important;gap:9px!important}
+ .school-screen .drawer-body .choice .choiceico{width:38px!important;flex-basis:38px!important;font-size:26px!important}
+ .school-screen .drawer-body .choice .ctitle{font-size:14px!important}.school-screen .drawer-body .choice .cdesc{font-size:12px!important}
+ .job-pack-stage{max-height:90dvh!important;gap:11px!important}
+ .job-pack-card,.job-pack-boss-card{padding:13px 12px!important;border-width:3px!important;border-radius:22px!important}
+ .job-pack-card-icon{width:76px!important;height:76px!important;font-size:42px!important}
+ .job-pack-card h2{font-size:18px!important;margin-bottom:8px!important}
+ .job-pack-card p,.job-pack-boss-card p{font-size:12px!important}
+ .job-pack-feature{min-height:42px!important;padding:8px 10px!important}.job-pack-feature strong{font-size:12px!important}
+ .job-pack-boss-card h2{font-size:21px!important}.job-pack-check{width:31px!important;min-height:60px!important;left:-16px!important;font-size:26px!important}
+ .job-pack-buy{min-height:60px!important}.job-pack-buy span{font-size:20px!important}
+}
