@@ -112,3 +112,16 @@ test('تطور الأبناء يربط العمر بالتعليم والاست�
   assert.match(childActions,/action==='launch'/);
   assert.match(app,/heir\.stats=\{\.\.\.heir\.stats,health:clamp\(child\.health/);
 });
+
+
+test('إعدادات العرض منفصلة عن حفظ الحياة ويمكن الوصول إليها من القائمة', () => {
+  assert.match(app, /const SETTINGS_KEY = 'hayah_ui_settings_v1';/);
+  assert.match(app, /function loadUiSettings\(\)/);
+  assert.match(app, /function applyUiSettings\(\)/);
+  assert.match(app, /localStorage\.setItem\(SETTINGS_KEY,JSON\.stringify\(uiSettings\)\)/);
+  assert.match(app, /choice\('⚙️','إعدادات العرض'/);
+  assert.match(app, /function init\(\)[\s\S]*?loadUiSettings\(\);\s*state=load\(\)/);
+  assert.match(app, /const KEY = 'hekayat_hayah_save_v1';/);
+  assert.match(css, /body\.theme-dark\{/);
+  assert.match(css, /body\.text-large \.logtext/);
+});
