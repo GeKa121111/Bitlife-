@@ -194,6 +194,28 @@ async function run() {
     assert.equal(exported.version, 1, 'export must preserve the existing save schema');
     assert.equal(exported.age, 30, 'export must contain the current life state');
 
+    // Invalid JSON must be rejected without overwriting the current save.
+    const beforeInvalidImport = await page.evaluate(() => {
+      const saved = JSON.parse(localStorage.getItem('hekayat_hayah_save_v1') || 'null');
+      return { lifeId: saved && saved.lifeId, age: saved && saved.age, name: saved && saved.name, bank: saved && saved.bank };
+    });
+    const invalidChooserPromise = page.waitForEvent('filechooser');
+    await page.locator('#menuBtn').click();
+    await page.locator('.choice').filter({ hasText: 'تحميل حفظ' }).click();
+    const invalidChooser = await invalidChooserPromise;
+    await invalidChooser.setFiles({
+      name: 'broken-hayah-save.json',
+      mimeType: 'application/json',
+      buffer: Buffer.from('{ invalid JSON')
+    });
+    await page.getByText('ملف حفظ غير صالح', { exact: true }).waitFor();
+    const afterInvalidImport = await page.evaluate(() => {
+      const saved = JSON.parse(localStorage.getItem('hekayat_hayah_save_v1') || 'null');
+      return { lifeId: saved && saved.lifeId, age: saved && saved.age, name: saved && saved.name, bank: saved && saved.bank };
+    });
+    assert.deepEqual(afterInvalidImport, beforeInvalidImport, 'invalid import should leave the active save untouched');
+    await page.locator('.choice').filter({ hasText: 'تمام' }).last().click();
+
     const imported = { ...exported, name: 'حياة مستوردة للاختبار', age: 44, yearCount: 44 };
     const fileChooserPromise = page.waitForEvent('filechooser');
     await page.locator('#menuBtn').click();
@@ -221,21 +243,16 @@ async function run() {
       saved.status = 'حي';
       saved.cause = null;
       saved.bank = 100000;
-      saved.assets = [{
-        id: 'estate-property-test',
-        kind: 'property',
-        title: 'عقار اختبار الإرث',
-        value: 500000,
-        upkeep: 0,
-        condition: 100,
-        rented: false
-      }];
-      saved.investments = [{
-        id: 'estate-investment-test',
-        kind: 'low-risk',
-        title: 'استثمار اختبار الإرث',
-        value: 100000
-      }];
+      saved.assets = [
+        { id: 'estate-property-test', kind: 'property', title: 'عقار اختبار الإرث', value: 500001, upkeep: 1000, condition: 100, rented: false },
+        { id: 'estate-car-test', kind: 'car', title: 'سيارة اختبار الإرث', value: 260003, upkeep: 500, condition: 100 },
+        { id: 'estate-business-test', kind: 'business', title: 'مشروع اختبار الإرث', value: 150007, upkeep: 2000 }
+      ];
+      saved.investments = [
+        { id: 'estate-investment-a', kind: 'low-risk', title: 'استثمار أول', value: 123457 },
+        { id: 'estate-investment-b', kind: 'مخاطرة عالية', title: 'استثمار ثانٍ', value: 98765 },
+        { id: 'estate-investment-c', kind: 'low-risk', title: 'استثمار ثالث', value: 23457 }
+      ];
       saved.debt = 100000;
       saved.willDistribution = 'الأسرة بالتساوي';
       saved.timeMachineSnapshots = [];
@@ -295,10 +312,80 @@ async function run() {
     assert.equal(inherited.sourceName, 'الوالد الاختباري');
     assert.equal(inherited.legacyValue, inherited.componentValue, 'recorded inheritance should reconcile with all transferred assets');
     assert.equal(inherited.debt, 0, 'parent debt should not be copied as debt to the new life');
-    assert.ok(inherited.bank > 0 && inherited.assetCount === 1 && inherited.investmentCount === 1, 'inheritance should include the proportional bank, property, and investments');
+    assert.ok(inherited.bank > 0 && inherited.assetCount === 3 && inherited.investmentCount === 3, 'inheritance should proportionally transfer multiple asset and investment entries');
+
+    // A second estate whose debt exceeds all positive assets should yield no negative inheritance.
+    await page.locator('.choice').filter({ hasText: 'تمام' }).last().click();
+    await page.evaluate(() => {
+      const key = 'hekayat_hayah_save_v1';
+      const saved = JSON.parse(localStorage.getItem(key));
+      saved.lifeId = 565656;
+      saved.name = 'تركة غارقة في الديون';
+      saved.age = 105;
+      saved.yearCount = 105;
+      saved.status = 'حي';
+      saved.cause = null;
+      saved.bank = 25000;
+      saved.assets = [
+        { id: 'insolvent-property', kind: 'property', title: 'عقار صغير', value: 50000, upkeep: 0, condition: 100, rented: false },
+        { id: 'insolvent-car', kind: 'car', title: 'سيارة قديمة', value: 20000, upkeep: 0, condition: 100 }
+      ];
+      saved.investments = [{ id: 'insolvent-investment', kind: 'low-risk', title: 'محفظة صغيرة', value: 15000 }];
+      saved.debt = 500000;
+      saved.willDistribution = 'الأسرة بالتساوي';
+      saved.timeMachineSnapshots = [];
+      saved.children = [{
+        id: 'insolvent-heir-test',
+        name: 'وارث بلا تركة',
+        gender: 'female',
+        age: 24,
+        relation: 'الابنة',
+        relationshipLevel: 80,
+        health: 75,
+        happiness: 60,
+        smart: 65,
+        looks: 55,
+        schoolPerformance: 68,
+        careerPotential: 62,
+        independence: 50,
+        educationStatus: 'تبدأ المسار المهني',
+        interest: 'الإدارة'
+      }];
+      saved.log = [{ icon: '🧪', title: 'اختبار تركة معسرة', text: 'الديون أكبر من مجموع الأصول.', type: 'special', age: 105 }];
+      localStorage.setItem(key, JSON.stringify(saved));
+    });
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await page.locator('#ageUpBtn').click();
+    await page.locator('[data-heir="0"]').waitFor({ state: 'visible' });
+    await page.locator('[data-heir="0"]').click();
+    await page.waitForFunction(() => {
+      const saved = JSON.parse(localStorage.getItem('hekayat_hayah_save_v1') || 'null');
+      return saved && saved.name === 'وارث بلا تركة' && saved.legacy &&
+        saved.legacy.name === 'تركة غارقة في الديون' && saved.status === 'حي';
+    });
+    const insolventInheritance = await page.evaluate(() => {
+      const saved = JSON.parse(localStorage.getItem('hekayat_hayah_save_v1') || 'null');
+      const assets = Array.isArray(saved.assets) ? saved.assets : [];
+      const investments = Array.isArray(saved.investments) ? saved.investments : [];
+      return {
+        bank: Number(saved.bank || 0),
+        assetValue: assets.reduce((sum, item) => sum + Math.max(0, Number(item.value) || 0), 0),
+        investmentValue: investments.reduce((sum, item) => sum + Math.max(0, Number(item.value) || 0), 0),
+        assetCount: assets.length,
+        investmentCount: investments.length,
+        recorded: Number(saved.legacy.inheritance || 0),
+        debt: Number(saved.debt || 0)
+      };
+    });
+    assert.equal(insolventInheritance.bank, 0, 'insolvent estate should not transfer a negative bank balance');
+    assert.equal(insolventInheritance.assetCount, 0, 'no assets should transfer when the net estate is zero');
+    assert.equal(insolventInheritance.investmentCount, 0, 'no investments should transfer when the net estate is zero');
+    assert.equal(insolventInheritance.recorded, 0, 'insolvent estate should record zero inheritance');
+    assert.equal(insolventInheritance.bank + insolventInheritance.assetValue + insolventInheritance.investmentValue, insolventInheritance.recorded, 'insolvent inheritance components should reconcile to zero');
+    assert.equal(insolventInheritance.debt, 0, 'the heir must not inherit the parent debt as personal debt');
     assert.deepEqual(pageErrors, [], 'the browser run should complete without uncaught JavaScript errors');
 
-    console.log('PASS: mobile layout, legacy v1 load, age-up persistence, rewind, JSON export/import, and estate inheritance reconciliation.');
+    console.log('PASS: mobile layout, legacy v1 load, persistence, rewind, valid/invalid JSON import, multi-asset inheritance, and insolvent-estate handling.');
     await context.close();
   } finally {
     if (browser) await browser.close();
