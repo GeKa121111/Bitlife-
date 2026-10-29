@@ -1125,7 +1125,11 @@ function finalizeDivorce(){
 }
 function breakUp(){
  closeModal();if(!state.partner||state.married){familyMenu();return;}
- const ex={...state.partner,relation:'شريك سابق',relationshipLevel:clamp(state.partner.relationshipLevel-20)};state.friends.push(ex);state.partner=null;state.stats.happiness=clamp(state.stats.happiness-6);log('💔','انتهت العلاقة','قررت تنهي علاقتك بـ'+ex.name+'. العلاقة السابقة بقت جزءًا من تاريخك.','bad');render();info('💔','انتهت العلاقة','تقدر تفتح صفحة جديدة في وقت لاحق، مع الاحتفاظ بسجل العلاقة السابقة.');
+ const ex={...state.partner,id:state.partner.id||'parent-'+Date.now(),relation:'شريك سابق',relationshipLevel:clamp(state.partner.relationshipLevel-20)};
+ state.friends.push(ex);state.partner=null;state.stats.happiness=clamp(state.stats.happiness-6);
+ log('💔','انتهت العلاقة','قررت تنهي علاقتك بـ'+ex.name+'. العلاقة السابقة بقت جزءًا من تاريخك.','bad');save();render();
+ if(eligibleChildrenForCoParent(ex).length){custodyChoiceMenu(ex);return;}
+ info('💔','انتهت العلاقة','تقدر تفتح صفحة جديدة في وقت لاحق، مع الاحتفاظ بسجل العلاقة السابقة.');
 }
 function childMenu(i){
  const child=state.children[i];if(!child)return;
