@@ -371,7 +371,7 @@ function newLife(){
  const father=makePerson('male','الأب','👨',28+Math.floor(Math.random()*12),68+Math.floor(Math.random()*28));
  const mother=makePerson('female','الأم','👩',25+Math.floor(Math.random()*12),72+Math.floor(Math.random()*26));
  const sibling=makePerson(gender,'الأخ/الأخت','🧒',Math.floor(Math.random()*8),55+Math.floor(Math.random()*35));
- return {version:1,lifeId:Date.now()+Math.random(),cemeterySaved:false,name:pick(names[gender])+' '+pick(names.family),gender,age:0,place,bank:place.start,stats:{happiness:65+Math.floor(Math.random()*26),health:76+Math.floor(Math.random()*22),smart:35+Math.floor(Math.random()*41),looks:35+Math.floor(Math.random()*51)},education:{level:0,school:'لم تبدأ الدراسة',major:null,yearsLeft:0,tuition:0},job:null,jobHistory:[],specialCareer:null,performance:50,assets:[],investments:[],business:null,family:[father,mother,sibling],friends:[],partner:null,married:false,children:[],pets:[],hobbies:[],fame:0,followers:0,socialMediaAccount:false,socialMediaPosts:0,reputation:50,crimeRecord:0,prison:null,debt:0,willDistribution:'الأسرة بالتساوي',heirlooms:[],dailyRewardDate:null,dailyChallenges:null,timeMachineSnapshots:[],legacy:{name:null,inheritance:0,heirloom:null},driversLicense:false,travelHistory:[],log:[],accomplishments:['بدأت رحلة الحياة'],status:'حي',cause:null,retired:false,yearCount:0,wealthPeak:place.start};
+ return {version:1,lifeId:Date.now()+Math.random(),cemeterySaved:false,name:pick(names[gender])+' '+pick(names.family),gender,age:0,place,bank:place.start,stats:{happiness:65+Math.floor(Math.random()*26),health:76+Math.floor(Math.random()*22),smart:35+Math.floor(Math.random()*41),looks:35+Math.floor(Math.random()*51)},education:{level:0,school:'لم تبدأ الدراسة',major:null,yearsLeft:0,tuition:0},job:null,jobHistory:[],specialCareer:null,specialCareerHistory:[],performance:50,assets:[],investments:[],business:null,family:[father,mother,sibling],friends:[],partner:null,married:false,children:[],pets:[],hobbies:[],fame:0,followers:0,socialMediaAccount:false,socialMediaPosts:0,reputation:50,crimeRecord:0,prison:null,debt:0,willDistribution:'الأسرة بالتساوي',heirlooms:[],dailyRewardDate:null,dailyChallenges:null,timeMachineSnapshots:[],legacy:{name:null,inheritance:0,heirloom:null},driversLicense:false,travelHistory:[],log:[],accomplishments:['بدأت رحلة الحياة'],status:'حي',cause:null,retired:false,yearCount:0,wealthPeak:place.start};
 }
 function save(){
  try{localStorage.setItem(KEY,JSON.stringify(state));$('saveStatus').textContent='● محفوظة';}
@@ -379,13 +379,14 @@ function save(){
 }
 function load(){
  try{const x=JSON.parse(localStorage.getItem(KEY)||'null');if(x&&x.version===1&&x.stats&&Array.isArray(x.log)){
-  const defaults={lifeId:Date.now()+Math.random(),cemeterySaved:false,jobHistory:[],specialCareer:null,investments:[],business:null,married:false,children:[],pets:[],hobbies:[],fame:0,followers:0,socialMediaAccount:false,socialMediaPosts:0,reputation:50,crimeRecord:0,prison:null,debt:0,willDistribution:'الأسرة بالتساوي',heirlooms:[],dailyRewardDate:null,dailyChallenges:null,timeMachineSnapshots:[],legacy:{name:null,inheritance:0,heirloom:null},driversLicense:false,travelHistory:[]};
+  const defaults={lifeId:Date.now()+Math.random(),cemeterySaved:false,jobHistory:[],specialCareer:null,specialCareerHistory:[],investments:[],business:null,married:false,children:[],pets:[],hobbies:[],fame:0,followers:0,socialMediaAccount:false,socialMediaPosts:0,reputation:50,crimeRecord:0,prison:null,debt:0,willDistribution:'الأسرة بالتساوي',heirlooms:[],dailyRewardDate:null,dailyChallenges:null,timeMachineSnapshots:[],legacy:{name:null,inheritance:0,heirloom:null},driversLicense:false,travelHistory:[]};
   Object.keys(defaults).forEach(k=>{if(x[k]===undefined||x[k]===null)x[k]=defaults[k];});
   if(!Array.isArray(x.family))x.family=[];if(!Array.isArray(x.friends))x.friends=[];if(!Array.isArray(x.assets))x.assets=[];if(!Array.isArray(x.timeMachineSnapshots))x.timeMachineSnapshots=[];
   if(!x.education||typeof x.education!=='object')x.education={level:0,school:'لم تبدأ الدراسة',major:null,yearsLeft:0,tuition:0};
   x.education.clubs=Array.isArray(x.education.clubs)?x.education.clubs:[];
   x.assets.forEach(a=>{if((a.kind==='car'||a.kind==='property')&&!Number.isFinite(Number(a.condition)))a.condition=100;});
   const npcDefaults=n=>{if(!n||typeof n!=='object')return;if(!Number.isFinite(Number(n.generosity)))n.generosity=50;if(!Number.isFinite(Number(n.craziness)))n.craziness=50;if(!Number.isFinite(Number(n.money)))n.money=50;if(!Number.isFinite(Number(n.petulance)))n.petulance=50;};
+  if(!Array.isArray(x.specialCareerHistory))x.specialCareerHistory=[];const careerDefaults=c=>{if(!c||typeof c!=='object')return;if(!c.record||typeof c.record!=='object')c.record={attempts:0,wins:0,losses:0,projects:0,totalEarnings:0,bestLevel:clamp(c.level||1)};if(!Array.isArray(c.history))c.history=[];};careerDefaults(x.specialCareer);x.specialCareerHistory.forEach(careerDefaults);
   x.family.forEach(npcDefaults);x.friends.forEach(npcDefaults);(x.children||[]).forEach(npcDefaults);npcDefaults(x.partner);
   return x;
  }}catch(e){}
@@ -1096,6 +1097,12 @@ function sellInvestment(i){
   choice('↩️','أحتفظ بها','',()=>{closeModal();investingMenu();})
  ]);
 }
+function specialCareerHistoryMenu(){
+ const history=Array.isArray(state.specialCareerHistory)?state.specialCareerHistory:[];
+ const opts=history.map(c=>{const r=c.record||{};return choice('📜',(c.title||c.id||'مسار سابق')+' · انتهى بعمر '+fmt(c.endedAge??state.age),'المستوى '+fmt(c.level||1)+' · محاولات '+fmt(r.attempts||0)+' · نجاحات '+fmt(r.wins||0)+' · إخفاقات '+fmt(r.losses||0)+' · دخل مسجّل '+cash(r.totalEarnings||0),()=>{closeModal();info('📜','سجل مسار سابق',(c.title||'مسار')+' · المستوى '+fmt(c.level||1)+' · '+fmt(r.wins||0)+' نجاح · '+fmt(r.losses||0)+' إخفاق · دخل '+cash(r.totalEarnings||0)+(c.ending?' · سبب الانتهاء: '+c.ending:'')+'.');});});
+ if(!opts.length)opts.push(choice('🌱','لا توجد مسارات سابقة','ابدأ مسارًا متخصصًا ثم غيّره لاحقًا لتظهر سيرته هنا.',closeModal));
+ modal('📜','تاريخ المهن الخاصة','ملخص المسارات السابقة ونتائجها والمكاسب التي حققتها.',opts);
+}
 function specialCareers(){
  const catalog=[
   {id:'actor',title:'التمثيل',emoji:'🎬',min:16,looks:50,income:14000,desc:'اختبارات أداء وأدوار قد ترفع شهرتك.'},
@@ -1110,13 +1117,14 @@ function specialCareers(){
   {id:'crimeboss',title:'العالم السفلي',emoji:'🕶️',min:21,looks:0,income:18000,desc:'مسار خيالي محفوف بالمخاطر القانونية وقد ينتهي بالسجن.'}
  ];
  const opts=catalog.map(c=>choice(c.emoji,c.title,c.desc+' الحد الأدنى للعمر '+c.min+'.',()=>startSpecialCareer(c)));
- if(state.specialCareer){opts.unshift(choice('🎬','تنفيذ نشاط تخصصي','إنتاج عمل أو إصدار أو منافسة مرتبطة بمسارك.',()=>specialCareerActivity()));opts.unshift(choice('⭐','التدريب والعمل في '+state.specialCareer.title,'الشهرة الحالية '+state.fame+'%.',()=>trainSpecialCareer()));opts.unshift(choice('🎟️','اختبار أداء / فرصة جديدة','اختبر حظك في فرصة جديدة.',()=>tryAudition()));}
+ if(state.specialCareer){const r=state.specialCareer.record||{};opts.unshift(choice('📊','سجل المسار الحالي','المستوى '+fmt(state.specialCareer.level||1)+' · نجاحات '+fmt(r.wins||0)+' · إخفاقات '+fmt(r.losses||0)+' · دخل '+cash(r.totalEarnings||0)+'.',()=>{closeModal();info('📊','سجل '+state.specialCareer.title,'عدد المحاولات '+fmt(r.attempts||0)+' · النجاح '+fmt(r.wins||0)+' · الإخفاق '+fmt(r.losses||0)+' · المشاريع/الأنشطة '+fmt(r.projects||0)+' · إجمالي الدخل المسجل '+cash(r.totalEarnings||0)+' · أفضل مستوى '+fmt(r.bestLevel||1)+'.');}));opts.unshift(choice('📚','تاريخ المهن السابقة','اعرض المسارات التي أنهيتها ونتائجها.',specialCareerHistoryMenu));opts.unshift(choice('🎬','تنفيذ نشاط تخصصي','إنتاج عمل أو إصدار أو منافسة مرتبطة بمسارك.',()=>specialCareerActivity()));opts.unshift(choice('⭐','التدريب والعمل في '+state.specialCareer.title,'الشهرة الحالية '+state.fame+'%.',()=>trainSpecialCareer()));opts.unshift(choice('🎟️','اختبار أداء / فرصة جديدة','اختبر حظك في فرصة جديدة.',()=>tryAudition()));}
  modal('🌟','المهن الخاصة والشهرة','المسارات دي مختلفة عن الوظيفة التقليدية؛ النجاح فيها غير مضمون وقد يحتاج سنوات.',opts);
 }
 function startSpecialCareer(c){
  closeModal();if(state.age<c.min){info('🔒','لسه بدري','المسار ده متاح من سن '+c.min+'.');return;}
+ if(state.specialCareer){if(!Array.isArray(state.specialCareerHistory))state.specialCareerHistory=[];state.specialCareerHistory.unshift(Object.assign({},state.specialCareer,{record:Object.assign({},state.specialCareer.record||{}),history:(state.specialCareer.history||[]).slice(),endedAge:state.age,ending:'تغيير المسار'}));state.specialCareerHistory=state.specialCareerHistory.slice(0,20);}
  if(c.looks&&state.stats.looks<c.looks&&c.id==='actor'){info('🎭','طوّر مهاراتك','فرص التمثيل تزيد مع المظهر والتدريب، جرّب الهوايات والتدريب.');return;}
- state.specialCareer={id:c.id,title:c.title,income:c.income,level:1};if(c.id==='influencer'){state.socialMediaAccount=true;state.followers=Math.max(state.followers||0,100);state.socialMediaPosts=(state.socialMediaPosts||0)+1;}state.fame=clamp((state.fame||0)+4);state.reputation=clamp((state.reputation||50)+2);achievement('بدأ مسار الشهرة: '+c.title);
+ state.specialCareer={id:c.id,title:c.title,income:c.income,level:1,startedAge:state.age,record:{attempts:0,wins:0,losses:0,projects:0,totalEarnings:0,bestLevel:1},history:[]};if(c.id==='influencer'){state.socialMediaAccount=true;state.followers=Math.max(state.followers||0,100);state.socialMediaPosts=(state.socialMediaPosts||0)+1;}state.fame=clamp((state.fame||0)+4);state.reputation=clamp((state.reputation||50)+2);achievement('بدأ مسار الشهرة: '+c.title);
  log(c.emoji,'بداية مسار جديد','بدأت مسارك في '+c.title+'. النجاح محتاج تدريب واستمرارية، والدخل ممكن يتغير من سنة للتانية.','special');render();info('🌟','بدأت المسار','تقدر تتدرب أو تختبر فرص جديدة من قائمة المهن الخاصة.');
 }
 function trainSpecialCareer(){
@@ -1127,6 +1135,7 @@ function trainSpecialCareer(){
 function specialCareerActivity(){
  closeModal();if(!state.specialCareer){specialCareers();return;}
  const c=state.specialCareer;const level=Math.max(1,c.level||1);
+ if(!c.record||typeof c.record!=='object')c.record={attempts:0,wins:0,losses:0,projects:0,totalEarnings:0,bestLevel:level};if(!Array.isArray(c.history))c.history=[];
  const costs={actor:7000,musician:3500,influencer:1800,athlete:1500,fighter:2200,writer:1500,director:12000};
  const cost=costs[c.id]||1500;
  if(state.bank<cost){info('💳','الرصيد مش كفاية','النشاط الخاص محتاج '+cash(cost)+'.');return;}
@@ -1147,11 +1156,15 @@ function specialCareerActivity(){
  }else if(c.id==='politician'){
   title='حملة انتخابية';success=chance(Math.min(.85,.2+state.reputation/170+state.stats.smart/250+state.fame/200+level/35));gain=success?Math.round(5000+Math.random()*25000+level*400):0;fame=success?4+Math.floor(Math.random()*9):0;state.reputation=clamp(state.reputation+(success?8:-6));text=success?'حملتك كسبت دعمًا وثقة وأصبحت أمامك مسؤوليات أكبر.':'الحملة لم تحصل على الدعم الكافي، واحتجت تراجع رسالتك وخطتك.';
  }else if(c.id==='crimeboss'){
-  title='صراع نفوذ';success=chance(Math.min(.75,.2+state.stats.smart/250+level/40-(state.crimeRecord||0)*.03));gain=success?Math.round(4000+Math.random()*18000):0;fame=success?3+Math.floor(Math.random()*7):0;state.crimeRecord=(state.crimeRecord||0)+1;state.reputation=clamp(state.reputation-(success?3:14));if(!success&&chance(.45)){state.prison={years:2+Math.floor(Math.random()*4),kind:'قضية العالم السفلي'};state.job=null;state.specialCareer=null;}text=success?'حافظت على نفوذك داخل القصة الخيالية وحققت مكسبًا.':'انقلب الصراع عليك وواجهت تبعات قانونية داخل اللعبة.';
+  title='صراع نفوذ';success=chance(Math.min(.75,.2+state.stats.smart/250+level/40-(state.crimeRecord||0)*.03));gain=success?Math.round(4000+Math.random()*18000):0;fame=success?3+Math.floor(Math.random()*7):0;state.crimeRecord=(state.crimeRecord||0)+1;state.reputation=clamp(state.reputation-(success?3:14));if(!success&&chance(.45)){state.prison={years:2+Math.floor(Math.random()*4),kind:'قضية العالم السفلي'};state.job=null;if(!Array.isArray(state.specialCareerHistory))state.specialCareerHistory=[];state.specialCareerHistory.unshift(Object.assign({},state.specialCareer,{endedAge:state.age,ending:'اعتقال'}));state.specialCareerHistory=state.specialCareerHistory.slice(0,20);state.specialCareer=null;}text=success?'حافظت على نفوذك داخل القصة الخيالية وحققت مكسبًا.':'انقلب الصراع عليك وواجهت تبعات قانونية داخل اللعبة.';
  }else{
   title='نشر عمل مكتوب';gain=success?Math.round(800+Math.random()*14000+state.stats.smart*90):0;fame=success?2+Math.floor(Math.random()*8):0;text=success?'العمل وصل لقراء جدد وبدأ يحقق دخلًا من المبيعات.':'العمل محتاج مراجعة وتسويق أفضل قبل الإصدار القادم.';
  }
- state.fame=clamp(state.fame+fame);state.specialCareer.level=clamp(level+(success?1:0),1,100);
+ state.fame=clamp(state.fame+fame);const newLevel=clamp(level+(success?1:0),1,100);if(state.specialCareer)state.specialCareer.level=newLevel;
+ c.record.attempts=(c.record.attempts||0)+1;c.record.wins=(c.record.wins||0)+(success?1:0);c.record.losses=(c.record.losses||0)+(success?0:1);
+ if(['actor','director','musician','influencer','writer'].includes(c.id))c.record.projects=(c.record.projects||0)+1;
+ c.record.totalEarnings=(c.record.totalEarnings||0)+(success?gain:0);c.record.bestLevel=Math.max(c.record.bestLevel||1,newLevel);
+ c.history.push({age:state.age,title,success,earnings:success?gain:0,fameGain:fame});if(c.history.length>20)c.history.shift();
  if(success){state.bank+=gain;state.reputation=clamp((state.reputation||50)+3);achievement('نشاط ناجح في '+c.title);}else{state.stats.happiness=clamp(state.stats.happiness-3);state.reputation=clamp((state.reputation||50)-2);}
  log(c.id==='director'?'🎥':c.id==='actor'?'🎬':c.id==='musician'?'🎤':c.id==='influencer'?'📱':c.id==='athlete'?'🏅':c.id==='fighter'?'🥊':'✍️',title,text+(success?' الدخل: '+cash(gain)+'.':''),success?'good':'bad');
  render();info(success?'⭐':'🔁',success?'نشاط ناجح':'تجربة جديدة',text+(success?' الشهرة الحالية '+state.fame+'%.':' جرب التدريب أو نشاطًا مختلفًا في المرة القادمة.'));
@@ -1579,11 +1592,11 @@ function importSave(){
    try{
     const data=JSON.parse(String(reader.result||''));
     if(!data||data.version!==1||!data.stats||!Array.isArray(data.log)||!Array.isArray(data.family)||!data.place)throw new Error('invalid');
-    const defaults={lifeId:Date.now()+Math.random(),cemeterySaved:false,jobHistory:[],specialCareer:null,investments:[],business:null,married:false,children:[],pets:[],hobbies:[],fame:0,followers:0,socialMediaAccount:false,socialMediaPosts:0,reputation:50,crimeRecord:0,prison:null,debt:0,willDistribution:'الأسرة بالتساوي',heirlooms:[],dailyRewardDate:null,dailyChallenges:null,timeMachineSnapshots:[],legacy:{name:null,inheritance:0,heirloom:null},driversLicense:false,travelHistory:[],retired:false,yearCount:data.age||0,assets:[],friends:[],accomplishments:[],status:'حي'};
+    const defaults={lifeId:Date.now()+Math.random(),cemeterySaved:false,jobHistory:[],specialCareer:null,specialCareerHistory:[],investments:[],business:null,married:false,children:[],pets:[],hobbies:[],fame:0,followers:0,socialMediaAccount:false,socialMediaPosts:0,reputation:50,crimeRecord:0,prison:null,debt:0,willDistribution:'الأسرة بالتساوي',heirlooms:[],dailyRewardDate:null,dailyChallenges:null,timeMachineSnapshots:[],legacy:{name:null,inheritance:0,heirloom:null},driversLicense:false,travelHistory:[],retired:false,yearCount:data.age||0,assets:[],friends:[],accomplishments:[],status:'حي'};
     Object.keys(defaults).forEach(k=>{if(data[k]===undefined||data[k]===null)data[k]=defaults[k];});
     if(!Array.isArray(data.assets))data.assets=[];if(!Array.isArray(data.timeMachineSnapshots))data.timeMachineSnapshots=[];data.assets.forEach(a=>{if((a.kind==='car'||a.kind==='property')&&!Number.isFinite(Number(a.condition)))a.condition=100;});
     if(!data.education||typeof data.education!=='object')data.education={level:0,school:'لم تبدأ الدراسة',major:null,yearsLeft:0,tuition:0};data.education.clubs=Array.isArray(data.education.clubs)?data.education.clubs:[];
-    const npcDefaults=n=>{if(!n||typeof n!=='object')return;if(!Number.isFinite(Number(n.generosity)))n.generosity=50;if(!Number.isFinite(Number(n.craziness)))n.craziness=50;if(!Number.isFinite(Number(n.money)))n.money=50;if(!Number.isFinite(Number(n.petulance)))n.petulance=50;};(data.family||[]).forEach(npcDefaults);(data.friends||[]).forEach(npcDefaults);(data.children||[]).forEach(npcDefaults);npcDefaults(data.partner);
+    const npcDefaults=n=>{if(!n||typeof n!=='object')return;if(!Number.isFinite(Number(n.generosity)))n.generosity=50;if(!Number.isFinite(Number(n.craziness)))n.craziness=50;if(!Number.isFinite(Number(n.money)))n.money=50;if(!Number.isFinite(Number(n.petulance)))n.petulance=50;};if(!Array.isArray(data.specialCareerHistory))data.specialCareerHistory=[];const careerDefaults=c=>{if(!c||typeof c!=='object')return;if(!c.record||typeof c.record!=='object')c.record={attempts:0,wins:0,losses:0,projects:0,totalEarnings:0,bestLevel:clamp(c.level||1)};if(!Array.isArray(c.history))c.history=[];};careerDefaults(data.specialCareer);data.specialCareerHistory.forEach(careerDefaults);(data.family||[]).forEach(npcDefaults);(data.friends||[]).forEach(npcDefaults);(data.children||[]).forEach(npcDefaults);npcDefaults(data.partner);
     state=data;dead=state.status==='متوفى';save();render();if(dead)death(state.cause||'نهاية رحلة الحياة');else info('📥','تم استيراد الحفظ','تم تحميل '+state.name+' · العمر '+state.age+' سنة.');
    }catch(e){info('⚠️','ملف حفظ غير صالح','اختار ملف JSON تم تصديره من لعبة حياة. الحفظ الحالي لم يتغير.');}
   };
