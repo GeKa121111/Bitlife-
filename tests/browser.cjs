@@ -180,6 +180,8 @@ async function run() {
       const saved = JSON.parse(localStorage.getItem('hekayat_hayah_save_v1') || 'null');
       return saved && saved.age === 30 && Array.isArray(saved.timeMachineSnapshots) && saved.timeMachineSnapshots.length === 0;
     });
+    // The rewind action intentionally opens a confirmation dialog; close it before opening the main menu again.
+    await page.locator('.choice').filter({ hasText: 'تمام' }).last().click();
 
     const downloadPromise = page.waitForEvent('download');
     await page.locator('#menuBtn').click();
