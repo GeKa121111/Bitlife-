@@ -412,7 +412,7 @@ events.push(
 );
 function makePerson(gender,relation,emoji,age,level){
  const job=relation==='الأب'?pick(['مدرس','محاسب','مهندس','موظف حكومي','صاحب محل','طبيب','سائق']):relation==='الأم'?pick(['مدرسة','محاسبة','مهندسة','موظفة حكومية','صاحبة محل','طبيبة','ممرضة','ربة منزل']):'طالب';
- return {id:relation+'-'+Math.random().toString(36).slice(2,8),name:pick(names[gender])+' '+pick(names.family),relation,emoji,age,job,generosity:25+Math.floor(Math.random()*76),craziness:Math.floor(Math.random()*101),money:Math.floor(Math.random()*101),petulance:Math.floor(Math.random()*101),relationshipLevel:level,personality:pick(['حنون','عملي','مرح','جاد','طموح','فضولي'])};
+ return {id:relation+'-'+Math.random().toString(36).slice(2,8),name:pick(names[gender])+' '+pick(names.family),relation,emoji,age,job,generosity:25+Math.floor(Math.random()*76),craziness:Math.floor(Math.random()*101),money:Math.floor(Math.random()*101),petulance:Math.floor(Math.random()*101),loyalty:25+Math.floor(Math.random()*76),jealousy:Math.floor(Math.random()*101),reliability:25+Math.floor(Math.random()*76),interactions:[],relationshipLevel:level,personality:pick(['حنون','عملي','مرح','جاد','طموح','فضولي'])};
 }
 function newLife(){
  const gender=pick(['male','female']),place=pick(places);
@@ -454,7 +454,7 @@ function load(){
   if(!x.education||typeof x.education!=='object')x.education={level:0,school:'لم تبدأ الدراسة',major:null,yearsLeft:0,tuition:0};
   x.education.clubs=Array.isArray(x.education.clubs)?x.education.clubs:[];
   x.assets.forEach(a=>{if((a.kind==='car'||a.kind==='property')&&!Number.isFinite(Number(a.condition)))a.condition=100;});
-  const npcDefaults=n=>{if(!n||typeof n!=='object')return;if(!Number.isFinite(Number(n.generosity)))n.generosity=50;if(!Number.isFinite(Number(n.craziness)))n.craziness=50;if(!Number.isFinite(Number(n.money)))n.money=50;if(!Number.isFinite(Number(n.petulance)))n.petulance=50;};
+  const npcDefaults=n=>{if(!n||typeof n!=='object')return;if(!Number.isFinite(Number(n.generosity)))n.generosity=50;if(!Number.isFinite(Number(n.craziness)))n.craziness=50;if(!Number.isFinite(Number(n.money)))n.money=50;if(!Number.isFinite(Number(n.petulance)))n.petulance=50;if(!Number.isFinite(Number(n.loyalty)))n.loyalty=55;if(!Number.isFinite(Number(n.jealousy)))n.jealousy=40;if(!Number.isFinite(Number(n.reliability)))n.reliability=55;if(!Array.isArray(n.interactions))n.interactions=[];};
   if(!Array.isArray(x.specialCareerHistory))x.specialCareerHistory=[];const careerDefaults=c=>{if(!c||typeof c!=='object')return;if(!c.record||typeof c.record!=='object')c.record={attempts:0,wins:0,losses:0,projects:0,totalEarnings:0,bestLevel:clamp(c.level||1)};if(!Array.isArray(c.history))c.history=[];};careerDefaults(x.specialCareer);x.specialCareerHistory.forEach(careerDefaults);
   x.family.forEach(npcDefaults);x.friends.forEach(npcDefaults);(x.children||[]).forEach(npcDefaults);npcDefaults(x.partner);
   return x;
@@ -671,7 +671,7 @@ function advanceAge(){
  if(state.business){const level=Math.max(1,state.business.level||1);const revenue=Math.round(state.business.value*(.03+Math.random()*.08)*(.8+level*.15));const costs=Math.round(state.business.value*(.02+Math.random()*.05)*(1+Math.max(0,level-1)*.08));const profit=revenue-costs;state.bank+=profit;state.business.value=Math.max(1000,Math.round(state.business.value*(profit>=0?1.04:.97)));log('🏪','التقرير السنوي للمشروع',(profit>=0?'صافي الأرباح ':'صافي الخسارة ')+cash(Math.abs(profit))+' · مستوى الإدارة '+level+'.','special');}
  if((state.pets||[]).length){const care=state.pets.length*350;state.bank-=care;state.pets.forEach(p=>{p.age=(p.age||0)+1;p.happiness=clamp((p.happiness||70)+(chance(.7)?3:-6));p.health=clamp((p.health||70)-(p.age>10?2:0)+(p.happiness>40&&chance(.5)?1:-1));});const lost=state.pets.filter(p=>(p.species==='طائر'?p.age>19:p.age>15)&&chance(.35));if(lost.length){state.pets=state.pets.filter(p=>!lost.includes(p));lost.forEach(p=>log('🐾','وداع صديق','توفي '+p.name+' بعد سنوات من الرفقة. ستفضل ذكراه جزءًا من حكايتك.','bad'));}if(state.bank<0)log('🐾','مصاريف الحيوانات','رعاية الحيوانات كلفتك '+cash(care)+' هذا العام.','bad');}
  if((state.hobbies||[]).length&&chance(.7)){state.stats.happiness=clamp(state.stats.happiness+1);if(state.hobbies.some(h=>h.id==='reading'||h.id==='writing'))state.stats.smart=clamp(state.stats.smart+1);}
- if(state.partner){const drift=state.partner.relationshipLevel<35?-3:(chance(.65)?1:-1);state.partner.relationshipLevel=clamp((state.partner.relationshipLevel||50)+drift);if(state.married&&state.partner.relationshipLevel<15&&chance(.25)){state.married=false;log('💔','أزمة زوجية','الخلافات زادت بينك وبين '+state.partner.name+'. محتاجين حوار واهتمام قبل ما العلاقة تنهار.','bad');}}
+ if(state.partner){const loyalty=clamp(state.partner.loyalty??55),reliability=clamp(state.partner.reliability??55),generosity=clamp(state.partner.generosity??50),petulance=clamp(state.partner.petulance??50),jealousy=clamp(state.partner.jealousy??40);const stability=clamp(36+loyalty*.22+reliability*.20+generosity*.12-petulance*.16-jealousy*.10+(state.partner.personality==='حنون'?8:0),8,92);const drift=state.partner.relationshipLevel<35?-3:(chance(stability/100)?1:-1);state.partner.relationshipLevel=clamp((state.partner.relationshipLevel||50)+drift);if(jealousy>=75&&state.partner.relationshipLevel<45&&chance(.12)){state.partner.relationshipLevel=clamp(state.partner.relationshipLevel-3);stat('happiness',-2);log('💬','غيرة وسوء تفاهم','الغيرة العالية عند '+state.partner.name+' سببت سوء تفاهم محتاج حوارًا وطمأنة.','bad');}if(state.married&&state.partner.relationshipLevel<15&&chance(clamp(10+petulance*.20+jealousy*.28,10,70)/100)){state.married=false;log('💔','أزمة زوجية','الخلافات زادت بينك وبين '+state.partner.name+'. محتاجين حوار واهتمام قبل ما العلاقة تنهار.','bad');}}
  if(state.specialCareer){const income=Math.round((state.specialCareer.income||0)*(0.6+(state.fame||0)/120));if(income>0){state.bank+=income;log('🌟','دخل من الشهرة','جالك دخل بقيمة '+cash(income)+' من مسارك في '+state.specialCareer.title+'.','good');}state.fame=clamp((state.fame||0)+(chance(.6)?2:-1));}
  if(state.socialMediaAccount&&(state.socialMediaPosts||0)>0){const base=Math.round((state.followers||0)*(.025+Math.random()*.12));const organic=base+Math.floor(Math.random()*(8+Math.max(1,state.fame)*2));state.followers=Math.max(0,(state.followers||0)+organic);if(organic>0&&chance(.7))log('📱','نمو المتابعين','زاد جمهورك على السوشيال ميديا بمقدار '+fmt(organic)+' متابع.','good');if(state.followers>=10000)achievement('وصلت إلى عشرة آلاف متابع');}
  if(state.age>=18&&state.bank<0){state.debt+=Math.min(20000,Math.abs(state.bank)*.12);}
@@ -946,7 +946,7 @@ function maintainAsset(index){
  log(a.kind==='car'?'🔧':'🏠','صيانة / تجديد '+a.title,'دفعت '+cash(cost)+'، ورجّعت الحالة من '+before+'% إلى 100%. قيمة إعادة البيع المتوقعة اتحسنت.','good');
  render();info('🧰','الصيانة اكتملت',a.title+' بقى في حالة 100%، وتكلفة الصيانة اتخصمت من رصيدك.');
 }
-function person(gender,relation,emoji,age,level){return {id:relation+'-'+Math.random().toString(36).slice(2,8),name:pick(names[gender])+' '+pick(names.family),relation,emoji,age,job:pick(['طالب','محاسب','مصمم','مدرس','موظف','مطور']),generosity:25+Math.floor(Math.random()*76),craziness:Math.floor(Math.random()*101),money:Math.floor(Math.random()*101),petulance:Math.floor(Math.random()*101),relationshipLevel:level,personality:pick(['حنون','عملي','مرح','جاد','طموح','فضولي'])};}
+function person(gender,relation,emoji,age,level){return {id:relation+'-'+Math.random().toString(36).slice(2,8),name:pick(names[gender])+' '+pick(names.family),relation,emoji,age,job:pick(['طالب','محاسب','مصمم','مدرس','موظف','مطور']),generosity:25+Math.floor(Math.random()*76),craziness:Math.floor(Math.random()*101),money:Math.floor(Math.random()*101),petulance:Math.floor(Math.random()*101),loyalty:25+Math.floor(Math.random()*76),jealousy:Math.floor(Math.random()*101),reliability:25+Math.floor(Math.random()*76),interactions:[],relationshipLevel:level,personality:pick(['حنون','عملي','مرح','جاد','طموح','فضولي'])};}
 function relations(){
  const opts=[];
  state.family.forEach(n=>{if(n.deceased)opts.push(choice('🕯️',n.name+' · '+n.relation,'ذكرى عائلية · توفي عن عمر '+(n.age||'?')+' سنة.',()=>{closeModal();info('🕯️',n.name,'هذا الفرد من العائلة جزء من تاريخ حياتك، وسجّلت اللعبة وفاته في دفتر الأحداث.');}));else opts.push(choice(n.emoji,n.name+' · '+n.relation,n.personality+' · مستوى العلاقة '+n.relationshipLevel+'%',()=>{closeModal();personModal(n);},n.relationshipLevel+'%',n.relationshipLevel));});
@@ -1025,17 +1025,18 @@ function childMenu(i){
 function childAction(i,action){
  closeModal();const c=state.children[i];if(!c)return;
  let cost=action==='gift'?500:action==='school'?1000:0;if(state.bank<cost){info('💳','الرصيد مش كفاية','الاختيار محتاج '+cash(cost)+'.');return;}
- if(action==='school'&&c.age<4){info('📚','لسه صغير','التعليم المنظم هيكون أنسب لما يكبر شوية.');return;}state.bank-=cost;let delta=action==='time'?8:action==='talk'?6:action==='gift'?11:4;c.relationshipLevel=clamp(c.relationshipLevel+delta);
+ if(action==='school'&&c.age<4){info('📚','لسه صغير','التعليم المنظم هيكون أنسب لما يكبر شوية.');return;}state.bank-=cost;const petulance=clamp(c.petulance??40),reliability=clamp(c.reliability??55);let delta=action==='time'?7+Math.floor(reliability/45):action==='talk'?5+Math.floor(reliability/55):action==='gift'?7+Math.floor(clamp(c.generosity??50)/30):4;if(petulance>=75)delta-=2;if(c.personality==='حنون'&&(action==='time'||action==='talk'))delta+=2;if(c.personality==='فضولي'&&action==='school')delta+=2;c.relationshipLevel=clamp(c.relationshipLevel+delta);
  if(action==='school'){c.smart=clamp((c.smart||40)+5);}
  if(action==='gift')stat('happiness',2);
- const text=action==='time'?'قضيت وقت مع '+c.name+' وبنيتوا ذكرى جديدة.':action==='talk'?'سمعت '+c.name+' باهتمام وخلّيته يحكي اللي مضايقه.':action==='gift'?'قدمت هدية لـ'+c.name+'.':'ساهمت في تعليم '+c.name+' وتنمية مهاراته.';
- log('👪','وقت مع الأسرة',text,'good');render();info('💞','العلاقة مع '+c.name,c.name+' بقى مستوى العلاقة بينكم '+c.relationshipLevel+'%.');
+ const text=action==='time'?'قضيت وقت مع '+c.name+' وبنيتوا ذكرى جديدة.':action==='talk'?'سمعت '+c.name+' باهتمام وخلّيته يحكي اللي مضايقه.':action==='gift'?'قدمت هدية لـ'+c.name+'.':'ساهمت في تعليم '+c.name+' وتنمية مهاراته.';if(!Array.isArray(c.interactions))c.interactions=[];c.interactions.push({age:state.age,action,delta,levelAfter:c.relationshipLevel});if(c.interactions.length>12)c.interactions.shift();
+ log('👪','وقت مع الأسرة',text,'good');save();render();info('💞','العلاقة مع '+c.name,c.name+' بقى مستوى العلاقة بينكم '+c.relationshipLevel+'%.');
 }
 function personModal(n){
  const relationName=String(n.relation||'');
- const isSibling=/أخ|أخت/.test(relationName);
+ const isSibling=/أخ|أخت/.test(relationName),isPartner=/شريك|زوج|زوجة/.test(relationName);
  const stats=isSibling
   ?[['العناد والشغب',n.petulance],['الكرم',n.generosity]]
+  :isPartner?[['الوفاء',n.loyalty],['الغيرة',n.jealousy],['الاعتمادية',n.reliability]]
   :[['الكرم',n.generosity],['الجنون',n.craziness],['المال',n.money]];
  const bars=stats.map(([label,value])=>{const v=clamp(value??50);return '<div class="npc-stat"><span>'+label+'</span><div class="mini-track"><span style="width:'+v+'%"></span></div><b>'+v+'%</b></div>';}).join('');
  const progress='<div class="relationship-progress"><div class="muted">قوة العلاقة · '+clamp(n.relationshipLevel)+'%</div><div class="progressline"><div style="width:'+clamp(n.relationshipLevel)+'%"></div></div></div><div class="npc-stats">'+bars+'</div><div class="pillrow"><span class="pill">💼 '+esc(n.job||'غير محدد')+'</span><span class="pill">🧠 '+esc(n.personality||'غير محدد')+'</span><span class="pill">🎂 '+fmt(n.age||0)+' سنة</span></div>';
@@ -1043,19 +1044,57 @@ function personModal(n){
   choice('☕','قضاء وقت','خصص وقت للشخص ده.',()=>relationshipAction(n,'time')),
   choice('💬','محادثة','اسأل عن أخباره واسمعه كويس.',()=>relationshipAction(n,'talk')),
   choice('🎁','تقديم هدية','هدية صغيرة بتكلفة 500 '+state.place.unit+'.',()=>relationshipAction(n,'gift'),'500 '+state.place.unit),
-  choice('😤','شجار','الخلاف ممكن يقلل مستوى العلاقة.',()=>relationshipAction(n,'argue'))
+  choice('😤','شجار','الخلاف ممكن يقلل مستوى العلاقة.',()=>relationshipAction(n,'argue')),
+  choice('📜','سجل العلاقة','راجع آخر التفاعلات وأثرها على مستوى العلاقة.',()=>relationshipHistory(n))
  ],true,progress);
 }
+
+function relationshipHistory(n){
+ const history=Array.isArray(n.interactions)?n.interactions.slice().reverse():[];
+ const labels={time:'قضاء وقت',talk:'محادثة',gift:'هدية',argue:'خلاف',school:'نشاط تعليمي'};
+ const opts=history.map(item=>choice(item.delta<0?'💢':item.action==='gift'?'🎁':'💞',(labels[item.action]||'تفاعل')+' · عمر '+fmt(item.age||0),'التأثير '+(item.delta>0?'+':'')+item.delta+' · مستوى العلاقة بعد التفاعل '+fmt(item.levelAfter)+'%.',()=>{closeModal();info(item.delta<0?'💢':'💞',labels[item.action]||'تفاعل مسجل','في عمر '+fmt(item.age||0)+' سنة، أثر التفاعل على العلاقة بمقدار '+(item.delta>0?'+':'')+item.delta+' نقطة.');}));
+ if(!opts.length)opts.push(choice('🌱','لسه مفيش تفاعلات مسجلة','ابدأ بقضاء وقت أو محادثة أو هدية عشان يبدأ سجل العلاقة.',closeModal));
+ opts.push(choice('↩️','العودة لملف الشخصية','',()=>{closeModal();personModal(n);}));
+ modal('📜','سجل العلاقة · '+(n.name||'الشخصية'),'آخر 12 تفاعلًا وأثر كل منها على العلاقة.',opts);
+}
+
 function relationshipAction(n,act){
  closeModal();if(act==='gift'&&state.bank<500){info('💳','الرصيد مش كفاية','الهدية محتاجة '+cash(500)+'.');return;}
- let d=0,text='',tone='good';
- if(act==='time'){d=chance(.78)?7:3;stat('happiness',2);text='قضيت وقت مع '+n.name+' واتكلمتوا عن حاجات كتير.';}
- if(act==='talk'){d=chance(.72)?5:2;text='اتكلمت مع '+n.name+' وسمعت أخباره.';}
- if(act==='gift'){state.bank-=500;flash('-'+cash(500),true);d=chance(.82)?10:4;text='قدمت هدية بسيطة لـ'+n.name+' بتكلفة '+cash(500)+'.';}
- if(act==='argue'){d=chance(.7)?-12:-5;stat('happiness',-3);text='دخلت في خلاف مع '+n.name+'. كان ممكن تختار الكلام بهدوء.';tone='bad';}
- if(n.personality==='حنون'&&(act==='talk'||act==='time'))d+=2; if(n.personality==='عملي'&&act==='gift')d+=1; if(n.personality==='عنيد'&&act==='argue')d-=2;
- n.relationshipLevel=clamp(n.relationshipLevel+d);if(n.relationshipLevel>=85)achievement('بناء علاقة قوية مع '+n.name);
- log(act==='argue'?'💢':'💞','تفاعل مع '+n.name,text,tone);render();info(act==='argue'?'💢':'💞','مستوى العلاقة: '+n.relationshipLevel+'%',d>=0?'العلاقة اتحسنت، والاستمرار في الاهتمام يفرق.':'العلاقة اتأثرت سلبًا. ممكن تحاول تصلح الموقف بعدين.',[choice('✓','تمام','',()=>{closeModal();relations();})]);
+ const generosity=clamp(n.generosity??50),craziness=clamp(n.craziness??50),money=clamp(n.money??50),petulance=clamp(n.petulance??50),loyalty=clamp(n.loyalty??55),jealousy=clamp(n.jealousy??40),reliability=clamp(n.reliability??55),personality=n.personality||'عملي';
+ let d=0,text='',tone='good',reaction;
+ if(act==='time'){
+  reaction=clamp(42+reliability*.26+generosity*.10+(personality==='مرح'?9:0)-craziness*.08-petulance*.12,10,90);
+  d=chance(reaction/100)?6+Math.floor(reliability/40):2;stat('happiness',d>=5?3:1);
+  text=d>=5?'قضيت وقتًا لطيفًا مع '+n.name+'، والشخصية دي بتقدّر الوقت المشترك.':'قضيت وقتًا مع '+n.name+'، لكن التفاعل كان عاديًا ومحتاج اهتمامًا يناسب شخصيته.';
+ }
+ if(act==='talk'){
+  reaction=clamp(38+loyalty*.20+reliability*.20+(personality==='فضولي'?14:0)-craziness*.12-petulance*.10,10,90);
+  d=chance(reaction/100)?4+Math.floor(reliability/45):1;
+  text=d>=4?'اتكلمت مع '+n.name+' وسمعك باهتمام.':'اتكلمت مع '+n.name+'، لكن الحوار ما فتحش مساحة كبيرة للتقارب.';
+ }
+ if(act==='gift'){
+  state.bank-=500;flash('-'+cash(500),true);
+  reaction=clamp(28+generosity*.42+(100-money)*.12-petulance*.20,8,92);
+  const welcomed=chance(reaction/100);d=welcomed?6+Math.floor(generosity/32):1;
+  if(money>=85)d=Math.max(1,d-2);
+  text=welcomed?'قدمت هدية لـ'+n.name+'، وقدّر اللفتة واهتمامك.':'قدمت هدية لـ'+n.name+'، لكن الهدية ما أثرتش كتير على العلاقة.';
+ }
+ if(act==='argue'){
+  reaction=clamp(24+craziness*.22+petulance*.42+jealousy*.12-generosity*.12-(personality==='حنون'?12:0),5,90);
+  d=chance(reaction/100)?-14:-5;stat('happiness',-3);text=d<=-10?'الخلاف مع '+n.name+' تصاعد بسبب رد فعل حاد.':'اختلفت مع '+n.name+'، لكن الموقف ما اتصعّدش بنفس الدرجة.';tone='bad';
+ }
+ if(personality==='حنون'&&(act==='talk'||act==='time'))d+=1;
+ if(personality==='عملي'&&act==='gift')d+=1;
+ if(personality==='فضولي'&&act==='talk')d+=1;
+ if(personality==='جاد'&&act==='argue')d-=1;
+ n.relationshipLevel=clamp((n.relationshipLevel||50)+d);
+ if(!Array.isArray(n.interactions))n.interactions=[];
+ n.interactions.push({age:state.age,action:act,delta:d,levelAfter:n.relationshipLevel});
+ if(n.interactions.length>12)n.interactions.shift();
+ if(n.relationshipLevel>=85)achievement('بناء علاقة قوية مع '+n.name);
+ if(act==='argue'&&jealousy>=78&&n.relationshipLevel<45&&chance(.18)){n.relationshipLevel=clamp(n.relationshipLevel-3);text+=' الغيرة العالية زوّدت سوء الفهم.';d-=3;}
+ save();log(act==='argue'?'💢':'💞','تفاعل مع '+n.name,text,tone);render();
+ info(act==='argue'?'💢':'💞','مستوى العلاقة: '+n.relationshipLevel+'%',d>=0?'العلاقة اتحسنت. النتيجة اتأثرت بسمات الشخصية وطريقة التفاعل.':'العلاقة اتأثرت سلبًا، وكل شخصية بتستجيب للخلاف بشكل مختلف.',[choice('✓','تمام','',()=>{closeModal();relations();})]);
 }
 function addFriend(){
  const g=pick(['male','female']),f=person(g,'صديق',g==='male'?'🧑':'👩',Math.max(8,state.age+Math.floor(Math.random()*7)-3),45+Math.floor(Math.random()*38));
@@ -1713,7 +1752,7 @@ function editNpcMenu(){
  modal('👥','محرر الشخصيات','اختار فردًا من العائلة أو صديقًا أو الشريك لتعديل سماته داخل وضع التخصيص.',opts);
 }
 function editNpcTraits(n){
- const props=[['relationshipLevel','قوة العلاقة','❤️'],['generosity','الكرم','🎁'],['craziness','الاندفاع','⚡'],['money','الوضع المالي','💰'],['petulance','العناد','😤']];
+ const props=[['relationshipLevel','قوة العلاقة','❤️'],['generosity','الكرم','🎁'],['craziness','الاندفاع','⚡'],['money','الوضع المالي','💰'],['petulance','العناد','😤'],['loyalty','الوفاء','🤝'],['jealousy','الغيرة','👁️'],['reliability','الاعتمادية','🧱']];
  const opts=props.map(([key,label,icon])=>choice(icon,label+' · '+clamp(n[key]??50)+'%', 'اختار قيمة جديدة لصفة '+label+'.',()=>editNpcTraitLevel(n,key,label)));
  opts.unshift(choice(n.emoji||'👤','رجوع لقائمة الشخصيات','اختار شخصية تانية.',editNpcMenu));
  modal('🧬',(n.name||'شخص')+' · محرر السمات','الصفات دي بتأثر على انطباعك عن الشخصية وتفاعل العلاقة داخل اللعبة.',opts);
@@ -1953,7 +1992,7 @@ function importSave(){
     Object.keys(defaults).forEach(k=>{if(data[k]===undefined||data[k]===null)data[k]=defaults[k];});
     if(!Array.isArray(data.assets))data.assets=[];if(!Array.isArray(data.timeMachineSnapshots))data.timeMachineSnapshots=[];data.assets.forEach(a=>{if((a.kind==='car'||a.kind==='property')&&!Number.isFinite(Number(a.condition)))a.condition=100;});
     if(!data.education||typeof data.education!=='object')data.education={level:0,school:'لم تبدأ الدراسة',major:null,yearsLeft:0,tuition:0};data.education.clubs=Array.isArray(data.education.clubs)?data.education.clubs:[];
-    const npcDefaults=n=>{if(!n||typeof n!=='object')return;if(!Number.isFinite(Number(n.generosity)))n.generosity=50;if(!Number.isFinite(Number(n.craziness)))n.craziness=50;if(!Number.isFinite(Number(n.money)))n.money=50;if(!Number.isFinite(Number(n.petulance)))n.petulance=50;};if(!Array.isArray(data.specialCareerHistory))data.specialCareerHistory=[];const careerDefaults=c=>{if(!c||typeof c!=='object')return;if(!c.record||typeof c.record!=='object')c.record={attempts:0,wins:0,losses:0,projects:0,totalEarnings:0,bestLevel:clamp(c.level||1)};if(!Array.isArray(c.history))c.history=[];};careerDefaults(data.specialCareer);data.specialCareerHistory.forEach(careerDefaults);(data.family||[]).forEach(npcDefaults);(data.friends||[]).forEach(npcDefaults);(data.children||[]).forEach(npcDefaults);npcDefaults(data.partner);
+    const npcDefaults=n=>{if(!n||typeof n!=='object')return;if(!Number.isFinite(Number(n.generosity)))n.generosity=50;if(!Number.isFinite(Number(n.craziness)))n.craziness=50;if(!Number.isFinite(Number(n.money)))n.money=50;if(!Number.isFinite(Number(n.petulance)))n.petulance=50;if(!Number.isFinite(Number(n.loyalty)))n.loyalty=55;if(!Number.isFinite(Number(n.jealousy)))n.jealousy=40;if(!Number.isFinite(Number(n.reliability)))n.reliability=55;if(!Array.isArray(n.interactions))n.interactions=[];};if(!Array.isArray(data.specialCareerHistory))data.specialCareerHistory=[];const careerDefaults=c=>{if(!c||typeof c!=='object')return;if(!c.record||typeof c.record!=='object')c.record={attempts:0,wins:0,losses:0,projects:0,totalEarnings:0,bestLevel:clamp(c.level||1)};if(!Array.isArray(c.history))c.history=[];};careerDefaults(data.specialCareer);data.specialCareerHistory.forEach(careerDefaults);(data.family||[]).forEach(npcDefaults);(data.friends||[]).forEach(npcDefaults);(data.children||[]).forEach(npcDefaults);npcDefaults(data.partner);
     state=data;dead=state.status==='متوفى';save();render();if(dead)death(state.cause||'نهاية رحلة الحياة');else info('📥','تم استيراد الحفظ','تم تحميل '+state.name+' · العمر '+state.age+' سنة.');
    }catch(e){info('⚠️','ملف حفظ غير صالح','اختار ملف JSON تم تصديره من لعبة حياة. الحفظ الحالي لم يتغير.');}
   };

@@ -62,6 +62,16 @@ assert.match(app, /function filmCastMenu\(genreId,budgetId,creativeId\)/, 'direc
 assert.match(app, /function filmMarketingMenu\(genreId,budgetId,creativeId,castId\)/, 'director should choose a marketing package');
 assert.match(app, /function releaseFilm\(genreId,budgetId,creativeId,castId,marketingId\)/, 'film releases should resolve costs and outcomes');
 assert.match(app, /function filmographyMenu\(\)/, 'director should be able to review a filmography');
+assert.match(app, /loyalty:25\+Math\.floor\(Math\.random\(\)\*76\)/, 'new NPCs should have a loyalty trait');
+assert.match(app, /jealousy:Math\.floor\(Math\.random\(\)\*101\)/, 'new NPCs should have a jealousy trait');
+assert.match(app, /reliability:25\+Math\.floor\(Math\.random\(\)\*76\)/, 'new NPCs should have a reliability trait');
+assert.match(app, /function relationshipHistory\(n\)/, 'each NPC should have a relationship interaction journal');
+assert.match(app, /n\.interactions\.push\(\{age:state\.age,action:act,delta:d,levelAfter:n\.relationshipLevel\}\)/, 'NPC interactions should record their relationship outcome');
+assert.match(app, /reaction=clamp\(28\+generosity\*\.42\+\(100-money\)\*\.12-petulance\*\.20,8,92\)/, 'gift outcomes should depend on generosity, wealth and petulance');
+assert.match(app, /const stability=clamp\(36\+loyalty\*\.22\+reliability\*\.20\+generosity\*\.12-petulance\*\.16-jealousy\*\.10/, 'yearly partner stability should depend on relationship traits');
+assert.match(app, /state\.partner\.relationshipLevel<45&&chance\(\.12\)/, 'high jealousy should sometimes trigger a relationship misunderstanding');
+assert.match(app, /function editNpcTraits\(n\)/);
+
 assert.match(app, /state\.filmStudio=c\.id==='director'\?createFilmStudio\(\):null/, 'starting a directing career should initialize a studio');
 assert.match(app, /filmProfile:state\.specialCareer\.id==='director'\?JSON\.parse\(JSON\.stringify\(state\.filmStudio\|\|null\)\):null/, 'leaving the directing career should archive studio results');
 assert.match(app, /if\(state\.bank<totalCost\)/, 'production should verify the full combined budget before charging');
