@@ -3359,6 +3359,11 @@ function premiumPerksMenu(){
  modal('✨','متجر مزايا حياة','باقات ومزايا دائمة تُفتح بعملة اللعبة فقط؛ لا توجد مدفوعات حقيقية. الملكيات الأساسية محفوظة على نفس المتصفح والجهاز.',opts);
 }
 
+function grantLandlordStarterProperty(){
+ if(!state||!Array.isArray(state.assets)||state.assets.some(a=>a&&a.landlordStarter))return;
+ state.assets.push({id:'landlord-starter-'+Date.now(),title:'منزل مستقبلي حصري',emoji:'🏠',kind:'property',value:950000,upkeep:22000,bought:state.age,condition:100,rented:false,tenant:null,amenities:[],futuristic:true,landlordStarter:true});
+ log('🏠','هدية العقار الحصري','حصلت على منزل مستقبلي حصري مجانًا مع توسعة العقارات.','good');
+}
 function buyPremiumPerk(id){
  const catalog={
   fameFortuneBundle:{cost:135000,title:'باقة الشهرة والثروة'},billionairesBundle:{cost:160000,title:'باقة الملياردير'},crimePaysBundle:{cost:145000,title:'باقة عالم الجريمة'},partyAnimalBundle:{cost:175000,title:'باقة الحيوان الحفّال'},
@@ -3379,6 +3384,7 @@ function buyPremiumPerk(id){
   permanentPerks.owned[id]=true;bundles[id].forEach(perk=>{permanentPerks.owned[perk]=true;if(PERK_TOGGLE_IDS.includes(perk))permanentPerks.enabled[perk]=true;});
   if(bundles[id].includes('superstarMode')||bundles[id].includes('goldTheme')){permanentPerks.owned.goldTheme=true;permanentPerks.enabled.goldTheme=true;uiSettings.theme='gold';persistUiSettings();}
   if(bundles[id].includes('hollywoodStar')){permanentPerks.enabled.hollywoodStar=true;if(state.job||state.specialCareer)state.fame=100;}
+  if(bundles[id].includes('landlordPack'))grantLandlordStarterProperty();
   persistPermanentPerks();log('🎁','تم فتح '+item.title,'اتفتحت '+bundles[id].length+' مزايا مرتبطة بالباقة. راجع الأنشطة والقائمة الرئيسية لاستخدامها.','special');
  }else{
   permanentPerks.owned[id]=true;if(PERK_TOGGLE_IDS.includes(id))permanentPerks.enabled[id]=true;
@@ -3389,6 +3395,7 @@ function buyPremiumPerk(id){
   if(id==='godMode')permanentPerks.enabled.godMode=true;
   if(id==='bitizenship')permanentPerks.enabled.bitizenship=true;
   if(id==='goldenWrench')state.assets.forEach(a=>{if(a.kind==='car')a.condition=100;});
+  if(id==='landlordPack')grantLandlordStarterProperty();
   persistPermanentPerks();log('✨','ميزة جديدة: '+item.title,'فتحت '+item.title+' من رصيد اللعبة. تقدر تدير المزايا من المتجر والقائمة الرئيسية.','special');
  }
  save();render();premiumPerksMenu();
