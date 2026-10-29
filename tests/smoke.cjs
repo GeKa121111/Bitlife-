@@ -10,6 +10,15 @@ assert.match(index, /href="style.css"/);
 assert.match(index, /src="app.js"/);
 assert.match(index, /id="ageUpBtn"/);
 assert.match(css, /max-width:500px/);
+assert.match(app, /const dailyChallengeDefs=\[/, 'daily challenge catalog should be available');
+assert.match(app, /function ensureDailyChallengeBoard\(\)/, 'daily challenges should rotate and persist by day');
+assert.match(app, /function dailyChallengesMenu\(\)/, 'daily challenge menu should be available');
+assert.match(app, /function claimDailyChallenge\(id\)/, 'daily challenge rewards should be claimable');
+assert.match(app, /choice\('🎯','تحديات اليوم'/, 'daily challenges should be reachable from the main menu');
+assert.match(app, /board\.claimed\.length===board\.ids\.length/, 'all daily challenge claims should trigger a completion bonus');
+assert.match(app, /dailyChallenges:null/, 'older saves should migrate to the daily challenge state');
+assert.ok((app.match(/\{id:'[a-z-]+',title:'/g) || []).length >= 20, 'daily challenge catalog should have breadth');
+
 assert.ok((app.match(/\nE\(\[/g) || []).length >= 25, 'at least 25 age-based events should exist');
 assert.match(app, /events\.push\(/, 'expanded event library should be present');
 assert.match(app, /function syncBusinessAsset\(\)/, 'business value should stay synchronized with the owned asset');
