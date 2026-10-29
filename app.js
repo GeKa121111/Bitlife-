@@ -815,10 +815,11 @@ function advanceAge(){
  }
  const childCosts=(state.children||[]).reduce((sum,c)=>{const base=(c.age||0)<6?4500:((c.age||0)<18?7500:0);if(!base)return sum;const plan=(state.coParentingPlans||[]).find(p=>p&&p.active!==false&&(p.childIds||[]).includes(c.id||c.name));if(!plan)return sum+base;if(plan.mode==='shared')return sum+Math.round(base*.6);if(plan.mode==='other')return sum+Math.round(base*.2);return sum+base;},0);if(childCosts>0){state.bank-=childCosts;log('🧸','مصاريف الأبناء','احتياجات وتعليم ورعاية الأبناء كلّفتك '+cash(childCosts)+' هذا العام بعد احتساب ترتيبات الرعاية.','bad');}applyCoParentingAnnualEffects();
  if(assetUpkeep){state.bank-=assetUpkeep;flash('-'+cash(assetUpkeep),true);log('🔧','صيانة الأصول','صيانة ممتلكاتك كلّفتك '+cash(assetUpkeep)+'.','bad');}
- const rentIncome=(state.assets||[]).filter(a=>a.kind==='property'&&a.rented).reduce((total,a)=>total+Math.round((a.value||0)*.045),0);if(rentIncome>0){state.bank+=rentIncome;log('🏠','دخل إيجار سنوي','دخل لك '+cash(rentIncome)+' من تأجير العقارات.','good');}
+ const rentIncome=(state.assets||[]).filter(a=>a.kind==='property'&&a.rented).reduce((total,a)=>total+Math.round(a.tenant&&perkOwned('landlordPack')?(a.tenant.rent||a.value*.045):(a.value||0)*.045),0);if(rentIncome>0){state.bank+=rentIncome;log('🏠','دخل إيجار سنوي','دخل لك '+cash(rentIncome)+' من تأجير العقارات.','good');}
  if(state.debt>0){const interest=Math.max(100,Math.round(state.debt*.08));state.debt+=interest;log('🏦','فوائد الديون','زادت ديونك بمقدار '+cash(interest)+' بسبب الفوائد. إجمالي الدين '+cash(state.debt)+'.','bad');}
  if((state.investments||[]).length){let totalGain=0;state.investments.forEach(inv=>{const before=inv.value;const move=inv.kind==='عملات رقمية'?(Math.random()*.9-.35):inv.kind==='أسهم'?(Math.random()*.3-.09):inv.kind==='سندات'?(Math.random()*.08-.02):inv.kind==='مخاطرة عالية'?(Math.random()*.46-.18):(Math.random()*.24-.04);inv.value=Math.max(0,Math.round(inv.value*(1+move)));totalGain+=inv.value-before;});if(totalGain)log('📈','تقرير الاستثمارات',(totalGain>=0?'استثماراتك زادت بقيمة ':'استثماراتك خسرت بقيمة ')+cash(Math.abs(totalGain))+'. السوق بيتحرك صعودًا وهبوطًا. ',totalGain>=0?'good':'bad');}
  if(state.business){const level=Math.max(1,state.business.level||1);const revenue=Math.round(state.business.value*(.03+Math.random()*.08)*(.8+level*.15));const costs=Math.round(state.business.value*(.02+Math.random()*.05)*(1+Math.max(0,level-1)*.08));const profit=revenue-costs;state.bank+=profit;state.business.value=Math.max(1000,Math.round(state.business.value*(profit>=0?1.04:.97)));log('🏪','التقرير السنوي للمشروع',(profit>=0?'صافي الأرباح ':'صافي الخسارة ')+cash(Math.abs(profit))+' · مستوى الإدارة '+level+'.','special');}
+ (state.companies||[]).forEach(company=>{const revenue=Math.round(company.value*(.03+Math.random()*.10)*(.85+(company.level||1)*.12));const costs=Math.round(company.value*(.025+Math.random()*.055)*(1+Math.max(0,(company.level||1)-1)*.06));const profit=revenue-costs;state.bank+=profit;company.value=Math.max(1000,Math.round(company.value*(profit>=0?1.04:.97)));const asset=state.assets.find(a=>a.id===company.id);if(asset)asset.value=company.value;log('🏢','التقرير السنوي: '+company.title,(profit>=0?'صافي الأرباح ':'صافي الخسارة ')+cash(Math.abs(profit))+'.','special');});
  if((state.pets||[]).length){const care=state.pets.length*350;state.bank-=care;state.pets.forEach(p=>{p.age=(p.age||0)+1;p.happiness=clamp((p.happiness||70)+(chance(.7)?3:-6));p.health=clamp((p.health||70)-(p.age>10?2:0)+(p.happiness>40&&chance(.5)?1:-1));});const lost=state.pets.filter(p=>(p.species==='طائر'?p.age>19:p.age>15)&&chance(.35));if(lost.length){state.pets=state.pets.filter(p=>!lost.includes(p));lost.forEach(p=>log('🐾','وداع صديق','توفي '+p.name+' بعد سنوات من الرفقة. ستفضل ذكراه جزءًا من حكايتك.','bad'));}if(state.bank<0)log('🐾','مصاريف الحيوانات','رعاية الحيوانات كلفتك '+cash(care)+' هذا العام.','bad');}
  if((state.hobbies||[]).length&&chance(.7)){state.stats.happiness=clamp(state.stats.happiness+1);if(state.hobbies.some(h=>h.id==='reading'||h.id==='writing'))state.stats.smart=clamp(state.stats.smart+1);}
  if(state.partner){const loyalty=clamp(state.partner.loyalty??55),reliability=clamp(state.partner.reliability??55),generosity=clamp(state.partner.generosity??50),petulance=clamp(state.partner.petulance??50),jealousy=clamp(state.partner.jealousy??40);const stability=clamp(36+loyalty*.22+reliability*.20+generosity*.12-petulance*.16-jealousy*.10+(state.partner.personality==='حنون'?8:0),8,92);const drift=state.partner.relationshipLevel<35?-3:(chance(stability/100)?1:-1);state.partner.relationshipLevel=clamp((state.partner.relationshipLevel||50)+drift);if(jealousy>=75&&state.partner.relationshipLevel<45&&chance(.12)){state.partner.relationshipLevel=clamp(state.partner.relationshipLevel-3);stat('happiness',-2);log('💬','غيرة وسوء تفاهم','الغيرة العالية عند '+state.partner.name+' سببت سوء تفاهم محتاج حوارًا وطمأنة.','bad');}if(state.married&&state.partner.relationshipLevel<15&&chance(clamp(10+petulance*.20+jealousy*.28,10,70)/100)){state.married=false;log('💔','أزمة زوجية','الخلافات زادت بينك وبين '+state.partner.name+'. محتاجين حوار واهتمام قبل ما العلاقة تنهار.','bad');}}
@@ -1032,21 +1033,65 @@ function university(from18){
 function assets(){
  const opts=assetShop.map(a=>choice(a.emoji,a.title,a.desc+' التكلفة '+cash(a.value)+'. صيانة سنوية '+cash(a.upkeep)+'.',()=>buyAsset(a),cash(a.value)));
  if(state.business)opts.unshift(choice('🏪','إدارة مشروعي','قيمة المشروع '+cash(state.business.value)+' · مستوى الإدارة '+(state.business.level||1)+'.',businessMenu));
+ if(perkOwned('businessPack'))opts.unshift(choice('🏢','محفظة الشركات','إدارة الشركات الإضافية وشراء شركات جديدة.',companyPortfolioMenu));
  if(state.assets.length)opts.push(choice('📦','إدارة أصولي','شوف ممتلكاتك وبع اللي مش محتاجه أو أجّر العقارات.',manageAssets));
  modal('🏠','الأصول والمشتريات','العقارات ممكن تجيب دخل إيجار، والسيارات تنخفض قيمتها مع الوقت، والمشروع يحتاج إدارة سنوية.',opts);
 }
+
+function companyPortfolioMenu(){
+ if(!perkOwned('businessPack')){closeModal();info('🏭','محفظة الشركات مقفولة','افتح باقة الملياردير من متجر مزايا حياة.');return;}
+ const opts=[
+  choice('💻','شراء شركة تقنية','منتج رقمي ونمو محتمل أعلى مع مصاريف تشغيل.',()=>acquireCompany('شركة تقنية','تقنية',320000,'💻'),'320,000 '+state.place.unit),
+  choice('🚚','شراء شركة لوجستية','نقل وتوزيع مع عقود دورية.',()=>acquireCompany('شركة لوجستية','لوجستيات',260000,'🚚'),'260,000 '+state.place.unit),
+  choice('🍽️','شراء سلسلة مطاعم','مشروع تشغيلي له دخل وتكاليف سنوية.',()=>acquireCompany('سلسلة مطاعم','مطاعم',210000,'🍽️'),'210,000 '+state.place.unit),
+  choice('🛒','شراء شركة تجزئة','متاجر ومبيعات مع تكلفة مخزون.',()=>acquireCompany('شركة تجزئة','تجزئة',180000,'🛒'),'180,000 '+state.place.unit)
+ ];
+ (state.companies||[]).forEach((company,i)=>opts.push(choice(company.emoji||'🏢',company.title+' · '+cash(company.value),'القطاع '+company.sector+' · المستوى '+company.level+'.',()=>companyDetailMenu(i),cash(company.value))));
+ opts.push(choice('↩️','رجوع للأصول','',()=>{closeModal();assets();}));
+ modal('🏢','محفظة الشركات','امتلك شركات إضافية غير مشروعك الأساسي، ولكل شركة سجل أرباح وتكاليف مستقل.',opts);
+}
+function acquireCompany(title,sector,value,emoji){
+ closeModal();if(state.age<18){info('🔒','الشراء غير متاح','تقدر تستحوذ على الشركات بعد سن 18.');return;}
+ if(state.bank<value){info('💳','رأس المال غير كافٍ','شراء '+title+' يحتاج '+cash(value)+'.');return;}
+ state.bank-=value;const id=Date.now()+Math.random(),company={id,title,sector,value,level:1,upkeep:Math.round(value*.025),bought:state.age,emoji};
+ state.companies.push(company);state.assets.push({id,title,emoji,kind:'business',value,upkeep:company.upkeep,bought:state.age,companyPortfolio:true});
+ log('🏢','استحواذ على شركة','اشتريت '+title+' في قطاع '+sector+'. الأرباح تعتمد على الإدارة والتقلبات السنوية.','special');achievement('تنويع محفظة الشركات');save();render();companyPortfolioMenu();
+}
+function companyDetailMenu(index){
+ const company=(state.companies||[])[index];if(!company){companyPortfolioMenu();return;}
+ modal(company.emoji||'🏢','إدارة '+company.title,'قيمة تقديرية '+cash(company.value)+' · القطاع '+company.sector+' · المستوى '+company.level+'. نتائج السنة القادمة غير مضمونة.',[
+  choice('📊','تقرير الأرباح','عرض تقديري للعائد السنوي قبل التكاليف.',()=>{closeModal();const forecast=Math.round(company.value*(.01+company.level*.02));info('📊','تقرير الشركة','القيمة '+cash(company.value)+' · دخل تشغيلي تقديري '+cash(forecast)+' قبل التكاليف.');}),
+  choice('📈','إعادة استثمار','ضخ رأس مال لرفع المستوى والنمو.',()=>reinvestCompany(index),'20,000 '+state.place.unit),
+  choice('💵','بيع الشركة','تصفية الشركة مقابل 75% تقريبًا من قيمتها الحالية.',()=>sellCompany(index),cash(Math.round(company.value*.75))),
+  choice('↩️','رجوع للمحفظة','',companyPortfolioMenu)
+ ]);
+}
+function reinvestCompany(index){
+ closeModal();const company=(state.companies||[])[index];if(!company)return;const cost=20000;
+ if(state.bank<cost){info('💳','الرصيد مش كفاية','إعادة الاستثمار تحتاج '+cash(cost)+'.');return;}
+ state.bank-=cost;company.level=clamp((company.level||1)+1,1,20);company.value=Math.round(company.value*1.12);
+ const asset=state.assets.find(a=>a.id===company.id);if(asset)asset.value=company.value;
+ log('📈','إعادة استثمار في '+company.title,'ارتفع مستوى الشركة إلى '+company.level+' والقيمة التقديرية إلى '+cash(company.value)+'.','good');save();render();companyDetailMenu(index);
+}
+function sellCompany(index){
+ closeModal();const company=(state.companies||[])[index];if(!company)return;const proceeds=Math.round(company.value*.75);
+ state.bank+=proceeds;state.companies.splice(index,1);state.assets=state.assets.filter(a=>a.id!==company.id);
+ log('💵','بيع شركة','بعت '+company.title+' مقابل '+cash(proceeds)+'.','good');save();render();companyPortfolioMenu();
+}
 function businessMenu(){
- if(!state.business){info('🏪','مفيش مشروع حاليًا','اشتري مشروعًا صغيرًا من قائمة الأصول عشان تبدأ الإدارة.');return;}
+ if(!state.business){if(perkOwned('businessPack')){companyPortfolioMenu();return;}info('🏪','مفيش مشروع حاليًا','اشتري مشروعًا صغيرًا من قائمة الأصول عشان تبدأ الإدارة.');return;}
  const b=state.business,level=Math.max(1,b.level||1);
  modal('🏪','إدارة '+(b.title||'مشروعك'),'قيمة المشروع '+cash(b.value)+' · مستوى الإدارة '+level+' · الشهرة '+(state.fame||0)+'%. اختيارات الإدارة تؤثر على دخل السنوات القادمة.',[
   choice('📊','التقرير السنوي','عرض تقديري عن قيمة المشروع وأرباحه المتوقعة.',()=>{closeModal();const forecast=Math.round(b.value*(.02+level*.015));info('📊','تقرير المشروع','القيمة الحالية '+cash(b.value)+'. الدخل التقريبي المحتمل '+cash(forecast)+' إلى '+cash(forecast*3)+' قبل التكاليف. النتائج مش مضمونة.');}),
   choice('📣','حملة تسويق','حملة تكلف 2,500 '+state.place.unit+' قد ترفع المبيعات والسمعة.',()=>businessAction('marketing'),'2,500 '+state.place.unit),
   choice('👔','تعيين مدير','تحسين الإدارة مقابل 5,000 '+state.place.unit+'؛ يزيد الكفاءة السنوية.',()=>businessAction('manager'),'5,000 '+state.place.unit),
   choice('🏗️','توسيع المشروع','استثمار 10,000 '+state.place.unit+' لزيادة قيمة النشاط.',()=>businessAction('expand'),'10,000 '+state.place.unit),
+  ...(perkOwned('businessPack')?[choice('🏢','محفظة الشركات','شراء شركات إضافية وإدارة الملكيات المتنوعة.',companyPortfolioMenu)]:[]),
   choice('🧾','تقليل النفقات','مراجعة العمليات لتقليل المصاريف السنوية.',()=>businessAction('costs')),
   choice('↩️','رجوع للأصول','',()=>{closeModal();assets();})
  ]);
 }
+
 function businessAction(action){
  closeModal();if(!state.business)return;
  const b=state.business;
@@ -1069,13 +1114,40 @@ function businessAction(action){
 }
 function buyAsset(a){
  closeModal();if(state.age<18){info('🔒','الشراء مش متاح دلوقتي','تقدر تشتري أصولك بعد سن 18.');return;}
- if(a.kind==='business'&&(state.business||(state.assets||[]).some(x=>x.kind==='business'))){info('🏪','عندك مشروع بالفعل','النسخة الحالية بتدعم إدارة مشروع واحد؛ طوّر مشروعك الحالي بدل شراء مشروع تاني.');return;}
+ if(a.kind==='business'&&(state.business||(state.assets||[]).some(x=>x.kind==='business'))){if(perkOwned('businessPack')){companyPortfolioMenu();return;}info('🏪','عندك مشروع بالفعل','النسخة الحالية بتدعم إدارة مشروع واحد؛ افتح باقة الملياردير لامتلاك شركات إضافية.');return;}
  if(state.bank<a.value){info('💳','الرصيد مش كفاية','معاك '+cash(state.bank)+'، وسعر الأصل '+cash(a.value)+'.');return;}
  const assetId=Date.now()+Math.random();state.bank-=a.value;flash('-'+cash(a.value),true);
  const condition=(a.kind==='car'||a.kind==='property')?100:undefined;
  state.assets.push({id:assetId,title:a.title,emoji:a.emoji,kind:a.kind,value:a.value,upkeep:a.upkeep,bought:state.age,...(condition===undefined?{}:{condition})});
  if(a.kind==='business')state.business={assetId,title:a.title,value:a.value,level:1};
  stat('happiness',6);log(a.emoji,'اشتريت '+a.title,'دفعت '+cash(a.value)+'. خلي بالك من مصاريف الصيانة كل سنة.','good');achievement('امتلاك '+a.title);render();info('🎉','مبروك الأصل الجديد','الأصل اتضاف لممتلكاتك، وتقدر تبيعه لاحقًا حسب قيمته وحالته الحالية.');
+}
+
+function landlordTenantMenu(index){
+ const property=(state.assets||[])[index];if(!property||property.kind!=='property'){manageAssets();return;}
+ if(!perkOwned('landlordPack')){info('🔒','إدارة المستأجرين مقفولة','افتح باقة الملياردير من متجر مزايا حياة.');return;}
+ const tenant=property.tenant,opts=[];
+ if(!tenant)opts.push(choice('🔑','توقيع عقد مع مستأجر','اختيار مستأجر جديد ودخل إيجار مرتبط بالعقد.',()=>signPropertyTenant(index)));
+ else{
+  opts.push(choice('📊','تفاصيل عقد الإيجار',tenant.name+' · الإيجار السنوي '+cash(tenant.rent)+' · متبقي '+tenant.yearsLeft+' سنة · الرضا '+tenant.satisfaction+'%.',()=>{closeModal();info('📑','عقد '+property.title,'المستأجر: '+tenant.name+' · الإيجار السنوي '+cash(tenant.rent)+' · المدة المتبقية '+tenant.yearsLeft+' سنة · رضا المستأجر '+tenant.satisfaction+'%.');}));
+  opts.push(choice('📈','رفع الإيجار 10%','دخل أعلى مع احتمال تراجع رضا المستأجر.',()=>changeTenantRent(index,1.1)));
+  opts.push(choice('🤝','خفض الإيجار 10%','دخل أقل مقابل زيادة رضا المستأجر.',()=>changeTenantRent(index,.9)));
+  opts.push(choice('📆','تجديد عقد لثلاث سنوات','تأمين دخل الإيجار لثلاث سنوات.',()=>{closeModal();property.tenant.yearsLeft=3;log('📑','تجديد عقد إيجار','جددت عقد '+tenant.name+' للعقار '+property.title+' لمدة 3 سنوات.','good');save();render();landlordTenantMenu(index);}));
+  opts.push(choice('🚪','إنهاء عقد الإيجار','إخلاء العقار وإيقاف دخل الإيجار.',()=>{closeModal();property.tenant=null;property.rented=false;log('🏠','إنهاء عقد إيجار','أنهيت عقد العقار '+property.title+'.','');save();render();manageAssets();}));
+ }
+ opts.push(choice('↩️','رجوع للأصول','',manageAssets));
+ modal('🏘️','إدارة المستأجرين · '+property.title,'إدارة العقارات بعقود ومدد ورضا المستأجرين.',opts);
+}
+function signPropertyTenant(index){
+ closeModal();const property=(state.assets||[])[index];if(!property||property.kind!=='property')return;
+ const names=['أحمد','مريم','عمر','نور','يوسف','ليلى','كريم','سلمى'];
+ property.tenant={name:pick(names),rent:Math.round((property.value||0)*.045),yearsLeft:1,satisfaction:70};property.rented=true;
+ log('🔑','توقيع عقد إيجار','وقعت عقدًا مع '+property.tenant.name+' للعقار '+property.title+'.','good');save();render();landlordTenantMenu(index);
+}
+function changeTenantRent(index,multiplier){
+ closeModal();const property=(state.assets||[])[index];if(!property||!property.tenant)return;
+ property.tenant.rent=Math.max(500,Math.round(property.tenant.rent*multiplier));property.tenant.satisfaction=clamp(property.tenant.satisfaction+(multiplier<1?10:-12));
+ log('📑','تعديل عقد الإيجار','أصبح الإيجار السنوي '+cash(property.tenant.rent)+'، ورضا المستأجر '+property.tenant.satisfaction+'%.',multiplier<1?'good':'');save();render();landlordTenantMenu(index);
 }
 function manageAssets(){
  const opts=state.assets.map((a,i)=>{
@@ -1089,6 +1161,7 @@ function manageAssets(){
    if(condition!==null)actions.push(choice('🧰','صيانة / تجديد','استعادة الحالة إلى 100% ورفع قيمة إعادة البيع.',()=>maintainAsset(i),cash(Math.max(500,Math.round(a.value*(a.kind==='car'?.018:.03)*((100-condition)/100))))));
    actions.push(choice('💵','أبيع الأصل','القيمة المتوقعة حاليًا '+cash(sale),()=>sellAsset(i),cash(sale)));
    if(a.kind==='property')actions.push(choice('🔑',a.rented?'إيقاف التأجير':'عرض العقار للإيجار','دخل إيجار سنوي تقديري '+cash(Math.round(a.value*.045))+'.',()=>{closeModal();a.rented=!a.rented;log('🏠',a.rented?'تأجير عقار':'إيقاف تأجير العقار',a.rented?'عرضت '+a.title+' للإيجار وبدأ احتساب دخل سنوي.':'أوقفت التأجير للعقار '+a.title+'.',a.rented?'good':'');render();manageAssets();}));
+   if(a.kind==='property'&&perkOwned('landlordPack'))actions.push(choice('🏘️','إدارة المستأجرين','عقود إيجار وتفاوض على السعر وتجديد العقد.',()=>landlordTenantMenu(i)));
    actions.push(choice('↩️','أحتفظ بيه','',closeModal));
    const detail=condition===null?'القيمة الحالية '+cash(a.value)+'.':'حالة الأصل '+condition+'%'+(condition<31?' — محتاج صيانة قريب.':' — الحالة جيدة نسبيًا.');
    info('💰','إدارة '+a.title,detail,actions);
@@ -1098,6 +1171,7 @@ function manageAssets(){
  opts.push(choice('↩️','رجوع للأصول','',()=>{closeModal();assets();}));
  modal('📦','الأصول والمشتريات','الأصول لها قيمة سوقية وحالة وصيانة. الحالة الأقل تعني سعر بيع أقل.',opts);
 }
+
 function sellAsset(index){
  closeModal();const a=state.assets[index];if(!a)return;
  const condition=(a.kind==='property'||a.kind==='car')?clamp(a.condition??100):null;
