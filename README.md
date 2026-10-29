@@ -24,3 +24,11 @@
 
 ## الاختبارات
 يعمل فحص تلقائي عبر GitHub Actions عند التغيير على الفرع `main`، بما في ذلك فحص صياغة JavaScript والتحقق من وجود ملفات اللعبة الأساسية.
+
+## النشر على GitHub Pages
+1. افتح [إعدادات Pages](https://github.com/GeKa121111/Bitlife-/settings/pages).
+2. تحت **Build and deployment** اختر **Deploy from a branch**.
+3. اختر الفرع `main` والمجلد `/(root))، ثم اضغط **Save**.
+4. بعد ما يخلص GitHub النشر، افتح: https://gek121111.github.io/Bitlife-/
+
+كل تعديل جديد على ملفات الجذر سيظهر بعد تحديث نشر Pages.
