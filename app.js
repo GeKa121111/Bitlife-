@@ -382,7 +382,7 @@ function randomEvent(){
  modal(e.icon,e.title,e.text,e.choices.map(c=>choice('›',c.label,c.desc,()=>{
    closeModal();
    if(c.cost&&state.bank<c.cost){info('💳','الرصيد مش كفاية','الاختيار ده محتاج '+cash(c.cost)+'، ورصيدك الحالي '+cash(state.bank)+'.',[choice('↩️','تمام','',()=>{closeModal();afterDecision();})]);return;}
-   if(c.cost)state.bank-=c.cost;
+   if(c.cost)stat('bank',-c.cost);
    let failed=false,result=c.result||'اخدت قرارك وكمّلت طريقك.';
    if(c.risk&&chance(c.risk)){failed=true;result=c.failText||'النتيجة ما كانتش زي ما توقعت.';effects(c.fail);}
    else{effects(c.effects);if(c.win)effects(c.win);}
@@ -398,15 +398,15 @@ function ageUp(){
  state.age++;state.yearCount++;
  const assetUpkeep=state.assets.reduce((s,a)=>s+a.upkeep,0);
  if(state.job&&!state.retired){
-   const salary=Math.round(state.job.salary*state.performance/100);state.bank+=salary;
+   const salary=Math.round(state.job.salary*state.performance/100);state.bank+=salary;flash('+'+cash(salary));
    log('💼','دخل سنوي','استلمت '+cash(salary)+' من شغلك في '+state.job.title+'.','good');
    state.performance=clamp(state.performance+(chance(.58)?2:-1),20,100);
  }
  if(state.age>=18&&!state.retired){
-   const living=Math.round(9000+state.age*180);state.bank-=living;
+   const living=Math.round(9000+state.age*180);state.bank-=living;flash('-'+cash(living),true);
    log('🧾','مصاريف المعيشة','دفعت '+cash(living)+' لمصاريف السنة من أكل ومواصلات واحتياجات أساسية.');
  }
- if(assetUpkeep){state.bank-=assetUpkeep;log('🔧','صيانة الأصول','صيانة ممتلكاتك كلّفتك '+cash(assetUpkeep)+'.','bad');}
+ if(assetUpkeep){state.bank-=assetUpkeep;flash('-'+cash(assetUpkeep),true);log('🔧','صيانة الأصول','صيانة ممتلكاتك كلّفتك '+cash(assetUpkeep)+'.','bad');}
  if(state.age>=3){
    state.stats.health=clamp(state.stats.health+(chance(.5)?1:-1)+(state.age>55?-2:0));
    state.stats.happiness=clamp(state.stats.happiness+(chance(.5)?2:-1));
@@ -417,7 +417,7 @@ function ageUp(){
      state.education.prepaidYear=false;state.education.yearsLeft--;state.stats.smart=clamp(state.stats.smart+3);
      log('🎓','سنة جامعية جديدة','أنهيت سنة من دراسة '+state.education.major+'. المتبقي '+state.education.yearsLeft+' سنوات.','special');
    }else if(state.bank>=state.education.tuition){
-     state.bank-=state.education.tuition;state.education.yearsLeft--;state.stats.smart=clamp(state.stats.smart+3);
+     state.bank-=state.education.tuition;flash('-'+cash(state.education.tuition),true);state.education.yearsLeft--;state.stats.smart=clamp(state.stats.smart+3);
      log('🎓','سنة جامعية جديدة','دفعت رسوم سنة وأنهيت سنة من دراسة '+state.education.major+'. المتبقي '+state.education.yearsLeft+' سنوات.','special');
    }else{
      log('⚠️','تعثر دراسي','الرصيد مش كافي لدفع رسوم السنة. الدراسة اتوقفت مؤقتًا.','bad');state.education.yearsLeft=0;
@@ -501,7 +501,7 @@ function university(from18){
    closeModal();
    if(state.stats.smart<m.min){info('🧠','محتاج تستعد أكتر','التخصص ده محتاج ذكاء '+m.min+'% على الأقل. استخدم المكتبة وطوّر مهاراتك.');return;}
    if(state.bank<m.cost){info('💳','الرسوم مش متاحة','محتاج '+cash(m.cost)+' كبداية. ممكن تبدأ شغل أو تجمع فلوس.');return;}
-   state.bank-=m.cost;state.education.major=m.title;state.education.yearsLeft=m.years;state.education.tuition=m.cost;state.education.prepaidYear=true;state.education.school='جامعة - '+m.title;state.stats.smart=clamp(state.stats.smart+3);log('🏛️','بدأت الجامعة','اتقبلت في '+m.title+'. دفعت رسوم السنة الأولى '+cash(m.cost)+'.','special');achievement('الالتحاق بالجامعة: '+m.title);render();info('🎓','أهلًا بالجامعة','هتتقدم في الدراسة مع مرور السنين. حاول تحافظ على صحتك ومستواك.');
+   state.bank-=m.cost;flash('-'+cash(m.cost),true);state.education.major=m.title;state.education.yearsLeft=m.years;state.education.tuition=m.cost;state.education.prepaidYear=true;state.education.school='جامعة - '+m.title;state.stats.smart=clamp(state.stats.smart+3);log('🏛️','بدأت الجامعة','اتقبلت في '+m.title+'. دفعت رسوم السنة الأولى '+cash(m.cost)+'.','special');achievement('الالتحاق بالجامعة: '+m.title);render();info('🎓','أهلًا بالجامعة','هتتقدم في الدراسة مع مرور السنين. حاول تحافظ على صحتك ومستواك.');
  },cash(m.cost)+'/سنة'));
  opts.push(choice('📚','أستعد للدراسة','نشاط مجاني يزيد الذكاء.',()=>{closeModal();stat('smart',4);log('📚','استعداد للجامعة','قضيت وقتًا في التعلم قبل التقديم.');render();}));
  modal('🏛️','التخصصات الجامعية','اختار تخصصًا مناسبًا. رسوم السنة التالية تُخصم عند تقدم العمر، ولو الرصيد مش كافي الدراسة تتوقف.',opts);
@@ -514,7 +514,7 @@ function assets(){
 function buyAsset(a){
  closeModal();if(state.age<18){info('🔒','الشراء مش متاح دلوقتي','تقدر تشتري أصولك بعد سن 18.');return;}
  if(state.bank<a.value){info('💳','الرصيد مش كفاية','معاك '+cash(state.bank)+'، وسعر الأصل '+cash(a.value)+'.');return;}
- state.bank-=a.value;state.assets.push({id:Date.now()+Math.random(),title:a.title,emoji:a.emoji,kind:a.kind,value:a.value,upkeep:a.upkeep,bought:state.age});stat('happiness',6);log(a.emoji,'اشتريت '+a.title,'دفعت '+cash(a.value)+'. خلي بالك من مصاريف الصيانة كل سنة.','good');achievement('امتلاك '+a.title);render();info('🎉','مبروك الأصل الجديد','الأصل اتضاف لممتلكاتك، وتقدر تبيعه لاحقًا مقابل 80% من قيمته الأصلية.');
+ state.bank-=a.value;flash('-'+cash(a.value),true);state.assets.push({id:Date.now()+Math.random(),title:a.title,emoji:a.emoji,kind:a.kind,value:a.value,upkeep:a.upkeep,bought:state.age});stat('happiness',6);log(a.emoji,'اشتريت '+a.title,'دفعت '+cash(a.value)+'. خلي بالك من مصاريف الصيانة كل سنة.','good');achievement('امتلاك '+a.title);render();info('🎉','مبروك الأصل الجديد','الأصل اتضاف لممتلكاتك، وتقدر تبيعه لاحقًا مقابل 80% من قيمته الأصلية.');
 }
 function manageAssets(){
  const opts=state.assets.map((a,i)=>choice(a.emoji,a.title,'القيمة '+cash(a.value)+' · الصيانة '+cash(a.upkeep)+' سنويًا',()=>{closeModal();const sale=Math.round(a.value*.8);info('💰','بيع '+a.title,'هتبيع الأصل مقابل '+cash(sale)+'.',[choice('💵','أبيع الأصل','',()=>{closeModal();state.assets.splice(i,1);state.bank+=sale;log('💵','بيع أصل','بعت '+a.title+' مقابل '+cash(sale)+'.','good');render();}),choice('↩️','أحتفظ بيه','',closeModal)]);},cash(Math.round(a.value*.8))));
@@ -545,7 +545,7 @@ function relationshipAction(n,act){
  let d=0,text='',tone='good';
  if(act==='time'){d=chance(.78)?7:3;stat('happiness',2);text='قضيت وقت مع '+n.name+' واتكلمتوا عن حاجات كتير.';}
  if(act==='talk'){d=chance(.72)?5:2;text='اتكلمت مع '+n.name+' وسمعت أخباره.';}
- if(act==='gift'){state.bank-=500;d=chance(.82)?10:4;text='قدمت هدية بسيطة لـ'+n.name+' بتكلفة 500 جنيه.';}
+ if(act==='gift'){state.bank-=500;flash('-'+cash(500),true);d=chance(.82)?10:4;text='قدمت هدية بسيطة لـ'+n.name+' بتكلفة 500 جنيه.';}
  if(act==='argue'){d=chance(.7)?-12:-5;stat('happiness',-3);text='دخلت في خلاف مع '+n.name+'. كان ممكن تختار الكلام بهدوء.';tone='bad';}
  if(n.personality==='حنون'&&(act==='talk'||act==='time'))d+=2; if(n.personality==='عملي'&&act==='gift')d+=1; if(n.personality==='عنيد'&&act==='argue')d-=2;
  n.relationshipLevel=clamp(n.relationshipLevel+d);if(n.relationshipLevel>=85)achievement('بناء علاقة قوية مع '+n.name);
@@ -576,10 +576,10 @@ function activities(){
 }
 function activity(type){
  closeModal();
- if(type==='doctor'){if(state.bank<1200){info('💳','الرصيد مش كفاية','زيارة الطبيب تكلف 1,200 جنيه.');return;}state.bank-=1200;stat('health',16);log('🩺','زيارة الطبيب','دفعت 1,200 جنيه واهتميت بصحتك. لو التعب مستمر، المتابعة الطبية المنتظمة أفضل.','good');}
- if(type==='gym'){if(state.age<12){info('🏃','نشاط مناسب للعمر','اللعب والحركة المناسبة لسنك كفاية في المرحلة دي.');return;}if(state.bank<300){info('💳','الرصيد مش كفاية','اشتراك الجيم يكلف 300 جنيه.');return;}state.bank-=300;stat('health',7);stat('looks',4);stat('happiness',2);log('🏋️','تمرنت في الجيم','دفعت 300 جنيه وتمرنت. الاستمرار أهم من تمرينة واحدة.','good');}
+ if(type==='doctor'){if(state.bank<1200){info('💳','الرصيد مش كفاية','زيارة الطبيب تكلف 1,200 جنيه.');return;}state.bank-=1200;flash('-'+cash(1200),true);stat('health',16);log('🩺','زيارة الطبيب','دفعت 1,200 جنيه واهتميت بصحتك. لو التعب مستمر، المتابعة الطبية المنتظمة أفضل.','good');}
+ if(type==='gym'){if(state.age<12){info('🏃','نشاط مناسب للعمر','اللعب والحركة المناسبة لسنك كفاية في المرحلة دي.');return;}if(state.bank<300){info('💳','الرصيد مش كفاية','اشتراك الجيم يكلف 300 جنيه.');return;}state.bank-=300;flash('-'+cash(300),true);stat('health',7);stat('looks',4);stat('happiness',2);log('🏋️','تمرنت في الجيم','دفعت 300 جنيه وتمرنت. الاستمرار أهم من تمرينة واحدة.','good');}
  if(type==='library'){stat('smart',5);stat('happiness',1);log('📚','وقت في المكتبة','قرأت وتعلمت حاجة جديدة من غير ما تدفع فلوس.','good');}
- if(type==='vacation'){if(state.bank<1800){info('💳','الرصيد مش كفاية','الخروجة تكلف 1,800 جنيه. جرب نشاط مجاني.');return;}state.bank-=1800;stat('happiness',8);stat('health',2);log('🏖️','خروجة لتغيير الجو','دفعت 1,800 جنيه وغيّرت روتينك شوية.','good');}
+ if(type==='vacation'){if(state.bank<1800){info('💳','الرصيد مش كفاية','الخروجة تكلف 1,800 جنيه. جرب نشاط مجاني.');return;}state.bank-=1800;flash('-'+cash(1800),true);stat('happiness',8);stat('health',2);log('🏖️','خروجة لتغيير الجو','دفعت 1,800 جنيه وغيّرت روتينك شوية.','good');}
  if(type==='volunteer'){stat('happiness',5);log('🤝','مساعدة مجتمعية','خصصت وقتك لمساعدة ناس في محيطك.','good');achievement('شاركت في عمل مجتمعي');}
  if(type==='crime'){
   modal('⚖️','قرار فيه مخاطرة','التصرف غير القانوني ممكن يسبب ضرر للناس ويعرّضك لعواقب داخل اللعبة. تقدر تختار طريق قانوني بدلًا منه.',[
