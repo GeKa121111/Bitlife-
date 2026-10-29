@@ -396,6 +396,7 @@ function log(icon,title,text,tone=''){
 function achievement(s){if(!state.accomplishments.includes(s))state.accomplishments.push(s);}
 function title(){
  if(state.status==='متوفى')return 'رحل عن الدنيا';
+ if(state.prison)return 'سجين';
  if(state.retired)return 'متقاعد';
  if(state.age<2)return 'رضيع';
  if(state.age<6)return 'طفل صغير';
@@ -405,6 +406,7 @@ function title(){
  if(state.job)return state.job.title;
  if(state.specialCareer)return state.specialCareer.title;
  if(state.education.yearsLeft>0)return 'طالب جامعي';
+ if(state.education.droppedOut)return 'ترك الدراسة';
  if(state.age<23)return 'شاب';
  return 'بالغ';
 }
@@ -422,8 +424,8 @@ function renderHeader(){
  $('characterName').innerHTML=esc(state.name)+((state.fame||0)>=25?' <span class="fame-star" aria-label="مشهور">⭐</span>':'');
  $('ageTag').textContent='العمر '+fmt(state.age)+' سنة';$('titleTag').textContent=title();
  $('cityTag').textContent=state.place.city+'، '+state.place.country;$('bankBalance').textContent=cash(state.bank);
- $('bankBalance').classList.toggle('negative',state.bank<0);
- $('wealthNote').textContent=state.bank<0?'رصيدك بالسالب — راجع مصاريفك':state.bank>100000?'بتبني أمان مالي كويس':'كل سنة فرصة جديدة';
+ $('bankBalance').classList.toggle('negative',state.bank<0||(state.debt||0)>0);
+ $('wealthNote').textContent=state.bank<0?'رصيدك بالسالب — راجع مصاريفك':(state.debt||0)>0?'عليك ديون '+cash(state.debt):state.bank>100000?'بتبني أمان مالي كويس':'كل سنة فرصة جديدة';
  $('lifeMeta').textContent='السنة '+fmt(state.yearCount+1)+' من حكايتك';
  if($('fameTag'))$('fameTag').textContent='⭐ الشهرة '+clamp(state.fame||0)+'%';
  if($('familyTag'))$('familyTag').textContent='👪 الأبناء '+fmt((state.children||[]).length);
