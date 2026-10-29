@@ -1031,8 +1031,8 @@ function schoolHub(){
  const grades=clamp(education.studyScore===undefined?50:education.studyScore);
  const popularity=clamp(education.popularity===undefined?18:education.popularity);
  const options=[];
- const university=choice('🏛️',name,'Grades',()=>{closeModal();isUniversity?universityStatusMenu():university(false);},'',grades);
- university.menuDots=true;options.push(university);
+ const universityRow=choice('🏛️',name,'Grades',()=>{closeModal();isUniversity?universityStatusMenu():university(false);},'',grades);
+ universityRow.menuDots=true;options.push(universityRow);
  const diploma=choice('📜','Golden Diploma','Become an overnight expert in the field of your dreams!',()=>{closeModal();perkOwned('goldenDiploma')?goldenDiplomaMenu():showJobPackOffer('goldenDiploma');});
  diploma.menuDots=true;options.push(diploma);
  options.push(section('Activities'));
