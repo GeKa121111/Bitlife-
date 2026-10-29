@@ -23,7 +23,8 @@
       <strong>حياة</strong>
     </div>
     <div class="top-actions">
-      <button class="header-action" id="profileBtn" type="button" aria-label="الإنجازات والأشرطة">🏆</button>
+      <button class="header-action reward-action" id="profileBtn" type="button" aria-label="الإنجازات والأشرطة"><span>⭐</span><span class="reward-count" id="rewardCount">0</span></button>
+      <button class="member-btn" id="marketBtn" type="button" aria-label="عضوية ومزايا اللعبة"><span>عضوية مميزة</span><b>حياة</b></button>
       <button class="sr-only" id="heirloomBtn" type="button" aria-label="المكافأة اليومية" tabindex="-1" aria-hidden="true">🎁</button>
       <span id="saveStatus" class="sr-only" aria-live="polite">● محفوظة</span>
     </div>
@@ -60,6 +61,10 @@
     <div class="stats" id="statsPanel" aria-label="إحصائيات الشخصية"></div>
   </div>
 </div>
+<aside class="ad-slot" id="adSlot" aria-label="مساحة إعلانية تجريبية">
+  <span>مساحة إعلان تجريبية</span>
+  <button id="closeAdSlot" type="button" aria-label="إخفاء مساحة الإعلان">×</button>
+</aside>
 <div id="modalRoot"></div><div id="feedbackRoot"></div>
 <script src="app.js"></script>
 </body>
