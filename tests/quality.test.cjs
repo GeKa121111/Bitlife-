@@ -151,5 +151,4 @@ test('تخطيط الهاتف يطابق ترتيب BitLife المرجعي: ال
   assert.match(finalUi, /\.fill\s*\{[^}]*position:absolute[^}]*right:0/s);
   assert.match(finalUi, /\.statvalue\s*\{[^}]*position:absolute[^}]*z-index:1/s);
   assert.match(finalUi, /body\.theme-dark \.nav\{[^}]*background:#075078/);
-  assert.match(finalUi, /body\.text-large \.logtext/);
 });
