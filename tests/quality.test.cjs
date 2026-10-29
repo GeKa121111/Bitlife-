@@ -94,7 +94,7 @@ test('تطبيق الويب قابل للتثبيت ويحتفظ بملفات ا
   assert.ok(manifest.icons.some(item => item.src === './icon.svg'));
   assert.match(html, /rel="manifest" href="manifest\.webmanifest"/);
   assert.match(app, /navigator\.serviceWorker\.register\('\.\/sw\.js'\)/);
-  assert.match(worker, /const CACHE_NAME = 'hayah-shell-v5'/);
+  assert.match(worker, /const CACHE_NAME = 'hayah-shell-v6'/);
   assert.match(worker, /cache\.addAll\(APP_SHELL\)/);
   assert.match(worker, /caches\.match\(APP_SHELL\[0\]\)/);
   assert.match(icon, /حياة/);
@@ -170,4 +170,17 @@ test('الرجوع بالزمن يستعيد سجل الأحداث الصحيح 
   assert.match(ageUp, /if\(logSnapshot\)checkpoint\.logSnapshot=logSnapshot/);
   assert.match(rewind, /Array\.isArray\(parsedSnapshot\.logSnapshot\)\?parsedSnapshot\.logSnapshot/);
   assert.match(rewind, /Number\(parsedSnapshot\.logLength\)/, 'older snapshots without a log checkpoint remain supported');
+});
+
+
+test('مسيرة الرياضات الإلكترونية أصلية وتحافظ على التوافق مع الحفظ القديم', () => {
+  assert.match(app, /function ensureGamingTalent\(\)/);
+  assert.match(app, /function createEsportsCareer\(\)/);
+  assert.match(app, /function enterEsportsTournament\(\)/);
+  assert.match(app, /function negotiateEsportsSponsorship\(\)/);
+  assert.match(app, /function upgradeEsportsSetup\(\)/);
+  assert.match(app, /موهبة الألعاب الإلكترونية/);
+  assert.match(app, /data\.talents\.gaming=clamp\(Number\(data\.talents\.gaming\),0,100\)/);
+  assert.match(read('sw.js'), /hayah-shell-v6/);
+  assert.match(functionSource('rewindToSnapshot', 'customizeMenu'), /ensureGamingTalent\(\)/, 'rewinding a pre-feature snapshot should restore a valid talent default');
 });
