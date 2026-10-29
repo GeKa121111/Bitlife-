@@ -562,10 +562,72 @@ function relations(){
  const opts=[];
  state.family.forEach(n=>opts.push(choice(n.emoji,n.name+' · '+n.relation,n.personality+' · مستوى العلاقة '+n.relationshipLevel+'%',()=>{closeModal();personModal(n);},n.relationshipLevel+'%')));
  state.friends.forEach(n=>opts.push(choice(n.emoji,n.name+' · صديق','مستوى العلاقة '+n.relationshipLevel+'%',()=>{closeModal();personModal(n);},n.relationshipLevel+'%')));
- if(state.partner)opts.push(choice(state.partner.emoji,state.partner.name+' · شريك الحياة','مستوى العلاقة '+state.partner.relationshipLevel+'%',()=>{closeModal();personModal(state.partner);},state.partner.relationshipLevel+'%'));
+ if(state.partner)opts.push(choice(state.married?'💍':'💞',state.partner.name+(state.married?' · زوج/زوجة':' · شريك عاطفي'),'مستوى العلاقة '+state.partner.relationshipLevel+'%',()=>{closeModal();personModal(state.partner);},state.partner.relationshipLevel+'%'));
+ (state.children||[]).forEach((n,i)=>opts.push(choice(n.emoji||'🧒',n.name+' · '+(n.age<18?'ابن/ابنة':'ابن/ابنة بالغ'), 'العمر '+n.age+' سنة · العلاقة '+n.relationshipLevel+'%',()=>{closeModal();childMenu(i);},n.relationshipLevel+'%')));
  opts.push(choice('🤝','تكوين صداقة جديدة','تتعرف على شخص جديد وتبدأ علاقة.',()=>{closeModal();addFriend();}));
- if(state.age>=18&&!state.partner)opts.push(choice('💞','التعرف على شريك','فرصة تعارف واحترام متبادل.',()=>{closeModal();meetPartner();}));
- modal('💞','العلاقات','العلاقات محتاجة وقت واهتمام. اختار شخصًا عشان تتفاعل معاه.',opts);
+ if(state.age>=16&&!state.partner)opts.push(choice('💞','التعرف على شريك','تبدأ علاقة بالتعارف والاحترام المتبادل.',()=>{closeModal();meetPartner();}));
+ opts.push(choice('👪','الزواج والأسرة','الزواج، الأبناء، إدارة العلاقة وشجرة العائلة.',familyMenu));
+ opts.push(choice('📜','شجرة العائلة والإرث','استعرض أفراد الأسرة، الأبناء وخيارات الوصية.',willMenu));
+ modal('💞','العلاقات والأسرة','العلاقات تتغير بمرور السنين. اهتم بالناس القريبين منك، لأن اختياراتك بتأثر على قوة العلاقة.',opts);
+}
+function familyMenu(){
+ const opts=[];
+ if(state.partner&&state.age>=18&&!state.married)opts.push(choice('💍','الزواج','تقدروا تتجوزوا لو العلاقة مستقرة ومعاكم تكلفة البداية.',marry,'4,500 '+state.place.unit));
+ if(state.partner&&state.married)opts.push(choice('💔','الانفصال أو الطلاق','إنهاء الزواج وتغيير وضع الأسرة.',divorce));
+ if(state.partner&&state.age>=20&&(state.married||state.partner.relationshipLevel>=70))opts.push(choice('👶','إنجاب طفل','إضافة فرد جديد للعائلة مع تكاليف تربية سنوية.',haveChild,'8,000 '+state.place.unit));
+ if((state.children||[]).length)opts.push(choice('🧒','أبنائي','الاطمئنان على الأبناء والتفاعل معاهم.',()=>{closeModal();relations();}));
+ if(!state.partner)opts.push(choice('💞','التعرف على شريك','ابدأ بعلاقة قبل الزواج وتكوين الأسرة.',()=>{closeModal();meetPartner();}));
+ opts.push(choice('📜','ترتيب الوصية','حدد تصورك لتوزيع الإرث عند نهاية الحياة.',willMenu));
+ opts.push(choice('↩️','رجوع للعلاقات','',relations));
+ modal('👪','الزواج والأسرة','بناء الأسرة قرار طويل المدى؛ راعي استقرار العلاقة والصحة والميزانية.',opts);
+}
+function marry(){
+ closeModal();
+ if(state.age<18||!state.partner){info('🔒','الزواج غير متاح','تحتاج تكون بالغ وفيه شريك في حياتك.');return;}
+ if(state.married){info('💍','أنت متزوج بالفعل','تقدر تراجع علاقتك من قائمة الأسرة.');return;}
+ if((state.partner.relationshipLevel||0)<45){info('💞','قوّي العلاقة الأول','العلاقة محتاجة ثقة ووقت قبل خطوة كبيرة.');return;}
+ if(state.bank<4500){info('💳','المصاريف مش متاحة','مصاريف الزواج والبداية 4,500 '+state.place.unit+'.');return;}
+ state.bank-=4500;state.married=true;state.partner.relation=state.gender==='male'?'الزوجة':'الزوج';state.partner.relationshipLevel=clamp(state.partner.relationshipLevel+12);stat('happiness',8);achievement('الزواج وتكوين أسرة');
+ log('💍','بداية حياة زوجية','اتجوزت '+state.partner.name+'. مسؤولياتكم وأهدافكم المالية والعاطفية هتتطور مع الوقت.','special');
+ render();info('💍','ألف مبروك','بدأتوا حياة جديدة مع بعض. حافظ على التواصل والميزانية المشتركة.',[choice('تمام','متابعة','',()=>{closeModal();relations();})]);
+}
+function haveChild(){
+ closeModal();
+ if(state.age<20||!state.partner||(!state.married&&state.partner.relationshipLevel<70)){info('👶','مش الوقت المناسب','لازم تكون بالغ وعندك شريك بعلاقة مستقرة.');return;}
+ if(state.bank<8000){info('💳','جهّز الميزانية','بداية تكاليف الطفل حوالي 8,000 '+state.place.unit+'.');return;}
+ state.bank-=8000;
+ const gender=pick(['male','female']),child=makePerson(gender,gender==='male'?'ابن':'ابنة',gender==='male'?'👶🏻':'👶🏻',0,78);
+ child.gender=gender;child.job='طفل';child.generosity=50+Math.floor(Math.random()*30);child.bornAt=state.age;
+ state.children.push(child);state.partner.relationshipLevel=clamp(state.partner.relationshipLevel+4);stat('happiness',7);achievement('إنجاب طفل');
+ log('👶','فرد جديد في الأسرة','اتولد '+child.name+'، وبدأ فصل جديد من حياتكم. تربية الأطفال لها مصاريف ووقت ومسؤولية.','special');
+ render();info('🎉','مبروك المولود الجديد','اتضاف '+child.name+' لشجرة العائلة. احتياجاته وتعليمه وعلاقتك بيه هتتغير مع العمر.');
+}
+function divorce(){
+ closeModal();
+ if(!state.partner||!state.married){info('💔','لا يوجد زواج حالي','مفيش زواج قائم يحتاج إنهاء.');return;}
+ modal('💔','تأكيد الطلاق','قرار كبير هيغيّر الأسرة والحالة المالية والعاطفية.',[
+  choice('💔','أنهي الزواج','الانفصال بشكل نهائي.',()=>{closeModal();state.married=false;state.partner.relationshipLevel=clamp(state.partner.relationshipLevel-25);state.partner.relation='شريك سابق';state.stats.happiness=clamp(state.stats.happiness-10);log('💔','انتهى الزواج','انفصلت عن '+state.partner.name+'. حاولتوا تبدأوا صفحة مختلفة.','bad');render();}),
+  choice('↩️','أراجع قراري','أرجع لقائمة الأسرة.',()=>{closeModal();familyMenu();})
+ ]);
+}
+function childMenu(i){
+ const child=state.children[i];if(!child)return;
+ modal(child.emoji||'🧒',child.name+' · '+child.age+' سنة','فرد من عائلتك، ومستوى العلاقة الحالي '+child.relationshipLevel+'%.',[
+  choice('🧸','قضاء وقت معاه','تقوية الارتباط وتحسين المزاج.',()=>childAction(i,'time')),
+  choice('💬','الاستماع لمشكلته','دعم عاطفي وتواصل.',()=>childAction(i,'talk')),
+  choice('🎁','هدية','هدية مناسبة بميزانية 500 '+state.place.unit+'.',()=>childAction(i,'gift'),'500 '+state.place.unit),
+  choice('📚','دعم التعليم','مساهمة في التعلم لو عمره يسمح.',()=>childAction(i,'school'),'1,000 '+state.place.unit),
+  choice('↩️','رجوع','',()=>{closeModal();relations();})
+ ]);
+}
+function childAction(i,action){
+ closeModal();const c=state.children[i];if(!c)return;
+ let cost=action==='gift'?500:action==='school'?1000:0;if(state.bank<cost){info('💳','الرصيد مش كفاية','الاختيار محتاج '+cash(cost)+'.');return;}
+ state.bank-=cost;let delta=action==='time'?8:action==='talk'?6:action==='gift'?11:4;c.relationshipLevel=clamp(c.relationshipLevel+delta);
+ if(action==='school'){if(c.age<4){info('📚','لسه صغير','التعليم المنظم هيكون أنسب لما يكبر شوية.');return;}c.smart=clamp((c.smart||40)+5);}
+ if(action==='gift')stat('happiness',2);
+ const text=action==='time'?'قضيت وقت مع '+c.name+' وبنيتوا ذكرى جديدة.':action==='talk'?'سمعت '+c.name+' باهتمام وخلّيته يحكي اللي مضايقه.':action==='gift'?'قدمت هدية لـ'+c.name+'.':'ساهمت في تعليم '+c.name+' وتنمية مهاراته.';
+ log('👪','وقت مع الأسرة',text,'good');render();info('💞','العلاقة مع '+c.name,c.name+' بقى مستوى العلاقة بينكم '+c.relationshipLevel+'%.');
 }
 function personModal(n){
  const progress='<div class="muted" style="margin:-2px 0 15px">قوة العلاقة · '+n.relationshipLevel+'%</div><div class="progressline"><div style="width:'+clamp(n.relationshipLevel)+'%"></div></div><div class="pillrow"><span class="pill">💼 '+esc(n.job||'غير محدد')+'</span><span class="pill">🎁 الكرم '+clamp(n.generosity||50)+'%</span><span class="pill">🧠 '+esc(n.personality)+'</span></div>';
@@ -597,6 +659,218 @@ function meetPartner(){
   choice('💬','أبدأ التعارف','بهدوء واحترام ومن غير استعجال.',()=>{closeModal();state.partner=p;stat('happiness',5);log('💞','بداية علاقة','بدأت تتعرف على '+p.name+'. العلاقة هتتطور حسب اهتمامكم ببعض.','special');achievement('بدأت علاقة جديدة');render();}),
   choice('🌿','مش الوقت المناسب','قرارك محترم، الفرص مش سباق.',()=>{closeModal();log('🌿','قرار شخصي','قررت تركز على نفسك في المرحلة الحالية.');render();})
  ]);
+}
+function petsMenu(){
+ const opts=[];
+ opts.push(choice('🐕','تبنّي كلب','رفيق نشيط محتاج وقت ورعاية.',()=>adoptPet('كلب','🐕',1200)));
+ opts.push(choice('🐈','تبنّي قطة','حيوان أليف مستقل نسبيًا.',()=>adoptPet('قطة','🐈',900)));
+ opts.push(choice('🐦','تبنّي طائر','رعاية يومية ومصاريف أقل.',()=>adoptPet('طائر','🐦',500)));
+ (state.pets||[]).forEach((p,i)=>opts.push(choice(p.emoji,p.name+' · '+p.species,'العمر '+p.age+' سنة · السعادة '+p.happiness+'%',()=>carePet(i))));
+ modal('🐾','الحيوانات الأليفة','الحيوان الأليف محتاج أكل ورعاية ومصاريف سنوية.',opts);
+}
+function adoptPet(species,emoji,cost){
+ closeModal();if(state.age<6){info('🐾','لسه صغير','تقدر تتبنى حيوان لما تكون أكبر وقادر تشارك في رعايته.');return;}
+ if(state.bank<cost){info('💳','الرصيد مش كفاية','رسوم التبنّي والتجهيز '+cash(cost)+'.');return;}
+ const petNames=species==='كلب'?['زيكو','بندق','روكي','لولو']:species==='قطة'?['مشمش','لوزة','فلفل','مشمشة']:['توتة','زقزوق','ريشة'];
+ state.bank-=cost;state.pets.push({id:Date.now()+Math.random(),species,emoji,name:pick(petNames),age:0,health:80,happiness:75,cost});stat('happiness',6);achievement('تبنّي حيوان أليف');
+ log(emoji,'حيوان أليف جديد','تبنيت '+state.pets[state.pets.length-1].name+'. هتحتاج تهتم بصحته وسعادته كل سنة.','good');render();info('🐾','أهلًا بصديقك الجديد','اتضاف الحيوان لقائمة الرعاية، ومصاريفه السنوية هتتحسب مع تقدم العمر.');
+}
+function carePet(i){
+ const p=state.pets[i];if(!p)return;
+ modal(p.emoji,p.name+' · '+p.species,'الصحة '+p.health+'% · السعادة '+p.happiness+'%.',[
+  choice('🦴','اللعب معاه','وقت بسيط يرفع السعادة.',()=>petAction(i,'play')),
+  choice('🩺','كشف بيطري','فحص صحي مقابل 700 '+state.place.unit+'.',()=>petAction(i,'vet'),'700 '+state.place.unit),
+  choice('🍲','أكل ومكافأة','رعاية يومية مقابل 250 '+state.place.unit+'.',()=>petAction(i,'food'),'250 '+state.place.unit),
+  choice('↩️','رجوع','',petsMenu)
+ ]);
+}
+function petAction(i,act){
+ closeModal();const p=state.pets[i];if(!p)return;const cost=act==='vet'?700:act==='food'?250:0;
+ if(state.bank<cost){info('💳','الرصيد مش كفاية','الرعاية محتاجة '+cash(cost)+'.');return;}state.bank-=cost;
+ if(act==='play')p.happiness=clamp(p.happiness+12);
+ if(act==='vet'){p.health=clamp(p.health+18);p.happiness=clamp(p.happiness+2);}
+ if(act==='food'){p.health=clamp(p.health+5);p.happiness=clamp(p.happiness+6);}
+ log(p.emoji,'اهتمام بـ'+p.name,act==='play'?'قضيت وقتًا ممتعًا مع '+p.name+'.':act==='vet'?'اخدت '+p.name+' للكشف البيطري.':'قدمت رعاية وأكل لـ'+p.name+'.','good');render();info('🐾','رعاية ناجحة','صحة '+p.name+' بقت '+p.health+'% وسعادته '+p.happiness+'%.');
+}
+function hobbiesMenu(){
+ const catalog=[
+  {id:'reading',title:'القراءة',emoji:'📚',cost:0,desc:'تنمّي المعرفة والخيال.'},
+  {id:'music',title:'الموسيقى',emoji:'🎸',cost:800,desc:'هواية إبداعية وقد تتحول لمسار فني.'},
+  {id:'sports',title:'رياضة',emoji:'⚽',cost:500,desc:'تحسّن الصحة واللياقة.'},
+  {id:'cooking',title:'الطبخ',emoji:'🍳',cost:300,desc:'مهارة عملية تساعدك في الحياة.'},
+  {id:'writing',title:'الكتابة',emoji:'✍️',cost:0,desc:'تنمّي التعبير والذكاء.'},
+  {id:'photography',title:'التصوير',emoji:'📷',cost:1200,desc:'هواية فنية وتفتح فرصًا جانبية.'},
+  {id:'gaming',title:'الألعاب',emoji:'🎮',cost:600,desc:'ترفيه وتواصل مع الأصدقاء.'}
+ ];
+ const opts=catalog.map(h=>choice(h.emoji,h.title,h.desc+(h.cost?' التكلفة '+cash(h.cost)+'.':' مجانية.'),()=>startHobby(h),h.cost?cash(h.cost):'مجانًا'));
+ (state.hobbies||[]).forEach(h=>opts.unshift(choice('✅','ممارسة '+h.title,'رفع مهارتك وتحسين الحالة.',()=>practiceHobby(h.id))));
+ modal('🎨','الهوايات والمهارات','اختار هواياتك ودرّب مهاراتك على مدار السنين.',opts);
+}
+function startHobby(h){
+ closeModal();if(state.age<5){info('🎨','لسه صغير','الهوايات المنظمة هتكون أنسب من سن 5 سنوات.');return;}
+ if(state.hobbies.some(x=>x.id===h.id)){info('✅','الهواية موجودة','أنت بالفعل بتتعلم '+h.title+'. تقدر تمارسها من القائمة.');return;}
+ if(state.bank<h.cost){info('💳','الرصيد مش كفاية','الهواية محتاجة '+cash(h.cost)+'.');return;}
+ state.bank-=h.cost;state.hobbies.push({id:h.id,title:h.title,level:1});stat('happiness',4);if(h.id==='sports')stat('health',4);if(h.id==='reading'||h.id==='writing')stat('smart',2);
+ log(h.emoji,'هواية جديدة','بدأت تتعلم '+h.title+'. مع الممارسة ممكن تتحول لمهارة قوية.','good');achievement('بدأ هواية: '+h.title);render();info('🎨','بداية حلوة','هواية '+h.title+' اتضافت لسجلك. الاستمرار بيرفع مستواك.');
+}
+function practiceHobby(id){
+ closeModal();const h=state.hobbies.find(x=>x.id===id);if(!h)return;
+ h.level=clamp((h.level||1)+1,1,100);stat('happiness',3);
+ if(id==='sports')stat('health',4);if(id==='reading'||id==='writing')stat('smart',3);if(id==='music'||id==='photography')state.fame=clamp((state.fame||0)+(chance(.3)?2:0));
+ log('🎨','تدريب على '+h.title,'خصصت وقتًا لتطوير هواية '+h.title+'. مستواك الحالي '+h.level+'.','good');render();info('⭐','مستوى الهواية '+h.level,'الممارسة المستمرة تحسن مهاراتك وتفتح فرصًا جديدة.');
+}
+function travelMenu(){
+ const opts=places.filter(p=>p.country!==state.place.country).map(p=>choice(p.flag,'الهجرة إلى '+p.country,'الوجهة '+p.city+'. تكلفة الانتقال والتأسيس 15,000 '+state.place.unit+'.',()=>emigrate(p),'15,000 '+state.place.unit));
+ opts.unshift(choice('🏖️','رحلة داخل البلد','إجازة قصيرة لتحسين المزاج.',()=>{closeModal();if(state.bank<2500){info('💳','الرصيد مش كفاية','الرحلة محتاجة '+cash(2500)+'.');return;}state.bank-=2500;stat('happiness',10);stat('health',2);log('🏖️','رحلة قصيرة','أخدت إجازة داخل البلد ورجعت بطاقة أحسن.','good');render();},'2,500 '+state.place.unit));
+ modal('🌍','السفر والهجرة','الهجرة ممكن تفتح فرص جديدة، لكنها بتحتاج مصاريف وتغيير في الحياة.',opts);
+}
+function emigrate(destination){
+ closeModal();const cost=15000;
+ if(state.age<18){info('🌍','الهجرة غير متاحة','تحتاج تكون بالغ عشان تتخذ قرار الهجرة بنفسك.');return;}
+ if(state.bank<cost){info('💳','الرصيد مش كفاية','الانتقال محتاج '+cash(cost)+' قبل ما تبدأ من جديد.');return;}
+ const old=state.place;state.bank-=cost;state.travelHistory.push({from:old.country,to:destination.country,age:state.age});
+ state.place={...destination};state.stats.happiness=clamp(state.stats.happiness-2);
+ if(state.job){state.job.salary=Math.round(state.job.salary*1.15);state.performance=clamp(state.performance-8);}
+ log('🌍','بدأت حياة في بلد جديدة','انتقلت من '+old.country+' إلى '+destination.country+'. محتاج وقت تتأقلم مع المجتمع وسوق العمل.','special');achievement('الهجرة إلى '+destination.country);render();info('🌍','وصلت '+destination.city,'غيّرت بلد الإقامة. وظيفتك ومصاريفك وفرصك هتتأثر بالمكان الجديد.');
+}
+function investingMenu(){
+ const opts=[];
+ if(state.age<18){opts.push(choice('🔒','الاستثمار بعد 18 سنة','ابدأ بالتعلم والادخار لحد ما تقدر تستثمر قانونيًا.',()=>{closeModal();info('📊','لسه بدري','الاستثمار متاح بعد سن 18.');}));}
+ else{
+  opts.push(choice('🏦','استثمار محافظ','مبلغ 2,000 في محفظة أقل تقلبًا.',()=>investAmount('محافظ',2000),'2,000 '+state.place.unit));
+  opts.push(choice('📈','أسهم متوازنة','مبلغ 10,000 مع صعود وهبوط سنوي.',()=>investAmount('متوازن',10000),'10,000 '+state.place.unit));
+  opts.push(choice('🎢','استثمار عالي المخاطر','مبلغ 5,000 مع احتمال مكسب أو خسارة كبيرين.',()=>investAmount('مخاطرة عالية',5000),'5,000 '+state.place.unit));
+ }
+ (state.investments||[]).forEach((inv,i)=>opts.push(choice('📊',inv.kind+' · '+cash(inv.value),'القيمة الحالية بعد تغير السوق.',()=>sellInvestment(i),cash(inv.value))));
+ modal('📊','الاستثمارات','قيمة المحافظ بتتغير كل سنة. مفيش عائد مضمون، وممكن تخسر جزءًا من رأس المال.',opts);
+}
+function investAmount(kind,amount){
+ closeModal();if(state.age<18){info('🔒','الاستثمار بعد 18 سنة','');return;}if(state.bank<amount){info('💳','الرصيد مش كفاية','تحتاج '+cash(amount)+' عشان تبدأ.');return;}
+ state.bank-=amount;state.investments.push({id:Date.now()+Math.random(),kind,value:amount,started:state.age});log('📊','بدأت الاستثمار','خصصت '+cash(amount)+' لمحفظة '+kind+'. راجع قيمتها كل سنة ولا تستثمر أموال احتياجاتك الأساسية.','special');render();info('📊','تم إنشاء المحفظة','رأس المال المستثمر '+cash(amount)+'. النتائج هتتغير مع تقدم السنين.');
+}
+function sellInvestment(i){
+ closeModal();const inv=state.investments[i];if(!inv)return;
+ info('💵','بيع الاستثمار','القيمة الحالية '+cash(inv.value)+'. هل تريد تصفية المحفظة؟',[
+  choice('💵','أبيع المحفظة','تحويل القيمة الحالية إلى رصيد نقدي.',()=>{closeModal();state.bank+=inv.value;log('💵','تصفية استثمار','بعت محفظة '+inv.kind+' مقابل '+cash(inv.value)+'.','good');state.investments.splice(i,1);render();}),
+  choice('↩️','أحتفظ بها','',()=>{closeModal();investingMenu();})
+ ]);
+}
+function specialCareers(){
+ const catalog=[
+  {id:'actor',title:'التمثيل',emoji:'🎬',min:16,looks:50,income:14000,desc:'اختبارات أداء وأدوار قد ترفع شهرتك.'},
+  {id:'musician',title:'الموسيقى',emoji:'🎤',min:14,looks:25,income:11000,desc:'تدريب ونشر أعمال وفرص حفلات.'},
+  {id:'influencer',title:'صانع محتوى',emoji:'📱',min:13,looks:30,income:7000,desc:'نشر مستمر وتفاعل جماهيري.'},
+  {id:'athlete',title:'الرياضة الاحترافية',emoji:'🏅',min:15,looks:0,income:18000,desc:'لياقة وتدريب ومنافسة.'},
+  {id:'fighter',title:'مقاتل محترف',emoji:'🥊',min:18,looks:0,income:22000,desc:'تدريب بدني ومنافسات عالية المخاطر.'},
+  {id:'writer',title:'الكتابة والنشر',emoji:'✍️',min:16,looks:0,income:5000,desc:'بناء جمهور من الأعمال المنشورة.'},
+  {id:'director',title:'إخراج الأفلام',emoji:'🎥',min:25,looks:0,income:26000,desc:'قيادة إنتاج فني ومشاريع كبيرة.'}
+ ];
+ const opts=catalog.map(c=>choice(c.emoji,c.title,c.desc+' الحد الأدنى للعمر '+c.min+'.',()=>startSpecialCareer(c)));
+ if(state.specialCareer){opts.unshift(choice('⭐','التدريب والعمل في '+state.specialCareer.title,'الشهرة الحالية '+state.fame+'%.',()=>trainSpecialCareer()));opts.unshift(choice('🎟️','اختبار أداء / فرصة جديدة','اختبر حظك في فرصة جديدة.',()=>tryAudition()));}
+ modal('🌟','المهن الخاصة والشهرة','المسارات دي مختلفة عن الوظيفة التقليدية؛ النجاح فيها غير مضمون وقد يحتاج سنوات.',opts);
+}
+function startSpecialCareer(c){
+ closeModal();if(state.age<c.min){info('🔒','لسه بدري','المسار ده متاح من سن '+c.min+'.');return;}
+ if(c.looks&&state.stats.looks<c.looks&&c.id==='actor'){info('🎭','طوّر مهاراتك','فرص التمثيل تزيد مع المظهر والتدريب، جرّب الهوايات والتدريب.');return;}
+ state.specialCareer={id:c.id,title:c.title,income:c.income,level:1};state.fame=clamp((state.fame||0)+4);state.reputation=clamp((state.reputation||50)+2);achievement('بدأ مسار الشهرة: '+c.title);
+ log(c.emoji,'بداية مسار جديد','بدأت مسارك في '+c.title+'. النجاح محتاج تدريب واستمرارية، والدخل ممكن يتغير من سنة للتانية.','special');render();info('🌟','بدأت المسار','تقدر تتدرب أو تختبر فرص جديدة من قائمة المهن الخاصة.');
+}
+function trainSpecialCareer(){
+ closeModal();if(state.bank<800){info('💳','الرصيد مش كفاية','التدريب يكلف 800 '+state.place.unit+'.');return;}
+ state.bank-=800;state.specialCareer.level=clamp((state.specialCareer.level||1)+1,1,100);state.fame=clamp(state.fame+3);stat('happiness',2);
+ log('🌟','تدريب في '+state.specialCareer.title,'طورت مهاراتك في المسار الفني أو الاحترافي ورفعت مستوى الخبرة إلى '+state.specialCareer.level+'.','good');render();info('⭐','تدريب ناجح','مستوى المسار '+state.specialCareer.level+'، والشهرة '+state.fame+'%.');
+}
+function tryAudition(){
+ closeModal();if(!state.specialCareer){specialCareers();return;}
+ const chanceScore=.22+(state.stats.looks/500)+(state.stats.smart/700)+(state.fame/220)+((state.specialCareer.level||1)/200);
+ if(chance(Math.min(.85,chanceScore))){const fameGain=5+Math.floor(Math.random()*10),income=5000+Math.floor(Math.random()*25000);state.fame=clamp(state.fame+fameGain);state.bank+=income;state.specialCareer.level=clamp((state.specialCareer.level||1)+1);log('🌟','فرصة ناجحة','نجحت في فرصة جديدة وكسبت '+cash(income)+'. شهرتك زادت '+fameGain+' نقاط.','good');achievement('نجاح مهني في '+state.specialCareer.title);render();info('🎉','فرصة ناجحة','شهرتك الحالية '+state.fame+'%.');}
+ else{state.stats.happiness=clamp(state.stats.happiness-2);log('🎟️','رفض في اختبار أداء','الفرصة دي ما ظبطتش. راجع مهاراتك وحاول مرة تانية.','bad');render();info('🎟️','المرة الجاية','الرفض جزء طبيعي من المسار؛ التدريب يزيد فرصك.');}
+}
+function crimeMenu(){
+ const opts=[
+  choice('🛍️','سرقة بسيطة','مكسب محدود مع احتمال غرامة أو سجل جنائي.',()=>commitCrime('سرقة بسيطة',1500,.22,12)),
+  choice('🧾','احتيال مالي','مكسب محتمل أكبر وعواقب قانونية أشد.',()=>commitCrime('احتيال مالي',9000,.4,24)),
+  choice('🏚️','اقتحام ممتلكات','مجازفة عالية وعواقب خطيرة.',()=>commitCrime('اقتحام ممتلكات',12000,.52,36)),
+  choice('🚚','تهريب خيالي','مهمة عالية المخاطر بنتائج متغيرة.',()=>commitCrime('تهريب',16000,.58,42)),
+  choice('🏦','سطو كبير','احتمال اعتقال مرتفع جدًا.',()=>commitCrime('سطو كبير',35000,.72,60)),
+  choice('🚔','السجل القانوني','اعرض عدد القضايا ووضعك الحالي.',()=>{closeModal();info('⚖️','السجل القانوني','عدد مرات التورط: '+(state.crimeRecord||0)+' · '+(state.prison?'تقضي عقوبة متبقية '+state.prison.years+' سنة':'لا توجد عقوبة سجن حالية')+'.');})
+ ];
+ modal('⚖️','قرارات قانونية خطرة','دي اختيارات خيالية داخل اللعبة فقط. الاحتمالات تعتمد على الحظ والسجل السابق، والنتائج ممكن تشمل غرامة أو سجن.',opts);
+}
+function commitCrime(kind,reward,risk,severity){
+ closeModal();if(state.age<14){info('🔒','لسه صغير','الاختيار ده مش متاح في السن ده.');return;}
+ const p=Math.min(.9,risk+(state.crimeRecord||0)*.035-(state.stats.smart-50)*.001);
+ if(chance(1-p)){
+  const gain=Math.round(reward*(.65+Math.random()*.7));state.bank+=gain;state.crimeRecord=(state.crimeRecord||0)+1;state.reputation=clamp((state.reputation||50)-8);state.stats.happiness=clamp(state.stats.happiness+2);
+  log('⚠️','نجحت في '+kind,'حققت '+cash(gain)+' داخل اللعبة، لكن المخاطرة زادت سجلك القانوني وقللت سمعتك.','bad');render();info('⚠️','مكسب محفوف بالمخاطر','السجل القانوني ممكن يزيد احتمال العقوبة في قرارات لاحقة.');
+ }else{
+  const fine=Math.min(Math.max(0,state.bank),Math.round(reward*.25));state.bank-=fine;state.crimeRecord=(state.crimeRecord||0)+1;state.reputation=clamp((state.reputation||50)-18);state.stats.happiness=clamp(state.stats.happiness-12);
+  const years=Math.max(1,Math.round(severity/12)+(state.crimeRecord>2?1:0));state.prison={years,kind};state.job=null;state.specialCareer=null;
+  log('🚔','القبض عليك','اتقبض عليك بسبب '+kind+'. خسرت '+cash(fine)+' كغرامة، وصدر حكم بالسجن '+years+' سنة.','bad');render();info('🚔','حكم بالسجن','هتقضي '+years+' سنة داخل السجن. القرارات اللي هتاخدها هناك هتأثر على حالتك وفرصك بعد الخروج.');
+ }
+}
+function prisonEvent(){
+ const opts=[
+  choice('🧘','تجنب المشاكل','حاول تحافظ على صحتك وسلوكك.',()=>{closeModal();state.reputation=clamp(state.reputation+1);state.stats.happiness=clamp(state.stats.happiness+1);log('🧘','سنة هادئة في السجن','حاولت تبعد عن المشاكل وتحافظ على نفسك.','good');render();}),
+  choice('🧹','عمل داخل السجن','دخل بسيط يقلل أثر المصاريف.',()=>{closeModal();const pay=300+Math.floor(Math.random()*900);state.bank+=pay;state.stats.happiness=clamp(state.stats.happiness+2);log('🧹','عمل داخل السجن','اشتغلت مهمة داخلية وكسبت '+cash(pay)+'.','good');render();}),
+  choice('📨','طلب مراجعة الحكم','فرصة محدودة لتخفيف العقوبة.',()=>{closeModal();if(chance(.2)){state.prison=null;state.reputation=clamp(state.reputation+3);log('⚖️','مراجعة ناجحة','تمت مراجعة الحكم وخرجت قبل نهاية المدة.','good');render();info('🔓','خرجت من السجن','تقدر تعيد ترتيب حياتك وتبحث عن بداية جديدة.');}else{state.stats.happiness=clamp(state.stats.happiness-2);log('⚖️','لم يُقبل الطلب','الطلب لم يغيّر مدة العقوبة.','bad');render();info('⚖️','العقوبة مستمرة','هتحتاج تكمل المدة المتبقية.');}})
+ ];
+ modal('🚔','الحياة داخل السجن','العقوبة المتبقية: '+state.prison.years+' سنة. كل سنة بتعدي تأثر على صحتك وحالتك.',opts,false);
+}
+function willMenu(){
+ const opts=[
+  choice('👪','الأسرة بالتساوي','اختيار افتراضي لتوزيع الإرث على الأسرة.',()=>setWill('الأسرة بالتساوي')),
+  choice('🧒','الأبناء أولًا','تركيز الميراث على الأبناء إن وجدوا.',()=>setWill('الأبناء أولًا')),
+  choice('❤️','الشريك أولًا','تفضيل الزوج/الزوجة في ترتيب الإرث.',()=>setWill('الشريك أولًا')),
+  choice('🤝','التبرع بجزء','تخصيص جزء خيري عند نهاية الحياة.',()=>setWill('التبرع بجزء'))
+ ];
+ modal('📜','الوصية والإرث','الخيار ده يحدد نيتك في نهاية الرحلة. لو استكملت كأحد أبنائك، ممكن تنتقل بعض الممتلكات معه.',opts);
+}
+function setWill(value){closeModal();state.willDistribution=value;log('📜','تحديث الوصية','حددت توزيع الإرث: '+value+'.','special');render();info('📜','تم تحديث الوصية','توزيع الإرث الحالي: '+value+'.');}
+function dailyReward(){
+ closeModal();const today=new Date().toISOString().slice(0,10);
+ if(state.dailyRewardDate===today){info('🎁','المكافأة اتاخدت','ارجع بكرة عشان مكافأة يوم جديد.');return;}
+ state.dailyRewardDate=today;const amount=1000+Math.floor(Math.random()*4000);state.bank+=amount;
+ let item='';
+ if(chance(.28)){const trinkets=['ساعة قديمة','ميدالية عائلية','كاميرا كلاسيكية','كتاب نادر','خاتم موروث'];item=pick(trinkets);state.heirlooms.push({name:item,value:500+Math.floor(Math.random()*4500),age:state.age});}
+ log('🎁','هدية اليوم','استلمت '+cash(amount)+(item?' وعثرت على مقتنى نادر: '+item:'')+'.','good');achievement('استلام مكافأة يومية');render();info('🎁','مكافأة اليوم','حصلت على '+cash(amount)+(item?'، وأضيف '+item+' إلى مقتنياتك.':'.'));
+}
+function achievementsMenu(){
+ const opts=(state.accomplishments||[]).slice().reverse().map(a=>choice('🏆',a,'إنجاز مسجل في هذه الحياة.',()=>{closeModal();info('🏆',a,'ده واحد من إنجازات رحلتك الحالية.');}));
+ if(!opts.length)opts.push(choice('🌱','لسه مفيش إنجازات','تقدم بالعمر وجرّب أنظمة اللعبة المختلفة.',closeModal));
+ opts.unshift(choice('🎁','مكافأة اليوم','مكافأة مرة كل يوم مع احتمال مقتنى موروث.',dailyReward));
+ opts.unshift(choice('🏅','شريط حياتك','تصنيف ختامي يعتمد على إنجازاتك.',()=>{closeModal();info('🏅','شريط الحياة',lifeRibbon()+'. هيتسجل التصنيف النهائي عند نهاية الرحلة.');}));
+ modal('🏆','الإنجازات والمقتنيات','إنجازاتك بتتراكم خلال الحياة. المقتنيات النادرة ممكن تصبح إرثًا للأجيال القادمة.',opts);
+}
+function lifeRibbon(){
+ if(state.fame>=80)return 'نجم مشهور';if(state.crimeRecord>=4)return 'حياة إجرامية';if(state.bank>10000000)return 'ثروة استثنائية';if(state.children.length>=4)return 'أسرة كبيرة';if(state.job&&state.education.level>=4)return 'مسار مهني ناجح';if(state.age>=85)return 'عمر مديد';if(state.stats.happiness>=80)return 'حياة سعيدة';return 'حياة عادية';
+}
+function customizeMenu(){
+ const opts=[
+  choice('✍️','تغيير الاسم','اكتب اسم جديد للشخصية.',()=>{closeModal();if(typeof prompt!=='function'){info('✍️','تعديل الاسم','التعديل اليدوي غير متاح في بيئة الاختبار.');return;}const v=prompt('اكتب الاسم الجديد',state.name);if(v&&v.trim()){state.name=v.trim().slice(0,50);log('🪪','تغيير الاسم','أصبح اسمك '+state.name+'.','special');render();}}),
+  choice('🎲','اسم عشوائي','اختيار اسم جديد من الأسماء المتاحة.',()=>{closeModal();state.name=pick(names[state.gender])+' '+pick(names.family);log('🪪','اسم جديد','اسم شخصيتك أصبح '+state.name+'.');render();}),
+  choice('🚗','رخصة قيادة','اختبار بسيط للحصول على رخصة بعد سن 16.',()=>{closeModal();getLicense();}),
+  choice('🌍','السفر والهجرة','تغيير بلد الإقامة أو السفر.',travelMenu),
+  choice('📤','تصدير الحفظ','نزّل نسخة JSON من تقدمك.',exportSave)
+ ];
+ modal('🪪','ملف الشخصية','اسمك ومهاراتك وسجلك هي أجزاء من هويتك. غيّر الاسم أو جهّز مستقبلك.',opts);
+}
+function getLicense(){
+ closeModal();if(state.age<16){info('🚗','لسه بدري','رخصة القيادة متاحة من سن 16.');return;}
+ if(state.driversLicense){info('🚗','معاك رخصة بالفعل','تقدر تستخدمها كجزء من أحداث السفر والعمل.');return;}
+ if(chance(.75)){state.driversLicense=true;stat('happiness',2);achievement('الحصول على رخصة قيادة');log('🚗','نجحت في اختبار القيادة','اجتزت الاختبار وحصلت على رخصة قيادة.','good');render();info('🚗','مبروك الرخصة','بقى عندك رخصة قيادة، وده ممكن يفتح فرص في بعض الأحداث.');}
+ else{stat('happiness',-2);log('🚗','اختبار قيادة غير ناجح','ماعدّتش الاختبار المرة دي. جرّب تتدرب وتعيد المحاولة.','bad');render();info('🚗','حاول مرة أخرى','التدريب والتعلم بيرفعوا فرص النجاح.');}
+}
+function startAsChild(index){
+ if(!state.children[index])return;
+ const previous=state,child=previous.children[index],oldPartner=previous.partner;
+ const estate=Math.max(0,previous.bank)+previous.assets.reduce((sum,a)=>sum+(a.value||0),0)+previous.investments.reduce((sum,a)=>sum+(a.value||0),0);
+ const heir=newLife();heir.name=child.name;heir.gender=child.gender||'male';heir.age=child.age||18;heir.place={...previous.place};heir.bank=estate;
+ heir.family=[...previous.family];heir.partner=null;heir.married=false;heir.children=[];heir.legacy={name:previous.name,inheritance:estate,heirloom:(previous.heirlooms||[])[0]?.name||null};
+ heir.heirlooms=[...(previous.heirlooms||[])];heir.accomplishments=['بدأ حياة جديدة كامتداد لعائلة '+previous.name,'ورث '+cash(estate)];
+ heir.job=null;heir.assets=previous.assets.map(a=>({...a,id:Date.now()+Math.random()}));heir.investments=previous.investments.map(a=>({...a,id:Date.now()+Math.random()}));
+ if(oldPartner)heir.family.push({...oldPartner,relation:'الأم/الأب'});
+ state=heir;dead=false;log('🌳','استمرار السلالة','بدأت حياة جديدة باسم '+state.name+'، وارثًا قصة '+previous.name+' وإرث العائلة.','special');render();closeModal();info('🌳','جيل جديد','ورثت ثروة تقديرية '+cash(estate)+' وبعض مقتنيات العائلة. تبدأ الآن مرحلة مستقلة باختياراتك.');
 }
 function activities(){
  modal('✨','الأنشطة','اختار نشاط مناسب لسنك وميزانيتك. الأثر بيتراكم مع الوقت.',[
