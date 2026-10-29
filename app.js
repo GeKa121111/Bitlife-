@@ -2128,6 +2128,71 @@ function tryAudition(){
  if(chance(Math.min(.85,chanceScore))){const fameGain=5+Math.floor(Math.random()*10),income=Math.round((5000+Math.floor(Math.random()*25000))*specialCareerIncomeMultiplier());state.fame=clamp(state.fame+fameGain);state.bank+=income;state.specialCareer.level=clamp((state.specialCareer.level||1)+1);log('🌟','فرصة ناجحة','نجحت في فرصة جديدة وكسبت '+cash(income)+'. شهرتك زادت '+fameGain+' نقاط.','good');achievement('نجاح مهني في '+state.specialCareer.title);render();info('🎉','فرصة ناجحة','شهرتك الحالية '+state.fame+'%.');}
  else{state.stats.happiness=clamp(state.stats.happiness-2);log('🎟️','رفض في اختبار أداء','الفرصة دي ما ظبطتش. راجع مهاراتك وحاول مرة تانية.','bad');render();info('🎟️','المرة الجاية','الرفض جزء طبيعي من المسار؛ التدريب يزيد فرصك.');}
 }
+function mafiaMenu(){
+ if(!perkOwned('mafiaPack')){closeModal();info('🕶️','مسار المافيا مقفول','افتح باقة عالم الجريمة من متجر مزايا حياة.');return;}
+ const mafia=state.mafia||(state.mafia={joined:false,rank:0,rep:0,earnings:0}),rankNames=['عضو جديد','عضو موثوق','مسؤول منطقة','مستشار العائلة','الأب الروحي'],opts=[];
+ if(!mafia.joined)opts.push(choice('🤝','الانضمام إلى عائلة خيالية','يتطلب سن 18 سنة؛ المسار قد يسبب قضايا أو عقوبة داخل اللعبة.',joinMafia));
+ else{
+  opts.push(choice('📊','سجل المافيا',rankNames[mafia.rank]+' · السمعة '+mafia.rep+' · إجمالي دخل المسار '+cash(mafia.earnings)+'.',()=>{closeModal();info('🕶️','سجل المسار','الرتبة: '+rankNames[mafia.rank]+' · السمعة '+mafia.rep+' · إجمالي الدخل '+cash(mafia.earnings)+'.');}));
+  opts.push(choice('🎭','مهمة نفوذ خيالية','مهمة تعتمد على الحظ والذكاء وقد تسبب تبعات قانونية.',mafiaMission));
+  opts.push(choice('↩️','ترك العائلة','إنهاء المسار والاحتفاظ بسجل الخبرة.',()=>{closeModal();state.mafia.joined=false;log('🚪','تركت عائلة المافيا','قررت الابتعاد عن المسار الخيالي والبدء من جديد.','good');save();render();mafiaMenu();}));
+ }
+ opts.push(choice('↩️','رجوع للجريمة','',crimeMenu));
+ modal('🕶️','مسار المافيا',mafia.joined?'ارتقِ تدريجيًا من عضو إلى الأب الروحي، مع احتمالات المكسب أو السجن.':'انضم إلى عائلة خيالية وابدأ بناء السمعة داخل المسار.',opts);
+}
+function joinMafia(){
+ closeModal();if(state.age<18){info('🔒','لسه بدري','الانضمام متاح من سن 18 سنة.');return;}
+ state.mafia={joined:true,rank:0,rep:10,earnings:0};state.crimeRecord=(state.crimeRecord||0)+1;log('🕶️','انضممت لعائلة خيالية','بدأت مسار المافيا في عالم اللعبة. القرارات القادمة قد ترفع رتبتك أو تعرضك للعقوبات.','special');save();render();mafiaMenu();
+}
+function mafiaMission(){
+ closeModal();if(!state.mafia||!state.mafia.joined)return;
+ const mafia=state.mafia,success=chance(Math.min(.86,.38+state.stats.smart*.003+mafia.rank*.09+mafia.rep*.0015));
+ if(success){const gain=8000+Math.floor(Math.random()*18000)+mafia.rank*4000;state.bank+=gain;mafia.earnings+=gain;mafia.rep=clamp(mafia.rep+18,0,100);if(mafia.rep>=35&&mafia.rank<4){mafia.rank++;mafia.rep=0;}log('🕶️','نجحت مهمة نفوذ','حققت '+cash(gain)+' وزادت مكانتك في المسار الخيالي.','good');}
+ else{state.crimeRecord=(state.crimeRecord||0)+1;state.reputation=clamp(state.reputation-8);if(chance(.25)){state.prison={years:1+Math.floor(Math.random()*3),kind:'قضية من مسار المافيا'};state.job=null;state.specialCareer=null;log('🚔','مهمة فاشلة وعقوبة','فشلت المهمة وواجهت حكمًا بالسجن داخل اللعبة.','bad');}else log('⚠️','مهمة فاشلة','فشلت المهمة وتضررت سمعتك؛ تحتاج تعيد تقييم المسار.','bad');}
+ save();render();if(state.prison)prisonEvent();else mafiaMenu();
+}
+function blackMarketMenu(){
+ if(!perkOwned('blackMarketPack')){closeModal();info('🏛️','السوق السوداء مقفول','افتح باقة عالم الجريمة من متجر مزايا حياة.');return;}
+ modal('🏛️','السوق السوداء والمتحف','بائعون خياليون للقطع النادرة والتحف، مع إمكانية إنشاء متحف وعرض مقتنياتك.',[
+  choice('🏛️',state.museum&&state.museum.opened?'إدارة المتحف':'إنشاء متحف','تكلفة الإنشاء 150,000 '+state.place.unit+'.',museumMenu,state.museum&&state.museum.opened?'مفتوح':'150,000 '+state.place.unit),
+  choice('🖼️','شراء لوحة نادرة','قطعة فنية قابلة للعرض بقيمة متغيرة.',()=>buyBlackMarketItem('لوحة نادرة','🖼️',18000,42000),'18,000 '+state.place.unit),
+  choice('🏺','شراء قطعة أثرية','قطعة أثرية نادرة، مناسبة للعرض والتجميع.',()=>buyBlackMarketItem('قطعة أثرية','🏺',24000,50000),'24,000 '+state.place.unit),
+  choice('🪙','شراء عملة قديمة','مقتنى صغير قد تزيد قيمته مع الوقت.',()=>buyBlackMarketItem('عملة قديمة','🪙',9500,22000),'9,500 '+state.place.unit),
+  choice('📦','مقتنياتي النادرة','اعرض مقتنياتك وعدد المعروض في المتحف.',()=>{closeModal();info('📦','المقتنيات','إجمالي المقتنيات '+(state.heirlooms||[]).length+' · المعروض في المتحف '+((state.museum&&state.museum.displayed)||[]).length+'.');}),
+  choice('↩️','رجوع للجريمة','',crimeMenu)
+ ]);
+}
+function buyBlackMarketItem(name,emoji,cost,value){
+ closeModal();if(state.age<18){info('🔒','الشراء غير متاح','شراء القطع النادرة متاح من سن 18.');return;}
+ if(state.bank<cost){info('💳','الرصيد مش كفاية','شراء المقتنى يحتاج '+cash(cost)+'.');return;}
+ state.bank-=cost;state.heirlooms=Array.isArray(state.heirlooms)?state.heirlooms:[];
+ state.heirlooms.push({id:Date.now()+Math.random(),name,emoji,value,age:state.age,kind:'blackMarket'});
+ log('🏺','شراء مقتنى نادر','اشتريت '+name+' مقابل '+cash(cost)+'. القيمة التقديرية غير مضمونة.','good');save();render();blackMarketMenu();
+}
+function museumMenu(){
+ if(!perkOwned('blackMarketPack')){closeModal();info('🔒','المتحف مقفول','افتح توسعة السوق السوداء أولًا.');return;}
+ state.museum=state.museum||{opened:false,displayed:[]};
+ if(!state.museum.opened){
+  closeModal();const cost=150000;if(state.bank<cost){info('💳','الميزانية غير كافية','إنشاء المتحف يحتاج '+cash(cost)+'.');return;}
+  state.bank-=cost;state.museum={opened:true,displayed:[]};log('🏛️','افتتاح المتحف','أنشأت متحفًا لعرض المقتنيات النادرة.','special');achievement('افتتاح متحف');save();render();museumMenu();return;
+ }
+ const displayed=state.museum.displayed||[];
+ const artifacts=(state.heirlooms||[]).filter(item=>item&&item.name&&!displayed.includes(item.name));
+ const opts=artifacts.map(item=>choice(item.emoji||'🏺',item.name,'القيمة التقديرية '+cash(item.value||0)+'.',()=>{closeModal();state.museum.displayed.push(item.name);log('🖼️','عرض مقتنى في المتحف','وضعت '+item.name+' ضمن القطع المعروضة للجمهور.','good');save();render();museumMenu();}));
+ opts.push(choice('📊','تقرير المتحف','المعروض '+displayed.length+' قطعة. دخل سنوي محتمل من الزوار.',()=>{closeModal();info('🏛️','تقرير المتحف','عدد القطع المعروضة '+displayed.length+' · إجمالي المقتنيات '+(state.heirlooms||[]).length+'. دخل الزوار يُحتسب عند تقدم العمر.');}));
+ opts.push(choice('↩️','رجوع للسوق السوداء','',blackMarketMenu));
+ modal('🏛️','متحف المقتنيات','اعرض مقتنياتك النادرة واستقبل زوارًا داخل محاكاة الحياة.',opts);
+}
+function assassinBladeMission(){
+ if(!perkOwned('assassinsBlade')){closeModal();info('🗡️','نصل المهام مقفول','افتح باقة عالم الجريمة من متجر مزايا حياة.');return;}
+ closeModal();if(state.age<18){info('🔒','المهمة غير متاحة','المهمة الخيالية متاحة من سن 18.');return;}
+ if(state.assassinBladeLastUsedAge===state.age){info('🗡️','المهمة استُخدمت هذا العام','استخدمت نصل المهام الخاصة بالفعل في هذه السنة داخل اللعبة.');return;}
+ const success=chance(Math.min(.82,.42+state.stats.smart*.0028+state.reputation*.001));
+ state.assassinBladeLastUsedAge=state.age;
+ if(success){const gain=15000+Math.floor(Math.random()*30000);state.bank+=gain;state.fame=clamp((state.fame||0)+8);log('🗡️','نجحت مهمة سرية خيالية','اكتملت المهمة داخل عالم اللعبة وتجاوزت العواقب القانونية هذه المرة، وحصلت على '+cash(gain)+'.','special');}
+ else{state.crimeRecord=(state.crimeRecord||0)+1;state.reputation=clamp(state.reputation-16);state.stats.happiness=clamp(state.stats.happiness-8);if(chance(.32)){state.prison={years:2+Math.floor(Math.random()*4),kind:'قضية مهمة سرية'};state.job=null;state.specialCareer=null;log('🚔','فشل في المهمة السرية','انكشفت المهمة داخل اللعبة وواجهت عقوبة قانونية.','bad');}else log('🗡️','مهمة لم تكتمل','لم تنجح المهمة وارتفعت المخاطر القانونية.','bad');}
+ save();render();if(state.prison)prisonEvent();else info(success?'🗡️':'⚠️',success?'نجاح المهمة':'عواقب المهمة',success?'تجاوزت التحقيق في سيناريو اللعبة.':'سجلك القانوني تضرر من المحاولة.');
+}
 function crimeMenu(){
  const opts=[
   choice('🛍️','سرقة بسيطة','مكسب محدود مع احتمال غرامة أو سجل جنائي.',()=>commitCrime('سرقة بسيطة',1500,.22,12)),
@@ -2135,10 +2200,14 @@ function crimeMenu(){
   choice('🏚️','اقتحام ممتلكات','مجازفة عالية وعواقب خطيرة.',()=>commitCrime('اقتحام ممتلكات',12000,.52,36)),
   choice('🚚','تهريب خيالي','مهمة عالية المخاطر بنتائج متغيرة.',()=>commitCrime('تهريب',16000,.58,42)),
   choice('🏦','سطو كبير','احتمال اعتقال مرتفع جدًا.',()=>commitCrime('سطو كبير',35000,.72,60)),
+  ...(perkOwned('mafiaPack')?[choice('🕶️','مسار المافيا','انضم إلى عائلة خيالية وتقدم نحو رتبة الأب الروحي.',mafiaMenu)]:[]),
+  ...(perkOwned('blackMarketPack')?[choice('🏛️','السوق السوداء والمتحف','بائعون خياليون ومقتنيات نادرة ومتحف.',blackMarketMenu)]:[]),
+  ...(perkOwned('assassinsBlade')?[choice('🗡️','مهمة نصل خاصة','مهمة خيالية عالية المخاطر مرة كل سنة.',assassinBladeMission)]:[]),
   choice('🚔','السجل القانوني','اعرض عدد القضايا ووضعك الحالي.',()=>{closeModal();info('⚖️','السجل القانوني','عدد مرات التورط: '+(state.crimeRecord||0)+' · '+(state.prison?'تقضي عقوبة متبقية '+state.prison.years+' سنة':'لا توجد عقوبة سجن حالية')+'.');})
  ];
  modal('⚖️','قرارات قانونية خطرة','دي اختيارات خيالية داخل اللعبة فقط. الاحتمالات تعتمد على الحظ والسجل السابق، والنتائج ممكن تشمل غرامة أو سجن.',opts);
 }
+
 function commitCrime(kind,reward,risk,severity){
  closeModal();if(state.age<14){info('🔒','لسه صغير','الاختيار ده مش متاح في السن ده.');return;}
  const p=Math.min(.9,risk+(state.crimeRecord||0)*.035-(state.stats.smart-50)*.001);
@@ -2151,8 +2220,13 @@ function commitCrime(kind,reward,risk,severity){
   log('🚔','القبض عليك','اتقبض عليك بسبب '+kind+'. خسرت '+cash(fine)+' كغرامة، وصدر حكم بالسجن '+years+' سنة.','bad');render();info('🚔','حكم بالسجن','هتقضي '+years+' سنة داخل السجن. القرارات اللي هتاخدها هناك هتأثر على حالتك وفرصك بعد الخروج.');
  }
 }
+function useJailFreeCard(){
+ closeModal();if(!state.prison||!perkOwned('jailCard')){info('🃏','البطاقة غير متاحة','تحتاج تكون في السجن ومعاك بطاقة غير مستخدمة.');return;}
+ state.prison=null;state.crimeRecord=0;permanentPerks.owned.jailCard=false;persistPermanentPerks();log('🃏','استخدام بطاقة الخروج','خرجت من السجن فورًا ومُحي السجل القانوني داخل اللعبة.','good');achievement('الخروج من السجن بالبطاقة');save();render();info('🔓','حر طليق','تم إنهاء العقوبة ومحو السجل القانوني. البطاقة استُهلكت.');
+}
 function prisonEvent(){
  const opts=[
+  ...(state.prison&&perkOwned('jailCard')?[choice('🃏','استخدام بطاقة الخروج من السجن','خروج فوري ومحو كامل للسجل القانوني؛ البطاقة تُستهلك عند الاستخدام.',useJailFreeCard)]:[]),
   choice('🧘','تجنب المشاكل','حاول تحافظ على صحتك وسلوكك.',()=>{closeModal();state.reputation=clamp(state.reputation+1);state.stats.happiness=clamp(state.stats.happiness+1);log('🧘','سنة هادئة في السجن','حاولت تبعد عن المشاكل وتحافظ على نفسك.','good');render();}),
   choice('🧹','عمل داخل السجن','دخل بسيط يقلل أثر المصاريف.',()=>{closeModal();const pay=300+Math.floor(Math.random()*900);state.bank+=pay;state.stats.happiness=clamp(state.stats.happiness+2);log('🧹','عمل داخل السجن','اشتغلت مهمة داخلية وكسبت '+cash(pay)+'.','good');render();}),
   choice('📨','طلب مراجعة الحكم','فرصة محدودة لتخفيف العقوبة.',()=>{closeModal();if(chance(.2)){state.prison=null;state.reputation=clamp(state.reputation+3);log('⚖️','مراجعة ناجحة','تمت مراجعة الحكم وخرجت قبل نهاية المدة.','good');render();info('🔓','خرجت من السجن','تقدر تعيد ترتيب حياتك وتبحث عن بداية جديدة.');}else{state.stats.happiness=clamp(state.stats.happiness-2);log('⚖️','لم يُقبل الطلب','الطلب لم يغيّر مدة العقوبة.','bad');render();info('⚖️','العقوبة مستمرة','هتحتاج تكمل المدة المتبقية.');}}),
@@ -2161,6 +2235,7 @@ function prisonEvent(){
  ];
  modal('🚔','الحياة داخل السجن','العقوبة المتبقية: '+state.prison.years+' سنة. كل سنة بتعدي تأثر على صحتك وحالتك.',opts,false);
 }
+
 function willMenu(){
  const opts=[
    choice('🌳','عرض شجرة العائلة','استعراض أفراد الأسرة والأجيال المسجلة.',familyTreeMenu),
