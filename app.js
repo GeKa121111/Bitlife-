@@ -815,7 +815,10 @@ function advanceAge(){
  }
  const childCosts=(state.children||[]).reduce((sum,c)=>{const base=(c.age||0)<6?4500:((c.age||0)<18?7500:0);if(!base)return sum;const plan=(state.coParentingPlans||[]).find(p=>p&&p.active!==false&&(p.childIds||[]).includes(c.id||c.name));if(!plan)return sum+base;if(plan.mode==='shared')return sum+Math.round(base*.6);if(plan.mode==='other')return sum+Math.round(base*.2);return sum+base;},0);if(childCosts>0){state.bank-=childCosts;log('🧸','مصاريف الأبناء','احتياجات وتعليم ورعاية الأبناء كلّفتك '+cash(childCosts)+' هذا العام بعد احتساب ترتيبات الرعاية.','bad');}applyCoParentingAnnualEffects();
  if(assetUpkeep){state.bank-=assetUpkeep;flash('-'+cash(assetUpkeep),true);log('🔧','صيانة الأصول','صيانة ممتلكاتك كلّفتك '+cash(assetUpkeep)+'.','bad');}
- const rentIncome=(state.assets||[]).filter(a=>a.kind==='property'&&a.rented).reduce((total,a)=>total+Math.round(a.tenant&&perkOwned('landlordPack')?(a.tenant.rent||a.value*.045):(a.value||0)*.045),0);if(rentIncome>0){state.bank+=rentIncome;log('🏠','دخل إيجار سنوي','دخل لك '+cash(rentIncome)+' من تأجير العقارات.','good');}
+ const rentIncome=(state.assets||[]).filter(a=>a.kind==='property'&&a.rented).reduce((total,a)=>total+Math.round(a.tenant&&perkOwned('landlordPack')?(a.tenant.rent||a.value*.045):(a.value||0)*.045),0);
+ (state.assets||[]).forEach(a=>{if(a.kind==='property'&&a.tenant&&perkOwned('landlordPack')){a.tenant.yearsLeft=Math.max(0,(a.tenant.yearsLeft||0)-1);if(a.tenant.yearsLeft===0&&chance(.25)){a.rented=false;a.tenant=null;log('🏠','انتهاء عقد الإيجار','غادر المستأجر أحد عقاراتك بعد انتهاء العقد. افتح إدارة المستأجرين للبحث عن مستأجر جديد.','bad');}else if(a.tenant&&a.tenant.yearsLeft===0)a.tenant.yearsLeft=1;}});
+ if(state.zoo&&state.zoo.opened){const operatingCost=18000,visitors=9000+Math.floor(Math.random()*24000);state.bank+=visitors-operatingCost;state.zoo.animals.forEach(a=>a.age=(a.age||0)+1);if(chance(.12)&&state.zoo.animals.length>0&&state.zoo.animals.length<50){const parent=pick(state.zoo.animals);state.zoo.animals.push({id:Date.now()+Math.random(),name:'صغير '+parent.species,species:parent.species,emoji:parent.emoji,age:0,legendary:false});log('🦁','مولود جديد في الحديقة','استقبلت حديقة الحيوان صغيرًا جديدًا من نوع '+parent.species+'.','good');}log('🦁','تشغيل حديقة الحيوان','دخل الزوار '+cash(visitors)+'، وتكاليف الرعاية '+cash(operatingCost)+'.','special');}
+ if(state.museum&&state.museum.opened){const visitorIncome=(state.museum.displayed||[]).length*2400;state.bank+=visitorIncome;if(visitorIncome)log('🏛️','دخل المتحف السنوي','جاء '+cash(visitorIncome)+' من الزوار بفضل المقتنيات المعروضة.','good');}if(rentIncome>0){state.bank+=rentIncome;log('🏠','دخل إيجار سنوي','دخل لك '+cash(rentIncome)+' من تأجير العقارات.','good');}
  if(state.debt>0){const interest=Math.max(100,Math.round(state.debt*.08));state.debt+=interest;log('🏦','فوائد الديون','زادت ديونك بمقدار '+cash(interest)+' بسبب الفوائد. إجمالي الدين '+cash(state.debt)+'.','bad');}
  if((state.investments||[]).length){let totalGain=0;state.investments.forEach(inv=>{const before=inv.value;const move=inv.kind==='عملات رقمية'?(Math.random()*.9-.35):inv.kind==='أسهم'?(Math.random()*.3-.09):inv.kind==='سندات'?(Math.random()*.08-.02):inv.kind==='مخاطرة عالية'?(Math.random()*.46-.18):(Math.random()*.24-.04);inv.value=Math.max(0,Math.round(inv.value*(1+move)));totalGain+=inv.value-before;});if(totalGain)log('📈','تقرير الاستثمارات',(totalGain>=0?'استثماراتك زادت بقيمة ':'استثماراتك خسرت بقيمة ')+cash(Math.abs(totalGain))+'. السوق بيتحرك صعودًا وهبوطًا. ',totalGain>=0?'good':'bad');}
  if(state.business){const level=Math.max(1,state.business.level||1);const revenue=Math.round(state.business.value*(.03+Math.random()*.08)*(.8+level*.15));const costs=Math.round(state.business.value*(.02+Math.random()*.05)*(1+Math.max(0,level-1)*.08));const profit=revenue-costs;state.bank+=profit;state.business.value=Math.max(1000,Math.round(state.business.value*(profit>=0?1.04:.97)));log('🏪','التقرير السنوي للمشروع',(profit>=0?'صافي الأرباح ':'صافي الخسارة ')+cash(Math.abs(profit))+' · مستوى الإدارة '+level+'.','special');}
@@ -1510,6 +1513,53 @@ function meetPartner(){
   choice('💬','أبدأ التعارف','بهدوء واحترام ومن غير استعجال.',()=>{closeModal();state.partner=p;stat('happiness',5);log('💞','بداية علاقة','بدأت تتعرف على '+p.name+'. العلاقة هتتطور حسب اهتمامكم ببعض.','special');achievement('بدأت علاقة جديدة');render();}),
   choice('🌿','مش الوقت المناسب','قرارك محترم، الفرص مش سباق.',()=>{closeModal();log('🌿','قرار شخصي','قررت تركز على نفسك في المرحلة الحالية.');render();})
  ]);
+}
+function zooMenu(){
+ if(!perkOwned('zooExpansionPack')){closeModal();info('🦁','حديقة الحيوان مقفولة','افتح توسعة حديقة الحيوان من متجر مزايا حياة أو باقة الحيوان الحفّال.');return;}
+ const zoo=state.zoo||(state.zoo={opened:false,animals:[],rareDiscoveries:0}),opts=[];
+ if(!zoo.opened)opts.push(choice('🏗️','إنشاء حديقة الحيوان','شراء وتجهيز الحديقة بتكلفة أولية 250,000 '+state.place.unit+'.',openZoo,'250,000 '+state.place.unit));
+ else{
+  opts.push(choice('🐘','الحيوانات والمرافق','اشترِ أنواعًا جديدة للحديقة.',zooAnimalShop));
+  opts.push(choice('🧬','مساعدة الحيوانات على التكاثر','اختر حيوانًا للتكاثر إذا كانت الظروف مناسبة.',zooBreedingMenu));
+  opts.push(choice('✨','رحلة اكتشاف نادر','رحلة ميدانية بتكلفة 12,000 قد تكشف نوعًا أسطوريًا.',discoverZooAnimal,'12,000 '+state.place.unit));
+  opts.push(choice('📊','تقرير الحديقة','عدد الحيوانات '+zoo.animals.length+' · اكتشافات نادرة '+(zoo.rareDiscoveries||0)+'.',()=>{closeModal();info('🦁','تقرير الحديقة','عدد الحيوانات '+zoo.animals.length+' · الاكتشافات الأسطورية '+(zoo.rareDiscoveries||0)+' · مصاريف التشغيل السنوية 18,000 '+state.place.unit+'.');}));
+  zoo.animals.forEach(animal=>opts.push(choice(animal.emoji||'🐾',animal.name+' · '+animal.species,'العمر '+animal.age+' سنة'+(animal.legendary?' · نوع أسطوري':''),()=>{closeModal();info(animal.emoji||'🐾',animal.name,animal.species+' · العمر '+animal.age+' سنة'+(animal.legendary?' · اكتشاف أسطوري':'')+'.');})));
+ }
+ opts.push(choice('↩️','رجوع للأنشطة','',activities));
+ modal('🦁','إدارة حديقة الحيوان',zoo.opened?'حديقتك تحتاج رعاية ومرافق، لكن الزوار ممكن يحققوا دخلًا سنويًا.':'ابدأ مشروع حديقة حيوان ثم اشترِ الحيوانات واكتشف الأنواع النادرة.',opts);
+}
+function openZoo(){
+ closeModal();if(!perkOwned('zooExpansionPack'))return;const cost=250000;
+ if(state.bank<cost){info('💳','الميزانية غير كافية','تجهيز الحديقة يحتاج '+cash(cost)+'.');return;}
+ state.bank-=cost;state.zoo={opened:true,animals:[],rareDiscoveries:0};log('🦁','افتتاح حديقة الحيوان','استثمرت '+cash(cost)+' في إنشاء الحديقة وتجهيز المرافق.','special');achievement('افتتاح حديقة حيوان');save();render();zooMenu();
+}
+function zooAnimalShop(){
+ closeModal();const animals=[['فيل','🐘',90000],['زرافة','🦒',65000],['نمر','🐅',70000],['ببغاء','🦜',18000],['سلحفاة','🐢',12000]];
+ modal('🐾','اختيار حيوان','اختر نوعًا جديدًا لحديقتك، مع مراعاة الرعاية والتكلفة.',animals.map(([name,emoji,cost])=>choice(emoji,name,'سعر الشراء '+cash(cost)+'.',()=>buyZooAnimal(name,emoji,cost),cash(cost))));
+}
+function buyZooAnimal(species,emoji,cost){
+ closeModal();if(!state.zoo||!state.zoo.opened)return;if(state.bank<cost){info('💳','الرصيد مش كفاية','شراء الحيوان يحتاج '+cash(cost)+'.');return;}
+ state.bank-=cost;const name=species+' '+(state.zoo.animals.length+1);state.zoo.animals.push({id:Date.now()+Math.random(),name,species,emoji,age:0,legendary:false});
+ log('🐾','حيوان جديد في الحديقة','أضفت '+name+' إلى حديقة الحيوان.','good');save();render();zooMenu();
+}
+function zooBreedingMenu(){
+ closeModal();const animals=state.zoo&&Array.isArray(state.zoo.animals)?state.zoo.animals:[];
+ if(!animals.length){info('🧬','لا توجد حيوانات','اشترِ حيوانًا قبل محاولة التكاثر.');return;}
+ modal('🧬','التكاثر والرعاية','اختيار حيوان يطلق محاولة تكاثر مناسبة للنوع. التكاثر ليس مضمونًا.',animals.map((animal,i)=>choice(animal.emoji||'🐾',animal.name,animal.species+' · العمر '+animal.age+' سنة.',()=>breedZooAnimal(i))));
+}
+function breedZooAnimal(index){
+ closeModal();if(!state.zoo||!state.zoo.animals[index])return;const animal=state.zoo.animals[index],cost=5000;
+ if(state.bank<cost){info('💳','الرصيد مش كفاية','الرعاية والتجهيز للتكاثر تحتاج '+cash(cost)+'.');return;}state.bank-=cost;
+ if(chance(.62)){state.zoo.animals.push({id:Date.now()+Math.random(),name:'صغير '+animal.species,species:animal.species,emoji:animal.emoji,age:0,legendary:false});log('🧬','مولود جديد في الحديقة','نجحت رعاية '+animal.species+' وولد حيوان صغير جديد.','good');}
+ else log('🧬','محاولة تكاثر غير ناجحة','لم تنجح المحاولة هذه السنة؛ راجع ظروف الرعاية وحاول لاحقًا.','bad');
+ save();render();zooMenu();
+}
+function discoverZooAnimal(){
+ closeModal();if(!state.zoo||!state.zoo.opened)return;const cost=12000;
+ if(state.bank<cost){info('💳','الرصيد مش كفاية','رحلة الاكتشاف تكلف '+cash(cost)+'.');return;}state.bank-=cost;
+ if(chance(.32)){const species=pick(['نمر أبيض','سلحفاة عملاقة','طائر نادر','فهد أسود']),emoji=species.includes('نمر')?'🐅':species.includes('سلحفاة')?'🐢':species.includes('طائر')?'🦜':'🐆';state.zoo.animals.push({id:Date.now()+Math.random(),name:species+' أسطوري',species,emoji,age:0,legendary:true});state.zoo.rareDiscoveries=(state.zoo.rareDiscoveries||0)+1;log('✨','اكتشاف أسطوري','اكتشفت '+species+' نادرًا وأضفته للحديقة.','special');achievement('اكتشاف حيوان أسطوري');}
+ else log('🔎','رحلة بحث','لم تعثر على نوع نادر هذه المرة، لكن فريق الحديقة جمع معلومات مفيدة.','');
+ save();render();zooMenu();
 }
 function petsMenu(){
  const opts=[];
@@ -2607,6 +2657,7 @@ function activities(){
   choice('🎨','الهوايات والمهارات','ابدأ هواية أو زوّد مستواك.',()=>hobbiesMenu()),
   choice('🐾','الحيوانات الأليفة','تبنّي حيوان أو الاهتمام بالحيوانات الحالية.',()=>petsMenu()),
   choice('🌟','المهن الخاصة والشهرة','تمثيل وموسيقى ومحتوى ورياضة ومسارات مختلفة.',()=>specialCareers()),
+  ...(perkOwned('zooExpansionPack')?[choice('🦁','إدارة حديقة الحيوان','شراء حيوانات، رعاية وتكاثر واكتشافات نادرة.',zooMenu)]:[]),
   choice('⚖️','الجريمة والسجل القانوني','قرارات خيالية عالية المخاطر لها عواقب.',()=>crimeMenu()),
   choice('🌍','السفر والهجرة','إجازة أو انتقال لبلد جديدة.',()=>travelMenu()),
   choice('📊','البنك والاستثمارات','قروض، سداد ديون ومحافظ استثمار.',()=>financeMenu()),
@@ -2629,6 +2680,7 @@ function activities(){
   choice('🌱','حياة جديدة','ابدأ قصة جديدة مع اختيار عشوائي أو تخصيص بلد الميلاد والنوع.',()=>{closeModal();info('🌱','حياة جديدة','هتبدأ حياة جديدة وتستبدل الحفظ الحالي.',[choice('↻','تابع','',()=>{closeModal();if(confirm('تبدأ حياة جديدة وتستبدل الحفظ الحالي؟'))newLifeSetup();}),choice('رجوع','أحتفظ بالحياة الحالية','',closeModal)]);})
  ]);
 }
+
 function healthMenu(){
  const healthDesc='حالتك الصحية بتتأثر بالعمر والعادات والعلاقات والمخاطر. دي أنشطة داخل اللعبة وليست نصيحة طبية. '+(state.sti?'فيه حالة صحية محاكية مسجلة؛ زيارة الطبيب داخل اللعبة تقدر تعالجها.':'لا توجد حالة صحية محاكية مسجلة حاليًا.');
  modal('❤️','الصحة والعافية',healthDesc,[
