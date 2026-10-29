@@ -24,6 +24,12 @@ assert.match(app, /state\.timeMachineSnapshots\.push\(JSON\.stringify\(snapshot\
 assert.match(app, /timeMachineDeathBtn/, 'the end-of-life panel should offer a rewind path when available');
 assert.match(app, /function editCharacterTraits\(\)/, 'player traits editor should exist');
 assert.match(app, /function editNpcMenu\(\)/, 'NPC trait editor should exist');
+assert.match(app, /function specialCareerHistoryMenu\(\)/, 'specialist career history should be accessible');
+assert.match(app, /c\.record\.attempts=\(c\.record\.attempts\|\|0\)\+1/, 'each career activity should be recorded');
+assert.match(app, /c\.record\.totalEarnings=\(c\.record\.totalEarnings\|\|0\)\+\(success\?gain:0\)/, 'career earnings should accumulate');
+assert.match(app, /specialCareerHistory\.unshift\(Object\.assign\(\{\},state\.specialCareer/, 'switching career paths should retain the previous career');
+assert.match(app, /if\(state\.specialCareer\)state\.specialCareer\.level=newLevel/, 'an arrest outcome must not dereference a cleared active career');
+
 assert.match(app, /choice\('🧬','محرر سمات الشخصية'/, 'character editor should be reachable from the profile menu');
 
 assert.ok((app.match(/\{id:'[a-z-]+',title:'/g) || []).length >= 20, 'daily challenge catalog should have breadth');
