@@ -906,7 +906,10 @@ function specialCareers(){
   {id:'athlete',title:'الرياضة الاحترافية',emoji:'🏅',min:15,looks:0,income:18000,desc:'لياقة وتدريب ومنافسة.'},
   {id:'fighter',title:'مقاتل محترف',emoji:'🥊',min:18,looks:0,income:22000,desc:'تدريب بدني ومنافسات عالية المخاطر.'},
   {id:'writer',title:'الكتابة والنشر',emoji:'✍️',min:16,looks:0,income:5000,desc:'بناء جمهور من الأعمال المنشورة.'},
-  {id:'director',title:'إخراج الأفلام',emoji:'🎥',min:25,looks:0,income:26000,desc:'قيادة إنتاج فني ومشاريع كبيرة.'}
+  {id:'director',title:'إخراج الأفلام',emoji:'🎥',min:25,looks:0,income:26000,desc:'قيادة إنتاج فني ومشاريع كبيرة.'},
+  {id:'military',title:'الخدمة العسكرية',emoji:'🪖',min:18,looks:0,income:16000,desc:'تدريب وانضباط ومهمات ميدانية ومخاطر.'},
+  {id:'politician',title:'الحياة السياسية',emoji:'🏛️',min:25,looks:0,income:28000,desc:'خدمة عامة وحملات انتخابية وسمعة وثقة.'},
+  {id:'crimeboss',title:'العالم السفلي',emoji:'🕶️',min:21,looks:0,income:18000,desc:'مسار خيالي محفوف بالمخاطر القانونية وقد ينتهي بالسجن.'}
  ];
  const opts=catalog.map(c=>choice(c.emoji,c.title,c.desc+' الحد الأدنى للعمر '+c.min+'.',()=>startSpecialCareer(c)));
  if(state.specialCareer){opts.unshift(choice('🎬','تنفيذ نشاط تخصصي','إنتاج عمل أو إصدار أو منافسة مرتبطة بمسارك.',()=>specialCareerActivity()));opts.unshift(choice('⭐','التدريب والعمل في '+state.specialCareer.title,'الشهرة الحالية '+state.fame+'%.',()=>trainSpecialCareer()));opts.unshift(choice('🎟️','اختبار أداء / فرصة جديدة','اختبر حظك في فرصة جديدة.',()=>tryAudition()));}
@@ -941,6 +944,12 @@ function specialCareerActivity(){
   title='نشر حملة محتوى';gain=success?Math.round(1000+Math.random()*11000+state.fame*100):0;fame=success?3+Math.floor(Math.random()*12):0;text=success?'المحتوى وصل لمتابعين أكتر وجالك عرض تعاون.':'المحتوى ما انتشرش بالشكل المتوقع.';
  }else if(c.id==='athlete'||c.id==='fighter'){
   title=c.id==='fighter'?'منافسة قتالية':'منافسة رياضية';gain=success?Math.round(4000+Math.random()*26000+level*500):0;fame=success?5+Math.floor(Math.random()*10):0;state.stats.health=clamp(state.stats.health+(success?-2:-8));text=success?'قدمت أداءً قويًا وفزت بمكافأة المنافسة.':'خسرت المنافسة واحتجت وقتًا للتعافي والتدريب.';
+ }else if(c.id==='military'){
+  title='مهمة عسكرية';success=chance(Math.min(.85,.25+state.stats.health/200+state.stats.smart/350+level/40));gain=success?Math.round(1800+Math.random()*7000+level*300):0;fame=success?2+Math.floor(Math.random()*5):0;state.stats.health=clamp(state.stats.health+(success?-1:-12));text=success?'أنجزت المهمة ورجعت بخبرة ومكافأة.':'المهمة كانت صعبة وتعرضت لإرهاق وإصابة داخل اللعبة.';if(!success)state.reputation=clamp(state.reputation+1);
+ }else if(c.id==='politician'){
+  title='حملة انتخابية';success=chance(Math.min(.85,.2+state.reputation/170+state.stats.smart/250+state.fame/200+level/35));gain=success?Math.round(5000+Math.random()*25000+level*400):0;fame=success?4+Math.floor(Math.random()*9):0;state.reputation=clamp(state.reputation+(success?8:-6));text=success?'حملتك كسبت دعمًا وثقة وأصبحت أمامك مسؤوليات أكبر.':'الحملة لم تحصل على الدعم الكافي، واحتجت تراجع رسالتك وخطتك.';
+ }else if(c.id==='crimeboss'){
+  title='صراع نفوذ';success=chance(Math.min(.75,.2+state.stats.smart/250+level/40-(state.crimeRecord||0)*.03));gain=success?Math.round(4000+Math.random()*18000):0;fame=success?3+Math.floor(Math.random()*7):0;state.crimeRecord=(state.crimeRecord||0)+1;state.reputation=clamp(state.reputation-(success?3:14));if(!success&&chance(.45)){state.prison={years:2+Math.floor(Math.random()*4),kind:'قضية العالم السفلي'};state.job=null;state.specialCareer=null;}text=success?'حافظت على نفوذك داخل القصة الخيالية وحققت مكسبًا.':'انقلب الصراع عليك وواجهت تبعات قانونية داخل اللعبة.';
  }else{
   title='نشر عمل مكتوب';gain=success?Math.round(800+Math.random()*14000+state.stats.smart*90):0;fame=success?2+Math.floor(Math.random()*8):0;text=success?'العمل وصل لقراء جدد وبدأ يحقق دخلًا من المبيعات.':'العمل محتاج مراجعة وتسويق أفضل قبل الإصدار القادم.';
  }
@@ -982,7 +991,9 @@ function prisonEvent(){
  const opts=[
   choice('🧘','تجنب المشاكل','حاول تحافظ على صحتك وسلوكك.',()=>{closeModal();state.reputation=clamp(state.reputation+1);state.stats.happiness=clamp(state.stats.happiness+1);log('🧘','سنة هادئة في السجن','حاولت تبعد عن المشاكل وتحافظ على نفسك.','good');render();}),
   choice('🧹','عمل داخل السجن','دخل بسيط يقلل أثر المصاريف.',()=>{closeModal();const pay=300+Math.floor(Math.random()*900);state.bank+=pay;state.stats.happiness=clamp(state.stats.happiness+2);log('🧹','عمل داخل السجن','اشتغلت مهمة داخلية وكسبت '+cash(pay)+'.','good');render();}),
-  choice('📨','طلب مراجعة الحكم','فرصة محدودة لتخفيف العقوبة.',()=>{closeModal();if(chance(.2)){state.prison=null;state.reputation=clamp(state.reputation+3);log('⚖️','مراجعة ناجحة','تمت مراجعة الحكم وخرجت قبل نهاية المدة.','good');render();info('🔓','خرجت من السجن','تقدر تعيد ترتيب حياتك وتبحث عن بداية جديدة.');}else{state.stats.happiness=clamp(state.stats.happiness-2);log('⚖️','لم يُقبل الطلب','الطلب لم يغيّر مدة العقوبة.','bad');render();info('⚖️','العقوبة مستمرة','هتحتاج تكمل المدة المتبقية.');}})
+  choice('📨','طلب مراجعة الحكم','فرصة محدودة لتخفيف العقوبة.',()=>{closeModal();if(chance(.2)){state.prison=null;state.reputation=clamp(state.reputation+3);log('⚖️','مراجعة ناجحة','تمت مراجعة الحكم وخرجت قبل نهاية المدة.','good');render();info('🔓','خرجت من السجن','تقدر تعيد ترتيب حياتك وتبحث عن بداية جديدة.');}else{state.stats.happiness=clamp(state.stats.happiness-2);log('⚖️','لم يُقبل الطلب','الطلب لم يغيّر مدة العقوبة.','bad');render();info('⚖️','العقوبة مستمرة','هتحتاج تكمل المدة المتبقية.');}}),
+  choice('⚖️','تعيين محامي','دفع 5,000 '+state.place.unit+' لفرصة تخفيف العقوبة.',()=>{closeModal();if(state.bank<5000){info('💳','الرصيد مش كفاية','تعيين محامي يكلف 5,000 '+state.place.unit+'.');return;}state.bank-=5000;if(chance(.38)){state.prison.years=Math.max(0,state.prison.years-1);log('⚖️','نجحت مراجعة القضية','ساعدك المحامي على تخفيف مدة العقوبة سنة.','good');if(state.prison.years===0)state.prison=null;}else{log('⚖️','لم تتغير العقوبة','المحامي لم ينجح في تقليل مدة العقوبة.','bad');}render();info('⚖️','انتهت جلسة المراجعة','العقوبة المتبقية '+(state.prison?state.prison.years:0)+' سنة.');}),
+  choice('🏃','محاولة هروب','مخاطرة كبيرة قد تضيف سنوات للعقوبة.',()=>{closeModal();if(chance(.16+(state.stats.smart/500))){state.prison=null;state.crimeRecord=(state.crimeRecord||0)+1;stat('happiness',5);log('🏃','نجحت في الهروب','تمكنت من الهروب في سيناريو اللعبة، لكن السجل القانوني مازال موجودًا.','bad');render();info('🏃','هروب ناجح','حاول إعادة بناء حياتك مع تجنب مخالفات جديدة.');}else{state.prison.years+=2;stat('health',-8);stat('happiness',-10);log('🚨','فشلت محاولة الهروب','تم اكتشاف المحاولة وزادت العقوبة سنتين.','bad');render();info('🚔','عقوبة إضافية','مدة العقوبة الجديدة '+state.prison.years+' سنوات.');}})
  ];
  modal('🚔','الحياة داخل السجن','العقوبة المتبقية: '+state.prison.years+' سنة. كل سنة بتعدي تأثر على صحتك وحالتك.',opts,false);
 }
@@ -1114,6 +1125,9 @@ function activities(){
   choice('📚','المكتبة','نشاط مجاني يزيد الذكاء.',()=>activity('library'),'مجانًا'),
   choice('🏖️','خروجة أو إجازة','تكلفة 1,800 '+state.place.unit+' لتحسين المزاج.',()=>activity('vacation'),'1,800 '+state.place.unit),
   choice('🤝','مساعدة مجتمعية','نشاط مجاني لرفع السعادة والسمعة.',()=>activity('volunteer'),'مجانًا'),
+  choice('🎟️','اليانصيب','تذكرة 100 '+state.place.unit+'؛ مكسب نادر وخسارة غالبًا.',()=>activity('lottery'),'100 '+state.place.unit),
+  choice('🌃','الحياة الليلية','خروجة من سن 18 مقابل 1,200 '+state.place.unit+'.',()=>activity('nightlife'),'1,200 '+state.place.unit),
+  choice('❤️','تبرّع خيري','ساهم بـ1,000 '+state.place.unit+' لرفع السمعة والسعادة.',()=>activity('donate'),'1,000 '+state.place.unit),
   choice('💾','تصدير الحفظ','نزّل ملف JSON تحتفظ بيه.',exportSave),
   choice('🌱','حياة جديدة','ابدأ قصة جديدة مع اختيار عشوائي أو تخصيص بلد الميلاد والنوع.',()=>{closeModal();info('🌱','حياة جديدة','هتبدأ حياة جديدة وتستبدل الحفظ الحالي.',[choice('↻','تابع','',()=>{closeModal();if(confirm('تبدأ حياة جديدة وتستبدل الحفظ الحالي؟'))newLifeSetup();}),choice('رجوع','أحتفظ بالحياة الحالية','',closeModal)]);})
  ]);
@@ -1157,7 +1171,10 @@ function activity(type){
  if(type==='gym'){if(state.age<12){info('🏃','نشاط مناسب للعمر','اللعب والحركة المناسبة لسنك كفاية في المرحلة دي.');return;}if(state.bank<300){info('💳','الرصيد مش كفاية','اشتراك الجيم يكلف 300 جنيه.');return;}state.bank-=300;flash('-'+cash(300),true);stat('health',7);stat('looks',4);stat('happiness',2);log('🏋️','تمرنت في الجيم','دفعت 300 جنيه وتمرنت. الاستمرار أهم من تمرينة واحدة.','good');}
  if(type==='library'){stat('smart',5);stat('happiness',1);log('📚','وقت في المكتبة','قرأت وتعلمت حاجة جديدة من غير ما تدفع فلوس.','good');}
  if(type==='vacation'){if(state.bank<1800){info('💳','الرصيد مش كفاية','الخروجة تكلف 1,800 جنيه. جرب نشاط مجاني.');return;}state.bank-=1800;flash('-'+cash(1800),true);stat('happiness',8);stat('health',2);log('🏖️','خروجة لتغيير الجو','دفعت 1,800 جنيه وغيّرت روتينك شوية.','good');}
- if(type==='volunteer'){stat('happiness',5);log('🤝','مساعدة مجتمعية','خصصت وقتك لمساعدة ناس في محيطك.','good');achievement('شاركت في عمل مجتمعي');}
+ if(type==='volunteer'){stat('happiness',5);stat('reputation',2);log('🤝','مساعدة مجتمعية','خصصت وقتك لمساعدة ناس في محيطك.','good');achievement('شاركت في عمل مجتمعي');}
+ if(type==='lottery'){if(state.bank<100){info('💳','الرصيد مش كفاية','تذكرة اليانصيب تكلف 100 '+state.place.unit+'.');return;}state.bank-=100;if(chance(.065)){const prize=5000+Math.floor(Math.random()*45000);state.bank+=prize;stat('happiness',7);log('🎟️','فزت في اليانصيب','فزت بجائزة '+cash(prize)+' بعد شراء تذكرة.','good');achievement('الفوز بجائزة اليانصيب');}else{log('🎟️','تذكرة يانصيب','ماكسبتش المرة دي وخسرت سعر التذكرة. خلي اللعب في حدود ميزانيتك.','');}render();}
+ if(type==='nightlife'){if(state.age<18){info('🔒','النشاط متاح للبالغين','الحياة الليلية متاحة من سن 18 داخل اللعبة.');return;}if(state.bank<1200){info('💳','الرصيد مش كفاية','الخروجة تكلف 1,200 '+state.place.unit+'.');return;}state.bank-=1200;const fun=chance(.78);stat('happiness',fun?7:2);if(!fun)stat('health',-3);log('🌃','خروجة ليلية',fun?'قضيت وقتًا ممتعًا ورجعت بمزاج أفضل.':'الخروجة كانت مرهقة ومكلفة أكتر من المتوقع.',fun?'good':'bad');render();}
+ if(type==='donate'){if(state.bank<1000){info('💳','الرصيد مش كفاية','التبرع يحتاج 1,000 '+state.place.unit+'.');return;}state.bank-=1000;stat('reputation',4);stat('happiness',3);log('❤️','تبرع خيري','خصصت مبلغًا لمساعدة جهة مجتمعية.','good');achievement('قدمت تبرعًا خيريًا');render();}
  if(type==='crime'){
   modal('⚖️','قرار فيه مخاطرة','التصرف غير القانوني ممكن يسبب ضرر للناس ويعرّضك لعواقب داخل اللعبة. تقدر تختار طريق قانوني بدلًا منه.',[
    choice('🚫','أتراجع','أدور على طريقة قانونية أكسب منها.',()=>{closeModal();stat('smart',1);log('⚖️','قرار مسؤول','تراجعت عن المخاطرة وقررت تدور على بديل أفضل.','good');render();}),
