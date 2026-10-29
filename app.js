@@ -1337,17 +1337,19 @@ function relationshipHistory(n){
  modal('📜','سجل العلاقة · '+(n.name||'الشخصية'),'آخر 12 تفاعلًا وأثر كل منها على العلاقة.',opts);
 }
 
-function relationshipAction(n,act){
- closeModal();
- if(act==='intimate'){
-  if(state.age<18||state.partner!==n){info('🔒','الاختيار غير متاح','الاختيار ده متاح للبالغين مع الشريك الحالي فقط.');return;}
+function relationshipIntimacy(n){
+if(state.age<18||state.partner!==n){info('🔒','الاختيار غير متاح','الاختيار ده متاح للبالغين مع الشريك الحالي فقط.');return;}
   const protectedByShield=perkEnabled('healthShield'),complication=!protectedByShield&&chance(.14);
   state.stats.happiness=clamp(state.stats.happiness+4);state.partner.relationshipLevel=clamp((state.partner.relationshipLevel||50)+5);
   if(complication)state.stats.health=clamp(state.stats.health-12);
   if(!Array.isArray(n.interactions))n.interactions=[];n.interactions.push({age:state.age,action:'intimate',delta:5,levelAfter:n.relationshipLevel});if(n.interactions.length>12)n.interactions.shift();
   log(complication?'🩺':'🛡️',complication?'تنبيه صحي مرتبط بالعلاقة':'وقت خاص مع الشريك',complication?'قضيت وقتًا مع الشريك لكن ظهرت مضاعفة صحية داخل اللعبة، وانخفضت الصحة 12 نقطة.':'قضيت وقتًا خاصًا مع '+n.name+' وتحسّن التواصل'+(protectedByShield?'، ودرع العافية منع المضاعفات الصحية.':'. لم تظهر مضاعفات هذه المرة.'),complication?'bad':'good');
   save();render();info(complication?'🩺':'💞',complication?'مضاعفة صحية خيالية':'تقارب ناجح',complication?'تقدر تراجع الصحة من قائمة العناية بالنفس.':(protectedByShield?'درع العافية فعّال في اللقاءات المقبلة.':'التأثير إيجابي هذه المرة، لكن المخاطرة تظل موجودة بدون درع العافية.'));return;
- }
+}
+
+function relationshipAction(n,act){
+ closeModal();
+ if(act==='intimate'){relationshipIntimacy(n);return;}
  if(act==='gift'&&state.bank<500){info('💳','الرصيد مش كفاية','الهدية محتاجة '+cash(500)+'.');return;}
  const generosity=clamp(n.generosity??50),craziness=clamp(n.craziness??50),money=clamp(n.money??50),petulance=clamp(n.petulance??50),loyalty=clamp(n.loyalty??55),jealousy=clamp(n.jealousy??40),reliability=clamp(n.reliability??55),personality=n.personality||'عملي';
  let d=0,text='',tone='good',reaction;
