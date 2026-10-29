@@ -266,6 +266,77 @@ C('أرفض عشان صحتي','الراحة أولوية',{health:3,happiness:2
 C('أتفاوض على المقابل','اعرف قيمة وقتك',{smart:2},'اتفاوضت على مقابل أفضل وشروط أوضح.',{risk:.2,win:{bank:9000},fail:{happiness:-1},failText:'المقابل ما اتغيرش، فقررت تراجع العرض.'})
 ])
 ];
+events.push(
+ E([1,5],'🧸','أول كلمة','بدأت تقول كلمات بسيطة، والعيلة بتحاول تفهم كل صوت جديد.',[
+  C('أشجع الكلام','التفاعل يطمنك',{happiness:3,smart:1},'أهلك شجعوك وكل كلمة جديدة بقت احتفال صغير.'),
+  C('أقضي وقت مع العيلة','الاهتمام مهم',{happiness:4},'قضيت وقتًا دافئًا مع أهلك وبدأت تتعرف على العالم.')
+ ]),
+ E([10,17],'🏅','بطولة مدرسية','المدرسة بتجهّز بطولة، والمدرب شايف إن عندك فرصة تشارك.',[
+  C('أتدرب بانتظام','التزام ومجهود',{health:4,happiness:4},'تدربت باستمرار وقدمت أداءً محترمًا.'),
+  C('أشارك من غير استعداد','جرّب نفسك',{happiness:2},'استمتعت بالتجربة حتى لو النتيجة مش مثالية.',{risk:.25,fail:{happiness:-3},failText:'التوتر أثر على أدائك، وقررت تستعد أحسن المرة الجاية.'}),
+  C('أساند الفريق','الروح الجماعية',{happiness:3,smart:1},'ساعدت زملاءك ورفعت معنويات الفريق.')
+ ]),
+ E([16,22],'🧭','اختيار التخصص','مطلوب منك تحدد الطريق اللي هتبدأ منه مرحلة ما بعد المدرسة.',[
+  C('اختار مجال تقني','مهارات المستقبل',{smart:4,happiness:1},'بدأت تركز على المهارات الرقمية وتبحث عن فرص تعلم.'),
+  C('أختار مجال إبداعي','خلّي الموهبة تكبر',{happiness:4,looks:1},'قررت تدي مساحة للإبداع وتجرب أكتر من نشاط.'),
+  C('أشتغل وأتعلم','الخبرة بالتجربة',{smart:2,bank:1800},'بدأت تفكر في الجمع بين الشغل والتعلم.')
+ ]),
+ E([18,45],'❤️','فرصة ارتباط','شخص قريب منك بدأ يلمّح إنه مهتم بعلاقة جدية.',[
+  C('نتكلم بصراحة','وضوح واحترام',{happiness:4,smart:1},'اتكلمتوا بصراحة واتفقتم تاخدوا وقتكم.'),
+  C('أطلب وقت أفكر','ما تستعجلش',{happiness:1},'وضحت إنك محتاج وقت، والطرف التاني احترم قرارك.'),
+  C('أرفض بلطف','كن واضحًا',{happiness:1},'رفضت باحترام وحافظت على حدودك.')
+ ]),
+ E([22,60],'📈','فرصة ترقية','مديرك بيدرس إعادة توزيع المسؤوليات، واسمك مطروح.',[
+  C('أعرض نتائج شغلي','الأرقام تتكلم',{smart:3},'عرضت نتائجك بشكل مهني وده قوّى موقفك.',{risk:.2,win:{bank:8000,happiness:4},fail:{happiness:-1},failText:'الترقية اتأجلت لحد ما تحقق أهداف إضافية.'}),
+  C('أطلب مسار واضح','اعرف المطلوب',{smart:3,happiness:1},'خرجت بخطة تطوير ومعايير واضحة.'),
+  C('أرفض مسؤوليات إضافية','حافظ على التوازن',{health:2,happiness:2},'وضحت حدودك بدل ما تتحمل ضغط أكبر من قدرتك.')
+ ]),
+ E([22,60],'🧾','مصدر دخل جانبي','جالك عرض لمهمة قصيرة بجانب التزاماتك الأساسية.',[
+  C('أقبل المهمة','وقت إضافي مقابل دخل',{bank:3500,happiness:-1},'أنهيت المهمة وحصلت على مقابل إضافي.'),
+  C('أتفاوض على المقابل','اعرف قيمة وقتك',{smart:2},'طلبت تفاصيل أوضح واتفاوضت على شروط أفضل.',{risk:.2,win:{bank:6500},fail:{happiness:-1},failText:'العرض لم يتحسن فقررت تعتذر.'}),
+  C('أرفض وأرتاح','الصحة مهمة',{health:3,happiness:2},'اخترت الراحة بدل ضغط إضافي.')
+ ]),
+ E([30,65],'🏡','تغيير السكن','فيه فرصة تنتقل لمكان أهدى، لكن الإيجار وتكاليف الانتقال هيزيدوا.',[
+  C('أنتقل لمكان أفضل','راحة مقابل تكلفة',{happiness:4,health:2},'المكان الجديد حسّن راحتك اليومية.',{cost:6000}),
+  C('أدور على بديل أرخص','وازن التكلفة',{smart:2},'قارنت الخيارات ووفرت مصاريف غير ضرورية.'),
+  C('أستنى شوية','لا تستعجل القرار',{happiness:1},'قررت تجمع معلومات أكتر قبل ما تتحرك.')
+ ]),
+ E([32,70],'💸','فاتورة طبية','ظهر احتياج صحي غير متوقع، والفاتورة أعلى من المعتاد.',[
+  C('أدفع وأتابع','الاهتمام بالصحة',{health:7,happiness:1},'دفعت تكلفة المتابعة وبدأت تهتم بصحتك بشكل أفضل.',{cost:3500}),
+  C('أبحث عن بدائل متاحة','قارن الخيارات',{smart:2},'بحثت عن خيارات مناسبة قبل ما تقرر.'),
+  C('أهمل الموضوع','تأجيل محفوف بالمخاطر',{happiness:1},'أجلت المتابعة، لكن القلق فضل موجودًا.',{risk:.35,fail:{health:-12,happiness:-5},failText:'الحالة ساءت واحتجت متابعة أكبر.'})
+ ]),
+ E([35,75],'👵','صحة أحد الوالدين','أحد والديك بدأ يحتاج مساعدة أكبر في بعض الأمور اليومية.',[
+  C('أخصص وقتًا للمساعدة','الأسرة قبل الزحمة',{happiness:4,health:-1},'نظمت وقتك وساعدت في المسؤوليات اليومية.'),
+  C('أرتب دعمًا من العيلة','تقاسم المسؤولية',{smart:2,happiness:2},'اتفقتم على توزيع المساعدة بين أفراد الأسرة.'),
+  C('أستعين بخدمة متخصصة','حل عملي بتكلفة',{happiness:2},'رتبت مساعدة مناسبة وخففت الضغط على الجميع.',{cost:2500})
+ ]),
+ E([40,75],'🌱','إعادة تقييم الحياة','حسيت إنك محتاج تراجع أولوياتك بعد سنين من الشغل والمسؤوليات.',[
+  C('أبدأ عادة صحية','خطوة صغيرة',{health:4,happiness:4},'بدأت عادة بسيطة تساعدك تستعيد توازنك.'),
+  C('أتعلم حاجة جديدة','مافيش سن للتعلم',{smart:4,happiness:2},'دخلت مجالًا جديدًا ووسعت خبرتك.'),
+  C('أركز على العلاقات','الوقت له قيمة',{happiness:5},'خصصت وقتًا للناس القريبين منك.')
+ ]),
+ E([45,85],'🏆','تقدير مهني','جهة عملك أو مجتمعك بيستعد يكرّم أصحاب الخبرة الطويلة.',[
+  C('أشارك خبرتي','ساعد الجيل الجديد',{happiness:4,smart:2},'شاركت خبرتك مع ناس أصغر منك واكتسبت احترامًا.'),
+  C('أستمتع بالإنجاز','لحظة تقدير',{happiness:5},'احتفلت باللي حققته وراجعت خطواتك بفخر.'),
+  C('أبدأ مشروعًا شخصيًا','فصل جديد',{smart:2,happiness:2},'بدأت تخطط لمشروع يعبر عن اهتماماتك.',{cost:2000})
+ ]),
+ E([18,60],'🚘','فرصة سفر للعمل','جهة خارج بلدك عرضت عليك فرصة عمل أو تدريب، لكن الانتقال مش سهل.',[
+  C('أدرس العرض','اسأل عن التفاصيل',{smart:3},'راجعت الراتب والسكن والتكاليف قبل اتخاذ قرار.'),
+  C('أقبل المغامرة','تجربة جديدة',{happiness:3},'بدأت مرحلة مختلفة وتعلمت الاعتماد على نفسك.',{cost:7000,risk:.25,win:{bank:12000,fame:2},fail:{happiness:-4},failText:'الفرصة ما كانتش مناسبة كما توقعت، وخسرت جزءًا من تكاليف الانتقال.'}),
+  C('أفضل الاستقرار','الاستقرار اختيار',{happiness:2},'قررت تكمل خطتك الحالية بدل الانتقال.')
+ ]),
+ E([20,70],'🏦','مراجعة مالية','لاحظت إن المصاريف زادت، ومحتاج تراجع طريقة إدارة فلوسك.',[
+  C('أعمل ميزانية','خطط قبل الصرف',{smart:3,bank:1500},'عملت ميزانية وبدأت تقلل المصاريف غير الضرورية.'),
+  C('أبيع حاجة مش مهمة','سيولة سريعة',{happiness:-1},'وفرت سيولة من غير ما تدخل في ديون.'),
+  C('أستمر بنفس الأسلوب','التغيير مؤجل',{happiness:1},'قررت تأجل المراجعة، لكن المشكلة لسه موجودة.')
+ ]),
+ E([25,65],'🎤','انتشار مفاجئ','مقطع أو عمل نشرته بدأ يجذب انتباه ناس أكتر من المعتاد.',[
+  C('أستفيد من الفرصة','نظم الحضور الجديد',{fame:8,reputation:3,happiness:4},'زاد الاهتمام بيك وبدأت توصلك فرص جديدة.'),
+  C('أحافظ على خصوصيتي','الهدوء أهم',{happiness:2,reputation:1},'فضّلت تحافظ على خصوصيتك وتتعامل بهدوء.'),
+  C('أرد بانفعال','الضجة ليها ثمن',{fame:3,reputation:-8},'الرد زوّد المشاهدات لكنه أثر على صورتك العامة.')
+ ])
+);
 function makePerson(gender,relation,emoji,age,level){
  const job=relation==='الأب'?pick(['مدرس','محاسب','مهندس','موظف حكومي','صاحب محل','طبيب','سائق']):relation==='الأم'?pick(['مدرسة','محاسبة','مهندسة','موظفة حكومية','صاحبة محل','طبيبة','ممرضة','ربة منزل']):'طالب';
  return {id:relation+'-'+Math.random().toString(36).slice(2,8),name:pick(names[gender])+' '+pick(names.family),relation,emoji,age,job,generosity:25+Math.floor(Math.random()*76),relationshipLevel:level,personality:pick(['حنون','عملي','مرح','جاد','طموح','فضولي'])};
@@ -298,6 +369,8 @@ function stat(key,delta){
  if(key==='bank'){state.bank+=delta;flash((delta>0?'+':'')+cash(delta),delta<0);return;}
  if(state.stats[key]===undefined)return;
  const labels={happiness:'سعادة',health:'صحة',smart:'ذكاء',looks:'مظهر'};
+ if(key==='fame'||key==='reputation'){const before=Number(state[key]||0);state[key]=clamp(before+delta);if(state[key]!==before)flash((delta>0?'+':'')+fmt(state[key]-before)+'% '+(key==='fame'?'شهرة':'سمعة'),delta<0);return;}
+ if(key==='debt'){state.debt=Math.max(0,(state.debt||0)+delta);return;}
  const before=state.stats[key];state.stats[key]=clamp(before+delta);const actual=state.stats[key]-before;
  if(actual)flash((actual>0?'+':'')+fmt(actual)+'% '+labels[key],actual<0);
 }
@@ -369,7 +442,7 @@ function modal(icon,title,desc,choices,closable=true,extra=''){
 }
 function info(icon,title,desc,choices=[choice('✓','تمام','',closeModal)]){modal(icon,title,desc,choices);}
 function validState(){return state&&state.status==='حي'&&!dead;}
-function availableEvents(){return events.filter(e=>state.age>=e.range[0]&&state.age<=e.range[1]);}
+function availableEvents(){return events.filter(e=>{if(state.age<e.range[0]||state.age>e.range[1])return false;const r=e.requires;if(!r)return true;if(r==='partner')return !!state.partner;if(r==='children')return (state.children||[]).length>0;if(r==='job')return !!state.job;if(r==='pet')return (state.pets||[]).length>0;if(r==='investments')return (state.investments||[]).length>0;if(r==='business')return !!state.business;if(r==='fame')return (state.fame||0)>=25;if(r==='single')return !state.partner;if(r==='noLicense')return !state.driversLicense;return true;});}
 function chooseAdaptiveEvent(pool){
  // محرك ترجيح محلي: يفضّل المواقف المرتبطة باحتياجات اللاعب الحالية.
  const s=state.stats;
@@ -491,10 +564,10 @@ function death(cause){
  dead=true;state.status='متوفى';state.cause=cause;save();render();
  const assetValue=state.assets.reduce((sum,a)=>sum+a.value,0),net=state.bank+assetValue;
  const achievements=state.accomplishments.length?state.accomplishments.map(a=>'• '+esc(a)).join('<br>'):'لسه مفيش إنجازات مسجلة، بس كل حياة ليها حكايتها.';
- $('modalRoot').innerHTML='<div class="overlay"><section class="modal"><div class="death"><div class="tomb">🪦</div><div class="deathtitle">انتهت حكاية '+esc(state.name)+'</div><div class="deathsub">عشت '+fmt(state.age)+' سنة.<br>سبب الوفاة: '+esc(cause)+'.<br>كل قرار ساب أثر، وكل سنة كانت فصل من قصتك.</div><div class="summarygrid"><div class="summarycell"><div class="summarylabel">الثروة النهائية</div><div class="summaryvalue">'+cash(net)+'</div></div><div class="summarycell"><div class="summarylabel">العمر</div><div class="summaryvalue">'+fmt(state.age)+' سنة</div></div><div class="summarycell"><div class="summarylabel">إنجازات</div><div class="summaryvalue">'+fmt(state.accomplishments.length)+'</div></div><div class="summarycell"><div class="summarylabel">الأصول</div><div class="summaryvalue">'+fmt(state.assets.length)+'</div></div></div><div class="listitem" style="text-align:right"><div class="listtitle">محطات من حياتك</div><div class="muted" style="margin-top:8px;line-height:2">'+achievements+'</div></div><button class="primarybtn" id="newLifeBtn">🌱 حياة جديدة</button><button class="smallbtn" id="reviewBtn" style="width:100%;margin-top:9px">راجع دفتر حياتك</button></div></section></div>';
+ $('modalRoot').innerHTML='<div class="overlay"><section class="modal"><div class="death"><div class="tomb">🪦</div><div class="deathtitle">انتهت حكاية '+esc(state.name)+'</div><div class="deathsub">عشت '+fmt(state.age)+' سنة.<br>سبب الوفاة: '+esc(cause)+'.<br>شريط حياتك: '+esc(lifeRibbon())+'.<br>كل قرار ساب أثر، وكل سنة كانت فصل من قصتك.</div><div class="summarygrid"><div class="summarycell"><div class="summarylabel">الثروة النهائية</div><div class="summaryvalue">'+cash(net)+'</div></div><div class="summarycell"><div class="summarylabel">العمر</div><div class="summaryvalue">'+fmt(state.age)+' سنة</div></div><div class="summarycell"><div class="summarylabel">إنجازات</div><div class="summaryvalue">'+fmt(state.accomplishments.length)+'</div></div><div class="summarycell"><div class="summarylabel">الأصول</div><div class="summaryvalue">'+fmt(state.assets.length)+'</div></div></div><div class="listitem" style="text-align:right"><div class="listtitle">محطات من حياتك</div><div class="muted" style="margin-top:8px;line-height:2">'+achievements+'</div></div><button class="primarybtn" id="newLifeBtn">🌱 حياة جديدة</button>'+(state.children.length?'<div class="muted" style="margin:8px 0">كمّل إرث العائلة:</div>'+state.children.map((c,i)=>'<button class="smallbtn" data-heir="'+i+'" style="width:100%;margin:4px 0">🌳 استكمل كـ '+esc(c.name)+'</button>').join(''):'')+'<button class="smallbtn" id="reviewBtn" style="width:100%;margin-top:9px">راجع دفتر حياتك</button></div></section></div>';
  $('newLifeBtn').addEventListener('click',()=>{closeModal();if(confirm('تبدأ حياة جديدة وتستبدل الحفظ الحالي؟'))startNew();});
  $('reviewBtn').addEventListener('click',closeModal);
- if((state.children||[]).length){const box=document.createElement('div');box.style.marginTop='9px';box.innerHTML='<div class="muted" style="margin:5px 0">شريط حياتك: '+esc(lifeRibbon())+'</div>'+(state.children.map((c,i)=>'<button class="smallbtn" data-heir="'+i+'" style="width:100%;margin-top:6px">🌳 استكمل كـ '+esc(c.name)+'</button>').join(''));$('modalRoot').appendChild(box);box.querySelectorAll('[data-heir]').forEach(btn=>btn.addEventListener('click',()=>startAsChild(Number(btn.dataset.heir))));}
+ $('modalRoot').querySelectorAll('[data-heir]').forEach(btn=>btn.addEventListener('click',()=>startAsChild(Number(btn.dataset.heir))));
 }
 function startNew(){
  state=newLife();dead=false;
