@@ -505,7 +505,7 @@ function ageUp(){
    const salary=Math.round(state.job.salary*state.performance/100);state.bank+=salary;flash('+'+cash(salary));
    log('💼','دخل سنوي','استلمت '+cash(salary)+' من شغلك في '+state.job.title+'.','good');
    state.performance=clamp(state.performance+(chance(.58)?2:-1),20,100);
-   if(state.performance>=78&&state.age<60&&chance(.09)){const raise=Math.round(state.job.salary*.14);state.job.salary+=raise;state.performance=clamp(state.performance+3);state.job.title=state.job.title.startsWith('أول ')?state.job.title:('أول '+state.job.title);log('📈','ترقية مهنية','أداءك المتميز ساعدك تحصل على ترقية وزيادة سنوية '+cash(raise)+'.','good');achievement('الحصول على ترقية مهنية');}
+   if(state.performance>=78&&state.age<60&&chance(.09)){const raise=Math.round(state.job.salary*.14);state.job.salary+=raise;state.performance=clamp(state.performance+3);if(!state.job.title.endsWith(' أول'))state.job.title+=' أول';log('📈','ترقية مهنية','أداءك المتميز ساعدك تحصل على ترقية وزيادة سنوية '+cash(raise)+'.','good');achievement('الحصول على ترقية مهنية');}
  }
  if(state.age>=18&&!state.retired){
    const living=Math.round(9000+state.age*180);state.bank-=living;flash('-'+cash(living),true);
@@ -588,7 +588,7 @@ function showCareer(){
     if(chance(.62)){const inc=Math.round(state.job.salary*.12);state.job.salary+=inc;state.performance=clamp(state.performance+5);log('🎉','علاوة في المرتب','وافق مديرك على علاوة سنوية '+cash(inc)+'.','good');info('🎉','مبروك العلاوة','مرتبك السنوي الجديد '+cash(state.job.salary)+'.');}else{state.performance=clamp(state.performance+2);log('🗣️','لسه بدري على العلاوة','مديرك طلب نتائج إضافية قبل الزيادة.');info('🗣️','المرة الجاية','استمر على نفس المستوى وجرب بعد فترة.');}render();
    }),
    choice('🧰','تطوير الأداء','تدريب يرفع فرص الترقية مقابل 1,200 جنيه.',()=>{closeModal();if(state.bank<1200){info('💳','الرصيد مش كفاية','التدريب يكلف 1,200 جنيه.');return;}state.bank-=1200;state.performance=clamp(state.performance+14);stat('smart',2);log('🧰','تدريب مهني','دفعت 1,200 جنيه في تدريب زوّد أداءك ومهاراتك.','good');render();}),
-   choice('🚪','الاستقالة','تسيب شغلك وتفقد الدخل السنوي.',()=>{closeModal();info('🚪','تأكيد الاستقالة','متأكد إنك عايز تسيب '+state.job.title+'؟',[choice('✓','أيوه، أستقيل','',()=>{closeModal();state.job=null;state.performance=50;log('🚪','استقالة','سيبت شغلك وبدأت تدور على الخطوة التالية.');render();career();}),choice('↩️','أتراجع','',closeModal)]);})
+   choice('🚪','الاستقالة','تسيب شغلك وتفقد الدخل السنوي.',()=>{closeModal();info('🚪','تأكيد الاستقالة','متأكد إنك عايز تسيب '+state.job.title+'؟',[choice('✓','أيوه، أستقيل','',()=>{closeModal();state.jobHistory.push({title:state.job.title,salary:state.job.salary,startAge:state.job.startAge??state.age,endAge:state.age});state.job=null;state.performance=50;log('🚪','استقالة','سيبت شغلك وبدأت تدور على الخطوة التالية.');render();showCareer();}),choice('↩️','أتراجع','',closeModal)]);})
   ];
   modal('💼','الدراسة والشغل','شغلك الحالي: '+state.job.title+' — الأداء '+state.performance+'%.',opts,true,'<div class="muted" style="margin:-2px 0 7px">مستوى الأداء · '+state.performance+'%</div><div class="progressline"><div style="width:'+clamp(state.performance)+'%"></div></div>');return;
  }
@@ -599,13 +599,15 @@ function showCareer(){
  const unmet=jobs.filter(j=>state.age>=j.age&&!eligible.includes(j));
  if(!opts.length)intro+=' محتاج ترفع الذكاء أو مستوى التعليم عشان تتأهل للوظائف المتاحة.';
  opts.push(choice('🎓','التعليم والجامعة','اختار تخصصًا يفتح فرصًا جديدة.',()=>{closeModal();university(false);}));
+ opts.push(choice('🌟','المهن الخاصة والشهرة','التمثيل والموسيقى والمحتوى والرياضة والكتابة والإخراج.',specialCareers));
+ if((state.jobHistory||[]).length)opts.push(choice('📚','سجل الوظائف السابقة','عدد الوظائف السابقة '+state.jobHistory.length+'.',()=>{closeModal();const records=state.jobHistory.map(j=>choice('💼',j.title,'الراتب '+cash(j.salary)+' · بداية '+j.startAge+' سنة',()=>{closeModal();info('💼',j.title,'وظيفة سابقة في سجل حياتك.');}));modal('📚','التاريخ الوظيفي','كل وظيفة تركت أثرًا في المسار المهني.',records);}));
  modal('💼','الدراسة والشغل',intro,opts);
 }
 function applyJob(job){
  closeModal();
  if(state.age<job.age||state.stats.smart<job.smart||state.education.level<job.edu){info('🔒','لسه مش مؤهل','الوظيفة محتاجة سنًا أو تعليمًا أو مهارات أعلى.');return;}
  const success=.5+state.stats.smart/100*.22+state.performance/100*.15;
- if(chance(success)){state.job={id:job.id,title:job.title,salary:job.salary};state.performance=clamp(50+Math.floor(state.stats.smart/8));state.retired=false;log('💼','اتقبلت في وظيفة جديدة','بدأت شغل '+job.title+' براتب سنوي '+cash(job.salary)+'.','good');achievement('بدأت العمل: '+job.title);info('🎉','مبروك الوظيفة','اتقبلت في '+job.title+'. كل سنة هتستلم دخل على قد أداءك.');}
+ if(chance(success)){state.job={id:job.id,title:job.title,salary:job.salary,startAge:state.age};state.jobHistory=state.jobHistory||[];state.performance=clamp(50+Math.floor(state.stats.smart/8));state.retired=false;log('💼','اتقبلت في وظيفة جديدة','بدأت شغل '+job.title+' براتب سنوي '+cash(job.salary)+'.','good');achievement('بدأت العمل: '+job.title);info('🎉','مبروك الوظيفة','اتقبلت في '+job.title+'. كل سنة هتستلم دخل على قد أداءك.');}
  else{log('📨','طلب وظيفة','قدمت على '+job.title+' لكنهم اختاروا مرشحًا آخر. جهّز نفسك وحاول تاني.','bad');info('📨','المرة الجاية','طوّر مهاراتك وخليك مستمر في التقديم.');}
  render();
 }
@@ -976,7 +978,7 @@ function willMenu(){
 }
 function setWill(value){closeModal();state.willDistribution=value;log('📜','تحديث الوصية','حددت توزيع الإرث: '+value+'.','special');render();info('📜','تم تحديث الوصية','توزيع الإرث الحالي: '+value+'.');}
 function dailyReward(){
- closeModal();const today=new Date().toISOString().slice(0,10);
+ closeModal();const now=new Date(),today=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0')+'-'+String(now.getDate()).padStart(2,'0');
  if(state.dailyRewardDate===today){info('🎁','المكافأة اتاخدت','ارجع بكرة عشان مكافأة يوم جديد.');return;}
  state.dailyRewardDate=today;const amount=1000+Math.floor(Math.random()*4000);state.bank+=amount;
  let item='';
@@ -1041,7 +1043,8 @@ function customizeMenu(){
   choice('👤','تغيير نوع الشخصية','تغيير الصورة الرمزية ونوع الاسم العشوائي القادم.',()=>{closeModal();modal('👤','نوع الشخصية','تأكيد تغيير النوع الظاهر للشخصية.',[choice('👦','ذكر','',()=>{closeModal();state.gender='male';render();}),choice('👧','أنثى','',()=>{closeModal();state.gender='female';render();})]);}),
   choice('🚗','رخصة قيادة','اختبار بسيط للحصول على رخصة بعد سن 16.',()=>{closeModal();getLicense();}),
   choice('🌍','السفر والهجرة','تغيير بلد الإقامة أو السفر.',travelMenu),
-  choice('📤','تصدير الحفظ','نزّل نسخة JSON من تقدمك.',exportSave)
+  choice('📤','تصدير الحفظ','نزّل نسخة JSON من تقدمك.',exportSave),
+  choice('📥','استيراد حفظ سابق','استرجع نسخة سبق تصديرها من اللعبة.',importSave)
  ];
  modal('🪪','ملف الشخصية','اسمك ومهاراتك وسجلك هي أجزاء من هويتك. غيّر الاسم أو جهّز مستقبلك.',opts);
 }
@@ -1057,10 +1060,10 @@ function startAsChild(index){
  const estate=Math.max(0,previous.bank)+previous.assets.reduce((sum,a)=>sum+(a.value||0),0)+previous.investments.reduce((sum,a)=>sum+(a.value||0),0);
  const cashEstate=Math.max(0,previous.bank)+previous.investments.reduce((sum,a)=>sum+(a.value||0),0);
  const share=previous.willDistribution==='الأبناء أولًا'?.9:previous.willDistribution==='الشريك أولًا'?.55:previous.willDistribution==='التبرع بجزء'?.65:.8;
- const heir=newLife();heir.name=child.name;heir.gender=child.gender||'male';heir.age=typeof child.age==='number'?child.age:18;heir.place={...previous.place};heir.bank=Math.round(cashEstate*share);
+ const heir=newLife();heir.name=child.name;heir.gender=child.gender||'male';heir.age=typeof child.age==='number'?child.age:18;heir.place={...previous.place};heir.bank=Math.round(Math.max(0,previous.bank)*share);
  heir.family=[...previous.family];previous.children.forEach((sibling,i)=>{if(i!==index)heir.family.push({...sibling,relation:'أخ/أخت'});});heir.partner=null;heir.married=false;heir.children=[];heir.legacy={name:previous.name,inheritance:estate,heirloom:(previous.heirlooms||[])[0]?.name||null};
  heir.heirlooms=[...(previous.heirlooms||[])];heir.accomplishments=['بدأ حياة جديدة كامتداد لعائلة '+previous.name,'ورث '+cash(estate)];
- heir.job=null;heir.assets=previous.assets.map(a=>({...a,id:Date.now()+Math.random()}));heir.investments=previous.investments.map(a=>({...a,id:Date.now()+Math.random()}));
+ heir.job=null;heir.assets=previous.assets.map(a=>({...a,id:Date.now()+Math.random()}));heir.investments=previous.investments.map(a=>({...a,value:Math.round((a.value||0)*share),id:Date.now()+Math.random()}));
  heir.family.push({id:'legacy-parent-'+Date.now(),name:previous.name,relation:'والد/والدة متوفى',emoji:previous.gender==='male'?'👨‍🦳':'👩‍🦳',age:previous.age,job:previous.job?previous.job.title:'متوفى',relationshipLevel:100,personality:'موروث عائلي'});if(oldPartner)heir.family.push({...oldPartner,relation:'الأم/الأب'});
  state=heir;dead=false;log('🌳','استمرار السلالة','بدأت حياة جديدة باسم '+state.name+'، وارثًا قصة '+previous.name+' وإرث العائلة.','special');render();closeModal();info('🌳','جيل جديد','ورثت ثروة تقديرية '+cash(estate)+' وبعض مقتنيات العائلة. تبدأ الآن مرحلة مستقلة باختياراتك.');
 }
@@ -1132,6 +1135,26 @@ function activity(type){
   ]);return;
  }
  render();closeModal();
+}
+function importSave(){
+ closeModal();
+ const input=document.createElement('input');input.type='file';input.accept='application/json,.json';
+ input.addEventListener('change',()=>{
+  const file=input.files&&input.files[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=()=>{
+   try{
+    const data=JSON.parse(String(reader.result||''));
+    if(!data||data.version!==1||!data.stats||!Array.isArray(data.log)||!Array.isArray(data.family)||!data.place)throw new Error('invalid');
+    const old=state;state=data;
+    const loaded=load();if(!loaded){state=old;throw new Error('invalid');}
+    state=loaded;dead=state.status==='متوفى';render();if(dead)death(state.cause||'نهاية رحلة الحياة');else info('📥','تم استيراد الحفظ','تم تحميل '+state.name+' · العمر '+state.age+' سنة.');
+   }catch(e){info('⚠️','ملف حفظ غير صالح','اختار ملف JSON تم تصديره من لعبة حياة. الحفظ الحالي لم يتغير.');}
+  };
+  reader.onerror=()=>info('⚠️','تعذرت قراءة الملف','جرّب ملفًا آخر.');
+  reader.readAsText(file);
+ });
+ input.click();
 }
 function exportSave(){
  const blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='hekayat-hayah-save.json';a.click();URL.revokeObjectURL(url);closeModal();flash('تم تجهيز ملف الحفظ');
