@@ -500,8 +500,13 @@ function afterDecision(){if(!validState())return;if(state.stats.health<=0){death
 function ageUp(){
  if(!validState())return;
  state.age++;state.yearCount++;
- (state.children||[]).forEach(c=>{c.age=(c.age||0)+1;if(c.age===6)log('🏫','أول يوم مدرسة','بدأ '+c.name+' رحلته الدراسية.','special');if(c.age===18)log('🎓','ابنك/بنتك كبر','وصل '+c.name+' لسن الرشد وبدأ يرسم طريقه.','good');});
- if(state.partner&&typeof state.partner.age==='number')state.partner.age++;
+ (state.children||[]).forEach(c=>{c.age=(c.age||0)+1;if(c.age===6)log('🏫','أول يوم مدرسة','بدأ '+c.name+' رحلته الدراسية.','special');if(c.age===18){c.job='بداية المسار المهني';log('🎓','ابنك/بنتك كبر','وصل '+c.name+' لسن الرشد وبدأ يرسم طريقه.','good');}});
+ (state.family||[]).forEach(relative=>{if(relative.deceased)return;relative.age=(relative.age||0)+1;const oldest=relative.age>=100;const parent=/(الأب|الأم|والد|والدة)/.test(relative.relation||'');const risk=relative.age>75?Math.min(.45,.012+(relative.age-75)*.012):0;if(oldest||(risk&&chance(risk))){relative.deceased=true;const close=(relative.relationshipLevel||50)>=70;state.stats.happiness=clamp(state.stats.happiness-(close?12:5));log('🕯️','وفاة أحد أفراد العائلة','توفي '+relative.name+' بعد رحلة من العمر. الخبر أثر عليك وعلى علاقتك بالعائلة.','bad');achievement('وداع '+relative.name);}});
+ if(state.partner&&typeof state.partner.age==='number'){
+  state.partner.age++;
+  const partnerRisk=state.partner.age>78?Math.min(.38,.008+(state.partner.age-78)*.012):0;
+  if(state.partner.age>=103||(partnerRisk&&chance(partnerRisk))){const departed={...state.partner,relation:state.married?'الزوج/الزوجة المتوفى':'الشريك السابق المتوفى',deceased:true};state.family.push(departed);state.partner=null;state.married=false;state.stats.happiness=clamp(state.stats.happiness-18);log('🕯️','رحيل شريك الحياة','فقدت شريك حياتك بعد سنوات من المشاركة. الذكريات والعائلة تفضل جزءًا من قصتك.','bad');}
+ }
  if(state.prison&&state.prison.years>0){state.prison.years--;state.stats.happiness=clamp(state.stats.happiness-5);state.stats.health=clamp(state.stats.health-2);if(state.prison.years===0){log('🔓','انتهاء العقوبة','انتهت مدة العقوبة وعُدت لحياتك خارج السجن.','special');state.prison=null;}}
  const assetUpkeep=state.assets.reduce((s,a)=>s+a.upkeep,0);
  state.assets.forEach(a=>{const before=a.value||0;if(a.kind==='property')a.value=Math.round(before*1.025);else if(a.kind==='car')a.value=Math.round(before*.91);else if(a.kind==='business')a.value=Math.round(before*1.03);});
@@ -515,6 +520,7 @@ function ageUp(){
    const living=Math.round(9000+state.age*180);state.bank-=living;flash('-'+cash(living),true);
    log('🧾','مصاريف المعيشة','دفعت '+cash(living)+' لمصاريف السنة من أكل ومواصلات واحتياجات أساسية.');
  }
+ const childCosts=(state.children||[]).reduce((sum,c)=>sum+((c.age||0)<6?4500:((c.age||0)<18?7500:0)),0);if(childCosts>0){state.bank-=childCosts;log('🧸','مصاريف الأبناء','احتياجات وتعليم ورعاية الأبناء كلّفتك '+cash(childCosts)+' هذا العام.','bad');}
  if(assetUpkeep){state.bank-=assetUpkeep;flash('-'+cash(assetUpkeep),true);log('🔧','صيانة الأصول','صيانة ممتلكاتك كلّفتك '+cash(assetUpkeep)+'.','bad');}
  const rentIncome=(state.assets||[]).filter(a=>a.kind==='property'&&a.rented).reduce((total,a)=>total+Math.round((a.value||0)*.045),0);if(rentIncome>0){state.bank+=rentIncome;log('🏠','دخل إيجار سنوي','دخل لك '+cash(rentIncome)+' من تأجير العقارات.','good');}
  if(state.debt>0){const interest=Math.max(100,Math.round(state.debt*.08));state.debt+=interest;log('🏦','فوائد الديون','زادت ديونك بمقدار '+cash(interest)+' بسبب الفوائد. إجمالي الدين '+cash(state.debt)+'.','bad');}
@@ -680,7 +686,7 @@ function manageAssets(){
 function person(gender,relation,emoji,age,level){return {id:relation+'-'+Math.random().toString(36).slice(2,8),name:pick(names[gender])+' '+pick(names.family),relation,emoji,age,job:pick(['طالب','محاسب','مصمم','مدرس','موظف','مطور']),generosity:25+Math.floor(Math.random()*76),relationshipLevel:level,personality:pick(['حنون','عملي','مرح','جاد','طموح','فضولي'])};}
 function relations(){
  const opts=[];
- state.family.forEach(n=>opts.push(choice(n.emoji,n.name+' · '+n.relation,n.personality+' · مستوى العلاقة '+n.relationshipLevel+'%',()=>{closeModal();personModal(n);},n.relationshipLevel+'%')));
+ state.family.forEach(n=>{if(n.deceased)opts.push(choice('🕯️',n.name+' · '+n.relation,'ذكرى عائلية · توفي عن عمر '+(n.age||'?')+' سنة.',()=>{closeModal();info('🕯️',n.name,'هذا الفرد من العائلة جزء من تاريخ حياتك، وسجّلت اللعبة وفاته في دفتر الأحداث.');}));else opts.push(choice(n.emoji,n.name+' · '+n.relation,n.personality+' · مستوى العلاقة '+n.relationshipLevel+'%',()=>{closeModal();personModal(n);},n.relationshipLevel+'%'));});
  state.friends.forEach(n=>opts.push(choice(n.emoji,n.name+' · صديق','مستوى العلاقة '+n.relationshipLevel+'%',()=>{closeModal();personModal(n);},n.relationshipLevel+'%')));
  if(state.partner)opts.push(choice(state.married?'💍':'💞',state.partner.name+(state.married?' · زوج/زوجة':' · شريك عاطفي'),'مستوى العلاقة '+state.partner.relationshipLevel+'%',()=>{closeModal();personModal(state.partner);},state.partner.relationshipLevel+'%'));
  (state.children||[]).forEach((n,i)=>opts.push(choice(n.emoji||'🧒',n.name+' · '+(n.age<18?'ابن/ابنة':'ابن/ابنة بالغ'), 'العمر '+n.age+' سنة · العلاقة '+n.relationshipLevel+'%',()=>{closeModal();childMenu(i);},n.relationshipLevel+'%')));
@@ -697,6 +703,7 @@ function familyMenu(){
  if(state.partner&&state.married)opts.push(choice('💔','الانفصال أو الطلاق','إنهاء الزواج وتغيير وضع الأسرة.',divorce));
  if(state.partner&&!state.married)opts.push(choice('💔','إنهاء العلاقة','إنهاء العلاقة الحالية والاحتفاظ بسجل الشريك السابق.',breakUp));
  if(state.partner&&state.age>=20&&(state.married||state.partner.relationshipLevel>=70))opts.push(choice('👶','إنجاب طفل','إضافة فرد جديد للعائلة مع تكاليف تربية سنوية.',haveChild,'8,000 '+state.place.unit));
+ if(state.age>=21&&state.children.length<6)opts.push(choice('🧸','تبنّي طفل','توسيع الأسرة من خلال التبنّي، مع مصاريف بداية ورعاية مستمرة.',adoptChild,'12,000 '+state.place.unit));
  if((state.children||[]).length)opts.push(choice('🧒','أبنائي','الاطمئنان على الأبناء والتفاعل معاهم.',()=>{closeModal();relations();}));
  if(!state.partner)opts.push(choice('💞','التعرف على شريك','ابدأ بعلاقة قبل الزواج وتكوين الأسرة.',()=>{closeModal();meetPartner();}));
  opts.push(choice('📜','ترتيب الوصية','حدد تصورك لتوزيع الإرث عند نهاية الحياة.',willMenu));
@@ -723,6 +730,12 @@ function haveChild(){
  state.children.push(child);state.partner.relationshipLevel=clamp(state.partner.relationshipLevel+4);stat('happiness',7);achievement('إنجاب طفل');
  log('👶','فرد جديد في الأسرة','اتولد '+child.name+'، وبدأ فصل جديد من حياتكم. تربية الأطفال لها مصاريف ووقت ومسؤولية.','special');
  render();info('🎉','مبروك المولود الجديد','اتضاف '+child.name+' لشجرة العائلة. احتياجاته وتعليمه وعلاقتك بيه هتتغير مع العمر.');
+}
+function adoptChild(){
+ closeModal();if(state.age<21){info('🔒','لسه بدري','التبنّي متاح من سن 21 داخل اللعبة.');return;}
+ if(state.children.length>=6){info('👪','الأسرة كبيرة بالفعل','النسخة الحالية تدعم حتى ستة أبناء لكل حياة.');return;}
+ if(state.bank<12000){info('💳','الرصيد مش كفاية','تكاليف بداية التبنّي 12,000 '+state.place.unit+'.');return;}
+ state.bank-=12000;const gender=pick(['male','female']);const child=makePerson(gender,gender==='male'?'ابن بالتبنّي':'ابنة بالتبنّي','🧒',0,72+Math.floor(Math.random()*22));child.gender=gender;child.job='طفل بالتبنّي';child.adopted=true;child.bornAt=state.age;state.children.push(child);state.stats.happiness=clamp(state.stats.happiness+6);achievement('توسيع الأسرة بالتبنّي');log('🧸','أصبحت أسرة بالتبنّي','رحبت بـ'+child.name+' في الأسرة. محتاج وقت واهتمام عشان يبقى جزءًا من البيت.','special');render();info('🧸','أهلًا بفرد جديد','أُضيف '+child.name+' إلى أبنائك. مصاريف رعايته هتتغير مع العمر.');
 }
 function divorce(){
  closeModal();
