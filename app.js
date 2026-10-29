@@ -425,7 +425,11 @@ function newLife(){
  return {version:1,lifeId:Date.now()+Math.random(),cemeterySaved:false,name:pick(names[gender])+' '+pick(names.family),gender,age:0,place,bank:place.start,stats:{happiness:65+Math.floor(Math.random()*26),health:76+Math.floor(Math.random()*22),smart:35+Math.floor(Math.random()*41),looks:35+Math.floor(Math.random()*51)},education:{level:0,school:'لم تبدأ الدراسة',major:null,yearsLeft:0,tuition:0},job:null,jobHistory:[],specialCareer:null,specialCareerHistory:[],combatCareer:null,filmStudio:null,esportsCareer:null,talents:{gaming:15+Math.floor(Math.random()*71)},performance:50,assets:[],investments:[],business:null,family:[father,mother,sibling],friends:[],partner:null,married:false,children:[],coParentingPlans:[],pets:[],hobbies:[],fame:0,followers:0,socialMediaAccount:false,socialMediaPosts:0,reputation:50,crimeRecord:0,prison:null,debt:0,willDistribution:'الأسرة بالتساوي',heirlooms:[],dailyRewardDate:null,dailyChallenges:null,timeMachineSnapshots:[],legacy:{name:null,inheritance:0,heirloom:null},driversLicense:false,travelHistory:[],log:[],accomplishments:['بدأت رحلة الحياة'],status:'حي',cause:null,retired:false,yearCount:0,wealthPeak:place.start};
 }
 function isValidSaveData(data){
- return !!(data&&data.version===1&&data.stats&&typeof data.stats==='object'&&!Array.isArray(data.stats)&&Array.isArray(data.log));
+ if(!data||typeof data!=='object'||Array.isArray(data)||data.version!==1)return false;
+ const age=data.age;
+ return typeof data.name==='string'&&data.name.trim().length>0&&
+  age!==null&&age!==undefined&&String(age).trim()!==''&&Number.isFinite(Number(age))&&Number(age)>=0&&Number(age)<=150&&
+  !!data.stats&&typeof data.stats==='object'&&!Array.isArray(data.stats)&&Array.isArray(data.log);
 }
 function save(){
  try{
@@ -2399,7 +2403,7 @@ function importSave(){
   reader.onload=()=>{
    try{
     const data=JSON.parse(String(reader.result||''));
-    if(!data||typeof data!=='object'||Array.isArray(data)||data.version!==1||!data.stats||typeof data.stats!=='object'||Array.isArray(data.stats)||!Array.isArray(data.log)||!Array.isArray(data.family)||!data.place||typeof data.place!=='object'||Array.isArray(data.place))throw new Error('invalid');
+    if(!isValidSaveData(data)||!Array.isArray(data.family)||!data.place||typeof data.place!=='object'||Array.isArray(data.place))throw new Error('invalid');
     normalizeCoreState(data);
     const defaults={lifeId:Date.now()+Math.random(),cemeterySaved:false,jobHistory:[],specialCareer:null,specialCareerHistory:[],combatCareer:null,filmStudio:null,investments:[],business:null,married:false,children:[],coParentingPlans:[],pets:[],hobbies:[],fame:0,followers:0,socialMediaAccount:false,socialMediaPosts:0,reputation:50,crimeRecord:0,prison:null,debt:0,willDistribution:'الأسرة بالتساوي',heirlooms:[],dailyRewardDate:null,dailyChallenges:null,timeMachineSnapshots:[],legacy:{name:null,inheritance:0,heirloom:null},driversLicense:false,travelHistory:[],retired:false,yearCount:data.age||0,assets:[],friends:[],accomplishments:[],status:'حي'};
     Object.keys(defaults).forEach(k=>{if(data[k]===undefined||data[k]===null)data[k]=defaults[k];});

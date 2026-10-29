@@ -216,6 +216,24 @@ async function run() {
     assert.deepEqual(afterInvalidImport, beforeInvalidImport, 'invalid import should leave the active save untouched');
     await page.locator('.choice').filter({ hasText: 'تمام' }).last().click();
 
+    // Valid JSON with a missing identity/age is still a corrupt save, not a new life.
+    const structuralChooserPromise = page.waitForEvent('filechooser');
+    await page.locator('#menuBtn').click();
+    await page.locator('.choice').filter({ hasText: 'تحميل حفظ' }).click();
+    const structuralChooser = await structuralChooserPromise;
+    await structuralChooser.setFiles({
+      name: 'incomplete-hayah-save.json',
+      mimeType: 'application/json',
+      buffer: Buffer.from(JSON.stringify({ version: 1, stats: {}, log: [], family: [], place: {} }))
+    });
+    await page.getByText('ملف حفظ غير صالح', { exact: true }).waitFor();
+    const afterStructuralImport = await page.evaluate(() => {
+      const saved = JSON.parse(localStorage.getItem('hekayat_hayah_save_v1') || 'null');
+      return { lifeId: saved && saved.lifeId, age: saved && saved.age, name: saved && saved.name, bank: saved && saved.bank };
+    });
+    assert.deepEqual(afterStructuralImport, beforeInvalidImport, 'structurally incomplete JSON must not overwrite the active save');
+    await page.locator('.choice').filter({ hasText: 'تمام' }).last().click();
+
     const imported = { ...exported, name: 'حياة مستوردة للاختبار', age: 44, yearCount: 44 };
     const fileChooserPromise = page.waitForEvent('filechooser');
     await page.locator('#menuBtn').click();
