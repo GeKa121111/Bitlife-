@@ -282,4 +282,60 @@ const expectedBackup = JSON.parse(store.get(backupKey));
 assert.equal(recovered.lifeId, expectedBackup.lifeId, 'corrupt primary save should recover the previous life');
 assert.equal(recovered.age, expectedBackup.age, 'recovery should restore the checkpoint age');
 assert.match(recoveryGet('saveStatus').textContent, /نسخة مستردة/, 'the interface should disclose that recovery occurred');
+
+/* Regression: an unpaid university year must not be treated as a completed degree. */
+const tuitionStore = new Map(store);
+const tuitionSave = JSON.parse(tuitionStore.get('hekayat_hayah_save_v1'));
+tuitionSave.age = 18;
+tuitionSave.yearCount = 18;
+tuitionSave.bank = 0;
+tuitionSave.status = 'حي';
+tuitionSave.cause = null;
+tuitionSave.retired = false;
+tuitionSave.job = null;
+tuitionSave.education = {
+  level: 2,
+  school: 'طالب جامعي',
+  major: 'علوم الحاسب',
+  yearsLeft: 1,
+  tuition: 26000,
+  prepaidYear: false,
+  clubs: []
+};
+tuitionStore.set('hekayat_hayah_save_v1', JSON.stringify(tuitionSave));
+const tuitionElements = new Map();
+const tuitionGet = id => {
+  if (!tuitionElements.has(id)) tuitionElements.set(id, new FakeElement(id));
+  return tuitionElements.get(id);
+};
+const tuitionPanels = ['career','assets','relations','activities'].map(panel => {
+  const el = new FakeElement(panel + 'TuitionNav'); el.dataset.panel = panel; return el;
+});
+const tuitionContext = {
+  document: {
+    getElementById: tuitionGet,
+    querySelectorAll(selector) {
+      if (selector === '[data-panel]' || selector === '.navbtn') return tuitionPanels;
+      return [];
+    },
+    createElement(tag) { return new FakeElement(tag); }
+  },
+  localStorage: {
+    getItem(key) { return tuitionStore.has(key) ? tuitionStore.get(key) : null; },
+    setItem(key, value) { tuitionStore.set(key, String(value)); }
+  },
+  requestAnimationFrame(cb) { cb(); },
+  setTimeout(cb) { cb(); },
+  confirm() { return true; },
+  alert() {},
+  console
+};
+vm.runInNewContext(app, tuitionContext, { timeout: 3000 });
+tuitionGet('ageUpBtn').dispatch('click');
+const afterUnpaidYear = JSON.parse(tuitionStore.get('hekayat_hayah_save_v1'));
+assert.equal(afterUnpaidYear.education.yearsLeft, 1, 'unpaid tuition must leave the current study year outstanding');
+assert.equal(afterUnpaidYear.education.level, 2, 'an unpaid year must not award the degree level');
+assert.equal(afterUnpaidYear.education.school, 'طالب جامعي', 'an unpaid year must not mark the character as graduated');
+assert.ok(!afterUnpaidYear.log.some(entry => entry.title === 'اتخرجت من الجامعة'), 'no graduation event should be recorded for an unpaid year');
+
 console.log('Smoke tests passed: RTL page, responsive Arabic life-sim UI, offline PWA shell, age-up, autosave, recovery from a corrupted primary save, career and relationship navigation.');
