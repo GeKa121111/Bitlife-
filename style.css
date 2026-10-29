@@ -826,3 +826,115 @@ body.text-large .logtext{font-size:14px;line-height:1.75}
 body.text-large .statlabel{font-size:11px}
 body.text-large .statvalue{font-size:10px}
 body.text-large .navbtn{font-size:11px}
+
+
+/* BitLife reference layout pass 2: blue tab strip above the life meters. */
+:root{
+  --life-nav:#0667a9;
+  --life-nav-active:#07558c;
+  --life-tab-text:#ffffff;
+  --life-stat-bg:#ffffff;
+  --life-stat-text:#263238;
+}
+.bottom-dock{
+  position:fixed;left:50%;right:auto;bottom:0;inset:auto auto 0 50%;
+  transform:translateX(-50%);width:100%;max-width:450px;
+  display:flex;flex-direction:column;margin:0;
+  padding:0 0 env(safe-area-inset-bottom);
+  background:#fff;border:0;border-top:1px solid #d7e0e6;
+  box-shadow:0 -2px 7px #1833480d;z-index:20;
+}
+/* Reference arrangement: action tabs first, stats bars below them. */
+.nav{
+  order:0;height:76px;min-height:76px;flex:0 0 76px;
+  display:grid;grid-template-columns:1fr 1fr 82px 1fr 1fr;
+  align-items:center;gap:0;padding:0 3px;overflow:visible;
+  background:var(--life-nav);border:0;border-top:1px solid #07548c;
+}
+.navbtn{
+  min-width:0;min-height:66px;padding:5px 1px 3px;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:3px;border:0;border-radius:0;background:transparent;
+  color:var(--life-tab-text);font-size:10px;font-weight:800;
+}
+.navbtn .navico{
+  width:35px;height:35px;flex:0 0 35px;display:grid;place-items:center;
+  border-radius:50%;background:#00bfc2;color:#fff;font-size:18px;line-height:1;
+  border:1px solid #ffffff72;box-shadow:0 1px 2px #003d6540;filter:none;
+}
+.navbtn:first-child .navico{background:#f47a20}
+.navbtn.active{background:var(--life-nav-active);color:#fff;box-shadow:inset 0 2px 0 #ffffff16}
+.navbtn.active .navico{box-shadow:0 0 0 2px #ffffff48}
+.agebtn{
+  position:relative;z-index:4;justify-self:center;align-self:center;
+  width:79px;height:79px;min-width:79px;flex:0 0 79px;
+  margin-top:-15px;padding:0;border:4px solid #fff;border-radius:50%;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0;
+  color:#fff;background:#09a638;box-shadow:0 2px 5px #002d3d65;
+  font-size:12px;font-weight:1000;line-height:1.05;
+}
+.agebtn span:first-child{font-size:36px;line-height:.95;font-weight:400}
+.agebtn:active{transform:scale(.96);background:#07852d}
+/* Full-width meters below the tabs, as in BitLife's classic life screen. */
+.stats{
+  order:1;display:flex;flex-direction:column;gap:4px;margin:0;
+  padding:9px 12px 10px;background:var(--life-stat-bg);
+  border:0;border-top:1px solid #dce5ea;border-radius:0;
+}
+.statrow{
+  display:grid;grid-template-columns:80px minmax(0,1fr);align-items:center;
+  gap:8px;width:100%;min-width:0;height:15px;
+}
+.stathead{
+  width:auto;min-width:0;flex:initial;display:flex;align-items:center;
+  justify-content:flex-start;margin:0;font-size:10px;
+}
+.statlabel{font-size:10px;color:var(--life-stat-text);font-weight:750;white-space:nowrap}
+.statbar{width:100%;min-width:0}
+.track{
+  position:relative;isolation:isolate;display:block;width:100%;height:14px;
+  background:#dce4e9;border-radius:0;overflow:hidden;
+}
+.fill{
+  position:absolute;top:0;right:0;bottom:0;z-index:0;height:100%;
+  border-radius:0;transition:width .25s ease;
+}
+.statvalue{
+  position:absolute;inset:0;z-index:1;width:100%;display:flex;
+  align-items:center;justify-content:center;font-size:9px;font-weight:900;
+  color:#263238;direction:ltr;text-shadow:0 1px #ffffffa8;pointer-events:none;
+}
+.feed{padding-bottom:12px}
+@media(max-width:380px){
+  .nav{height:70px;min-height:70px;flex-basis:70px;grid-template-columns:1fr 1fr 72px 1fr 1fr;padding-inline:1px}
+  .navbtn{font-size:9px;min-height:62px;gap:2px}
+  .navbtn .navico{width:31px;height:31px;flex-basis:31px;font-size:16px}
+  .agebtn{width:70px;height:70px;min-width:70px;flex-basis:70px;margin-top:-13px}
+  .agebtn span:first-child{font-size:32px}
+  .stats{padding:8px 8px 9px;gap:3px}
+  .statrow{grid-template-columns:70px minmax(0,1fr);gap:6px;height:14px}
+  .statlabel{font-size:9px}
+  .track{height:12px}
+}
+@media(max-height:680px){
+  .nav{height:65px;min-height:65px;flex-basis:65px}
+  .navbtn{min-height:58px}
+  .navbtn .navico{width:30px;height:30px;flex-basis:30px}
+  .agebtn{width:67px;height:67px;min-width:67px;flex-basis:67px;margin-top:-11px}
+  .agebtn span:first-child{font-size:30px}
+  .stats{padding-top:5px;padding-bottom:6px;gap:2px}
+  .statrow{height:12px}
+  .track{height:11px}
+}
+@media(min-width:451px){
+  .bottom-dock{left:50%;right:auto;transform:translateX(-50%)}
+}
+body.theme-dark .bottom-dock{background:#17232c;border-color:#354651}
+body.theme-dark .nav{background:#075078;border-color:#204658}
+body.theme-dark .navbtn{color:#d8e7ef}
+body.theme-dark .navbtn.active{background:#123b54;color:#fff}
+body.theme-dark .stats{background:#17232c;border-color:#354651}
+body.theme-dark .statlabel{color:#dce6ec}
+body.theme-dark .track{background:#344651}
+body.theme-dark .statvalue{color:#fff;text-shadow:0 1px #0009}
+body.theme-dark .agebtn{border-color:#17232c}
