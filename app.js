@@ -1122,8 +1122,8 @@ function specialCareers(){
 }
 function startSpecialCareer(c){
  closeModal();if(state.age<c.min){info('🔒','لسه بدري','المسار ده متاح من سن '+c.min+'.');return;}
- if(state.specialCareer){if(!Array.isArray(state.specialCareerHistory))state.specialCareerHistory=[];state.specialCareerHistory.unshift(Object.assign({},state.specialCareer,{record:Object.assign({},state.specialCareer.record||{}),history:(state.specialCareer.history||[]).slice(),endedAge:state.age,ending:'تغيير المسار'}));state.specialCareerHistory=state.specialCareerHistory.slice(0,20);}
  if(c.looks&&state.stats.looks<c.looks&&c.id==='actor'){info('🎭','طوّر مهاراتك','فرص التمثيل تزيد مع المظهر والتدريب، جرّب الهوايات والتدريب.');return;}
+ if(state.specialCareer){if(!Array.isArray(state.specialCareerHistory))state.specialCareerHistory=[];state.specialCareerHistory.unshift(Object.assign({},state.specialCareer,{record:Object.assign({},state.specialCareer.record||{}),history:(state.specialCareer.history||[]).slice(),endedAge:state.age,ending:'تغيير المسار'}));state.specialCareerHistory=state.specialCareerHistory.slice(0,20);}
  state.specialCareer={id:c.id,title:c.title,income:c.income,level:1,startedAge:state.age,record:{attempts:0,wins:0,losses:0,projects:0,totalEarnings:0,bestLevel:1},history:[]};if(c.id==='influencer'){state.socialMediaAccount=true;state.followers=Math.max(state.followers||0,100);state.socialMediaPosts=(state.socialMediaPosts||0)+1;}state.fame=clamp((state.fame||0)+4);state.reputation=clamp((state.reputation||50)+2);achievement('بدأ مسار الشهرة: '+c.title);
  log(c.emoji,'بداية مسار جديد','بدأت مسارك في '+c.title+'. النجاح محتاج تدريب واستمرارية، والدخل ممكن يتغير من سنة للتانية.','special');render();info('🌟','بدأت المسار','تقدر تتدرب أو تختبر فرص جديدة من قائمة المهن الخاصة.');
 }
