@@ -22,7 +22,11 @@ function functionSource(name, nextName) {
 
 test('واجهة حياة عربية RTL وتحافظ على اسمها المستقل', () => {
   assert.match(html, /<html lang="ar" dir="rtl">/);
-  assert.match(html, /class="brandlogo" aria-label="حياة \| محاكي الحياة">حياة/);
+  assert.match(html, /class="brandlogo" aria-label="حياة"/);
+  assert.match(html, /class="brand-symbol"/);
+  assert.match(html, /id="identityFlag"/);
+  assert.match(html, /id="characterInfoBtn"/);
+  assert.match(html, /id="stageNavLabel"/);
   assert.doesNotMatch(html, /BITLIFE|BitLife|Candywriter/);
 });
 
