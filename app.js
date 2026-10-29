@@ -1376,7 +1376,7 @@ function timeMachineMenu(){
  const isDead=state.status==='متوفى',history=state.timeMachineSnapshots,opts=[];
  for(let index=history.length-1;index>=0;index--){
   try{
-   const snap=JSON.parse(history[index]);
+   const parsed=JSON.parse(history[index]),snap=parsed&&parsed.snapshotVersion===1?parsed.state:parsed;
    opts.push(choice('⏪','العودة إلى عمر '+fmt(snap.age)+' سنة','استرجاع حالة الحياة كما كانت قبل التقدم إلى السنة التالية. كل ما حدث بعدها سيتراجع.',()=>rewindToSnapshot(index)));
   }catch(e){}
  }
