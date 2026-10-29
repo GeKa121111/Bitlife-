@@ -146,6 +146,17 @@ async function run() {
     const shownName = (await page.locator('#characterName').innerText()).trim();
     assert.ok(shownName.includes(seedSave.name), 'the legacy v1 save should render the seeded player');
 
+    // The career catalog should keep aspirational jobs visible and explain missing requirements.
+    await page.locator('[data-panel="career"]').click();
+    const doctorChoice = page.locator('.choice').filter({ hasText: 'طبيب' }).first();
+    await doctorChoice.waitFor();
+    assert.ok(await doctorChoice.evaluate(element => element.classList.contains('locked-choice')),
+      'a job whose education and intelligence requirements are unmet should be visibly locked');
+    await doctorChoice.click();
+    await page.getByText(/مستوى التعليم المطلوب 5/).waitFor();
+    await page.getByText(/الذكاء المطلوب 76%/).waitFor();
+    await page.locator('#closeModal').click();
+
     const mobileGeometry = await page.evaluate(() => {
       const viewportWidth = window.innerWidth;
       const app = document.querySelector('#app').getBoundingClientRect();
