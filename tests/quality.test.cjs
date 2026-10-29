@@ -77,6 +77,13 @@ test('الرسائل المالية تستخدم عملة بلد الشخصية 
   assert.match(activity, /cash\(1800\)/);
 });
 
+test('هوية حياة البصرية مستقلة عن لوحة ألوان الألعاب المرجعية', () => {
+  assert.match(css, /--hayah-primary:#176b66/);
+  assert.match(css, /--hayah-navy:#1d3b53/);
+  assert.match(css, /--hayah-accent:#e5b34b/);
+  assert.doesNotMatch(css, /BitLife-like|--reference-/);
+});
+
 test('تخطيط الهاتف وإمكانية الوصول ما زالا موجودين', () => {
   assert.match(css, /@media\(max-width:380px\)/);
   assert.match(css, /@media\(prefers-reduced-motion:reduce\)/);
@@ -144,21 +151,22 @@ test('إعدادات العرض منفصلة عن حفظ الحياة ويمكن
 });
 
 
-test('واجهة الهاتف تقرّب الشاشة الرئيسية من ترتيب BitLife مع اسم حياة المستقل', () => {
-  const finalUi = css.slice(css.lastIndexOf('/* BitLife-like main screen: narrow brand bar'));
-  assert.ok(finalUi.length > 0, 'the latest reference screen block should exist');
-  assert.match(finalUi, /--reference-red:#f02e12/);
-  assert.match(finalUi, /--reference-blue:#075c98/);
+test('واجهة الهاتف تحافظ على تخطيط حياة العربي وهويته البصرية المستقلة', () => {
+  const finalUi = css.slice(css.lastIndexOf("/* Hayah's original life screen: compact identity"));
+  assert.ok(finalUi.length > 0, 'the latest Hayah layout block should exist');
+  assert.match(finalUi, /--hayah-primary:#176b66/);
+  assert.match(finalUi, /--hayah-navy:#1d3b53/);
+  assert.match(finalUi, /--hayah-accent:#e5b34b/);
   assert.match(finalUi, /\.identity-line\{/);
   assert.match(finalUi, /\.nav\s*\{[^}]*order:0/s);
   assert.match(finalUi, /\.stats\s*\{[^}]*order:1/s);
-  assert.match(finalUi, /\.navbtn:first-child \.navico\{background:#f47a20/);
+  assert.match(finalUi, /\.navbtn:first-child \.navico\{background:#3b9a90/);
   assert.match(finalUi, /\.agebtn\s*\{[^}]*border-radius:50%/s);
   assert.match(finalUi, /\.statvalue\s*\{[^}]*position:absolute[^}]*z-index:1/s);
   assert.match(finalUi, /\.nav\{direction:ltr\}/);
   assert.match(finalUi, /\.fill\{left:0;right:auto\}/);
   assert.ok(app.includes("const rows=[['happiness','😄','السعادة'],['health','❤️','الصحة'],['smart','🧠','الذكاء'],['looks','😎','المظهر']];"));
-  assert.match(finalUi, /body\.theme-dark \.nav\{[^}]*background:#075078/);
+  assert.match(finalUi, /body\.theme-dark \.nav\{[^}]*background:#17384d/);
   assert.match(finalUi, /@media\(max-width:380px\)/);
 });
 

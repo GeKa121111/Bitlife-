@@ -647,7 +647,7 @@ body.theme-dark .agebtn{border-color:#17232c}
 body.theme-dark .statlabel{color:#dce6ec}
 
 
-/* BitLife-like final mobile layout: clean life feed, full-width meters, compact dock. */
+/* Final mobile layout for Hayah: a clear life feed, readable meters, and thumb-friendly navigation. */
 :root{
   --life-nav:#ffffff;
   --life-nav-active:#fff0ee;
@@ -862,7 +862,7 @@ body.text-large .navbtn{font-size:11px}
   border-radius:50%;background:#00bfc2;color:#fff;font-size:18px;line-height:1;
   border:1px solid #ffffff72;box-shadow:0 1px 2px #003d6540;filter:none;
 }
-.navbtn:first-child .navico{background:#f47a20}
+.navbtn:first-child .navico{background:#3b9a90}
 .navbtn.active{background:var(--life-nav-active);color:#fff;box-shadow:inset 0 2px 0 #ffffff16}
 .navbtn.active .navico{box-shadow:0 0 0 2px #ffffff48}
 .agebtn{
@@ -927,7 +927,7 @@ body.text-large .navbtn{font-size:11px}
 }
 @media(min-width:451px){.bottom-dock{left:50%;right:auto;transform:translateX(-50%)}}
 body.theme-dark .bottom-dock{background:#17232c;border-color:#354651}
-body.theme-dark .nav{background:#075078;border-color:#204658}
+body.theme-dark .nav{background:#17384d;border-color:#315466}
 body.theme-dark .navbtn{color:#d8e7ef}
 body.theme-dark .navbtn.active{background:#123b54;color:#fff}
 body.theme-dark .stats{background:#17232c;border-color:#354651}
@@ -937,14 +937,14 @@ body.theme-dark .statvalue{color:#fff;text-shadow:0 1px #0009}
 body.theme-dark .agebtn{border-color:#17232c}
 
 
-/* BitLife-like main screen: narrow brand bar, inline profile, stage tab and stacked meters. */
+/* Hayah's original life screen: compact identity, Arabic story feed, and readable status meters. */
 :root{
-  --reference-red:#f02e12;
-  --reference-blue:#075c98;
-  --reference-blue-deep:#00477d;
-  --reference-aqua:#03bec1;
-  --reference-green:#079f3c;
-  --reference-track:#d8e2e9;
+  --hayah-primary:#176b66;
+  --hayah-navy:#1d3b53;
+  --hayah-primary-deep:#123046;
+  --hayah-accent:#e5b34b;
+  --hayah-success:#2d855f;
+  --hayah-track:#dbe7e8;
 }
 html,body{height:100%;min-height:0}
 body{overflow:hidden;align-items:stretch;justify-content:center;background:#edf0f3}
@@ -956,7 +956,7 @@ body{overflow:hidden;align-items:stretch;justify-content:center;background:#edf0
 .topbar{
   position:relative;top:auto;z-index:30;height:53px;min-height:53px;flex:0 0 53px;
   padding:0 8px;display:grid;grid-template-columns:38px minmax(0,1fr) 38px;
-  align-items:center;gap:3px;background:var(--reference-red);color:#fff;
+  align-items:center;gap:3px;background:var(--hayah-primary);color:#fff;
   border:0;box-shadow:none;border-radius:0;
 }
 .menu-trigger,.header-action{
@@ -970,10 +970,10 @@ body{overflow:hidden;align-items:stretch;justify-content:center;background:#edf0
   color:#ffdf26;font-size:23px;font-weight:1000;white-space:nowrap;
   text-align:center;letter-spacing:-.6px;text-shadow:none;
 }
-.brandlogo strong{font-weight:1000;color:#ffdf26}
+.brandlogo strong{font-weight:1000;color:#fff}
 .brand-symbol{
   width:27px;height:27px;flex:0 0 27px;display:grid;place-items:center;
-  border:2px solid #fff;border-radius:50%;background:#fff;color:var(--reference-red);
+  border:2px solid var(--hayah-accent);border-radius:50%;background:var(--hayah-accent);color:var(--hayah-primary-deep);
   font-size:17px;line-height:1;font-weight:1000;box-shadow:0 1px 0 #a82112;
 }
 .top-actions{min-width:0;width:38px;display:flex;align-items:center;justify-content:center}
@@ -998,13 +998,13 @@ body{overflow:hidden;align-items:stretch;justify-content:center;background:#edf0
 .identity-flag{flex:0 0 auto;display:inline-grid;place-items:center;font-size:15px;line-height:1}
 .name{
   min-width:0;flex:0 1 auto;font-size:15px;line-height:1.15;font-weight:950;
-  color:var(--reference-blue);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  color:var(--hayah-navy);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
 }
 .fame-star{font-size:11px;vertical-align:middle}
 .identity-info{
   flex:0 0 15px;width:15px;height:15px;min-width:15px;padding:0;
   display:inline-grid;place-items:center;border:0;border-radius:50%;
-  background:var(--reference-blue);color:#fff;font-family:Georgia,serif;
+  background:var(--hayah-navy);color:#fff;font-family:Georgia,serif;
   font-size:11px;font-weight:900;line-height:1;
 }
 .identity-role{display:flex;align-items:center;gap:4px;min-width:0;margin:1px 0 0;font-size:10px;line-height:1.2;color:#3d5768}
@@ -1018,7 +1018,7 @@ body{overflow:hidden;align-items:stretch;justify-content:center;background:#edf0
 }
 .wealthnum{
   order:0;max-width:100%;font-size:17px;line-height:1.05;font-weight:1000;
-  color:var(--reference-blue);white-space:nowrap;direction:ltr;text-align:right;
+  color:var(--hayah-navy);white-space:nowrap;direction:ltr;text-align:right;
   letter-spacing:-.35px;overflow-wrap:normal;
 }
 .wealthnum.negative{color:#c62828}
@@ -1033,7 +1033,7 @@ body{overflow:hidden;align-items:stretch;justify-content:center;background:#edf0
 }
 .feed::-webkit-scrollbar{width:3px}
 .feed::-webkit-scrollbar-thumb{background:#d7e1e8;border-radius:99px}
-.agegroup{padding:11px 0 5px;margin:0;display:flex;align-items:center;gap:0;font-size:13px;font-weight:850;color:var(--reference-blue)}
+.agegroup{padding:11px 0 5px;margin:0;display:flex;align-items:center;gap:0;font-size:13px;font-weight:850;color:var(--hayah-navy)}
 .agegroup:after{display:none}
 .logcard,.logcard.good,.logcard.bad,.logcard.special{
   display:block;margin:0;padding:2px 0 6px;border:0;border-radius:0;
@@ -1062,8 +1062,8 @@ body{overflow:hidden;align-items:stretch;justify-content:center;background:#edf0
 .nav{
   order:0;height:73px;min-height:73px;flex:0 0 73px;padding:0 3px;
   display:grid;grid-template-columns:1fr 1fr 82px 1fr 1fr;
-  align-items:center;gap:0;overflow:visible;background:var(--reference-blue);
-  border:0;border-top:1px solid var(--reference-blue-deep);
+  align-items:center;gap:0;overflow:visible;background:var(--hayah-navy);
+  border:0;border-top:1px solid var(--hayah-primary-deep);
 }
 .navbtn{
   min-width:0;min-height:64px;padding:4px 1px 2px;border:0;border-radius:0;
@@ -1072,10 +1072,10 @@ body{overflow:hidden;align-items:stretch;justify-content:center;background:#edf0
 }
 .navbtn .navico{
   width:34px;height:34px;flex:0 0 34px;border:1px solid #ffffff8c;border-radius:50%;
-  background:var(--reference-aqua);color:#fff;display:grid;place-items:center;
+  background:var(--hayah-accent);color:#fff;display:grid;place-items:center;
   font-size:18px;line-height:1;filter:none;box-shadow:0 1px 2px #003c6844;
 }
-.navbtn:first-child .navico{background:#f47a20}
+.navbtn:first-child .navico{background:#3b9a90}
 .navbtn.active{background:#004e83;color:#fff;box-shadow:inset 0 2px 0 #ffffff16}
 .navbtn.active .navico{box-shadow:0 0 0 2px #ffffff47}
 .agebtn{
@@ -1083,7 +1083,7 @@ body{overflow:hidden;align-items:stretch;justify-content:center;background:#edf0
   width:78px;height:78px;min-width:78px;flex:0 0 78px;
   margin-top:-14px;padding:0;border:3px solid #fff;border-radius:50%;
   display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0;
-  color:#fff;background:var(--reference-green);box-shadow:0 1px 4px #002d3d75;
+  color:#fff;background:var(--hayah-success);box-shadow:0 1px 4px #002d3d75;
   font-size:12px;font-weight:1000;line-height:1.05;
 }
 .agebtn span:first-child{font-size:35px;line-height:.9;font-weight:400}
@@ -1126,8 +1126,8 @@ body{overflow:hidden;align-items:stretch;justify-content:center;background:#edf0
   .stats{padding-top:5px;padding-bottom:5px;gap:2px}.statrow{height:12px}.track{height:11px}
 }
 @media(min-width:451px){.bottom-dock{left:50%;right:auto;transform:translateX(-50%)}}
-body.theme-dark .topbar{background:#d92711}
-body.theme-dark .brandlogo strong{color:#ffdf26}
+body.theme-dark .topbar{background:#14514e}
+body.theme-dark .brandlogo strong{color:#fff}
 body.theme-dark .hero{background:#263b48;border-color:#3c5563}
 body.theme-dark .name{color:#80c8f1}
 body.theme-dark .identity-info{background:#80c8f1;color:#17303d}
@@ -1138,7 +1138,7 @@ body.theme-dark .agegroup{color:#80c8f1}
 body.theme-dark .logtitle,body.theme-dark .logtext,body.theme-dark .logcard.special .logtitle,body.theme-dark .logcard.special .logtext{color:#dce6ec}
 body.theme-dark .logcard.good .logtitle,body.theme-dark .logcard.good .logtext{color:#8cdaad}
 body.theme-dark .logcard.bad .logtitle,body.theme-dark .logcard.bad .logtext{color:#ff9ba5}
-body.theme-dark .nav{background:#075078;border-color:#204658}
+body.theme-dark .nav{background:#17384d;border-color:#315466}
 body.theme-dark .navbtn.active{background:#123b54}
 body.theme-dark .stats{background:#1f2d36;border-color:#354651}
 body.theme-dark .statlabel{color:#dce6ec}
@@ -1153,7 +1153,7 @@ body.text-large .navbtn{font-size:9px}
 @media(prefers-reduced-motion:reduce){.agebtn,.fill,.logcard{animation:none!important;transition:none!important}}
 
 
-/* Preserve the classic left-to-right tab and meter geometry while text remains Arabic. */
+/* Keep the five-button dock geometry stable while Arabic labels remain right-to-left. */
 .topbar{direction:ltr}
 .brandlogo{direction:rtl}
 .nav{direction:ltr}
@@ -1164,8 +1164,8 @@ body.text-large .navbtn{font-size:9px}
 .fill{left:0;right:auto}
 
 
-/* Final reference geometry: left-to-right tabs, inline identity, and left-origin status bars. */
-:root{--reference-red:#f02e12;--reference-blue:#075c98}
+/* Final Hayah layout: compact identity, five-item dock, and clear status bars. */
+:root{--hayah-primary:#176b66;--hayah-navy:#1d3b53;--hayah-primary-deep:#123046;--hayah-accent:#e5b34b;--hayah-success:#2d855f;--hayah-track:#dbe7e8}
 .topbar{direction:ltr}
 .brandlogo{direction:rtl}
 .hero{direction:ltr}
