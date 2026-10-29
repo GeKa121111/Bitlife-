@@ -530,6 +530,8 @@ function normalizeCoreState(data){
  if(!Number.isFinite(Number(data.place.start))||Number(data.place.start)<=0)data.place.start=fallbackPlace.start;
  const statDefaults={happiness:65,health:80,smart:40,looks:45};
  Object.keys(statDefaults).forEach(key=>{const value=Number(data.stats[key]);data.stats[key]=Number.isFinite(value)?clamp(value):statDefaults[key];});
+ // Older v1 saves may not contain a performance score; keep job applications usable after migration.
+ data.performance=clamp(Number.isFinite(Number(data.performance))?Number(data.performance):50);
  data.age=Number.isFinite(Number(data.age))?Math.max(0,Math.min(120,Math.floor(Number(data.age)))):0;
  data.bank=Number.isFinite(Number(data.bank))?Number(data.bank):Number(data.place.start)||0;
  data.sti=typeof data.sti==='boolean'?data.sti:false;
@@ -1153,6 +1155,26 @@ function dropOutConfirm(){
   choice('↩️','أتراجع','الاستمرار في الدراسة.',()=>{closeModal();schoolHub();})
  ]);
 }
+function jobRequirements(job){
+ const missing=[];
+ if(state.age<job.age)missing.push('العمر المطلوب '+job.age+' سنة (عمرك '+state.age+')');
+ if(state.stats.smart<job.smart)missing.push('الذكاء المطلوب '+job.smart+'% (الحالي '+clamp(state.stats.smart)+'%)');
+ const educationLevel=Number(state.education&&state.education.level)||0;
+ if(educationLevel<job.edu)missing.push('مستوى التعليم المطلوب '+job.edu+' (الحالي '+educationLevel+')');
+ return missing;
+}
+function jobAcceptanceChance(){
+ const performance=Number.isFinite(Number(state.performance))?Number(state.performance):50;
+ return perkEnabled('goldenResume')?1:(.5+clamp(state.stats.smart)/100*.22+clamp(performance)/100*.15);
+}
+function jobRequirementsMenu(job,requirements){
+ const opts=[];
+ if((Number(state.education&&state.education.level)||0)<job.edu)opts.push(choice('🎓','التعليم والجامعة','استكشف التخصصات التي ترفع مؤهلك.',()=>{closeModal();university(false);}));
+ if(state.stats.smart<job.smart)opts.push(choice('📚','الهوايات والمهارات','طوّر مهاراتك من خلال القراءة والكتابة والممارسة.',()=>{closeModal();hobbiesMenu();}));
+ opts.push(choice('↩️','رجوع للوظائف','',()=>{closeModal();showCareer();}));
+ modal('🔒','متطلبات '+job.title,'لسه مش مؤهل للتقديم. '+requirements.join('؛ ')+'.',opts);
+}
+
 function showCareer(){
  if(state.age<6){info('📚','لسه بدري','التعليم التفاعلي يبدأ في سن المدرسة. دلوقتي تقدر تتابع أحداث الطفولة وتتقدم بالعمر.');return;}
  if(!state.job&&(state.age<18||state.education.yearsLeft>0)&&!state.retired){schoolHub();return;}
@@ -1172,9 +1194,12 @@ function showCareer(){
   modal('💼','الدراسة والشغل','شغلك الحالي: '+state.job.title+' — الأداء '+state.performance+'%.',opts,true,'<div class="muted performance-summary">مستوى الأداء · '+state.performance+'%</div><div class="progressline"><div style="width:'+clamp(state.performance)+'%"></div></div>');return;
  }
  let intro='مفيش شغل حاليًا. الوظائف بتتغير حسب سنك وتعليمك ومستوى ذكاءك.';
- const eligible=jobs.filter(j=>state.age>=j.age&&state.stats.smart>=j.smart&&state.education.level>=j.edu);
- const opts=eligible.map(j=>choice(j.emoji,j.title,j.desc+' الراتب السنوي المتوقع '+cash(j.salary)+'.',()=>applyJob(j),cash(j.salary)+'/سنة'));
- if(!opts.length)intro+=' محتاج ترفع الذكاء أو مستوى التعليم عشان تتأهل للوظائف المتاحة.';
+ const opts=jobs.map(j=>{
+  const missing=jobRequirements(j),eligible=missing.length===0;
+  const details=eligible?j.desc+' فرصة القبول التقديرية '+Math.round(jobAcceptanceChance()*100)+'%.':j.desc+' متطلبات ناقصة: '+missing.join('، ')+'.';
+  return choice(j.emoji,j.title,details,()=>eligible?applyJob(j):jobRequirementsMenu(j,missing),cash(j.salary)+'/سنة',null,!eligible);
+ });
+ if(!jobs.some(j=>jobRequirements(j).length===0))intro+=' الوظائف المقفولة بتوضح لك الشروط الناقصة عشان تخطط للخطوة الجاية.';
  opts.push(choice('🎓','التعليم والجامعة','اختار تخصصًا يفتح فرصًا جديدة.',()=>{closeModal();university(false);}));
  if(perkOwned('goldenDiploma')&&state.age>=18)opts.push(choice('📜','الدراسة والشهادة الذهبية','افتح قائمة التعليم واستخدم الشهادة الفورية.',()=>{closeModal();schoolHub();}));
  opts.push(choice('🌟','المهن الخاصة والشهرة','التمثيل والموسيقى والمحتوى والرياضة والكتابة والإخراج.',specialCareers));
@@ -1185,7 +1210,7 @@ function showCareer(){
 function applyJob(job){
  closeModal();
  if(state.age<job.age||state.stats.smart<job.smart||state.education.level<job.edu){info('🔒','لسه مش مؤهل','الوظيفة محتاجة سنًا أو تعليمًا أو مهارات أعلى.');return;}
- const success=perkEnabled('goldenResume')?1:(.5+state.stats.smart/100*.22+state.performance/100*.15);
+ const success=jobAcceptanceChance();
  if(chance(success)){state.job={id:job.id,title:job.title,salary:job.salary,startAge:state.age};state.jobHistory=state.jobHistory||[];state.performance=clamp(50+Math.floor(state.stats.smart/8));state.retired=false;if(perkEnabled('hollywoodStar'))state.fame=100;log('💼','اتقبلت في وظيفة جديدة','بدأت شغل '+job.title+' براتب سنوي '+cash(job.salary)+'.','good');achievement('بدأت العمل: '+job.title);info('🎉','مبروك الوظيفة','اتقبلت في '+job.title+'. كل سنة هتستلم دخل على قد أداءك.');}
  else{log('📨','طلب وظيفة','قدمت على '+job.title+' لكنهم اختاروا مرشحًا آخر. جهّز نفسك وحاول تاني.','bad');info('📨','المرة الجاية','طوّر مهاراتك وخليك مستمر في التقديم.');}
  render();
