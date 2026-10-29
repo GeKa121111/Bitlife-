@@ -19,7 +19,7 @@ assert.match(app, /board\.claimed\.length===board\.ids\.length/, 'all daily chal
 assert.match(app, /dailyChallenges:null/, 'older saves should migrate to the daily challenge state');
 assert.match(app, /function timeMachineMenu\(\)/, 'the player should be able to review yearly rewind snapshots');
 assert.match(app, /function rewindToSnapshot\(index\)/, 'time rewind should restore a selected prior state');
-assert.match(app, /timeMachineSnapshots: \[\]/, 'new lives should initialize the time-machine history');
+assert.match(app, /timeMachineSnapshots:\[\]/, 'new lives should initialize the time-machine history');
 assert.match(app, /state\.timeMachineSnapshots\.push\(JSON\.stringify\(snapshot\)\)/, 'each age-up should preserve a rewind point');
 assert.match(app, /timeMachineDeathBtn/, 'the end-of-life panel should offer a rewind path when available');
 assert.match(app, /function editCharacterTraits\(\)/, 'player traits editor should exist');
