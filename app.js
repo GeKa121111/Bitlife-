@@ -475,7 +475,7 @@ function showCareer(){
    choice('🧰','تطوير الأداء','تدريب يرفع فرص الترقية مقابل 1,200 جنيه.',()=>{closeModal();if(state.bank<1200){info('💳','الرصيد مش كفاية','التدريب يكلف 1,200 جنيه.');return;}state.bank-=1200;state.performance=clamp(state.performance+14);stat('smart',2);log('🧰','تدريب مهني','دفعت 1,200 جنيه في تدريب زوّد أداءك ومهاراتك.','good');render();}),
    choice('🚪','الاستقالة','تسيب شغلك وتفقد الدخل السنوي.',()=>{closeModal();info('🚪','تأكيد الاستقالة','متأكد إنك عايز تسيب '+state.job.title+'؟',[choice('✓','أيوه، أستقيل','',()=>{closeModal();state.job=null;state.performance=50;log('🚪','استقالة','سيبت شغلك وبدأت تدور على الخطوة التالية.');render();career();}),choice('↩️','أتراجع','',closeModal)]);})
   ];
-  modal('💼','الدراسة والشغل','شغلك الحالي: '+state.job.title+' — الأداء '+state.performance+'%.',opts);return;
+  modal('💼','الدراسة والشغل','شغلك الحالي: '+state.job.title+' — الأداء '+state.performance+'%.',opts,true,'<div class="muted" style="margin:-2px 0 7px">مستوى الأداء · '+state.performance+'%</div><div class="progressline"><div style="width:'+clamp(state.performance)+'%"></div></div>');return;
  }
  let intro='مفيش شغل حاليًا. الوظائف بتتغير حسب سنك وتعليمك ومستوى ذكاءك.';
  if(state.age<16){info('📚','لسه بدري على الشغل الرسمي','ركّز على التعليم والمهارات، وجرب المكتبة أو الأنشطة المناسبة لسنك.');return;}
