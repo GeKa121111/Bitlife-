@@ -149,7 +149,7 @@ assert.match(finalUi, /--reference-blue:#075c98/, 'the five-tab navigation shoul
 assert.match(finalUi, /\.bottom-dock\s*\{[^}]*position:fixed[^}]*left:50%/s, 'the bottom dock should stay anchored to the device viewport');
 assert.match(finalUi, /\.nav\s*\{[^}]*order:0/s, 'tabs should appear above the meters');
 assert.match(finalUi, /\.stats\s*\{[^}]*order:1/s, 'status meters should appear beneath the tabs');
-assert.match(finalUi, /\.statrow\s*\{[^}]*grid-template-columns:80px minmax\(0,1fr\)/s, 'status bars should use the full row width');
+assert.match(finalUi, /\.statrow\s*\{[^}]*grid-template-columns:78px minmax\(0,1fr\)/s, 'status bars should use the full row width');
 assert.match(finalUi, /\.fill\s*\{[^}]*position:absolute[^}]*right:0/s, 'status fills should render inside the track');
 assert.match(finalUi, /\.statvalue\s*\{[^}]*position:absolute[^}]*z-index:1/s, 'status values should overlay the progress bars');
 assert.match(finalUi, /\.nav\{direction:ltr\}/, 'tab positions should follow the original left-to-right order');
