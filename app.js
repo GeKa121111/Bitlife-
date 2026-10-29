@@ -643,9 +643,9 @@ function advanceAge(){
 }
 function ageUp(){
  if(!validState())return;
- const snapshot=JSON.parse(JSON.stringify(state));delete snapshot.timeMachineSnapshots;
+ const snapshot=JSON.parse(JSON.stringify(state)),logLength=Array.isArray(snapshot.log)?snapshot.log.length:0;delete snapshot.timeMachineSnapshots;delete snapshot.log;
  if(!Array.isArray(state.timeMachineSnapshots))state.timeMachineSnapshots=[];
- state.timeMachineSnapshots.push(JSON.stringify(snapshot));if(state.timeMachineSnapshots.length>8)state.timeMachineSnapshots.shift();
+ state.timeMachineSnapshots.push(JSON.stringify({snapshotVersion:1,logLength,state:snapshot}));if(state.timeMachineSnapshots.length>8)state.timeMachineSnapshots.shift();
  logBatchDepth++;
  try{advanceAge();}
  finally{
@@ -1387,8 +1387,8 @@ function rewindToSnapshot(index){
  const history=Array.isArray(state.timeMachineSnapshots)?state.timeMachineSnapshots:[];
  if(index<0||index>=history.length){closeModal();info('⏳','نقطة الحفظ غير متاحة','اختار سنة ظاهرة في القائمة.');return;}
  const wasDead=state.status==='متوفى',currentAge=state.age,lifeId=state.lifeId;
- let restored;
- try{restored=JSON.parse(history[index]);}catch(e){closeModal();info('⚠️','تعذر الرجوع','نقطة الحفظ دي غير صالحة.');return;}
+ let restored,parsedSnapshot;
+ try{parsedSnapshot=JSON.parse(history[index]);if(parsedSnapshot&&parsedSnapshot.snapshotVersion===1&&parsedSnapshot.state&&typeof parsedSnapshot.state==='object'){restored=parsedSnapshot.state;restored.log=Array.isArray(state.log)?state.log.slice(0,Math.max(0,Number(parsedSnapshot.logLength)||0)):[];}else{restored=parsedSnapshot;}}catch(e){closeModal();info('⚠️','تعذر الرجوع','نقطة الحفظ دي غير صالحة.');return;}
  if(wasDead){
   try{const list=JSON.parse(localStorage.getItem(CEMETERY_KEY)||'[]');localStorage.setItem(CEMETERY_KEY,JSON.stringify(list.filter(item=>item.id!==lifeId)));}catch(e){}
  }
