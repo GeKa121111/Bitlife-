@@ -2063,3 +2063,6 @@ body.theme-dark .ad-slot{background:#555}
  .job-pack-boss-card h2{font-size:21px!important}.job-pack-check{width:31px!important;min-height:60px!important;left:-16px!important;font-size:26px!important}
  .job-pack-buy{min-height:60px!important}.job-pack-buy span{font-size:20px!important}
 }
+
+/* School reference detail: Class popularity is orange; University grades remain green. */
+.school-screen .drawer-body .choicegrid > button.choice:nth-of-type(4) .choice-progress span{background:#f57c00!important}

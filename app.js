@@ -1054,7 +1054,7 @@ function schoolHub(){
  study.menuDots=true;options.push(study);
  if(isUniversity)options.push(choice('🎓','Major',(education.major||'Undeclared')+' · '+education.yearsLeft+' years remaining',()=>universityStatusMenu()));
  options.push(choice('↩️','Back','Return to your current life.',()=>{closeModal();showCareer();}));
- modal('🎓','School',isUniversity?'University · '+(education.major||'Undeclared')+' · '+education.yearsLeft+' years remaining':'Your education and school activities.',options,true,'<div class="school-progress"><div class="muted">Grades</div><div class="progressline"><div style="width:'+grades+'%"></div></div><div class="muted">'+education.clubs.length+' extracurricular activities</div></div>');
+ modal('🎓','School',isUniversity?'University · '+(education.major||'Undeclared')+' · '+education.yearsLeft+' years remaining':'Your education and school activities.',options);
 }
 function universityStatusMenu(){
  const education=state.education||(state.education={}),grade=clamp(education.studyScore===undefined?50:education.studyScore);
