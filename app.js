@@ -1665,11 +1665,6 @@ function buyZooAnimal(speciesId){
 
 function zooHabitatMenu(){
  const z=state.zoo;if(!z||!z.opened){zooMenu();return;}
- const opts=zooHabitatCatalog.map(h=>{
-  const built=z.habitats.includes(h.id),health=(z.habitatHealth&&z.habitatHealth[h.id])??100;
-  return choice(built?'🟢':h.emoji,h.title+(built?' · مبني':' · غير متاح'),built?'حالة الموئل '+health+'% · الصيانة السنوية '+cash(h.upkeep)+'.':'تكلفة البناء '+cash(h.cost)+'.',[...[]],built?'مبني':cash(h.cost));
- });
- // Replace the action handlers with real build/repair routes.
  const actions=zooHabitatCatalog.map(h=>{const built=z.habitats.includes(h.id);return choice(built?'🟢':h.emoji,h.title+(built?' · مبني':' · غير متاح'),built?'حالة الموئل '+((z.habitatHealth&&z.habitatHealth[h.id])??100)+'% · الصيانة السنوية '+cash(h.upkeep)+'.':'تكلفة البناء '+cash(h.cost)+'.',()=>built?repairZooHabitat(h.id):buildZooHabitat(h.id),built?'صيانة':cash(h.cost));});
  actions.push(choice('↩️','رجوع للحديقة','',zooMenu));modal('🌳','الموائل والمرافق','ابنِ الموائل المناسبة للأنواع وحافظ على سلامتها. الموائل المهملة تقلل دخل الزوار.',actions);
 }
@@ -1738,53 +1733,6 @@ function discoverZooAnimal(){
  save();render();zooMenu();
 }
 
-function zooMenu(){
- if(!perkOwned('zooExpansionPack')){closeModal();info('🦁','حديقة الحيوان مقفولة','افتح توسعة حديقة الحيوان من متجر مزايا حياة أو باقة الحيوان الحفّال.');return;}
- const zoo=state.zoo||(state.zoo={opened:false,animals:[],rareDiscoveries:0}),opts=[];
- if(!zoo.opened)opts.push(choice('🏗️','إنشاء حديقة الحيوان','شراء وتجهيز الحديقة بتكلفة أولية 250,000 '+state.place.unit+'.',openZoo,'250,000 '+state.place.unit));
- else{
-  opts.push(choice('🐘','الحيوانات والمرافق','اشترِ أنواعًا جديدة للحديقة.',zooAnimalShop));
-  opts.push(choice('🧬','مساعدة الحيوانات على التكاثر','اختر حيوانًا للتكاثر إذا كانت الظروف مناسبة.',zooBreedingMenu));
-  opts.push(choice('✨','رحلة اكتشاف نادر','رحلة ميدانية بتكلفة 12,000 قد تكشف نوعًا أسطوريًا.',discoverZooAnimal,'12,000 '+state.place.unit));
-  opts.push(choice('📊','تقرير الحديقة','عدد الحيوانات '+zoo.animals.length+' · اكتشافات نادرة '+(zoo.rareDiscoveries||0)+'.',()=>{closeModal();info('🦁','تقرير الحديقة','عدد الحيوانات '+zoo.animals.length+' · الاكتشافات الأسطورية '+(zoo.rareDiscoveries||0)+' · مصاريف التشغيل السنوية 18,000 '+state.place.unit+'.');}));
-  zoo.animals.forEach(animal=>opts.push(choice(animal.emoji||'🐾',animal.name+' · '+animal.species,'العمر '+animal.age+' سنة'+(animal.legendary?' · نوع أسطوري':''),()=>{closeModal();info(animal.emoji||'🐾',animal.name,animal.species+' · العمر '+animal.age+' سنة'+(animal.legendary?' · اكتشاف أسطوري':'')+'.');})));
- }
- opts.push(choice('↩️','رجوع للأنشطة','',activities));
- modal('🦁','إدارة حديقة الحيوان',zoo.opened?'حديقتك تحتاج رعاية ومرافق، لكن الزوار ممكن يحققوا دخلًا سنويًا.':'ابدأ مشروع حديقة حيوان ثم اشترِ الحيوانات واكتشف الأنواع النادرة.',opts);
-}
-function openZoo(){
- closeModal();if(!perkOwned('zooExpansionPack'))return;const cost=250000;
- if(state.bank<cost){info('💳','الميزانية غير كافية','تجهيز الحديقة يحتاج '+cash(cost)+'.');return;}
- state.bank-=cost;state.zoo={opened:true,animals:[],rareDiscoveries:0};log('🦁','افتتاح حديقة الحيوان','استثمرت '+cash(cost)+' في إنشاء الحديقة وتجهيز المرافق.','special');achievement('افتتاح حديقة حيوان');save();render();zooMenu();
-}
-function zooAnimalShop(){
- closeModal();const animals=[['فيل','🐘',90000],['زرافة','🦒',65000],['نمر','🐅',70000],['ببغاء','🦜',18000],['سلحفاة','🐢',12000]];
- modal('🐾','اختيار حيوان','اختر نوعًا جديدًا لحديقتك، مع مراعاة الرعاية والتكلفة.',animals.map(([name,emoji,cost])=>choice(emoji,name,'سعر الشراء '+cash(cost)+'.',()=>buyZooAnimal(name,emoji,cost),cash(cost))));
-}
-function buyZooAnimal(species,emoji,cost){
- closeModal();if(!state.zoo||!state.zoo.opened)return;if(state.bank<cost){info('💳','الرصيد مش كفاية','شراء الحيوان يحتاج '+cash(cost)+'.');return;}
- state.bank-=cost;const name=species+' '+(state.zoo.animals.length+1);state.zoo.animals.push({id:Date.now()+Math.random(),name,species,emoji,age:0,legendary:false});
- log('🐾','حيوان جديد في الحديقة','أضفت '+name+' إلى حديقة الحيوان.','good');save();render();zooMenu();
-}
-function zooBreedingMenu(){
- closeModal();const animals=state.zoo&&Array.isArray(state.zoo.animals)?state.zoo.animals:[];
- if(!animals.length){info('🧬','لا توجد حيوانات','اشترِ حيوانًا قبل محاولة التكاثر.');return;}
- modal('🧬','التكاثر والرعاية','اختيار حيوان يطلق محاولة تكاثر مناسبة للنوع. التكاثر ليس مضمونًا.',animals.map((animal,i)=>choice(animal.emoji||'🐾',animal.name,animal.species+' · العمر '+animal.age+' سنة.',()=>breedZooAnimal(i))));
-}
-function breedZooAnimal(index){
- closeModal();if(!state.zoo||!state.zoo.animals[index])return;const animal=state.zoo.animals[index],cost=5000;
- if(state.bank<cost){info('💳','الرصيد مش كفاية','الرعاية والتجهيز للتكاثر تحتاج '+cash(cost)+'.');return;}state.bank-=cost;
- if(chance(.62)){state.zoo.animals.push({id:Date.now()+Math.random(),name:'صغير '+animal.species,species:animal.species,emoji:animal.emoji,age:0,legendary:false});log('🧬','مولود جديد في الحديقة','نجحت رعاية '+animal.species+' وولد حيوان صغير جديد.','good');}
- else log('🧬','محاولة تكاثر غير ناجحة','لم تنجح المحاولة هذه السنة؛ راجع ظروف الرعاية وحاول لاحقًا.','bad');
- save();render();zooMenu();
-}
-function discoverZooAnimal(){
- closeModal();if(!state.zoo||!state.zoo.opened)return;const cost=12000;
- if(state.bank<cost){info('💳','الرصيد مش كفاية','رحلة الاكتشاف تكلف '+cash(cost)+'.');return;}state.bank-=cost;
- if(chance(.32)){const species=pick(['نمر أبيض','سلحفاة عملاقة','طائر نادر','فهد أسود']),emoji=species.includes('نمر')?'🐅':species.includes('سلحفاة')?'🐢':species.includes('طائر')?'🦜':'🐆';state.zoo.animals.push({id:Date.now()+Math.random(),name:species+' أسطوري',species,emoji,age:0,legendary:true});state.zoo.rareDiscoveries=(state.zoo.rareDiscoveries||0)+1;log('✨','اكتشاف أسطوري','اكتشفت '+species+' نادرًا وأضفته للحديقة.','special');achievement('اكتشاف حيوان أسطوري');}
- else log('🔎','رحلة بحث','لم تعثر على نوع نادر هذه المرة، لكن فريق الحديقة جمع معلومات مفيدة.','');
- save();render();zooMenu();
-}
 function petsMenu(){
  const opts=[];
  opts.push(choice('🐕','تبنّي كلب','رفيق نشيط محتاج وقت ورعاية.',()=>adoptPet('كلب','🐕',1200)));
