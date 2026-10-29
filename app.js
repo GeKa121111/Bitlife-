@@ -793,7 +793,7 @@ function advanceAge(){
      state.bank-=state.education.tuition;flash('-'+cash(state.education.tuition),true);state.education.yearsLeft--;state.stats.smart=clamp(state.stats.smart+3);
      log('🎓','سنة جامعية جديدة','دفعت رسوم سنة وأنهيت سنة من دراسة '+state.education.major+'. المتبقي '+state.education.yearsLeft+' سنوات.','special');
    }else{
-     log('⚠️','تعثر دراسي','الرصيد مش كافي لدفع رسوم السنة. الدراسة اتوقفت مؤقتًا.','bad');state.education.yearsLeft=0;
+     log('⚠️','تعثر دراسي','الرصيد مش كافي لدفع رسوم السنة. الدراسة اتوقفت مؤقتًا، والسنة هتفضل مستحقة لحد ما تقدر تدفع.','bad');
    }
    if(state.education.yearsLeft===0&&state.education.major){
      state.education.level=state.education.major==='تجارة وإدارة'?2:state.education.major==='علوم الحاسب'?3:state.education.major==='هندسة'?4:5;
