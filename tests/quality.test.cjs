@@ -107,7 +107,7 @@ test('تطبيق الويب قابل للتثبيت ويحتفظ بملفات ا
   assert.ok(manifest.icons.some(item => item.src === './icon.svg'));
   assert.match(html, /rel="manifest" href="manifest\.webmanifest"/);
   assert.match(app, /navigator\.serviceWorker\.register\('\.\/sw\.js'\)/);
-  assert.match(worker, /const CACHE_NAME = 'hayah-shell-v9'/);
+  assert.match(worker, /const CACHE_NAME = 'hayah-shell-v10'/);
   assert.match(worker, /cache\.addAll\(APP_SHELL\)/);
   assert.match(worker, /caches\.match\(APP_SHELL\[0\]\)/);
   assert.match(icon, /حياة/);
@@ -195,7 +195,7 @@ test('مسيرة الرياضات الإلكترونية أصلية وتحافظ
   assert.match(app, /function upgradeEsportsSetup\(\)/);
   assert.match(app, /موهبة الألعاب الإلكترونية/);
   assert.match(app, /data\.talents\.gaming=clamp\(Number\(data\.talents\.gaming\),0,100\)/);
-  assert.match(read('sw.js'), /hayah-shell-v9/);
+  assert.match(read('sw.js'), /hayah-shell-v10/);
   assert.match(functionSource('rewindToSnapshot', 'customizeMenu'), /ensureGamingTalent\(\)/, 'rewinding a pre-feature snapshot should restore a valid talent default');
 });
 
@@ -243,4 +243,48 @@ test('مركز المهن يفتح حزمة التمثيل ودرع العافي
   assert.match(app, /if\(infection\)\{state\.sti=true;state\.stats\.health=clamp\(state\.stats\.health-12\);\}/);
   assert.match(app, /const treatedCondition=state\.sti===true;if\(treatedCondition\)state\.sti=false/);
   assert.match(app, /عدوى منقولة جنسيًا في محاكاة اللعبة/);
+});
+
+
+test('حزم الصور تفتح أنظمة المهن والثروة والجريمة والحيوانات فعليًا', () => {
+  const required = [
+    "id:'fameFortuneBundle'",
+    "id:'billionairesBundle'",
+    "id:'crimePaysBundle'",
+    "id:'partyAnimalBundle'",
+    "fameFortuneBundle:['goldenPiggyBank','goldenPassport','hollywoodStar']",
+    "billionairesBundle:['businessPack','landlordPack','investorPack']",
+    "crimePaysBundle:['mafiaPack','blackMarketPack','assassinsBlade']",
+    "partyAnimalBundle:['zooExpansionPack','jailCard','superstarMode','goldTheme']",
+    "function companyPortfolioMenu()",
+    "function landlordTenantMenu(index)",
+    "function investingMenu()",
+    "inv.kind==='عملات رقمية'",
+    "function zooMenu()",
+    "function discoverZooAnimal()",
+    "function mafiaMenu()",
+    "function mafiaMission()",
+    "function blackMarketMenu()",
+    "function museumMenu()",
+    "function assassinBladeMission()",
+    "function useJailFreeCard()"
+  ];
+  required.forEach(fragment => assert.ok(app.includes(fragment), 'missing feature: ' + fragment));
+});
+
+test('المزايا الفردية للوظيفة والتعليم والصداقة والولادة تحافظ على حفظ v1', () => {
+  const required = [
+    "const KEY = 'hekayat_hayah_save_v1';",
+    "function goldenDiplomaMenu()",
+    "function grantGoldenDiploma(major)",
+    "function goldenPacifierMenu()",
+    "function planGoldenBirth(count,gender,talent)",
+    "if(perkOwned('friendshipBracelet'))f.relationshipLevel=100",
+    "perkEnabled('goldenResume')?1",
+    "perkEnabled('goldenPacifier')?18:20",
+    "function companyDetailMenu(index)",
+    "if(a.companyPortfolio){const companyIndex=",
+    "if(!Array.isArray(data.companies))data.companies=[]"
+  ];
+  required.forEach(fragment => assert.ok(app.includes(fragment), 'missing feature: ' + fragment));
 });
