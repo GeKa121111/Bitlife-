@@ -46,6 +46,12 @@ test('مفتاح الحفظ القديم وإصدار الحفظ لم يتغير
   assert.match(app, /function load\(\)[\s\S]*?isValidSaveData\(x\)[\s\S]*?BACKUP_KEY/);
 });
 
+test('التحقق يرفض حفظ v1 الذي يفتقد هوية الشخصية أو عمرًا صالحًا', () => {
+  assert.match(app, /typeof data\.name==='string'&&data\.name\.trim\(\)\.length>0/);
+  assert.match(app, /Number\.isFinite\(Number\(age\)\)&&Number\(age\)>=0&&Number\(age\)<=150/);
+  assert.match(app, /if\(!isValidSaveData\(data\)\|\|!Array\.isArray\(data\.family\)/);
+});
+
 test('الحفظ يحتفظ بنقطة استعادة محلية من آخر نسخة سليمة دون تغيير صيغة v1', () => {
   assert.match(app, /const BACKUP_KEY = 'hekayat_hayah_save_backup_v1';/);
   assert.match(app, /function isValidSaveData\(data\)/);
