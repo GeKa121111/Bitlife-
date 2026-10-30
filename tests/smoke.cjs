@@ -60,7 +60,11 @@ assert.match(app, /function combatTrainingMenu\(\)/, 'fighter attributes should 
 assert.match(app, /function learnCombatMove\(\)/, 'players should unlock moves as they rank up');
 assert.match(app, /function hireCombatCoach\(\)/, 'coaches should be recruitable');
 assert.match(app, /function startCombatBout\(mode\)/, 'street and league fights should have separate entry rules');
-assert.match(app, /function resolveCombatBout\(mode,opponent,moveId\)/, 'bouts should resolve using player stats and move matchups');
+assert.match(app, /function combatBoutRoundMenu\(\)/, 'each bout should expose a round-by-round choice screen');
+assert.match(app, /function resolveCombatRound\(actionId\)/, 'round choices should affect stamina and match score');
+assert.match(app, /const combatTacticCatalog=\[/, 'each round should offer original tactical actions');
+assert.match(app, /normalizePendingCombatBout/, 'unfinished bouts should be sanitized when restoring a v1 save');
+assert.match(app, /function resolveCombatBout\(mode,opponent,moveId,probabilityOverride=null,session=null\)/, 'bouts should settle the three-round result without breaking the legacy resolver');
 assert.match(app, /function recoverCombatInjury\(\)/, 'combat injuries should have a recovery system');
 assert.match(app, /function combatBoutHistory\(\)/, 'recent fight results should be inspectable');
 assert.match(app, /const filmGenreCatalog=\[/, 'director career should have a film genre catalog');
@@ -119,7 +123,9 @@ assert.match(app, /if\(state\.specialCareer\.id==='fighter'\)\{opts\.unshift\(ch
 assert.match(app, /state\.combatCareer=c\.id==='fighter'\?createCombatCareer\(\):null/, 'changing to the fighter career should initialize the dedicated profile');
 assert.match(app, /c\.streetCred\+=12/, 'street wins should build street credibility');
 assert.match(app, /Losing a street fight does not remove street credibility/, 'street losses should not remove credibility');
-assert.match(app, /probability=clamp\(50\+\(playerScore-opponentScore\)\*1\.65\+counterBonus,12,88\)/, 'combat outcomes should use stats and counter bonuses with bounded odds');
+assert.ok(app.includes('probabilityOverride!==null&&probabilityOverride!==undefined'), 'completed round scores should override the legacy one-shot probability');
+assert.ok(app.includes('clamp(50+(playerScore-opponentScore)*1.65+counterBonus,12,88)'), 'the legacy fallback should remain bounded for older direct calls');
+assert.ok(app.includes('clamp(50+((completed.playerScore-completed.opponentScore)/3)*1.65,12,88)'), 'three-round outcomes should use the average score margin');
 assert.match(app, /if\(cc\.coach&&cc\.coach\.yearsLeft>0\)/, 'coach contracts should be accounted for over time');
 assert.match(app, /combatProfile:state\.specialCareer\.id==='fighter'\?JSON\.parse\(JSON\.stringify\(state\.combatCareer\|\|null\)\):null/, 'switching career paths should archive the fighter profile');
 const combatMoveBlock = app.match(/const combatMoveCatalog=\[([\s\S]*?)\n\];/);
@@ -167,7 +173,7 @@ assert.match(finalUi, /\.fill\s*\{[^}]*position:absolute[^}]*right:0/s, 'status 
 assert.match(finalUi, /\.statvalue\s*\{[^}]*position:absolute[^}]*z-index:1/s, 'status values should overlay the progress bars');
 assert.match(finalUi, /\.nav\{direction:ltr\}/, 'tab positions should follow the original left-to-right order');
 assert.match(finalUi, /\.fill\{left:0;right:auto\}/, 'progress fills should grow from the left edge like the reference');
-assert.match(serviceWorker, /hayah-shell-v45/, 'the app shell cache should refresh the new styles');
+assert.match(serviceWorker, /hayah-shell-v46/, 'the app shell cache should refresh the new styles');
 assert.match(app, /function schoolHub\(\)/);
 assert.match(app, /function maintainAsset\(index\)/);
 assert.match(app, /function schoolClubs\(\)/, 'student clubs should have interactive actions');
@@ -532,7 +538,7 @@ assert.match(app, /id:'family',title:'رابطة أقوى'/);
 assert.ok(app.includes("function playUiFeedback(kind='tap')"), 'optional sound and haptic feedback should be available');
 assert.ok(app.includes('uiSettings.sound'));
 assert.ok(app.includes('uiSettings.haptics'));
-assert.match(serviceWorker, /hayah-shell-v45/);
+assert.match(serviceWorker, /hayah-shell-v46/);
 
 assert.match(app, /function businessTreasuryMenu\(\)/);
 assert.match(app, /function transferBusinessCapital\(direction,amount\)/);
@@ -551,10 +557,10 @@ assert.ok(app.includes("function advanceBusinessRivals(raw,business,industry,yea
 assert.ok(app.includes("function summarizeBusinessRivals(rivals,baselineCompetition,profile)"));
 assert.match(app, /marketRivalPlans/);
 assert.match(app, /الشركات المنافسة داخل المحاكاة/);
-assert.match(serviceWorker, /hayah-shell-v45/);
+assert.match(serviceWorker, /hayah-shell-v46/);
 
 assert.match(app, /function normalizeSocialFeed\(raw\)/, 'social audience feedback should be normalized for legacy saves');
 assert.match(app, /function socialAudienceFeedMenu\(platformId\)/, 'players should be able to review audience feedback');
 assert.match(app, /function offerSoundCloudTrackToLabel\(platformId='soundcloud'\)/, 'SoundCloud tracks should have a label-offer path');
 assert.match(app, /const KEY = 'hekayat_hayah_save_v1';/);
-assert.match(serviceWorker, /hayah-shell-v45/);
+assert.match(serviceWorker, /hayah-shell-v46/);
