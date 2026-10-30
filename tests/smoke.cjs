@@ -525,10 +525,10 @@ assert.match(app, /corporateTaxRate/);
 assert.match(app, /corporateTaxPaidFromCash/);
 assert.match(app, /business\.pendingTaxPayments=0/);
 
-assert.match(app, /function businessRivalHash\\(value\\)/);
-assert.match(app, /function createBusinessRivals\\(business,industry,year,count,baselinePrice\\)/);
-assert.match(app, /function advanceBusinessRivals\\(raw,business,industry,year,profile,demandIndex\\)/);
-assert.match(app, /function summarizeBusinessRivals\\(rivals,baselineCompetition,profile\\)/);
+assert.ok(app.includes("function businessRivalHash(value)"));
+assert.ok(app.includes("function createBusinessRivals(business,industry,year,count,baselinePrice)"));
+assert.ok(app.includes("function advanceBusinessRivals(raw,business,industry,year,profile,demandIndex)"));
+assert.ok(app.includes("function summarizeBusinessRivals(rivals,baselineCompetition,profile)"));
 assert.match(app, /marketRivalPlans/);
 assert.match(app, /الشركات المنافسة داخل المحاكاة/);
 assert.match(serviceWorker, /hayah-shell-v36/);
