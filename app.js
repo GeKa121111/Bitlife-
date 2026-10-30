@@ -784,6 +784,40 @@ function save(){
   $('saveStatus').textContent='● محفوظة';
  }catch(e){$('saveStatus').textContent='⚠ الحفظ غير متاح';}
 }
+function normalizeHeirlooms(raw,currentAge=0){
+ const seen=new Set();
+ return (Array.isArray(raw)?raw:[]).filter(item=>item&&typeof item==='object'&&!Array.isArray(item)).map((item,index)=>{
+  const name=typeof item.name==='string'?item.name.trim().slice(0,80):'';
+  if(!name)return null;
+  let id=(typeof item.id==='string'||typeof item.id==='number')?String(item.id).trim().slice(0,80):'';
+  if(!id)id='legacy-heirloom-'+index;
+  if(seen.has(id))id=id+'-'+index;
+  seen.add(id);
+  const value=Number(item.value),age=Number(item.age),fallbackAge=Number(currentAge);
+  return {
+   ...item,
+   id,
+   name,
+   emoji:typeof item.emoji==='string'&&item.emoji.trim()?item.emoji.slice(0,12):'🏺',
+   value:Math.max(0,Math.min(1000000000,Number.isFinite(value)?Math.round(value):0)),
+   age:Math.max(0,Math.min(120,Number.isFinite(age)?Math.floor(age):(Number.isFinite(fallbackAge)?Math.floor(fallbackAge):0))),
+   kind:typeof item.kind==='string'&&item.kind.trim()?item.kind.slice(0,24):'legacy'
+  };
+ }).filter(Boolean);
+}
+function heirloomRarity(value){
+ const amount=Math.max(0,Number(value)||0);
+ if(amount>=4000)return 'أسطوري';
+ if(amount>=2500)return 'نادر';
+ if(amount>=1200)return 'غير شائع';
+ return 'شائع';
+}
+function heirloomKindLabel(item){
+ if(item.kind==='daily')return 'مكافأة يومية';
+ if(item.kind==='blackMarket')return 'مقتنى من السوق السوداء';
+ return 'إرث عائلي';
+}
+
 function normalizeCoreState(data){
  const rawPlace=data.place&&typeof data.place==='object'&&!Array.isArray(data.place)?data.place:{};
  const fallbackPlace=places.find(p=>p.country===rawPlace.country&&p.city===rawPlace.city)||places[0];
@@ -808,6 +842,7 @@ function normalizeCoreState(data){
  data.followers=Math.max(0,Number(data.followers)||0);data.socialMediaPosts=Math.max(0,Number(data.socialMediaPosts)||0);
  data.socialMediaAccount=SOCIAL_PLATFORM_CATALOG.some(platform=>data.socialPlatforms[platform.id].active);
  data.socialFeed=normalizeSocialFeed(data.socialFeed);
+ data.heirlooms=normalizeHeirlooms(data.heirlooms,data.age);
  data.seasonalEvent=normalizeSeasonalEvent(data.seasonalEvent,data);
  data.seasonalEventArchive=normalizeSeasonalEventArchive(data.seasonalEventArchive,data);
  if(!Array.isArray(data.companies))data.companies=[];
@@ -4412,8 +4447,13 @@ function dailyReward(){
  closeModal();const now=new Date(),today=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0')+'-'+String(now.getDate()).padStart(2,'0');
  if(state.dailyRewardDate===today){info('🎁','المكافأة اتاخدت','ارجع بكرة عشان مكافأة يوم جديد.');return;}
  state.dailyRewardDate=today;const amount=1000+Math.floor(Math.random()*4000);state.bank+=amount;
+ state.heirlooms=normalizeHeirlooms(state.heirlooms,state.age);
  let item='';
- if(chance(.28)){const trinkets=['ساعة قديمة','ميدالية عائلية','كاميرا كلاسيكية','كتاب نادر','خاتم موروث'];item=pick(trinkets);state.heirlooms.push({name:item,value:500+Math.floor(Math.random()*4500),age:state.age});}
+ if(chance(.28)){
+  const trinkets=[{name:'ساعة قديمة',emoji:'⌚'},{name:'ميدالية عائلية',emoji:'🏅'},{name:'كاميرا كلاسيكية',emoji:'📷'},{name:'كتاب نادر',emoji:'📚'},{name:'خاتم موروث',emoji:'💍'}];
+  const found=pick(trinkets);item=found.name;
+  state.heirlooms.push({id:'daily-'+Date.now()+'-'+Math.random().toString(36).slice(2,8),name:item,emoji:found.emoji,value:500+Math.floor(Math.random()*4500),age:state.age,kind:'daily'});
+ }
  log('🎁','هدية اليوم','استلمت '+cash(amount)+(item?' وعثرت على مقتنى نادر: '+item:'')+'.','good');achievement('استلام مكافأة يومية');render();info('🎁','مكافأة اليوم','حصلت على '+cash(amount)+(item?'، وأضيف '+item+' إلى مقتنياتك.':'.'));
 }
 
@@ -4646,6 +4686,41 @@ function claimDailyChallenge(id){
  save();render();dailyChallengesMenu();
 }
 
+function heirloomCollectionMenu(){
+ state.heirlooms=normalizeHeirlooms(state.heirlooms,state.age);
+ const items=state.heirlooms.slice().sort((a,b)=>(Number(b.value)||0)-(Number(a.value)||0));
+ const total=items.reduce((sum,item)=>sum+(Number(item.value)||0),0);
+ const opts=items.map(item=>choice(item.emoji||'🏺',item.name,
+  heirloomRarity(item.value)+' · القيمة التقديرية '+cash(item.value)+' · عُثر عليها في عمر '+fmt(item.age),
+  ()=>heirloomDetailMenu(item.id)));
+ if(!opts.length)opts.push(choice('🌱','لسه مفيش مقتنيات','استلم مكافأة اليوم أو اكتشف قطعًا نادرة خلال رحلتك.',closeModal));
+ opts.push(choice('↩️','رجوع للإنجازات','',achievementsMenu));
+ modal('🏺','مقتنياتي الموروثة','عدد القطع '+items.length+' · القيمة التقديرية '+cash(total)+'. اختار قطعة لمراجعة تفاصيلها أو بيعها.',opts);
+}
+function heirloomDetailMenu(id){
+ const item=(state.heirlooms||[]).find(entry=>entry&&entry.id===id);
+ if(!item){closeModal();heirloomCollectionMenu();return;}
+ const payout=Math.max(0,Math.round((Number(item.value)||0)*.85));
+ const displayed=!!(state.museum&&Array.isArray(state.museum.displayed)&&state.museum.displayed.includes(item.name));
+ const opts=[
+  choice('💰','بيع المقتنى','تحصل على 85% من القيمة التقديرية: '+cash(payout)+'.'+(displayed?' ستُزال القطعة من عرض المتحف إذا لم يتبق منها نسخة أخرى.':''),()=>sellHeirloom(item.id),cash(payout)),
+  choice('↩️','رجوع للمقتنيات','',heirloomCollectionMenu)
+ ];
+ modal(item.emoji||'🏺',item.name,heirloomRarity(item.value)+' · '+heirloomKindLabel(item)+' · القيمة التقديرية '+cash(item.value)+' · عُثر عليها في عمر '+fmt(item.age)+'.',opts);
+}
+function sellHeirloom(id){
+ const index=(state.heirlooms||[]).findIndex(item=>item&&item.id===id);
+ if(index<0){closeModal();info('🏺','المقتنى غير موجود','يمكن أن تكون القطعة قد بيعت بالفعل.');return;}
+ const item=state.heirlooms[index],payout=Math.max(0,Math.round((Number(item.value)||0)*.85));
+ state.heirlooms.splice(index,1);
+ if(state.museum&&Array.isArray(state.museum.displayed)&&!state.heirlooms.some(entry=>entry&&entry.name===item.name)){
+  state.museum.displayed=state.museum.displayed.filter(name=>name!==item.name);
+ }
+ state.bank=(Number(state.bank)||0)+payout;
+ log('💰','بيع مقتنى موروث','بعت '+item.name+' مقابل '+cash(payout)+'.','good');
+ save();render();heirloomCollectionMenu();
+}
+
 function achievementsMenu(){
  const opts=(state.accomplishments||[]).slice().reverse().map(a=>choice('🏆',a,'إنجاز مسجل في هذه الحياة.',()=>{closeModal();info('🏆',a,'ده واحد من إنجازات رحلتك الحالية.');}));
  if(!opts.length)opts.push(choice('🌱','لسه مفيش إنجازات','تقدم بالعمر وجرّب أنظمة اللعبة المختلفة.',closeModal));
@@ -4653,6 +4728,7 @@ function achievementsMenu(){
  opts.unshift(choice('🏅','شريط حياتك','تصنيف ختامي يعتمد على إنجازاتك.',()=>{closeModal();info('🏅','شريط الحياة',lifeRibbon()+'. هيتسجل التصنيف النهائي عند نهاية الرحلة.');}));
  opts.unshift(choice('🎯','تحديات اليوم','أنجز مهام قصيرة واحصل على مكافآت يومية.',dailyChallengesMenu));
  opts.unshift(choice('🪦','المقبرة والحيوات السابقة','راجع ملخصات الشخصيات التي انتهت حياتها على هذا الجهاز.',cemeteryMenu));
+ opts.unshift(choice('🏺','مقتنياتي الموروثة','راجع القطع التي جمعتها أو بع قطعة لم تعد تحتاجها.',heirloomCollectionMenu));
  modal('🏆','الإنجازات والمقتنيات','إنجازاتك بتتراكم خلال الحياة. المقتنيات النادرة ممكن تصبح إرثًا للأجيال القادمة.',opts);
 }
 function lifeRibbon(){
