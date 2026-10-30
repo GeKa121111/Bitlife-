@@ -136,7 +136,6 @@ test('القائمة الرئيسية مقسمة بوضوح وحالة التب�
 
   const renderSource = functionSource('render', 'closeModal');
   assert.doesNotMatch(renderSource, /classList\.remove\('active'\)/);
-  assert.match(renderSource, /aria-pressed/);
   assert.match(app, /b\.setAttribute\('aria-pressed',String\(selected\)\)/);
 });
 
