@@ -5854,7 +5854,6 @@ $('ageUpBtn').addEventListener('click',()=>{playUiFeedback('year');ageUp();});
 if($('menuBtn'))$('menuBtn').addEventListener('click',()=>mainMenu());
 if($('profileBtn'))$('profileBtn').addEventListener('click',()=>achievementsMenu());
 if($('marketBtn'))$('marketBtn').addEventListener('click',()=>premiumPerksMenu());
-if($('closeAdSlot'))$('closeAdSlot').addEventListener('click',()=>{const slot=$('adSlot');if(slot)slot.classList.add('is-hidden');document.body.classList.add('ad-hidden');});
 if($('characterInfoBtn'))$('characterInfoBtn').addEventListener('click',()=>{
  if(!state)return;
  const occupation=state.job?state.job.title:state.specialCareer?state.specialCareer.title:state.education.yearsLeft>0?'طالب جامعي':title();

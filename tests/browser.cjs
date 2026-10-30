@@ -168,6 +168,8 @@ async function run() {
     const origin = 'http://127.0.0.1:' + address.port;
     await page.goto(origin + '/', { waitUntil: 'domcontentloaded' });
     await page.locator('#characterName').waitFor();
+    assert.equal(await page.locator('#adSlot, #closeAdSlot, .ad-slot').count(), 0,
+      'the trial advertising placeholder should not render in the mobile UI');
 
     const shownName = (await page.locator('#characterName').innerText()).trim();
     assert.ok(shownName.includes(seedSave.name), 'the legacy v1 save should render the seeded player');
