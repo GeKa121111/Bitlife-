@@ -470,13 +470,13 @@ test('إدارة فريق المشروع تحفظ الموظفين وتؤثر ف
 
 
 test('سوق الموردين يتجدد سنويًا ويحفظ عروض الأسعار مع احترام العقود القديمة', () => {
-  assert.match(app, /function businessSupplierMarketOffers\\(business\\)/);
-  assert.match(app, /business\\.supplierMarket=\\{year,offers\\}/);
-  assert.match(app, /yearsLeft:1,startedAtAge:state\\.age/);
+  assert.match(app, /function businessSupplierMarketOffers\(business\)/);
+  assert.match(app, /business\.supplierMarket=\{year,offers\}/);
+  assert.match(app, /yearsLeft:1,startedAtAge:state\.age/);
   assert.match(app, /earlyExitFee/);
   assert.match(app, /supplierQuality/);
   assert.match(app, /supplierCostMultiplier/);
-  assert.match(app, /entity\\.supplier\\.yearsLeft\\)\\|\\|3,1,3/);
-  assert.match(app, /entity\\.supplier\\.quality/);
+  assert.match(app, /entity\.supplier\.yearsLeft\)\|\|3,1,3/);
+  assert.match(app, /entity\.supplier\.quality/);
   assert.match(read('sw.js'), /hayah-shell-v24/);
 });
