@@ -849,6 +849,13 @@ async function run() {
       saved.filmStudio = null;
       saved.museum = null;
       saved.zoo = null;
+      saved.cult = null;
+      saved.casino = null;
+      saved.dealer = null;
+      saved.investmentAdvisor = null;
+      saved.socialMediaAccount = false;
+      saved.socialMediaPosts = 0;
+      saved.followers = 0;
       saved.investments = [];
       saved.children = [];
       saved.coParentingPlans = [];
