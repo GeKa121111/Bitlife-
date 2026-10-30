@@ -195,6 +195,11 @@ async function run() {
     assert.equal(initialSensorySettings.sound, false, 'sound should be off by default');
     assert.equal(initialSensorySettings.haptics, false, 'haptics should be off by default');
     await page.locator('#menuBtn').click();
+    assert.equal(await page.locator('#modalRoot .modal.drawer').count(), 1,
+      'the main menu should use the same organized scrollable drawer as other sections');
+    const mainMenuSections = await page.locator('#modalRoot .list-section').allTextContents();
+    assert.deepEqual(mainMenuSections, ['الحياة والشخصية', 'الإنجازات والمكافآت', 'المزايا والأنشطة', 'الإعدادات وبيانات الحفظ'],
+      'main menu actions should be grouped into clear sections');
     await page.locator('.choice').filter({ hasText: 'إعدادات العرض' }).click();
     await page.locator('.choice').filter({ hasText: 'الأصوات: متوقفة' }).click();
     await page.locator('.choice').filter({ hasText: 'الاهتزاز: متوقف' }).click();
@@ -284,6 +289,10 @@ async function run() {
       const saved = JSON.parse(localStorage.getItem('hekayat_hayah_save_v1') || 'null');
       return saved && saved.business && saved.business.staff[0].skill === 62;
     });
+    assert.equal(await page.locator('[data-panel="assets"]').getAttribute('aria-pressed'), 'true',
+      'the selected navigation section should remain selected after a gameplay render');
+    assert.ok(await page.locator('[data-panel="assets"]').evaluate(button => button.classList.contains('active')),
+      'the navigation highlight should survive changes to the character and business');
     await page.locator('#closeModal').click();
 
     // Launch an original product after paid market research; the next fiscal report must account for its sales and costs.
