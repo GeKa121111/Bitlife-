@@ -1495,6 +1495,11 @@ async function run() {
     const combatSetup = await page.evaluate(() => {
       const key = 'hekayat_hayah_save_v1';
       const saved = JSON.parse(localStorage.getItem(key) || 'null');
+      saved.age = Math.max(18, Number(saved.age) || 18);
+      saved.education = saved.education && typeof saved.education === 'object' ? saved.education : {};
+      saved.education.yearsLeft = 0;
+      saved.retired = false;
+      saved.job = null;
       saved.specialCareer = {
         id: 'fighter', title: 'مقاتل', level: 1,
         record: { attempts: 0, wins: 0, losses: 0, projects: 0, totalEarnings: 0, bestLevel: 1 }
