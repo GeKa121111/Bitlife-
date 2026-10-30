@@ -20,6 +20,12 @@ const BUSINESS_STAFF_ROLES = [
  {id:'marketing',title:'مسؤول تسويق',emoji:'📣',salaryRate:.026,revenueBonus:.045,costReduction:0,description:'يدعم الوصول للعملاء ويرفع أثر الحملات التسويقية.'},
  {id:'finance',title:'محاسب',emoji:'🧾',salaryRate:.02,revenueBonus:0,costReduction:.05,description:'ينظم المصروفات ويراقب الميزانية والتدفق النقدي.'}
 ];
+const BUSINESS_PRODUCT_CATALOG = [
+ {id:'digital-service',title:'خدمة رقمية',emoji:'💻',category:'تقنية',unitPrice:850,unitCost:280,description:'خدمة قابلة للتوسع بتكلفة تشغيل مرنة.'},
+ {id:'home-meals',title:'وجبات منزلية',emoji:'🥘',category:'أغذية',unitPrice:420,unitCost:180,description:'منتج يومي يعتمد على الطلب والجودة.'},
+ {id:'care-products',title:'منتجات عناية',emoji:'🧴',category:'عناية',unitPrice:560,unitCost:230,description:'منتجات متكررة الشراء ومنافسة متوسطة.'},
+ {id:'daily-essentials',title:'مستلزمات يومية',emoji:'🛍️',category:'تجزئة',unitPrice:650,unitCost:310,description:'مستلزمات أساسية بهوامش تحتاج متابعة.'}
+];
 const JOB_PACK_PROMOS = {
  actorPack:{title:'Actor Job Pack',emoji:'🎭',cost:25000,description:'Are you the center of attention? Do you live for drama? Hire an agent, book an acting gig, and rise to fame with this job pack!',features:['Hire a professional agent!','Book auditions and acting gigs!','Film commercials and rise to fame!']},
  fighterPack:{title:'Ultimate Fighter Mode',emoji:'🥊',cost:45000,description:'Step into the cage and fight your way to the top!',features:['Become a WORLD CHAMPION!','Brawl in STREET FIGHTS!','LEARN and level up 200+ moves!','FIGHT in an epic MMA mini game!','Hire a PROFESSIONAL coach!','ENGAGE with other fighters!']},
@@ -576,6 +582,48 @@ function normalizeCoreState(data){
     years:Math.max(0,Math.floor(Number(employee.years)||0))
    };
   }).filter(Boolean);
+  if(!Array.isArray(entity.products))entity.products=[];
+  entity.products=entity.products.filter(product=>product&&typeof product==='object'&&!Array.isArray(product)).slice(-20).map((product,index)=>{
+   const catalog=BUSINESS_PRODUCT_CATALOG.find(item=>item.id===product.catalogId);
+   if(!catalog)return null;
+   const unitPrice=Number(product.unitPrice),unitCost=Number(product.unitCost);
+   const history=Array.isArray(product.history)?product.history:[];
+   return {
+    id:String(product.id||('legacy-product-'+catalog.id+'-'+index)),
+    catalogId:catalog.id,
+    title:typeof product.title==='string'&&product.title.trim()?product.title.slice(0,70):catalog.title,
+    emoji:typeof product.emoji==='string'?product.emoji:catalog.emoji,
+    category:typeof product.category==='string'?product.category:catalog.category,
+    unitPrice:Math.max(50,Math.min(1000000000,Number.isFinite(unitPrice)&&unitPrice>0?Math.round(unitPrice):catalog.unitPrice)),
+    unitCost:Math.max(1,Math.min(1000000000,Number.isFinite(unitCost)&&unitCost>0?Math.round(unitCost):catalog.unitCost)),
+    demand:clamp(Number.isFinite(Number(product.demand))?Number(product.demand):50,5,95),
+    competition:clamp(Number.isFinite(Number(product.competition))?Number(product.competition):50,5,95),
+    quality:clamp(Number.isFinite(Number(product.quality))?Number(product.quality):65,20,100),
+    active:product.active!==false,
+    launchedAtAge:Math.max(0,Math.floor(Number(product.launchedAtAge)||0)),
+    lastYearProfit:Math.round(Number(product.lastYearProfit)||0),
+    history:history.filter(report=>report&&typeof report==='object'&&Number.isFinite(Number(report.year))&&Number.isFinite(Number(report.revenue))&&Number.isFinite(Number(report.costs))&&Number.isFinite(Number(report.profit))).slice(-10).map(report=>({
+     year:Math.max(0,Math.floor(Number(report.year)||0)),
+     unitsSold:Math.max(0,Math.floor(Number(report.unitsSold)||0)),
+     revenue:Math.max(0,Math.round(Number(report.revenue)||0)),
+     costs:Math.max(0,Math.round(Number(report.costs)||0)),
+     profit:Math.round(Number(report.profit)||0),
+     demand:clamp(Number(report.demand)||50,5,95),
+     competition:clamp(Number(report.competition)||50,5,95)
+    }))
+   };
+  }).filter(Boolean);
+  if(!Array.isArray(entity.productResearch))entity.productResearch=[];
+  entity.productResearch=entity.productResearch.filter(snapshot=>snapshot&&typeof snapshot==='object'&&BUSINESS_PRODUCT_CATALOG.some(item=>item.id===snapshot.productId)&&Number.isFinite(Number(snapshot.year))&&Number.isFinite(Number(snapshot.demand))&&Number.isFinite(Number(snapshot.competition))&&Number.isFinite(Number(snapshot.suggestedPrice))).slice(-4).map(snapshot=>({
+   productId:snapshot.productId,
+   year:Math.max(0,Math.floor(Number(snapshot.year)||0)),
+   demand:clamp(Number(snapshot.demand),5,95),
+   competition:clamp(Number(snapshot.competition),5,95),
+   suggestedPrice:Math.max(50,Math.min(1000000000,Math.round(Number(snapshot.suggestedPrice)))),
+   confidence:clamp(Number(snapshot.confidence)||65,50,99)
+  }));
+  const pendingProductCosts=Number(entity.pendingProductCosts);
+  entity.pendingProductCosts=Math.max(0,Math.min(1000000000,Number.isFinite(pendingProductCosts)?Math.round(pendingProductCosts):0));
   if(entity.supplier&&typeof entity.supplier==='object'&&!Array.isArray(entity.supplier)){
    const supplier=BUSINESS_SUPPLIER_CATALOG.find(item=>item.id===entity.supplier.id);
    entity.supplier=supplier?{
@@ -961,8 +1009,66 @@ function recordBusinessFinancialReport(entity,report){
  const staffCount=Math.max(0,Math.min(5,Math.floor(Number(report.staffCount)||0)));
  const supplierQuality=Number.isFinite(Number(report.supplierQuality))?clamp(Number(report.supplierQuality),0,100):0;
  const supplierCostMultiplier=Number.isFinite(Number(report.supplierCostMultiplier))?Math.round(Math.max(0,Number(report.supplierCostMultiplier))*1000)/1000:0;
- history.push({year:Math.max(0,Math.floor(Number(report.year)||0)),openingValue,revenue,costs,profit,margin,growthRate,closingValue,level:Math.max(1,Math.floor(Number(report.level)||1)),supplier:typeof report.supplier==='string'?report.supplier:'',supplierQuality,supplierCostMultiplier,payroll,staffCount});
+ const productRevenue=Math.max(0,Math.round(Number(report.productRevenue)||0));
+ const productCosts=Math.max(0,Math.round(Number(report.productCosts)||0));
+ const productProfit=Number.isFinite(Number(report.productProfit))?Math.round(Number(report.productProfit)):productRevenue-productCosts;
+ const productUnits=Math.max(0,Math.floor(Number(report.productUnits)||0));
+ const productCount=Math.max(0,Math.min(BUSINESS_PRODUCT_CATALOG.length,Math.floor(Number(report.productCount)||0)));
+ history.push({year:Math.max(0,Math.floor(Number(report.year)||0)),openingValue,revenue,costs,profit,margin,growthRate,closingValue,level:Math.max(1,Math.floor(Number(report.level)||1)),supplier:typeof report.supplier==='string'?report.supplier:'',supplierQuality,supplierCostMultiplier,payroll,staffCount,productRevenue,productCosts,productProfit,productUnits,productCount});
  entity.financialHistory=history.slice(-10);
+}
+
+function businessProductMarketSnapshot(business,catalog){
+ const year=Math.max(0,Math.floor(Number(state.age)||0));
+ const source=String(state.lifeId||state.name||'hayah')+'|'+year+'|'+String(business.assetId||business.title||'business')+'|'+catalog.id;
+ let hash=2166136261;
+ for(let i=0;i<source.length;i++)hash=Math.imul(hash^source.charCodeAt(i),16777619);
+ hash=hash>>>0;
+ return {
+  productId:catalog.id,
+  year,
+  demand:clamp(32+(hash%59),20,90),
+  competition:clamp(18+((hash>>>8)%73),10,90),
+  suggestedPrice:Math.max(50,Math.round(catalog.unitPrice*(.9+((hash>>>16)%21)/100))),
+  confidence:clamp(60+((hash>>>24)%35),60,94)
+ };
+}
+function simulateBusinessProducts(business,openingValue,supplier,staffRevenueBonus){
+ const result={revenue:0,costs:0,upfrontCosts:Math.max(0,Math.round(Number(business.pendingProductCosts)||0)),units:0,count:0};
+ business.pendingProductCosts=0;
+ const products=Array.isArray(business.products)?business.products:[];
+ products.filter(product=>product&&product.active!==false).forEach(product=>{
+  const catalog=BUSINESS_PRODUCT_CATALOG.find(item=>item.id===product.catalogId);
+  if(!catalog)return;
+  const demand=clamp(product.demand,5,95),competition=clamp(product.competition,5,95);
+  const price=Math.max(50,Math.round(Number(product.unitPrice)||catalog.unitPrice));
+  const supplierFactor=supplier?Math.max(.7,Math.min(1.3,Number(supplier.costMultiplier)||1)):1;
+  const unitCost=Math.max(1,Math.round((Number(product.unitCost)||catalog.unitCost)*supplierFactor));
+  const capacity=Math.max(1,Math.floor(Math.max(1000,openingValue)/Math.max(1500,unitCost*10)));
+  const priceRatio=price/Math.max(1,catalog.unitPrice);
+  const priceFactor=Math.max(.55,Math.min(1.2,1.12-Math.max(0,priceRatio-1)*.45+Math.max(0,1-priceRatio)*.18));
+  const marketFactor=(demand/100)*Math.max(.25,1.02-competition/150);
+  const qualityFactor=.72+clamp(product.quality,20,100)*.003;
+  const teamFactor=1+Math.min(.15,Math.max(0,Number(staffRevenueBonus)||0)*.5);
+  const unitsSold=Math.max(0,Math.round(capacity*marketFactor*priceFactor*qualityFactor*teamFactor*(.9+Math.random()*.2)));
+  const revenue=unitsSold*price;
+  const fixedCosts=Math.round(Math.max(1000,openingValue)*.0015);
+  const marketingCosts=Math.round(revenue*.025);
+  const costs=unitsSold*unitCost+fixedCosts+marketingCosts;
+  const profit=revenue-costs;
+  result.revenue+=revenue;
+  result.costs+=costs;
+  result.units+=unitsSold;
+  result.count++;
+  if(!Array.isArray(product.history))product.history=[];
+  product.history.push({year:Math.max(0,Math.floor(Number(state.age)||0)),unitsSold,revenue,costs,profit,demand,competition});
+  product.history=product.history.slice(-10);
+  product.lastYearProfit=profit;
+  product.demand=clamp(demand+Math.round((Math.random()-.5)*10)+(profit>=0?2:-4),5,95);
+  product.competition=clamp(competition+Math.round((Math.random()-.4)*8),5,95);
+ });
+ result.productProfit=result.revenue-result.costs-result.upfrontCosts;
+ return result;
 }
 
 function advanceAge(){
@@ -1023,22 +1129,25 @@ function advanceAge(){
   const baseRevenue=Math.round(openingValue*(.03+Math.random()*.08)*(.8+level*.15));
   const baseCosts=Math.round(openingValue*(.02+Math.random()*.05)*(1+Math.max(0,level-1)*.08));
   const supplierRevenueFactor=supplier?(.9+supplier.quality/100*.15):1;
-  const revenue=Math.round(baseRevenue*supplierRevenueFactor*(1+Math.min(.25,staffRevenueBonus)));
+  const productResult=simulateBusinessProducts(business,openingValue,supplier,staffRevenueBonus);
+  const revenue=Math.round(baseRevenue*supplierRevenueFactor*(1+Math.min(.25,staffRevenueBonus)))+productResult.revenue;
   const supplierCosts=supplier?Math.round(baseCosts*supplier.costMultiplier):baseCosts;
   const operatingCosts=Math.round(supplierCosts*(1-Math.min(.25,staffCostReduction)));
-  const costs=operatingCosts+staffPayroll;
+  const costs=operatingCosts+staffPayroll+productResult.costs+productResult.upfrontCosts;
   const profit=revenue-costs;
-  state.bank+=profit;
+  // Research and launch fees were paid immediately; add them back here so they appear once in the report, not twice in cash.
+  state.bank+=profit+productResult.upfrontCosts;
   business.value=Math.max(1000,Math.round(openingValue*(profit>=0?1.04:.97)));
   staff.forEach(employee=>{
    employee.years=Math.min(80,Math.max(0,Math.floor(Number(employee.years)||0))+1);
    employee.morale=clamp((Number.isFinite(Number(employee.morale))?Number(employee.morale):65)+(profit>=0?2:-4));
    if(employee.morale>=70&&chance(.25))employee.skill=clamp((Number(employee.skill)||55)+1);
   });
-  recordBusinessFinancialReport(business,{year:state.age,openingValue,revenue,costs,profit,closingValue:business.value,level,supplier:supplier?supplier.title:'',supplierQuality:supplier?supplier.quality:0,supplierCostMultiplier:supplier?supplier.costMultiplier:0,payroll:staffPayroll,staffCount:staff.length});
+  recordBusinessFinancialReport(business,{year:state.age,openingValue,revenue,costs,profit,closingValue:business.value,level,supplier:supplier?supplier.title:'',supplierQuality:supplier?supplier.quality:0,supplierCostMultiplier:supplier?supplier.costMultiplier:0,payroll:staffPayroll,staffCount:staff.length,productRevenue:productResult.revenue,productCosts:productResult.costs+productResult.upfrontCosts,productProfit:productResult.productProfit,productUnits:productResult.units,productCount:productResult.count});
   const supplierLabel=supplier?' · المورد '+supplier.title:'';
   const staffLabel=staff.length?' · الرواتب '+cash(staffPayroll)+' لعدد '+staff.length+' موظف':'';
-  log('🏪','التقرير السنوي للمشروع','الإيرادات '+cash(revenue)+' · المصروفات '+cash(costs)+' · '+(profit>=0?'صافي الربح ':'صافي الخسارة ')+cash(Math.abs(profit))+' · مستوى الإدارة '+level+supplierLabel+staffLabel+'.','special');
+  const productLabel=productResult.count?' · المنتجات '+productResult.count+' · مبيعاتها '+cash(productResult.revenue)+' · الوحدات المباعة '+fmt(productResult.units):productResult.upfrontCosts?' · مصروفات تطوير المنتجات '+cash(productResult.upfrontCosts):'';
+  log('🏪','التقرير السنوي للمشروع','الإيرادات '+cash(revenue)+' · المصروفات '+cash(costs)+' · '+(profit>=0?'صافي الربح ':'صافي الخسارة ')+cash(Math.abs(profit))+' · مستوى الإدارة '+level+supplierLabel+staffLabel+productLabel+'.','special');
   if(supplier){
    business.supplier.yearsLeft=Math.max(0,(Number(business.supplier.yearsLeft)||3)-1);
    if(business.supplier.yearsLeft===0){business.supplier=null;log('📦','انتهاء عقد المورد','انتهى عقد المورد. راجع خيارات التوريد قبل السنة المالية القادمة.','bad');}
@@ -1652,7 +1761,7 @@ function businessReportsMenu(entity,title,back){
  if(!reports.length){info('📊','لا توجد تقارير بعد','التقرير المالي الأول هيظهر بعد مرور سنة مالية كاملة.');return;}
  const opts=reports.map(report=>choice('📅','السنة '+report.year,'الإيرادات '+cash(report.revenue)+' · المصروفات '+cash(report.costs)+' · '+(report.profit>=0?'صافي ربح ':'صافي خسارة ')+cash(Math.abs(report.profit)),()=>{
   closeModal();
-  const detail='الإيرادات: '+cash(report.revenue)+'\nالمصروفات التشغيلية: '+cash(Math.max(0,report.costs-(report.payroll||0)))+'\nرواتب الموظفين: '+cash(report.payroll||0)+' ('+(report.staffCount||0)+' موظف)\nإجمالي المصروفات: '+cash(report.costs)+'\nصافي النتيجة: '+(report.profit>=0?'ربح ':'خسارة ')+cash(Math.abs(report.profit))+'\nهامش الربح: '+report.margin+'%\nتغير قيمة النشاط: '+(report.growthRate>=0?'+':'')+report.growthRate+'%\nالقيمة الختامية: '+cash(report.closingValue)+(report.supplier?'\nالمورد: '+report.supplier+(report.supplierQuality?'\nجودة المورد: '+report.supplierQuality+'%':'')+(report.supplierCostMultiplier?'\nمعامل تكلفة المورد: '+Math.round(report.supplierCostMultiplier*100)+'%':''):'');
+  const detail='الإيرادات: '+cash(report.revenue)+'\nالمصروفات التشغيلية: '+cash(Math.max(0,report.costs-(report.payroll||0)))+'\nرواتب الموظفين: '+cash(report.payroll||0)+' ('+(report.staffCount||0)+' موظف)\nإجمالي المصروفات: '+cash(report.costs)+'\nصافي النتيجة: '+(report.profit>=0?'ربح ':'خسارة ')+cash(Math.abs(report.profit))+'\nهامش الربح: '+report.margin+'%\nتغير قيمة النشاط: '+(report.growthRate>=0?'+':'')+report.growthRate+'%\nالقيمة الختامية: '+cash(report.closingValue)+(report.supplier?'\nالمورد: '+report.supplier+(report.supplierQuality?'\nجودة المورد: '+report.supplierQuality+'%':'')+(report.supplierCostMultiplier?'\nمعامل تكلفة المورد: '+Math.round(report.supplierCostMultiplier*100)+'%':''):'')+(report.productCount?'\nمبيعات المنتجات: '+cash(report.productRevenue||0)+' · تكاليفها: '+cash(report.productCosts||0)+' · صافيها: '+cash(report.productProfit||0)+' · الوحدات المباعة: '+fmt(report.productUnits||0):'');
   info('📊','التقرير المالي · '+title,detail,[choice('↩️','رجوع للتقارير','',()=>businessReportsMenu(entity,title,back))]);
  }));
  opts.push(choice('↩️','رجوع','',back));
@@ -1766,6 +1875,125 @@ function fireBusinessStaff(id){
  save();render();businessStaffMenu();
 }
 
+function businessProductsMenu(){
+ const business=state.business;
+ if(!business){info('🏪','لا يوجد مشروع','امتلك مشروعًا أولًا حتى تطلق منتجات.');return;}
+ if(!Array.isArray(business.products))business.products=[];
+ const active=business.products.filter(product=>product&&product.active!==false);
+ const archived=business.products.filter(product=>product&&product.active===false);
+ const opts=active.map(product=>{
+  const last=Array.isArray(product.history)?product.history[product.history.length-1]:null;
+  return choice(product.emoji||'📦',product.title,'السعر '+cash(product.unitPrice)+' · الطلب '+product.demand+'% · المنافسة '+product.competition+'%'+(last?' · آخر نتيجة '+cash(last.profit):' · لم يمر عام مالي بعد'),()=>businessProductDetailMenu(product.id),last?(last.profit>=0?'ربح':'خسارة'):'نشط');
+ });
+ if(active.length<BUSINESS_PRODUCT_CATALOG.length)opts.push(choice('➕','إطلاق منتج جديد','اختر منتجًا، وابحث عن الطلب والمنافسة أو أطلقه مباشرة مع مخاطرة أعلى.',businessProductCatalogMenu));
+ else opts.push(choice('📦','اكتمل خط المنتجات','أوقف منتجًا قائمًا قبل إضافة منتج آخر.',()=>info('📦','خط المنتجات مكتمل','يمكن تشغيل منتج واحد من كل فئة في الوقت نفسه.')));
+ if(archived.length)opts.push(choice('📚','المنتجات المتوقفة',archived.map(product=>product.title).join('، '),()=>info('📚','أرشيف المنتجات','المنتجات المتوقفة: '+archived.map(product=>product.title).join('، ')+'. يمكن إطلاقها مجددًا من الكتالوج.')));
+ opts.push(choice('↩️','رجوع لإدارة المشروع','',businessMenu));
+ modal('🧪','منتجات المشروع','المنتجات النشطة '+active.length+'/'+BUSINESS_PRODUCT_CATALOG.length+' · لكل منتج سجل مبيعات وطلب ومنافسة يتغير مع السنوات.',opts);
+}
+function businessProductCatalogMenu(){
+ const business=state.business;
+ if(!business)return;
+ const activeIds=new Set((Array.isArray(business.products)?business.products:[]).filter(product=>product&&product.active!==false).map(product=>product.catalogId));
+ const available=BUSINESS_PRODUCT_CATALOG.filter(product=>!activeIds.has(product.id));
+ const opts=available.map(product=>choice(product.emoji,product.title,product.description+' · سعر استرشادي '+cash(product.unitPrice)+' · تكلفة وحدة '+cash(product.unitCost),()=>businessProductLaunchMenu(product.id)));
+ opts.push(choice('↩️','رجوع للمنتجات','',businessProductsMenu));
+ modal('🛍️','كتالوج المنتجات','كل فئة لها تكلفة وسعر مرجعيان، والنتيجة الفعلية تعتمد على السوق وقراراتك.',opts);
+}
+function businessProductLaunchMenu(productId){
+ const business=state.business,catalog=BUSINESS_PRODUCT_CATALOG.find(item=>item.id===productId);
+ if(!business||!catalog){businessProductsMenu();return;}
+ if(!Array.isArray(business.productResearch))business.productResearch=[];
+ const year=Math.max(0,Math.floor(Number(state.age)||0));
+ const research=business.productResearch.find(snapshot=>snapshot.productId===productId&&Number(snapshot.year)===year);
+ const researchFee=Math.max(500,Math.round(Math.max(0,Number(business.value)||0)*.0035));
+ const launchFee=Math.max(1000,Math.round(Math.max(0,Number(business.value)||0)*.012));
+ const opts=[];
+ if(research){
+  opts.push(choice('🚀','إطلاق بنتائج البحث','الطلب '+research.demand+'% · المنافسة '+research.competition+'% · السعر المقترح '+cash(research.suggestedPrice)+' · ثقة البحث '+research.confidence+'%. رسوم الإطلاق '+cash(launchFee)+'.',()=>launchBusinessProduct(productId,true),cash(launchFee)));
+  opts.push(choice('🔄','تحديث بحث السوق','إعادة تقييم الطلب والمنافسة للسنة الحالية مقابل '+cash(researchFee)+'.',()=>researchBusinessProduct(productId),cash(researchFee)));
+ }else{
+  opts.push(choice('🔬','إجراء بحث السوق','تقرير عن الطلب والمنافسة والسعر المقترح مقابل '+cash(researchFee)+'.',()=>researchBusinessProduct(productId),cash(researchFee)));
+ }
+ opts.push(choice('🎲','إطلاق دون بحث','اعتماد تقدير أولي غير مضمون. رسوم الإطلاق '+cash(launchFee)+'.',()=>launchBusinessProduct(productId,false),cash(launchFee)));
+ opts.push(choice('↩️','رجوع للكتالوج','',businessProductCatalogMenu));
+ modal(catalog.emoji,'إعداد '+catalog.title,'رسوم البحث والإطلاق تُسجل في التقرير المالي للسنة القادمة؛ نتائج البحث تخص السنة الحالية فقط.',opts);
+}
+function researchBusinessProduct(productId){
+ closeModal();
+ const business=state.business,catalog=BUSINESS_PRODUCT_CATALOG.find(item=>item.id===productId);
+ if(!business||!catalog)return;
+ if(!Array.isArray(business.productResearch))business.productResearch=[];
+ const year=Math.max(0,Math.floor(Number(state.age)||0));
+ const existing=business.productResearch.find(snapshot=>snapshot.productId===productId&&Number(snapshot.year)===year);
+ if(existing){businessProductLaunchMenu(productId);return;}
+ const fee=Math.max(500,Math.round(Math.max(0,Number(business.value)||0)*.0035));
+ if(state.bank<fee){info('💳','الرصيد غير كافٍ','بحث السوق يحتاج '+cash(fee)+'.');return;}
+ const snapshot=businessProductMarketSnapshot(business,catalog);
+ state.bank-=fee;
+ business.pendingProductCosts=Math.max(0,Number(business.pendingProductCosts)||0)+fee;
+ business.productResearch=business.productResearch.filter(item=>item.productId!==productId).concat(snapshot).slice(-4);
+ log('🔬','اكتمل بحث '+catalog.title,'الطلب المتوقع '+snapshot.demand+'% · المنافسة '+snapshot.competition+'% · السعر المقترح '+cash(snapshot.suggestedPrice)+' · ثقة التقدير '+snapshot.confidence+'%.','good');
+ save();render();businessProductLaunchMenu(productId);
+}
+function launchBusinessProduct(productId,useResearch){
+ closeModal();
+ const business=state.business,catalog=BUSINESS_PRODUCT_CATALOG.find(item=>item.id===productId);
+ if(!business||!catalog)return;
+ if(!Array.isArray(business.products))business.products=[];
+ const active=business.products.filter(product=>product&&product.active!==false);
+ if(active.some(product=>product.catalogId===productId)){info('📦','المنتج موجود بالفعل','أوقف النسخة الحالية قبل إطلاق منتج جديد من الفئة نفسها.');return;}
+ if(active.length>=BUSINESS_PRODUCT_CATALOG.length){info('📦','خط المنتجات مكتمل','أوقف منتجًا قائمًا قبل إضافة منتج جديد.');return;}
+ const year=Math.max(0,Math.floor(Number(state.age)||0));
+ const research=(Array.isArray(business.productResearch)?business.productResearch:[]).find(snapshot=>snapshot.productId===productId&&Number(snapshot.year)===year);
+ if(useResearch&&!research){info('🔬','بحث السوق غير متاح','أعد البحث للسنة الحالية أو أطلق المنتج دون بحث.');return;}
+ const fee=Math.max(1000,Math.round(Math.max(0,Number(business.value)||0)*.012));
+ if(state.bank<fee){info('💳','الرصيد غير كافٍ','إطلاق المنتج يحتاج '+cash(fee)+'.');return;}
+ const supplier=BUSINESS_SUPPLIER_CATALOG.find(item=>business.supplier&&item.id===business.supplier.id);
+ const demand=research?research.demand:clamp(34+Math.floor(Math.random()*47),20,85);
+ const competition=research?research.competition:clamp(28+Math.floor(Math.random()*55),15,90);
+ const unitPrice=research?research.suggestedPrice:Math.max(50,Math.round(catalog.unitPrice*(.9+Math.random()*.2)));
+ const quality=clamp(64+(supplier?(Number(business.supplier.quality||supplier.quality)-70)*.35:0),20,100);
+ const product={id:'product-'+String(state.lifeId||state.age)+'-'+String(business.products.length+1)+'-'+String(Math.floor(Math.random()*1000000)),catalogId:catalog.id,title:catalog.title,emoji:catalog.emoji,category:catalog.category,unitPrice,unitCost:catalog.unitCost,demand,competition,quality,active:true,launchedAtAge:state.age,lastYearProfit:0,history:[]};
+ state.bank-=fee;
+ business.pendingProductCosts=Math.max(0,Number(business.pendingProductCosts)||0)+fee;
+ business.products.push(product);
+ business.productResearch=Array.isArray(business.productResearch)?business.productResearch.filter(snapshot=>snapshot.productId!==productId):[];
+ log('🚀','إطلاق '+product.title,'دفعت '+cash(fee)+' لتجهيز المنتج. سعر البيع '+cash(unitPrice)+'، والطلب الأولي '+demand+'% والمنافسة '+competition+'%.','good');
+ save();render();businessProductDetailMenu(product.id);
+}
+function businessProductDetailMenu(id){
+ const business=state.business,product=business&&Array.isArray(business.products)?business.products.find(item=>String(item.id)===String(id)):null;
+ if(!product){businessProductsMenu();return;}
+ const last=Array.isArray(product.history)?product.history[product.history.length-1]:null;
+ const detail='سعر البيع للوحدة '+cash(product.unitPrice)+' · تكلفة الوحدة الأساسية '+cash(product.unitCost)+' · الطلب '+product.demand+'% · المنافسة '+product.competition+'% · الجودة '+product.quality+'%'+(last?'\nآخر سنة: '+last.unitsSold+' وحدة · إيرادات '+cash(last.revenue)+' · مصروفات '+cash(last.costs)+' · '+(last.profit>=0?'ربح ':'خسارة ')+cash(Math.abs(last.profit)):'\nلم يمر عام مالي كامل منذ الإطلاق.');
+ const opts=[];
+ if(product.active!==false){
+  opts.push(choice('⬆️','رفع السعر 10%','زيادة السعر قد تحسن هامش الوحدة وتقلل الطلب.',()=>adjustBusinessProductPrice(id,1)));
+  opts.push(choice('⬇️','خفض السعر 10%','خفض السعر قد يزيد الوحدات المباعة ويضغط هامش الربح.',()=>adjustBusinessProductPrice(id,-1)));
+  opts.push(choice('⏸️','إيقاف المنتج','إيقاف المبيعات المستقبلية مع الاحتفاظ بسجل الأداء.',()=>retireBusinessProduct(id)));
+ }else opts.push(choice('🚀','إعادة إطلاق الفئة','يمكنك إطلاق نسخة جديدة من الكتالوج بعد مراجعة السوق.',()=>businessProductLaunchMenu(product.catalogId)));
+ opts.push(choice('↩️','رجوع للمنتجات','',businessProductsMenu));
+ modal(product.emoji||'📦',product.title,detail,opts);
+}
+function adjustBusinessProductPrice(id,direction){
+ closeModal();
+ const business=state.business,product=business&&Array.isArray(business.products)?business.products.find(item=>String(item.id)===String(id)):null;
+ if(!product||product.active===false)return;
+ const previous=Math.max(50,Number(product.unitPrice)||50);
+ product.unitPrice=Math.max(50,Math.round(previous*(direction>0?1.1:.9)));
+ log('🏷️','تعديل سعر '+product.title,'تغير سعر البيع من '+cash(previous)+' إلى '+cash(product.unitPrice)+' للوحدة.','special');
+ save();render();businessProductDetailMenu(id);
+}
+function retireBusinessProduct(id){
+ closeModal();
+ const business=state.business,product=business&&Array.isArray(business.products)?business.products.find(item=>String(item.id)===String(id)):null;
+ if(!product||product.active===false)return;
+ product.active=false;
+ log('📦','إيقاف '+product.title,'أوقفت المنتج مع الاحتفاظ بسجل مبيعاته وتقاريره السابقة.','bad');
+ save();render();businessProductsMenu();
+}
+
 function businessMenu(){
  if(!state.business){if(perkOwned('businessPack')){companyPortfolioMenu();return;}info('🏪','مفيش مشروع حاليًا','اشتري مشروعًا صغيرًا من قائمة الأصول عشان تبدأ الإدارة.');return;}
  const b=state.business,level=Math.max(1,b.level||1),supplier=BUSINESS_SUPPLIER_CATALOG.find(item=>b.supplier&&item.id===b.supplier.id);
@@ -1777,6 +2005,7 @@ function businessMenu(){
   choice('📊','التقرير السنوي','راجع الإيرادات والمصروفات وصافي النتيجة.',()=>businessReportsMenu(b,b.title||'مشروعك',businessMenu)),
   choice('📦','التعاقد مع مورد','قارن الجودة والتكلفة ومدة العقد قبل الاختيار.',businessSupplierMenu),
   choice('👥','إدارة الموظفين','عيّن فريقًا صغيرًا ودرّبه وراجع أثر الرواتب على أرباح المشروع.',businessStaffMenu),
+  choice('🧪','إدارة المنتجات','أطلق منتجات جديدة وابحث عن الطلب والمنافسة قبل الاستثمار.',businessProductsMenu),
   choice('📣','حملة تسويق','حملة تكلف 2,500 '+state.place.unit+' قد ترفع المبيعات والسمعة.',()=>businessAction('marketing'),'2,500 '+state.place.unit),
   choice('👔','تعيين مدير','تحسين الإدارة مقابل 5,000 '+state.place.unit+'؛ يزيد الكفاءة السنوية.',()=>businessAction('manager'),'5,000 '+state.place.unit),
   choice('🏗️','توسيع المشروع','استثمار 10,000 '+state.place.unit+' لزيادة قيمة النشاط.',()=>businessAction('expand'),'10,000 '+state.place.unit),
