@@ -843,7 +843,7 @@ function appendLogEntryNode(feed,entry,lastAge){
  }
  const tone=entry.tone==='good'?' good':entry.tone==='bad'?' bad':entry.tone==='special'?' special':'';
  const article=document.createElement('article');article.className='logcard'+tone;
- const icon=document.createElement('div');icon.className='logicon';icon.setAttribute('aria-hidden','true');icon.textContent=String(entry.icon||'');
+ const icon=document.createElement('div');icon.className='logicon';if(typeof icon.setAttribute==='function')icon.setAttribute('aria-hidden','true');icon.textContent=String(entry.icon||'');
  const content=document.createElement('div');content.className='logcontent';
  const title=document.createElement('div');title.className='logtitle';title.textContent=String(entry.title||'');
  const textNode=document.createElement('p');textNode.className='logtext';textNode.textContent=String(entry.text||'');
