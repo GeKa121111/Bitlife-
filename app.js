@@ -77,7 +77,8 @@ function specialCareerIncomeMultiplier(){return careerIncomeMultiplier()*(perkEn
 let state, dead=false, logBatchDepth=0, logBatchDirty=false, saveRecovered=false;
 let activeDialogKeyHandler=null, modalReturnFocus=null;
 let managedCompanyId = null;
-let uiSettings={theme:'light',textScale:'normal'};
+let uiSettings={theme:'light',textScale:'normal',sound:false,haptics:false};
+let uiAudioContext=null;
 let permanentPerks={owned:{},enabled:{},streakSavers:0};
 const names = {
  male:['آدم','يوسف','عمر','مالك','زياد','حمزة','كريم','سليم','ياسين','علي','إياد','مروان','أحمد','سيف','نوح'],
@@ -932,7 +933,7 @@ function modal(icon,title,desc,choices,closable=true,extra=''){
  const overlay=$('overlay');
  overlay.addEventListener('click',e=>{if(e.target===overlay&&closable)closeModal();});
  if(closable&&$('closeModal'))$('closeModal').addEventListener('click',closeModal);
- root.querySelectorAll('[data-i]').forEach(b=>b.addEventListener('click',()=>{const c=choices[Number(b.dataset.i)];if(c&&typeof c.action==='function')c.action();}));
+ root.querySelectorAll('[data-i]').forEach(b=>b.addEventListener('click',()=>{const c=choices[Number(b.dataset.i)];if(c&&typeof c.action==='function'){playUiFeedback('choice');c.action();}}));
  const surprise=$('surpriseChoice');
  if(surprise)surprise.addEventListener('click',()=>{
   const selects=Array.from(root.querySelectorAll('select[data-surpriseable="true"]'));
@@ -940,7 +941,7 @@ function modal(icon,title,desc,choices,closable=true,extra=''){
    selects.forEach(sel=>{if(sel.options.length)sel.selectedIndex=Math.floor(Math.random()*sel.options.length);});
    return;
   }
-  if(actualChoices.length)pick(actualChoices).action();
+  if(actualChoices.length){playUiFeedback('choice');pick(actualChoices).action();}
  });
  const dialog=typeof root.querySelector==='function'?root.querySelector('[role="dialog"]'):null;
  if(dialog){
@@ -3995,6 +3996,8 @@ function loadUiSettings(){
   if(raw&&typeof raw==='object'&&!Array.isArray(raw)){
    if(raw.theme==='dark'||raw.theme==='light'||raw.theme==='gold')uiSettings.theme=raw.theme;
    if(raw.textScale==='large'||raw.textScale==='normal')uiSettings.textScale=raw.textScale;
+   if(typeof raw.sound==='boolean')uiSettings.sound=raw.sound;
+   if(typeof raw.haptics==='boolean')uiSettings.haptics=raw.haptics;
   }
  }catch(e){}
  applyUiSettings();
@@ -4003,11 +4006,40 @@ function persistUiSettings(){
  try{localStorage.setItem(SETTINGS_KEY,JSON.stringify(uiSettings));}catch(e){}
  applyUiSettings();
 }
+function playUiFeedback(kind='tap'){
+ if(uiSettings.haptics&&typeof navigator!=='undefined'&&typeof navigator.vibrate==='function'){
+  try{navigator.vibrate(kind==='year'?[18,24,18]:kind==='confirm'?16:9);}catch(e){}
+ }
+ if(!uiSettings.sound)return;
+ try{
+  const AudioContextType=typeof window!=='undefined'&&(window.AudioContext||window.webkitAudioContext);
+  if(!AudioContextType)return;
+  if(!uiAudioContext)uiAudioContext=new AudioContextType();
+  const context=uiAudioContext;
+  if(context.state==='suspended'&&typeof context.resume==='function'){
+   const resumed=context.resume();
+   if(resumed&&typeof resumed.catch==='function')resumed.catch(()=>{});
+  }
+  const now=Number(context.currentTime)||0;
+  const oscillator=context.createOscillator(),gain=context.createGain();
+  oscillator.type='sine';
+  const base=kind==='year'?440:kind==='confirm'?660:520;
+  oscillator.frequency.setValueAtTime(base,now);
+  if(kind==='year')oscillator.frequency.exponentialRampToValueAtTime(660,now+.09);
+  gain.gain.setValueAtTime(.0001,now);
+  gain.gain.exponentialRampToValueAtTime(.025,now+.012);
+  gain.gain.exponentialRampToValueAtTime(.0001,now+.13);
+  oscillator.connect(gain);gain.connect(context.destination);
+  oscillator.start(now);oscillator.stop(now+.14);
+ }catch(e){}
+}
 function settingsMenu(){
  const opts=[
   choice(uiSettings.theme==='dark'?'☀️':'🌙',uiSettings.theme==='dark'?'تفعيل الوضع الفاتح':'تفعيل الوضع الداكن','المظهر الحالي: '+(uiSettings.theme==='dark'?'داكن':uiSettings.theme==='gold'?'ذهبي':'فاتح')+'.',()=>{uiSettings.theme=uiSettings.theme==='dark'?'light':'dark';persistUiSettings();settingsMenu();}),
   choice('🔤',uiSettings.textScale==='large'?'حجم النص: كبير':'حجم النص: عادي','كبّر نص سجل الأحداث والقرارات لسهولة القراءة.',()=>{uiSettings.textScale=uiSettings.textScale==='large'?'normal':'large';persistUiSettings();settingsMenu();}),
-  choice('↩️','استعادة إعدادات العرض الافتراضية','العودة للوضع الفاتح وحجم النص العادي.',()=>{uiSettings={theme:'light',textScale:'normal'};persistUiSettings();settingsMenu();})
+  choice(uiSettings.sound?'🔊':'🔇',uiSettings.sound?'الأصوات: مفعّلة':'الأصوات: متوقفة','نغمة قصيرة أصلية عند اختيار قرار أو التقدم سنة. لا تعمل إلا بعد تفعيلها.',()=>{uiSettings.sound=!uiSettings.sound;persistUiSettings();settingsMenu();}),
+  choice(uiSettings.haptics?'📳':'📴',uiSettings.haptics?'الاهتزاز: مفعّل':'الاهتزاز: متوقف','اهتزاز خفيف عند القرارات والتقدم سنة، إذا كان المتصفح والجهاز يدعمانه.',()=>{uiSettings.haptics=!uiSettings.haptics;persistUiSettings();settingsMenu();}),
+  choice('↩️','استعادة إعدادات العرض الافتراضية','العودة للوضع الفاتح وحجم النص العادي وإيقاف الصوت والاهتزاز.',()=>{uiSettings={theme:'light',textScale:'normal',sound:false,haptics:false};persistUiSettings();settingsMenu();})
  ];
  if(perkOwned('goldTheme'))opts.push(choice(uiSettings.theme==='gold'?'⭐':'🌟',uiSettings.theme==='gold'?'إيقاف الطابع الذهبي':'تفعيل الطابع الذهبي','هوية لونية ذهبية أصلية للعبة حياة.',()=>togglePremiumPerk('goldTheme')));
  else opts.push(choice('⭐','الطابع الذهبي','افتحه من متجر مزايا حياة لتفعيله من هنا.',premiumPerksMenu));
@@ -5183,7 +5215,7 @@ document.querySelectorAll('[data-panel]').forEach(btn=>btn.addEventListener('cli
  document.querySelectorAll('.navbtn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');
  const p=btn.dataset.panel;if(p==='career')showCareer();if(p==='assets')assets();if(p==='relations')relations();if(p==='activities')activities();
 }));
-$('ageUpBtn').addEventListener('click',ageUp);
+$('ageUpBtn').addEventListener('click',()=>{playUiFeedback('year');ageUp();});
 if($('menuBtn'))$('menuBtn').addEventListener('click',()=>mainMenu());
 if($('profileBtn'))$('profileBtn').addEventListener('click',()=>achievementsMenu());
 if($('marketBtn'))$('marketBtn').addEventListener('click',()=>premiumPerksMenu());

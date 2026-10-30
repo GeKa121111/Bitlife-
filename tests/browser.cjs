@@ -133,6 +133,31 @@ async function run() {
         localStorage.setItem('hekayat_hayah_save_v1', JSON.stringify(seed));
         localStorage.setItem('__hayah_browser_test_seeded', 'yes');
       }
+      if (!localStorage.getItem('hayah_ui_settings_v1')) {
+        localStorage.setItem('hayah_ui_settings_v1', JSON.stringify({theme:'light',textScale:'normal',sound:false,haptics:false}));
+      }
+      window.__hayahAudioStarted = 0;
+      window.__hayahVibrationCalls = [];
+      class MockAudioParam { setValueAtTime() {} exponentialRampToValueAtTime() {} }
+      class MockAudioNode { connect() {} }
+      class MockOscillator extends MockAudioNode {
+        constructor() { super(); this.frequency = new MockAudioParam(); this.type = 'sine'; }
+        start() { window.__hayahAudioStarted += 1; }
+        stop() {}
+      }
+      class MockGain extends MockAudioNode { constructor() { super(); this.gain = new MockAudioParam(); } }
+      class MockAudioContext {
+        constructor() { this.currentTime = 0; this.state = 'running'; this.destination = {}; }
+        createOscillator() { return new MockOscillator(); }
+        createGain() { return new MockGain(); }
+      }
+      window.AudioContext = MockAudioContext;
+      try {
+        Object.defineProperty(navigator, 'vibrate', {
+          configurable: true,
+          value: pattern => { window.__hayahVibrationCalls.push(pattern); return true; }
+        });
+      } catch (error) {}
     }, seedSave);
 
     const page = await context.newPage();
@@ -146,6 +171,20 @@ async function run() {
 
     const shownName = (await page.locator('#characterName').innerText()).trim();
     assert.ok(shownName.includes(seedSave.name), 'the legacy v1 save should render the seeded player');
+
+    // Sensory feedback is opt-in, stored separately from the life save, and exposed in settings.
+    const initialSensorySettings = await page.evaluate(() => JSON.parse(localStorage.getItem('hayah_ui_settings_v1') || '{}'));
+    assert.equal(initialSensorySettings.sound, false, 'sound should be off by default');
+    assert.equal(initialSensorySettings.haptics, false, 'haptics should be off by default');
+    await page.locator('#menuBtn').click();
+    await page.locator('.choice').filter({ hasText: 'إعدادات العرض' }).click();
+    await page.locator('.choice').filter({ hasText: 'الأصوات: متوقفة' }).click();
+    await page.locator('.choice').filter({ hasText: 'الاهتزاز: متوقف' }).click();
+    const enabledSensorySettings = await page.evaluate(() => JSON.parse(localStorage.getItem('hayah_ui_settings_v1') || '{}'));
+    assert.equal(enabledSensorySettings.sound, true, 'sound setting should persist when enabled');
+    assert.equal(enabledSensorySettings.haptics, true, 'haptics setting should persist when enabled');
+    await page.keyboard.press('Escape');
+    await page.waitForFunction(() => !document.querySelector('#modalRoot [role="dialog"]'));
 
     // Dialogs must move focus inside, keep keyboard navigation contained, and restore the trigger on Escape.
     await page.locator('[data-panel="career"]').click();
@@ -192,6 +231,9 @@ async function run() {
     await doctorChoice.click();
     await page.getByText(/مستوى التعليم المطلوب 5/).waitFor();
     await page.getByText(/الذكاء المطلوب 76%/).waitFor();
+    const feedbackCounts = await page.evaluate(() => ({audio:window.__hayahAudioStarted,vibration:window.__hayahVibrationCalls.length}));
+    assert.ok(feedbackCounts.audio > 0, 'an enabled sound setting should play an original UI tone after a choice');
+    assert.ok(feedbackCounts.vibration > 0, 'an enabled haptics setting should request vibration after a choice');
     await page.keyboard.press('Escape');
     await page.waitForFunction(() => !document.querySelector('#modalRoot [role="dialog"]'));
     assert.equal(await page.evaluate(() => document.activeElement && document.activeElement.getAttribute('data-panel')), 'career',
@@ -341,6 +383,9 @@ async function run() {
       localStorage.setItem(key, JSON.stringify(saved));
     });
     await page.reload({ waitUntil: 'domcontentloaded' });
+    const reloadedSensorySettings = await page.evaluate(() => JSON.parse(localStorage.getItem('hayah_ui_settings_v1') || '{}'));
+    assert.equal(reloadedSensorySettings.sound, true, 'sound preference should survive a reload');
+    assert.equal(reloadedSensorySettings.haptics, true, 'haptics preference should survive a reload');
     await page.waitForFunction(() => document.querySelectorAll('#lifeFeed .logcard').length === 45);
     const readingStart = await page.evaluate(() => {
       const feed = document.querySelector('#lifeFeed');
