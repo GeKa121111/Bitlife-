@@ -27,13 +27,13 @@ const BUSINESS_PRODUCT_CATALOG = [
  {id:'daily-essentials',title:'مستلزمات يومية',emoji:'🛍️',category:'تجزئة',unitPrice:650,unitCost:310,description:'مستلزمات أساسية بهوامش تحتاج متابعة.'}
 ];
 const BUSINESS_INDUSTRY_PROFILES = {
- technology:{demandMin:62,demandRange:39,competitionMin:30,competitionRange:46,competitorMin:2,competitorRange:6,rivalPriceMin:98,rivalPriceRange:17,revenueMultiplier:1.12,operatingCostMultiplier:1.06,unitCostMultiplier:.92},
- logistics:{demandMin:55,demandRange:37,competitionMin:24,competitionRange:39,competitorMin:2,competitorRange:5,rivalPriceMin:99,rivalPriceRange:16,revenueMultiplier:1.04,operatingCostMultiplier:1.17,unitCostMultiplier:1.12},
- restaurants:{demandMin:68,demandRange:39,competitionMin:55,competitionRange:36,competitorMin:5,competitorRange:6,rivalPriceMin:92,rivalPriceRange:16,revenueMultiplier:1.08,operatingCostMultiplier:1.20,unitCostMultiplier:1.16},
- retail:{demandMin:58,demandRange:39,competitionMin:60,competitionRange:32,competitorMin:6,competitorRange:7,rivalPriceMin:88,rivalPriceRange:19,revenueMultiplier:1.03,operatingCostMultiplier:1.13,unitCostMultiplier:1.10},
- food:{demandMin:65,demandRange:36,competitionMin:48,competitionRange:35,competitorMin:4,competitorRange:6,rivalPriceMin:92,rivalPriceRange:18,revenueMultiplier:1.07,operatingCostMultiplier:1.16,unitCostMultiplier:1.14},
- care:{demandMin:56,demandRange:38,competitionMin:35,competitionRange:42,competitorMin:3,competitorRange:6,rivalPriceMin:96,rivalPriceRange:18,revenueMultiplier:1.09,operatingCostMultiplier:1.08,unitCostMultiplier:1.03},
- other:{demandMin:55,demandRange:51,competitionMin:20,competitionRange:66,competitorMin:2,competitorRange:7,rivalPriceMin:90,rivalPriceRange:21,revenueMultiplier:1,operatingCostMultiplier:1,unitCostMultiplier:1}
+ technology:{demandMin:62,demandRange:39,competitionMin:30,competitionRange:46,competitorMin:2,competitorRange:6,rivalPriceMin:98,rivalPriceRange:17,revenueMultiplier:1.12,operatingCostMultiplier:1.06,unitCostMultiplier:.92,corporateTaxRate:.12},
+ logistics:{demandMin:55,demandRange:37,competitionMin:24,competitionRange:39,competitorMin:2,competitorRange:5,rivalPriceMin:99,rivalPriceRange:16,revenueMultiplier:1.04,operatingCostMultiplier:1.17,unitCostMultiplier:1.12,corporateTaxRate:.15},
+ restaurants:{demandMin:68,demandRange:39,competitionMin:55,competitionRange:36,competitorMin:5,competitorRange:6,rivalPriceMin:92,rivalPriceRange:16,revenueMultiplier:1.08,operatingCostMultiplier:1.20,unitCostMultiplier:1.16,corporateTaxRate:.16},
+ retail:{demandMin:58,demandRange:39,competitionMin:60,competitionRange:32,competitorMin:6,competitorRange:7,rivalPriceMin:88,rivalPriceRange:19,revenueMultiplier:1.03,operatingCostMultiplier:1.13,unitCostMultiplier:1.10,corporateTaxRate:.16},
+ food:{demandMin:65,demandRange:36,competitionMin:48,competitionRange:35,competitorMin:4,competitorRange:6,rivalPriceMin:92,rivalPriceRange:18,revenueMultiplier:1.07,operatingCostMultiplier:1.16,unitCostMultiplier:1.14,corporateTaxRate:.15},
+ care:{demandMin:56,demandRange:38,competitionMin:35,competitionRange:42,competitorMin:3,competitorRange:6,rivalPriceMin:96,rivalPriceRange:18,revenueMultiplier:1.09,operatingCostMultiplier:1.08,unitCostMultiplier:1.03,corporateTaxRate:.13},
+ other:{demandMin:55,demandRange:51,competitionMin:20,competitionRange:66,competitorMin:2,competitorRange:7,rivalPriceMin:90,rivalPriceRange:21,revenueMultiplier:1,operatingCostMultiplier:1,unitCostMultiplier:1,corporateTaxRate:.14}
 };
 function businessIndustryProfile(industry){
  const label=String(industry||'');
@@ -601,6 +601,9 @@ function normalizeCoreState(data){
   const pendingOwnerContributions=Number(entity.pendingOwnerContributions),pendingOwnerWithdrawals=Number(entity.pendingOwnerWithdrawals);
   entity.pendingOwnerContributions=Math.max(0,Math.min(1000000000000,Number.isFinite(pendingOwnerContributions)?Math.round(pendingOwnerContributions):0));
   entity.pendingOwnerWithdrawals=Math.max(0,Math.min(1000000000000,Number.isFinite(pendingOwnerWithdrawals)?Math.round(pendingOwnerWithdrawals):0));
+  const taxLiability=Number(entity.taxLiability),pendingTaxPayments=Number(entity.pendingTaxPayments);
+  entity.taxLiability=Math.max(0,Math.min(8000000000,Number.isFinite(taxLiability)?Math.round(taxLiability):0));
+  entity.pendingTaxPayments=Math.max(0,Math.min(8000000000,Number.isFinite(pendingTaxPayments)?Math.round(pendingTaxPayments):0));
   entity.financialHistory=entity.financialHistory.filter(report=>report&&typeof report==='object'&&Number.isFinite(Number(report.year))&&Number.isFinite(Number(report.revenue))&&Number.isFinite(Number(report.costs))&&Number.isFinite(Number(report.profit))).slice(-10);
   if(!Array.isArray(entity.staff))entity.staff=[];
   entity.staff=entity.staff.filter(employee=>employee&&typeof employee==='object'&&!Array.isArray(employee)).slice(0,5).map((employee,index)=>{
@@ -1221,12 +1224,19 @@ function recordBusinessFinancialReport(entity,report){
  const businessLoanInterestPaid=Math.max(0,Math.min(businessLoanInterest,Math.round(Number(report.businessLoanInterestPaid)||0)));
  const businessLoanInterestAccrued=Math.max(0,Math.min(businessLoanInterest,Math.round(Number(report.businessLoanInterestAccrued)||0)));
  const businessLoanBalance=Math.max(0,Math.min(200000000,Math.round(Number(report.businessLoanBalance)||0)));
+ const taxableProfit=Math.max(0,Math.min(8000000000,Math.round(Number(report.taxableProfit)||0)));
+ const corporateTaxRate=Math.round(Math.max(0,Math.min(.25,Number(report.corporateTaxRate)||0))*10000)/10000;
+ const corporateTax=Math.max(0,Math.min(8000000000,Math.round(Number(report.corporateTax)||0)));
+ const corporateTaxPaid=Math.max(0,Math.min(8000000000,Math.round(Number(report.corporateTaxPaid)||0)));
+ const corporateTaxAccrued=Math.max(0,Math.min(8000000000,Math.round(Number(report.corporateTaxAccrued)||0)));
+ const taxLiability=Math.max(0,Math.min(8000000000,Math.round(Number(report.taxLiability)||0)));
+ const openingTaxLiability=Math.max(0,Math.min(8000000000,Math.round(Number(report.openingTaxLiability)||0)));
  const treasuryMode=report.treasuryMode==='separate'?'separate':'shared';
  const openingCashBalance=Math.max(-1000000000000,Math.min(1000000000000,Math.round(Number(report.openingCashBalance)||0)));
  const closingCashBalance=Math.max(-1000000000000,Math.min(1000000000000,Math.round(Number(report.closingCashBalance)||0)));
  const ownerContributions=Math.max(0,Math.min(1000000000000,Math.round(Number(report.ownerContributions)||0)));
  const ownerWithdrawals=Math.max(0,Math.min(1000000000000,Math.round(Number(report.ownerWithdrawals)||0)));
- history.push({year:Math.max(0,Math.floor(Number(report.year)||0)),openingValue,revenue,costs,profit,margin,growthRate,closingValue,level:Math.max(1,Math.floor(Number(report.level)||1)),supplier:typeof report.supplier==='string'?report.supplier:'',supplierQuality,supplierCostMultiplier,payroll,staffCount,productRevenue,productCosts,productProfit,productUnits,productCount,facilityUpkeep,facilityInvestment,facilityCount,capacityMultiplier,marketIndustry,marketDemandIndex,marketCompetitionIndex,marketCompetitorCount,marketRivalPriceIndex,marketShare,marketShareChange,industryRevenueMultiplier,industryOperatingCostMultiplier,industryUnitCostMultiplier,businessLoanInterest,businessLoanInterestPaid,businessLoanInterestAccrued,businessLoanBalance,treasuryMode,openingCashBalance,closingCashBalance,ownerContributions,ownerWithdrawals});
+ history.push({year:Math.max(0,Math.floor(Number(report.year)||0)),openingValue,revenue,costs,profit,margin,growthRate,closingValue,level:Math.max(1,Math.floor(Number(report.level)||1)),supplier:typeof report.supplier==='string'?report.supplier:'',supplierQuality,supplierCostMultiplier,payroll,staffCount,productRevenue,productCosts,productProfit,productUnits,productCount,facilityUpkeep,facilityInvestment,facilityCount,capacityMultiplier,marketIndustry,marketDemandIndex,marketCompetitionIndex,marketCompetitorCount,marketRivalPriceIndex,marketShare,marketShareChange,industryRevenueMultiplier,industryOperatingCostMultiplier,industryUnitCostMultiplier,businessLoanInterest,businessLoanInterestPaid,businessLoanInterestAccrued,businessLoanBalance,taxableProfit,corporateTaxRate,corporateTax,corporateTaxPaid,corporateTaxAccrued,taxLiability,openingTaxLiability,treasuryMode,openingCashBalance,closingCashBalance,ownerContributions,ownerWithdrawals});
  entity.financialHistory=history.slice(-10);
 }
 
@@ -1413,10 +1423,24 @@ function simulateBusinessEntityYear(business,kind){
  const businessLoanInterestPaid=credit?Math.max(0,Math.round(Number(credit._lastInterestPaid)||0)):0;
  const businessLoanInterestAccrued=credit?Math.max(0,Math.round(Number(credit._lastInterestAccrued)||0)):0;
  if(credit){delete credit._lastInterestPaid;delete credit._lastInterestAccrued;}
- const costs=operatingCostsTotal+productResult.upfrontCosts+businessLoanInterest;
+ const preTaxProfit=revenue-operatingCostsTotal-productResult.upfrontCosts-businessLoanInterest;
+ const taxableProfit=Math.max(0,Math.round(preTaxProfit));
+ const corporateTaxRate=Math.max(.05,Math.min(.25,Number(industryProfile.corporateTaxRate)||.14));
+ const corporateTax=Math.max(0,Math.round(taxableProfit*corporateTaxRate));
+ const openingTaxLiability=businessTaxLiability(business);
+ const pendingTaxPayments=Math.max(0,Math.round(Number(business.pendingTaxPayments)||0));
+ business.pendingTaxPayments=0;
+ const totalTaxDue=Math.min(8000000000,openingTaxLiability+corporateTax);
+ const cashAfterInterest=businessTreasuryBalance(business)+revenue-operatingCostsTotal-businessLoanInterestPaid;
+ const corporateTaxPaidFromCash=Math.min(totalTaxDue,Math.max(0,Math.floor(cashAfterInterest)));
+ const corporateTaxAccrued=Math.max(0,totalTaxDue-corporateTaxPaidFromCash);
+ const corporateTaxPaid=corporateTaxPaidFromCash+pendingTaxPayments;
+ business.taxLiability=corporateTaxAccrued;
+ const costs=operatingCostsTotal+productResult.upfrontCosts+businessLoanInterest+corporateTax;
  const profit=revenue-costs;
- // Product research and launch fees were already paid; include them in the report once without charging cash twice. Unpaid loan interest is capitalized instead of being charged twice to the company treasury (or legacy shared balance).
- adjustBusinessTreasury(business,profit+productResult.upfrontCosts+businessLoanInterestAccrued);
+ // Product launch fees were paid when chosen; tax and interest are paid only from business cash. Unpaid amounts remain liabilities instead of being charged twice.
+ const cashDelta=revenue-operatingCostsTotal-businessLoanInterestPaid-corporateTaxPaidFromCash;
+ adjustBusinessTreasury(business,cashDelta);
  business.value=Math.max(1000,Math.round(openingValue*(profit>=0?1.04:.97)));
  staff.forEach(employee=>{
   employee.years=Math.min(80,Math.max(0,Math.floor(Number(employee.years)||0))+1);
@@ -1427,7 +1451,7 @@ function simulateBusinessEntityYear(business,kind){
  const ownerContributions=separateTreasury?Math.max(0,Math.round(Number(business.pendingOwnerContributions)||0)):0;
  const ownerWithdrawals=separateTreasury?Math.max(0,Math.round(Number(business.pendingOwnerWithdrawals)||0)):0;
  business.pendingOwnerContributions=0;business.pendingOwnerWithdrawals=0;
- recordBusinessFinancialReport(business,{year:state.age,openingValue,revenue,costs,profit,closingValue:business.value,treasuryMode:separateTreasury?'separate':'shared',openingCashBalance,closingCashBalance,ownerContributions,ownerWithdrawals,level,supplier:supplier?supplier.title:'',supplierQuality:supplier?supplier.quality:0,supplierCostMultiplier:supplier?supplier.costMultiplier:0,payroll:staffPayroll,staffCount:staff.length,productRevenue:productResult.revenue,productCosts:productResult.costs+productResult.upfrontCosts,productProfit:productResult.productProfit,productUnits:productResult.units,productCount:productResult.count,facilityUpkeep,facilityInvestment:facilityInvestmentCosts,facilityCount:facilities.length,capacityMultiplier:productResult.capacityMultiplier,marketIndustry:market.industry,marketDemandIndex:market.demandIndex,marketCompetitionIndex:market.competitionIndex,marketCompetitorCount:market.competitorCount,marketRivalPriceIndex:market.rivalPriceIndex,marketShare:market.marketShare,marketShareChange:market.lastYearShareChange,industryRevenueMultiplier:industryProfile.revenueMultiplier,industryOperatingCostMultiplier:industryProfile.operatingCostMultiplier,industryUnitCostMultiplier:industryProfile.unitCostMultiplier,businessLoanInterest,businessLoanInterestPaid,businessLoanInterestAccrued,businessLoanBalance:businessCreditBalance(business)});
+ recordBusinessFinancialReport(business,{year:state.age,openingValue,revenue,costs,profit,closingValue:business.value,treasuryMode:separateTreasury?'separate':'shared',openingCashBalance,closingCashBalance,ownerContributions,ownerWithdrawals,level,supplier:supplier?supplier.title:'',supplierQuality:supplier?supplier.quality:0,supplierCostMultiplier:supplier?supplier.costMultiplier:0,payroll:staffPayroll,staffCount:staff.length,productRevenue:productResult.revenue,productCosts:productResult.costs+productResult.upfrontCosts,productProfit:productResult.productProfit,productUnits:productResult.units,productCount:productResult.count,facilityUpkeep,facilityInvestment:facilityInvestmentCosts,facilityCount:facilities.length,capacityMultiplier:productResult.capacityMultiplier,marketIndustry:market.industry,marketDemandIndex:market.demandIndex,marketCompetitionIndex:market.competitionIndex,marketCompetitorCount:market.competitorCount,marketRivalPriceIndex:market.rivalPriceIndex,marketShare:market.marketShare,marketShareChange:market.lastYearShareChange,industryRevenueMultiplier:industryProfile.revenueMultiplier,industryOperatingCostMultiplier:industryProfile.operatingCostMultiplier,industryUnitCostMultiplier:industryProfile.unitCostMultiplier,businessLoanInterest,businessLoanInterestPaid,businessLoanInterestAccrued,businessLoanBalance:businessCreditBalance(business),taxableProfit,corporateTaxRate,corporateTax,corporateTaxPaid,corporateTaxAccrued,taxLiability:businessTaxLiability(business),openingTaxLiability});
  const supplierLabel=supplier?' · المورد '+supplier.title:'';
  const creditBalance=businessCreditBalance(business);
  const creditLabel=creditBalance?' · تمويل قائم '+cash(creditBalance):'';
@@ -2086,8 +2110,9 @@ function businessReportsMenu(entity,title,back){
   closeModal();
   const detail='الإيرادات: '+cash(report.revenue)+'\nالمصروفات التشغيلية: '+cash(Math.max(0,report.costs-(report.payroll||0)-(report.facilityUpkeep||0)))+'\nرواتب الموظفين: '+cash(report.payroll||0)+' ('+(report.staffCount||0)+' موظف)\nصيانة الفروع والمصانع: '+cash(report.facilityUpkeep||0)+' ('+(report.facilityCount||0)+' منشأة)'+(report.facilityInvestment?'\nاستثمارات إنشاء منشآت: '+cash(report.facilityInvestment):'')+'\nإجمالي المصروفات: '+cash(report.costs)+'\nصافي النتيجة: '+(report.profit>=0?'ربح ':'خسارة ')+cash(Math.abs(report.profit))+'\nهامش الربح: '+report.margin+'%\nتغير قيمة النشاط: '+(report.growthRate>=0?'+':'')+report.growthRate+'%\nالقيمة الختامية: '+cash(report.closingValue)+(report.supplier?'\nالمورد: '+report.supplier+(report.supplierQuality?'\nجودة المورد: '+report.supplierQuality+'%':'')+(report.supplierCostMultiplier?'\nمعامل تكلفة المورد: '+Math.round(report.supplierCostMultiplier*100)+'%':''):'')+(report.productCount?'\nمبيعات المنتجات: '+cash(report.productRevenue||0)+' · تكاليفها: '+cash(report.productCosts||0)+' · صافيها: '+cash(report.productProfit||0)+' · الوحدات المباعة: '+fmt(report.productUnits||0):'')+(Number.isFinite(Number(report.marketShare))?'\nالسوق: '+(report.marketIndustry||'متنوع')+' · الحصة: '+report.marketShare+'% · التغير: '+(report.marketShareChange>=0?'+':'')+report.marketShareChange+'% · المنافسون: '+(report.marketCompetitorCount||0)+' · الطلب: '+(report.marketDemandIndex||0)+' · المنافسة: '+(report.marketCompetitionIndex||0):'')+(Number.isFinite(Number(report.industryRevenueMultiplier))?'\nمعاملات القطاع: الإيرادات ×'+Number(report.industryRevenueMultiplier).toFixed(2)+' · التشغيل ×'+Number(report.industryOperatingCostMultiplier).toFixed(2)+' · تكلفة الوحدة ×'+Number(report.industryUnitCostMultiplier).toFixed(2):'');
   const creditDetail=Number.isFinite(Number(report.businessLoanBalance))?'\nالتمويل التجاري: فائدة السنة '+cash(report.businessLoanInterest||0)+' · المدفوع '+cash(report.businessLoanInterestPaid||0)+' · المضاف للدين '+cash(report.businessLoanInterestAccrued||0)+' · الرصيد '+cash(report.businessLoanBalance):'';
-  const treasuryDetail=report.treasuryMode==='separate'?'\nخزينة الشركة: بداية السنة '+cash(report.openingCashBalance||0)+' · نهاية السنة '+cash(report.closingCashBalance||0)+' · تحويلات المالك '+cash(report.ownerContributions||0)+' · مسحوبات المالك '+cash(report.ownerWithdrawals||0):'';
-  info('📊','التقرير المالي · '+title,detail+creditDetail+treasuryDetail,[choice('↩️','رجوع للتقارير','',()=>businessReportsMenu(entity,title,back))]);
+  const taxDetail=Number(report.corporateTaxRate)>0?'\\nضريبة الأرباح المحاكية: '+cash(report.corporateTax||0)+' على ربح خاضع '+cash(report.taxableProfit||0)+' بنسبة '+(Number(report.corporateTaxRate)*100).toFixed(1)+'% · المدفوع خلال السنة '+cash(report.corporateTaxPaid||0)+' · المتبقي '+cash(report.taxLiability||report.corporateTaxAccrued||0):'';
+   const treasuryDetail=report.treasuryMode==='separate'?'\nخزينة الشركة: بداية السنة '+cash(report.openingCashBalance||0)+' · نهاية السنة '+cash(report.closingCashBalance||0)+' · تحويلات المالك '+cash(report.ownerContributions||0)+' · مسحوبات المالك '+cash(report.ownerWithdrawals||0):'';
+  info('📊','التقرير المالي · '+title,detail+creditDetail+taxDetail+treasuryDetail,[choice('↩️','رجوع للتقارير','',()=>businessReportsMenu(entity,title,back))]);
  }));
  opts.push(choice('↩️','رجوع','',back));
  modal('📊','سجل التقارير · '+title,'آخر خمس سنوات مالية محفوظة. احتفظنا بعشر سنوات كحد أقصى لتقليل حجم ملف الحفظ.',opts);
@@ -2400,6 +2425,23 @@ function businessMarketMenu(){
  ]);
 }
 
+function businessTaxLiability(business){
+ if(!business||typeof business!=='object')return 0;
+ return Math.max(0,Math.min(8000000000,Math.round(Number(business.taxLiability)||0)));
+}
+function repayBusinessTax(amount){
+ closeModal();
+ const business=currentManagedBusiness();
+ if(!business)return;
+ const due=businessTaxLiability(business),payment=Math.min(due,Math.max(0,Math.round(Number(amount)||0)));
+ if(payment<=0){businessTreasuryMenu();return;}
+ if(businessTreasuryBalance(business)<payment){info('🧾','السيولة غير كافية','سداد '+cash(payment)+' من المتأخرات يحتاج رصيدًا داخل خزينة النشاط.');return;}
+ adjustBusinessTreasury(business,-payment);
+ business.taxLiability=Math.max(0,due-payment);
+ business.pendingTaxPayments=Math.min(8000000000,Math.max(0,Math.round(Number(business.pendingTaxPayments)||0))+payment);
+ log('🧾','سداد التزامات ضريبية · '+(business.title||'النشاط'),'سددت '+cash(payment)+' من المتأخرات الضريبية من خزينة النشاط.','good');
+ save();render();businessTreasuryMenu();
+}
 function businessUsesSeparateTreasury(business){
  return !!business&&business.treasuryMode==='separate';
 }
@@ -2471,6 +2513,7 @@ function businessTreasuryMenu(){
  const separate=businessUsesSeparateTreasury(business);
  const ownerCash=Math.max(0,Math.round(Number(state.bank)||0));
  const companyCash=businessTreasuryBalance(business);
+ const taxLiability=businessTaxLiability(business);
  const opts=[];
  if(!separate){
   const seen=new Set();
@@ -2497,10 +2540,16 @@ function businessTreasuryMenu(){
    opts.push(choice('↗️','سحب '+Math.round(ratio*100)+'% من خزينة الشركة','تحويل '+cash(amount)+' من أموال النشاط إلى رصيدك الشخصي.',()=>transferBusinessCapital('companyToOwner',amount),cash(amount)));
   });
  }
+ if(taxLiability>0){
+  [.25,.5,1].forEach(ratio=>{
+   const amount=Math.min(taxLiability,Math.max(1,Math.round(taxLiability*ratio)));
+   if(amount>0&&amount<=companyCash)opts.push(choice('🧾','سداد '+Math.round(ratio*100)+'% من المتأخرات الضريبية','دفع '+cash(amount)+' من خزينة النشاط لتخفيض الالتزام الضريبي.',()=>repayBusinessTax(amount),cash(amount)));
+  });
+ }
  opts.push(choice('↩️','رجوع لإدارة النشاط','',businessMenu));
  const detail=separate
-  ?'الخزينة مستقلة. رصيد الشركة '+cash(companyCash)+' · رصيدك الشخصي '+cash(ownerCash)+'. التحويلات بين المالك والشركة تسجل في التقرير السنوي ولا تختلط بالمبيعات أو الأرباح.'
-  :'هذا حفظ قديم يستخدم الرصيد المشترك للتوافق. القروض القديمة تظل مرتبطة بالنشاط؛ اختر رأس مال افتتاحيًا اختياريًا أو ابدأ بصفر. بعد الفصل تتحمل الشركة مصروفاتها من رصيدها وحده.';
+  ?'الخزينة مستقلة. رصيد الشركة '+cash(companyCash)+' · رصيدك الشخصي '+cash(ownerCash)+'. المتأخرات الضريبية '+cash(taxLiability)+'. التحويلات بين المالك والشركة تسجل في التقرير السنوي ولا تختلط بالمبيعات أو الأرباح.'
+  :'هذا حفظ قديم يستخدم الرصيد المشترك للتوافق. القروض القديمة تظل مرتبطة بالنشاط؛ اختر رأس مال افتتاحيًا اختياريًا أو ابدأ بصفر. المتأخرات الضريبية '+cash(taxLiability)+'. بعد الفصل تتحمل الشركة مصروفاتها من رصيدها وحده.';
  modal('🏦','خزينة النشاط ورأس المال',detail,opts);
 }
 
@@ -2594,6 +2643,8 @@ function businessMenu(){
  const productStatus=' · المنتجات النشطة '+activeProducts+'/'+BUSINESS_PRODUCT_CATALOG.length;
  const creditBalance=businessCreditBalance(b);
  const creditStatus=creditBalance?' · تمويل مستحق '+cash(creditBalance):' · دون تمويل تجاري';
+ const taxLiability=businessTaxLiability(b);
+ const taxLabel=taxLiability?' · متأخرات ضريبية '+cash(taxLiability):' · لا توجد متأخرات ضريبية';
  const opts=[
   choice('📊','التقرير السنوي','راجع الإيرادات والمصروفات وصافي النتيجة.',()=>businessReportsMenu(b,b.title||'مشروعك',businessMenu)),
   choice('🏦','خزينة النشاط ورأس المال','افصل أموال الشركة عن أموالك الشخصية أو حوّل رأس المال بين الحسابين.',businessTreasuryMenu,cash(businessTreasuryBalance(b))),
@@ -2611,7 +2662,7 @@ function businessMenu(){
    ?choice('↩️','رجوع لملف الشركة','العودة إلى ملخص الشركة في المحفظة.',()=>companyDetailMenu(portfolioIndex))
    :choice('↩️','رجوع للأصول','',()=>{closeModal();assets();})
  ];
- modal('🏪','إدارة '+(b.title||'مشروعك'),'قيمة النشاط '+cash(b.value)+' · مستوى الإدارة '+level+' · الشهرة '+(state.fame||0)+'%'+supplierStatus+staffStatus+productStatus+facilityStatus+creditStatus+treasuryStatus+'. اختيارات الإدارة تؤثر على دخل السنوات القادمة.',opts);
+ modal('🏪','إدارة '+(b.title||'مشروعك'),'قيمة النشاط '+cash(b.value)+' · مستوى الإدارة '+level+' · الشهرة '+(state.fame||0)+'%'+supplierStatus+staffStatus+productStatus+facilityStatus+creditStatus+taxLabel+treasuryStatus+'. اختيارات الإدارة تؤثر على دخل السنوات القادمة.',opts);
 }
 
 function businessAction(action){
