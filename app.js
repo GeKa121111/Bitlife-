@@ -1115,7 +1115,9 @@ function syncBusinessAsset(){
  });
 }
 function render(){
- syncBusinessAsset();renderHeader();renderStats();renderFeed();document.querySelectorAll('.navbtn').forEach(b=>b.classList.remove('active'));save();
+ syncBusinessAsset();renderHeader();renderStats();renderFeed();
+ document.querySelectorAll('.navbtn').forEach(b=>b.setAttribute('aria-pressed',b.classList.contains('active')?'true':'false'));
+ save();
 }
 function closeModal(){
  const root=$('modalRoot');
@@ -1133,7 +1135,7 @@ function modal(icon,title,desc,choices,closable=true,extra=''){
  const activeElement=document.activeElement;
  if(activeElement&&!root.contains(activeElement)&&activeElement!==document.body&&activeElement!==document.documentElement)modalReturnFocus=activeElement;
  if(activeDialogKeyHandler){document.removeEventListener('keydown',activeDialogKeyHandler);activeDialogKeyHandler=null;}
- const isDrawer=['الدراسة والشغل','School','University','Class','Cliques','Faculty','Activities','الأصول','الأصول والمشتريات','العلاقات','العلاقات والأسرة','الأنشطة والحياة اليومية','السوشيال ميديا','التسوق'].includes(title)||SOCIAL_PLATFORM_CATALOG.some(p=>p.title===title);
+ const isDrawer=['القائمة الرئيسية','الدراسة والشغل','School','University','Class','Cliques','Faculty','Activities','الأصول','الأصول والمشتريات','العلاقات','العلاقات والأسرة','الأنشطة والحياة اليومية','السوشيال ميديا','التسوق'].includes(title)||SOCIAL_PLATFORM_CATALOG.some(p=>p.title===title);
  const context=String(title||'')+' '+String(desc||'')+' '+String(extra||'');
  const symptom=/(عرض|أعراض|صداع|غثيان|حمى|حُمّى|زكام|سعال|ألم|وجع|دوخة|symptom|headache|nausea|flu|diagnosis)/i.test(context);
  const crime=/(جريمة|سرقة|سجن|مخدر|عصابة|شرطة|اختلاس|سطو|crime|robbery|prison)/i.test(context);
@@ -5245,11 +5247,19 @@ function togglePremiumPerk(id){
 }
 
 function mainMenu(){
- modal('☰','القائمة الرئيسية','إدارة حياتك وحفظ تقدمك واستعراض إنجازاتك.',[
+ modal('☰','القائمة الرئيسية','اختار القسم اللي عايز تديره. كل جزء متجمع حسب نوعه عشان توصل للي محتاجه أسرع.',[
+  section('الحياة والشخصية'),
+  choice('🪪','ملف الشخصية','تعديل الاسم وبيانات الشخصية.',()=>customizeMenu()),
   choice('🌱','حياة جديدة','ابدأ شخصية جديدة أو خصّص بلد الميلاد.',()=>newLifeSetup()),
   choice('🪦','مقبرة الحيوات','استعرض الشخصيات السابقة وأعمارها ونهاياتها.',()=>cemeteryMenu()),
+  choice('⏳','الرجوع بالزمن','استرجع نقطة حفظ سنوية سابقة.',timeMachineMenu),
+
+  section('الإنجازات والمكافآت'),
   choice('🏆','الإنجازات والأشرطة','الأهداف التي حققتها في رحلتك.',()=>achievementsMenu()),
   choice('🎯','تحديات اليوم','ثلاث مهام يومية ومكافآت إضافية عند إكمالها.',()=>dailyChallengesMenu()),
+  choice('🎁','المكافأة اليومية','احصل على مكافأتك اليومية إن كانت متاحة.',()=>dailyReward()),
+
+  section('المزايا والأنشطة'),
   choice('✨','متجر مزايا حياة','باقات ومزايا دائمة ومسارات إضافية.',premiumPerksMenu),
   ...(perkOwned('hollywoodStar')?[choice(perkEnabled('hollywoodStar')?'🌟':'⭐',perkEnabled('hollywoodStar')?'إيقاف نجم هوليوود':'تفعيل نجم هوليوود','الشهرة الفورية في الوظائف والمهن الخاصة.',()=>togglePremiumPerk('hollywoodStar'))]:[]),
   ...(perkOwned('goldenResume')?[choice(perkEnabled('goldenResume')?'📄':'📝',perkEnabled('goldenResume')?'إيقاف السيرة الذاتية الذهبية':'تفعيل السيرة الذاتية الذهبية','قبول مضمون للوظائف المؤهل لها وحماية من الفصل العشوائي.',()=>togglePremiumPerk('goldenResume'))]:[]),
@@ -5257,13 +5267,12 @@ function mainMenu(){
   ...(perkOwned('godMode')?[choice(perkEnabled('godMode')?'⚡':'⚪',perkEnabled('godMode')?'إيقاف وضع الإله':'تفعيل وضع الإله','تخصيص الحيوات والمواهب والشخصيات.',()=>togglePremiumPerk('godMode')),...(perkEnabled('godMode')?[choice('👑','قائمة وضع الإله','حياة ملكية ومحرر الشخصيات والمواهب.',godModeMenu)]:[])]:[]),
   ...(perkOwned('bitizenship')?[choice(perkEnabled('bitizenship')?'🌟':'⚪',perkEnabled('bitizenship')?'إيقاف عضوية Bitizen':'تفعيل عضوية Bitizen','الوصول المميز للأنشطة ومحرر الشخصيات والأجيال.',()=>togglePremiumPerk('bitizenship')),...(perkEnabled('bitizenship')?[choice('🌟','قائمة Bitizen','الحيوانات والصالون والتفاعل مع المعلمين والمدير.',bitizenshipMenu)]:[])]:[]),
   ...(state.prison?[choice('🚔','الحياة داخل السجن','استعرض خيارات العقوبة أو استخدم بطاقة الخروج.',prisonEvent)]:[]),
-  choice('⏳','الرجوع بالزمن','استرجع نقطة حفظ سنوية سابقة.',timeMachineMenu),
-  choice('🎁','المكافأة اليومية','احصل على مكافأتك اليومية إن كانت متاحة.',()=>dailyReward()),
-  choice('🪪','ملف الشخصية','تعديل الاسم وبيانات الشخصية.',()=>customizeMenu()),
+  choice('☰','كل الأنشطة','الصحة والهوايات والحيوانات والسفر والمال والمزيد.',()=>activities()),
+
+  section('الإعدادات وبيانات الحفظ'),
   choice('⚙️','إعدادات العرض','الوضع الداكن وحجم النص والمظهر الذهبي.',()=>settingsMenu()),
   choice('💾','تصدير الحفظ','نزّل نسخة احتياطية من حياتك الحالية.',()=>exportSave()),
-  choice('📥','تحميل حفظ','استرجع حياة من ملف JSON قمت بتصديره سابقًا.',()=>importSave()),
-  choice('☰','كل الأنشطة','الصحة والهوايات والحيوانات والسفر والمال والمزيد.',()=>activities())
+  choice('📥','تحميل حفظ','استرجع حياة من ملف JSON قمت بتصديره سابقًا.',()=>importSave())
  ]);
 }
 
@@ -5847,7 +5856,11 @@ function exportSave(){
  closeModal();flash('تم تجهيز ملف الحفظ');
 }
 document.querySelectorAll('[data-panel]').forEach(btn=>btn.addEventListener('click',()=>{
- document.querySelectorAll('.navbtn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');
+ document.querySelectorAll('.navbtn').forEach(b=>{
+  const selected=b===btn;
+  b.classList.toggle('active',selected);
+  b.setAttribute('aria-pressed',String(selected));
+ });
  const p=btn.dataset.panel;if(p==='career')showCareer();if(p==='assets')assets();if(p==='relations')relations();if(p==='activities')activities();
 }));
 $('ageUpBtn').addEventListener('click',()=>{playUiFeedback('year');ageUp();});
