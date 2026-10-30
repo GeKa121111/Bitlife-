@@ -68,7 +68,10 @@ const seedSave = {
   prison: null,
   debt: 0,
   willDistribution: 'الأسرة بالتساوي',
-  heirlooms: [],
+  heirlooms: [
+    { name: 'ميدالية العائلة', value: 2400, age: 18 },
+    { id: 'book-heirloom-1', name: 'كتاب نادر', emoji: '📚', value: 4200, age: 22, kind: 'family' }
+  ],
   dailyRewardDate: null,
   dailyChallenges: null,
   timeMachineSnapshots: [],
@@ -173,6 +176,27 @@ async function run() {
 
     const shownName = (await page.locator('#characterName').innerText()).trim();
     assert.ok(shownName.includes(seedSave.name), 'the legacy v1 save should render the seeded player');
+
+    const legacyCollection = await page.evaluate(() => {
+      const saved = JSON.parse(localStorage.getItem('hekayat_hayah_save_v1') || 'null');
+      return { count: saved.heirlooms.length, bank: saved.bank };
+    });
+    assert.equal(legacyCollection.count, 2, 'legacy heirloom entries should remain in the save');
+    await page.locator('#profileBtn').click();
+    await page.locator('.choice').filter({ hasText: 'مقتنياتي الموروثة' }).click();
+    await page.locator('.choice').filter({ hasText: 'كتاب نادر' }).click();
+    await page.locator('.choice').filter({ hasText: 'بيع المقتنى' }).click();
+    const soldHeirloom = await page.evaluate(() => {
+      const saved = JSON.parse(localStorage.getItem('hekayat_hayah_save_v1') || 'null');
+      return { bank: saved.bank, items: saved.heirlooms };
+    });
+    assert.equal(soldHeirloom.bank, legacyCollection.bank + 3570,
+      'selling an heirloom should credit 85% of its estimated value');
+    assert.equal(soldHeirloom.items.length, 1, 'selling one heirloom must not remove the other family items');
+    assert.equal(soldHeirloom.items[0].name, 'ميدالية العائلة');
+    assert.ok(soldHeirloom.items[0].id.startsWith('legacy-heirloom-'),
+      'legacy heirlooms should receive stable IDs during save normalization');
+    await page.locator('#closeModal').click();
 
     assert.equal(await page.locator('.story-heading').isVisible(), true,
       'the life diary should have a visible section heading');
