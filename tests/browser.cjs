@@ -713,9 +713,87 @@ async function run() {
     assert.equal(promotedJob.promotions[0].fromLevel, 1);
     assert.equal(promotedJob.promotions[0].toLevel, 2);
 
+
+    // Portfolio companies now use the same supplier, staffing and product systems without touching the primary business.
+    await page.evaluate(() => {
+      const key = 'hekayat_hayah_save_v1';
+      const saved = JSON.parse(localStorage.getItem(key) || 'null');
+      const id = 'portfolio-company-browser';
+      saved.lifeId = 787878;
+      saved.name = 'اختبار تشغيل شركة مستقلة';
+      saved.age = 35;
+      saved.yearCount = 35;
+      saved.status = 'حي';
+      saved.cause = null;
+      saved.retired = false;
+      saved.job = null;
+      saved.bank = 500000;
+      saved.debt = 0;
+      saved.business = null;
+      saved.companies = [{ id, assetId: id, title: 'شركة محفظة اختبار', sector: 'تقنية', value: 160000, level: 1, upkeep: 4000, bought: 30, emoji: '💻' }];
+      saved.assets = [{ id, title: 'شركة محفظة اختبار', emoji: '💻', kind: 'business', value: 160000, upkeep: 0, bought: 30, companyPortfolio: true }];
+      saved.timeMachineSnapshots = [];
+      saved.log = [{ icon: '🧪', title: 'اختبار شركة المحفظة', text: 'اختبار إدارة شركة مستقلة عن المشروع الأساسي.', type: 'special', age: 35 }];
+      localStorage.setItem(key, JSON.stringify(saved));
+    });
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await page.evaluate(() => { Math.random = () => 0.99; });
+    await page.locator('[data-panel="assets"]').click();
+    await page.locator('.choice').filter({ hasText: 'شركة محفظة اختبار' }).click();
+    await page.locator('.choice').filter({ hasText: 'إدارة التشغيل' }).click();
+    await page.locator('.choice').filter({ hasText: 'التعاقد مع مورد' }).click();
+    await page.locator('.choice').filter({ hasText: 'مورد اقتصادي' }).click();
+    await page.locator('.choice').filter({ hasText: 'إدارة الموظفين' }).click();
+    await page.locator('.choice').filter({ hasText: 'توظيف موظف' }).click();
+    await page.locator('.choice').filter({ hasText: 'مندوب مبيعات' }).click();
+    await page.locator('.choice').filter({ hasText: 'رجوع لإدارة المشروع' }).click();
+    await page.locator('.choice').filter({ hasText: 'إدارة المنتجات' }).click();
+    await page.locator('.choice').filter({ hasText: 'إطلاق منتج جديد' }).click();
+    await page.locator('.choice').filter({ hasText: 'خدمة رقمية' }).click();
+    await page.locator('.choice').filter({ hasText: 'إجراء بحث السوق' }).click();
+    await page.locator('.choice').filter({ hasText: 'إطلاق بنتائج البحث' }).click();
+    const portfolioBeforeYear = await page.evaluate(() => {
+      const saved = JSON.parse(localStorage.getItem('hekayat_hayah_save_v1') || 'null');
+      const company = saved && saved.companies && saved.companies[0];
+      return { primaryBusiness: saved && saved.business, company };
+    });
+    assert.equal(portfolioBeforeYear.primaryBusiness, null, 'portfolio operations must not create or mutate the primary business');
+    assert.equal(portfolioBeforeYear.company.supplier.id, 'economy');
+    assert.equal(portfolioBeforeYear.company.staff.length, 1);
+    assert.equal(portfolioBeforeYear.company.products.length, 1);
+    assert.equal(portfolioBeforeYear.company.products[0].catalogId, 'digital-service');
+    assert.equal(portfolioBeforeYear.company.products[0].id.includes('portfolio-company-browser'), true,
+      'product identifiers should be unique to their owning portfolio company');
+    await page.locator('#closeModal').click();
+    await page.locator('#ageUpBtn').click();
+    await page.waitForFunction(() => {
+      const saved = JSON.parse(localStorage.getItem('hekayat_hayah_save_v1') || 'null');
+      return saved && saved.age === 36 && saved.companies && saved.companies[0] &&
+        saved.companies[0].financialHistory && saved.companies[0].financialHistory.some(report => report.year === 36);
+    });
+    const portfolioAfterYear = await page.evaluate(() => {
+      const saved = JSON.parse(localStorage.getItem('hekayat_hayah_save_v1') || 'null');
+      const company = saved && saved.companies && saved.companies[0];
+      return { primaryBusiness: saved && saved.business, company, asset: saved && saved.assets && saved.assets[0],
+        report: company && company.financialHistory && company.financialHistory[company.financialHistory.length - 1] };
+    });
+    assert.equal(portfolioAfterYear.primaryBusiness, null);
+    assert.equal(portfolioAfterYear.report.year, 36);
+    assert.equal(portfolioAfterYear.report.supplier, 'مورد اقتصادي');
+    assert.equal(portfolioAfterYear.report.staffCount, 1);
+    assert.equal(portfolioAfterYear.report.payroll, portfolioAfterYear.company.staff[0].salary);
+    assert.equal(portfolioAfterYear.report.productCount, 1);
+    assert.ok(portfolioAfterYear.report.productRevenue > 0 && portfolioAfterYear.report.productUnits > 0);
+    assert.equal(portfolioAfterYear.report.profit, portfolioAfterYear.report.revenue - portfolioAfterYear.report.costs);
+    assert.equal(portfolioAfterYear.company.staff[0].years, 1);
+    assert.equal(portfolioAfterYear.company.products[0].history.length, 1);
+    assert.equal(portfolioAfterYear.company.products[0].history[0].year, 36);
+    assert.equal(portfolioAfterYear.company.supplier, null, 'the portfolio supplier contract should expire after its fiscal year');
+    assert.equal(portfolioAfterYear.asset.value, portfolioAfterYear.company.value, 'the portfolio asset value should stay in sync with its operating company');
+
     assert.deepEqual(pageErrors, [], 'the browser run should complete without uncaught JavaScript errors');
 
-    console.log('PASS: mobile layout, legacy v1 load, persistence, rewind, JSON import, inheritance, insolvent estate, career promotion migration, annual supplier market, researched and instinct product launches, product pricing, annual product sales, and business reports.');
+    console.log('PASS: mobile layout, legacy v1 load, persistence, rewind, JSON import, inheritance, insolvent estate, career promotion migration, annual supplier market, researched and instinct product launches, product pricing, annual product sales, business reports, and independent portfolio-company operations.');
     await context.close();
   } finally {
     if (browser) await browser.close();
