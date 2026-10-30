@@ -60,11 +60,11 @@ assert.match(app, /function combatTrainingMenu\(\)/, 'fighter attributes should 
 assert.match(app, /function learnCombatMove\(\)/, 'players should unlock moves as they rank up');
 assert.match(app, /function hireCombatCoach\(\)/, 'coaches should be recruitable');
 assert.match(app, /function startCombatBout\(mode\)/, 'street and league fights should have separate entry rules');
-assert.match(app, /function combatBoutRoundMenu\\(\\)/, 'each bout should expose a round-by-round choice screen');
-assert.match(app, /function resolveCombatRound\\(actionId\\)/, 'round choices should affect stamina and match score');
-assert.match(app, /const combatTacticCatalog=\\[/, 'each round should offer original tactical actions');
+assert.match(app, /function combatBoutRoundMenu\(\)/, 'each bout should expose a round-by-round choice screen');
+assert.match(app, /function resolveCombatRound\(actionId\)/, 'round choices should affect stamina and match score');
+assert.match(app, /const combatTacticCatalog=\[/, 'each round should offer original tactical actions');
 assert.match(app, /normalizePendingCombatBout/, 'unfinished bouts should be sanitized when restoring a v1 save');
-assert.match(app, /function resolveCombatBout\\(mode,opponent,moveId,probabilityOverride=null,session=null\\)/, 'bouts should settle the three-round result without breaking the legacy resolver');
+assert.match(app, /function resolveCombatBout\(mode,opponent,moveId,probabilityOverride=null,session=null\)/, 'bouts should settle the three-round result without breaking the legacy resolver');
 assert.match(app, /function recoverCombatInjury\(\)/, 'combat injuries should have a recovery system');
 assert.match(app, /function combatBoutHistory\(\)/, 'recent fight results should be inspectable');
 assert.match(app, /const filmGenreCatalog=\[/, 'director career should have a film genre catalog');
