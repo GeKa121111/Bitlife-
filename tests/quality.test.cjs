@@ -540,16 +540,16 @@ test('نسب طاقة المنشآت العشرية لا تُقرّب إلى أ�
 });
 
 test('سوق المنافسة مستقل لكل شركة وثابت خلال السنة ويؤثر في مبيعات المنتجات والتقارير', () => {
-  assert.match(app, /function businessMarketSnapshot\\(business\\)/);
-  assert.match(app, /function businessMarketMenu\\(\\)/);
+  assert.match(app, /function businessMarketSnapshot\(business\)/);
+  assert.match(app, /function businessMarketMenu\(\)/);
   assert.match(app, /marketDemandFactor/);
   assert.match(app, /marketCompetitionFactor/);
   assert.match(app, /marketPriceFactor/);
   assert.match(app, /marketShareFactor/);
   assert.match(app, /marketShareChange/);
   assert.match(app, /marketCompetitorCount/);
-  assert.match(app, /choice\\('📈','تحليل السوق والمنافسين'/);
-  assert.match(app, /if\\(entity\\.market&&typeof entity\\.market==='object'&&!Array\\.isArray\\(entity\\.market\\)\\)/);
-  assert.match(app, /return \\{version:1,lifeId:/);
+  assert.match(app, /choice\('📈','تحليل السوق والمنافسين'/);
+  assert.match(app, /if\(entity\.market&&typeof entity\.market==='object'&&!Array\.isArray\(entity\.market\)\)/);
+  assert.match(app, /return \{version:1,lifeId:/);
   assert.match(read('sw.js'), /hayah-shell-v28/);
 });
