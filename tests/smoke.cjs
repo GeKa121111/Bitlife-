@@ -501,4 +501,6 @@ assert.match(app, /function currentManagedBusiness\(\)/);
 assert.match(app, /function simulateBusinessEntityYear\(business,kind\)/);
 assert.match(app, /simulateBusinessEntityYear\(company,'portfolio'\)/);
 assert.match(app, /choice\('🧰','إدارة التشغيل'/);
+assert.match(app, /section\('الشركات المملوكة'\)/);
+assert.match(app, /companyDetailMenu\(i\)/);
 console.log('Smoke tests passed: RTL/PWA shell, autosave recovery, legacy migration, annual company portfolio operations, and persisted life systems.');
