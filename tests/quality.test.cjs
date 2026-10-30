@@ -449,6 +449,6 @@ test('إدارة المشروع تدعم عقود الموردين وتقاري�
   assert.match(app, /business\.supplier\.yearsLeft=Math\.max\(0,/);
   assert.match(app, /choice\('📦','التعاقد مع مورد'/);
   assert.match(app, /choice\('📊','سجل التقارير'/);
-  assert.match(app, /function normalizeBusinessEntity\(entity\)/);
+  assert.match(app, /const normalizeBusinessEntity=entity=>/);
   assert.match(read('sw.js'), /hayah-shell-v22/);
 });
