@@ -785,7 +785,7 @@ test('مسيرة القتال تدير ثلاث جولات وتستعيد الن
   assert.ok(catalogStart >= 0 && catalogEnd > catalogStart, 'the combat move catalogue should remain available');
   const catalogText = app.slice(catalogStart, catalogEnd);
   const ids = catalogText.split("{id:'").slice(1).map(part => part.split("'")[0]);
-  assert.equal(ids.length, 20, 'the original move catalogue should grow to twenty distinct moves');
+  assert.equal(ids.length, 30, 'the expanded move catalogue should contain thirty distinct moves');
   assert.equal(new Set(ids).size, ids.length, 'every move should have a unique id');
   for (const id of ['low-kick', 'pivot-counter', 'shell-defense', 'burst-combo', 'last-round-read',
     'angle-pivot', 'low-line-kick', 'shoulder-shell', 'rhythm-barrage', 'champion-plan']) {
