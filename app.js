@@ -2405,6 +2405,7 @@ function businessCreditMenu(){
  const balance=businessCreditBalance(business),principal=credit?Math.max(0,Math.round(Number(credit.principal)||0)):0;
  const accrued=credit?Math.max(0,Math.round(Number(credit.accruedInterest)||0)):0;
  const limit=businessCreditLimit(business),rate=credit?Number(credit.annualRate)||businessCreditRate(business):businessCreditRate(business);
+ save();
  const opts=[];
  if(balance<=0){
   const amounts=[...new Set([Math.max(5000,Math.round(limit*.5)),limit])].filter(amount=>amount>0&&amount<=limit);
