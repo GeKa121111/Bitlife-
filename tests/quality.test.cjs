@@ -139,6 +139,22 @@ test('القائمة الرئيسية مقسمة بوضوح وحالة التب�
   assert.match(app, /b\.setAttribute\('aria-pressed',String\(selected\)\)/);
 });
 
+
+test('قوائم الأنشطة والعلاقات منظمة ومترجمة بالكامل إلى العربية', () => {
+  const activities = functionSource('activities', 'healthMenu');
+  const relations = functionSource('relations', 'custodyModeLabel');
+  assert.match(activities, /section\('اختيارات سريعة'\)/);
+  assert.match(activities, /section\('أنشطة الحياة اليومية'\)/);
+  assert.match(activities, /section\('إدارة الشخصية'\)/);
+  assert.match(activities, /modal\('☰','الأنشطة والحياة اليومية'/);
+  assert.doesNotMatch(activities, /Favorites|Premium Activities|Health & Wellness|Export Save|New Life/);
+  assert.match(relations, /section\('الوالدان'\)/);
+  assert.match(relations, /section\('الأصدقاء'\)/);
+  assert.match(relations, /section\('الأبناء'\)/);
+  assert.match(relations, /section\('توسيع شبكة العلاقات'\)/);
+  assert.doesNotMatch(relations, /section\('(Special|Parents|Family|Friends|Partner|Children|Relationships)'\)/);
+});
+
 test('سجل الحياة يحافظ على موضع القراءة ولا يقفز عند مراجعة الأحداث القديمة', () => {
   const feed = functionSource('renderFeed', 'syncBusinessAsset');
   assert.match(feed, /const shouldFollowLatest=feed\.scrollHeight-feed\.scrollTop-feed\.clientHeight<=80/);
@@ -155,7 +171,7 @@ test('تطبيق الويب قابل للتثبيت ويحتفظ بملفات ا
   assert.ok(manifest.icons.some(item => item.src === './icon.svg'));
   assert.match(html, /rel="manifest" href="manifest\.webmanifest"/);
   assert.match(app, /navigator\.serviceWorker\.register\('\.\/sw\.js'\)/);
-  assert.match(worker, /const CACHE_NAME = 'hayah-shell-v41'/);
+  assert.match(worker, /const CACHE_NAME = 'hayah-shell-v42'/);
   assert.match(worker, /cache\.addAll\(APP_SHELL\)/);
   assert.match(worker, /caches\.match\(APP_SHELL\[0\]\)/);
   assert.match(icon, /حياة/);
@@ -243,7 +259,7 @@ test('مسيرة الرياضات الإلكترونية أصلية وتحافظ
   assert.match(app, /function upgradeEsportsSetup\(\)/);
   assert.match(app, /موهبة الألعاب الإلكترونية/);
   assert.match(app, /data\.talents\.gaming=clamp\(Number\(data\.talents\.gaming\),0,100\)/);
-  assert.match(read('sw.js'), /hayah-shell-v41/);
+  assert.match(read('sw.js'), /hayah-shell-v42/);
   assert.match(functionSource('rewindToSnapshot', 'customizeMenu'), /ensureGamingTalent\(\)/, 'rewinding a pre-feature snapshot should restore a valid talent default');
 });
 
@@ -439,8 +455,8 @@ test('واجهة الهاتف الجديدة تطابق تخطيط الصفحا�
   assert.match(app, /function showMovieDirectorOffer\(\)/);
   assert.match(css, /\.drawer-action-banner/);
   assert.match(css, /\.pack-offer-buy/);
-  assert.match(app, /section\('Parents'\)/);
-  assert.match(app, /section\('Premium Activities'\)/);
+  assert.match(app, /section\('الوالدان'\)/);
+  assert.match(app, /section\('مسارات وتوسعات'\)/);
   assert.match(app, /section\('الأصول المميزة'\)/);
   assert.match(app, /id="majorSelect"/);
   assert.match(app, /function startDrivingTest\(\)/);
@@ -467,7 +483,7 @@ test('إدارة المشروع تدعم عقود الموردين وتقاري�
   assert.match(app, /choice\('📦','التعاقد مع مورد'/);
   assert.match(app, /choice\('📊','سجل التقارير'/);
   assert.match(app, /const normalizeBusinessEntity=entity=>/);
-  assert.match(read('sw.js'), /hayah-shell-v41/);
+  assert.match(read('sw.js'), /hayah-shell-v42/);
 });
 
 
@@ -482,7 +498,7 @@ test('إدارة فريق المشروع تحفظ الموظفين وتؤثر ف
   assert.match(app, /staffPayroll/);
   assert.match(app, /staffCount/);
   assert.match(app, /choice\('👥','إدارة الموظفين'/);
-  assert.match(read('sw.js'), /hayah-shell-v41/);
+  assert.match(read('sw.js'), /hayah-shell-v42/);
 });
 
 
@@ -495,7 +511,7 @@ test('سوق الموردين يتجدد سنويًا ويحفظ عروض الأ
   assert.match(app, /supplierCostMultiplier/);
   assert.match(app, /entity\.supplier\.yearsLeft\)\|\|3,1,3/);
   assert.match(app, /entity\.supplier\.quality/);
-  assert.match(read('sw.js'), /hayah-shell-v41/);
+  assert.match(read('sw.js'), /hayah-shell-v42/);
 });
 
 
@@ -510,7 +526,7 @@ test('إدارة المنتجات تدعم بحث السوق والمبيعات 
   assert.match(app, /competition/);
   assert.match(app, /choice\('🧪','إدارة المنتجات'/);
   assert.match(app, /entity\.productResearch=entity\.productResearch\.filter/);
-  assert.match(read('sw.js'), /hayah-shell-v41/);
+  assert.match(read('sw.js'), /hayah-shell-v42/);
 });
 
 
@@ -525,7 +541,7 @@ test('شركات المحفظة تدير الموردين والموظفين و�
   assert.match(app, /simulateBusinessEntityYear\(state\.business,'business'\)/);
   assert.match(app, /simulateBusinessEntityYear\(company,'portfolio'\)/);
   assert.match(app, /business\.assetId\|\|business\.id\|\|business\.title/);
-  assert.match(read('sw.js'), /hayah-shell-v41/);
+  assert.match(read('sw.js'), /hayah-shell-v42/);
 });
 
 
@@ -541,7 +557,7 @@ test('الفروع والمصانع محفوظة لكل نشاط وتزيد طا
   assert.match(app, /facilityInvestment/);
   assert.match(app, /choice\('🏗️','الفروع والمصانع'/);
   assert.match(app, /return \{version:1,lifeId:/);
-  assert.match(read('sw.js'), /hayah-shell-v41/);
+  assert.match(read('sw.js'), /hayah-shell-v42/);
 });
 
 test('استثمار المنشأة رأسمالي منفصل عن صافي الربح والصيانة السنوية', () => {
@@ -575,7 +591,7 @@ test('سوق المنافسة يحفظ شركات مستقلة وقرارات س
     "choice('📈','تحليل السوق والمنافسين'",
     "return {version:1,lifeId:"
   ].forEach(fragment => assert.ok(app.includes(fragment), 'missing independent rival behavior: '+fragment));
-  assert.match(read('sw.js'), /hayah-shell-v41/);
+  assert.match(read('sw.js'), /hayah-shell-v42/);
 });
 
 
@@ -588,7 +604,7 @@ test('النوافذ الحوارية تدير التركيز بلوحة الم�
   assert.match(app, /returnFocus&&returnFocus\.isConnected/);
   assert.match(app, /const initialFocus=\$\('closeModal'\)\|\|getFocusable\(\)\[0\]\|\|dialog/);
   assert.match(read('style.css'), /\.modal button:focus-visible/);
-  assert.match(read('sw.js'), /hayah-shell-v41/);
+  assert.match(read('sw.js'), /hayah-shell-v42/);
 });
 
 test('اختبارات Node دون DOM كامل لا تتطلب querySelector من عنصر الجذر', () => {
@@ -606,7 +622,7 @@ test('إعدادات الصوت والاهتزاز اختيارية ومستقل
   assert.ok(app.includes("choice(uiSettings.sound?'🔊':'🔇'"));
   assert.ok(app.includes("choice(uiSettings.haptics?'📳':'📴'"));
   assert.ok(app.includes("localStorage.setItem(SETTINGS_KEY,JSON.stringify(uiSettings))"));
-  assert.match(read('sw.js'), /hayah-shell-v41/);
+  assert.match(read('sw.js'), /hayah-shell-v42/);
 });
 
 
@@ -618,7 +634,7 @@ test('سجل الحياة يضيف الأحداث الجديدة تدريجيً�
   assert.match(app, /for\(let candidate=359;candidate>0;candidate--\)/);
   assert.match(app, /renderedLogSnapshot=signatures;renderedFeedElement=feed/);
   assert.match(html, /id="lifeFeed"[^>]*aria-relevant="additions" aria-atomic="false"/);
-  assert.match(read('sw.js'), /hayah-shell-v41/);
+  assert.match(read('sw.js'), /hayah-shell-v42/);
 });
 
 
@@ -632,7 +648,7 @@ test('اقتصاد الشركات يختلف حسب الصناعة ويظهر أ
   assert.ok(app.includes("industryOperatingCostMultiplier"));
   assert.ok(app.includes("industryUnitCostMultiplier"));
   assert.ok(app.includes("معاملات القطاع: الإيرادات"));
-  assert.match(read('sw.js'), /hayah-shell-v41/);
+  assert.match(read('sw.js'), /hayah-shell-v42/);
 });
 
 
@@ -656,7 +672,7 @@ test('تمويل النشاط مستقل لكل شركة ويُحتسب مرة �
   const annualSimulation = functionSource('simulateBusinessEntityYear', 'advanceAge');
   assert.ok(annualSimulation.includes("const costs=operatingCostsTotal+productResult.upfrontCosts+businessLoanInterest"));
   assert.ok(annualSimulation.includes("const cashDelta=revenue-operatingCostsTotal-businessLoanInterestPaid-corporateTaxPaidFromCash"));
-  assert.ok(read('sw.js').includes("hayah-shell-v41"));
+  assert.ok(read('sw.js').includes("hayah-shell-v42"));
 });
 
 
@@ -683,7 +699,7 @@ test('الخزينة المستقلة تفصل نقدية كل شركة عن ر�
   assert.ok(annualSimulation.includes("businessTreasuryBalance(business)+revenue-operatingCostsTotal"));
   assert.ok(annualSimulation.includes("const cashDelta=revenue-operatingCostsTotal-businessLoanInterestPaid-corporateTaxPaidFromCash"));
   assert.ok(annualSimulation.includes("treasuryMode:separateTreasury?'separate':'shared'"));
-  assert.match(read('sw.js'), /hayah-shell-v41/);
+  assert.match(read('sw.js'), /hayah-shell-v42/);
 });
 
 
@@ -704,7 +720,7 @@ test('ضرائب الشركات تُحسب على الربح الموجب وتُ
   assert.ok(annualSimulation.includes('const taxableProfit=Math.max(0,Math.round(preTaxProfit))'));
   assert.ok(annualSimulation.includes('const cashDelta=revenue-operatingCostsTotal-businessLoanInterestPaid-corporateTaxPaidFromCash'));
   assert.ok(annualSimulation.includes('const costs=operatingCostsTotal+productResult.upfrontCosts+businessLoanInterest+corporateTax'));
-  assert.match(read('sw.js'), /hayah-shell-v41/);
+  assert.match(read('sw.js'), /hayah-shell-v42/);
 });
 
 test('مسيرة القتال تعرض صعوبة المنافس وتضيف حركات تكتيكية أصلية مع حفظ v1', () => {
@@ -761,7 +777,7 @@ test('السوشيال ميديا تحفظ صدى الجمهور وتدعم مس
   vm.runInNewContext(normalizer + "\nglobalThis.limited=normalizeSocialFeed(input);", limitedContext);
   assert.equal(limitedContext.limited.length, 30);
   assert.equal(limitedContext.limited[0].id, 'p10');
-  assert.match(read('sw.js'), /hayah-shell-v41/);
+  assert.match(read('sw.js'), /hayah-shell-v42/);
 });
 
 
