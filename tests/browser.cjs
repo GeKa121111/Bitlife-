@@ -190,6 +190,20 @@ async function run() {
     assert.equal(initialLayout.feedScrollWidth, initialLayout.feedWidth,
       'the life feed should not introduce horizontal scrolling');
 
+    await page.locator('[data-panel="activities"]').click();
+    await page.getByText('اختيارات سريعة').waitFor();
+    await page.getByText('إدارة الشخصية').waitFor();
+    assert.equal(await page.locator('#modalRoot .modal.drawer').count(), 1,
+      'the Arabic activities screen should use the organized drawer layout');
+    await page.keyboard.press('Escape');
+    await page.waitForFunction(() => !document.querySelector('#modalRoot [role="dialog"]'));
+
+    await page.locator('[data-panel="relations"]').click();
+    await page.getByText('الوالدان').waitFor();
+    await page.getByText('توسيع شبكة العلاقات').waitFor();
+    await page.keyboard.press('Escape');
+    await page.waitForFunction(() => !document.querySelector('#modalRoot [role="dialog"]'));
+
     // Sensory feedback is opt-in, stored separately from the life save, and exposed in settings.
     const initialSensorySettings = await page.evaluate(() => JSON.parse(localStorage.getItem('hayah_ui_settings_v1') || '{}'));
     assert.equal(initialSensorySettings.sound, false, 'sound should be off by default');
@@ -1415,6 +1429,12 @@ async function run() {
       'the next report should include the earlier manual tax payment');
     assert.equal(settledTax.taxLiability, 0);
     assert.equal(settledTax.pendingTaxPayments, 0);
+    assert.equal(await page.locator('[data-panel="assets"]').getAttribute('aria-pressed'), 'true',
+      'the selected navigation section should remain announced after an annual render');
+    assert.equal(await page.locator('[data-panel="assets"]').evaluate(element => element.classList.contains('active')), true,
+      'the selected navigation section should remain visually highlighted after an annual render');
+    assert.equal(await page.locator('[data-panel="career"]').getAttribute('aria-pressed'), 'false',
+      'unselected navigation sections should expose their inactive state');
 
     assert.deepEqual(pageErrors, [], 'the browser run should complete without uncaught JavaScript errors');
 
