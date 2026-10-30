@@ -218,7 +218,7 @@ async function run() {
     // Weekly story festival: collect all badges and verify the completion bonus cannot be claimed twice.
     const seasonalSeed = await page.evaluate(() => {
       const key='hekayat_hayah_save_v1',saved=JSON.parse(localStorage.getItem(key)||'null'),week=seasonalWeekDetails();
-      saved.seasonalEvent={weekId:week.id,startDate:week.startDate,endDate:week.endDate,baseline:{age:0,friends:0,hobbies:0,posts:0,smart:0,health:0,happiness:0},claimed:[],bonusClaimed:false};
+      saved.seasonalEvent={weekId:week.id,startDate:week.startDate,endDate:week.endDate,baseline:{age:29,friends:0,hobbies:0,posts:0,smart:0,health:0,happiness:0},claimed:[],bonusClaimed:false};
       saved.friends=[{id:'festival-friend',name:'صديق المهرجان',relation:'صديق',relationshipLevel:70}];
       saved.hobbies=[{id:'festival-hobby',title:'الرسم'}];
       saved.socialMediaPosts=1;saved.stats.happiness=82;saved.stats.health=91;
