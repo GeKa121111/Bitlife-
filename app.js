@@ -346,7 +346,17 @@ const combatMoveCatalog=[
  {id:'low-line-kick',title:'ركلة خط منخفض',style:'سرعة',strongAgainst:'قوة',power:43,rank:1,cost:4100,desc:'استهدف المساحة المفتوحة بحركة سريعة محسوبة.'},
  {id:'shoulder-shell',title:'درع الكتف',style:'دفاع',strongAgainst:'تقنية',power:49,rank:2,cost:7400,desc:'امتص الضغط الفني وحافظ على وضعية آمنة.'},
  {id:'rhythm-barrage',title:'سلسلة الإيقاع',style:'قوة',strongAgainst:'دفاع',power:57,rank:3,cost:11800,desc:'ضغط هجومي متتابع يحتاج إدارة جيدة للطاقة.'},
- {id:'champion-plan',title:'خطة الحسم',style:'تقنية',strongAgainst:'دفاع',power:64,rank:4,cost:19000,desc:'خطة متقدمة تجمع قراءة المسافة واختيار اللحظة المناسبة.'}
+ {id:'champion-plan',title:'خطة الحسم',style:'تقنية',strongAgainst:'دفاع',power:64,rank:4,cost:19000,desc:'خطة متقدمة تجمع قراءة المسافة واختيار اللحظة المناسبة.'},
+ {id:'inside-slip',title:'انزلاق داخلي',style:'سرعة',strongAgainst:'قوة',power:46,rank:1,cost:4300,desc:'غيّر خط الحركة في اللحظة المناسبة لتفادي الاندفاع المباشر.'},
+ {id:'rear-angle-check',title:'فحص الزاوية الخلفية',style:'تقنية',strongAgainst:'سرعة',power:48,rank:1,cost:4800,desc:'راقب اتجاه القدمين واختر زاوية تمنحك مساحة أفضل.'},
+ {id:'frame-wall',title:'حاجز الساعد',style:'دفاع',strongAgainst:'تقنية',power:49,rank:2,cost:7200,desc:'حافظ على المسافة وامنع المنافس من فرض إيقاعه الفني.'},
+ {id:'clinch-turn',title:'دوران الاشتباك',style:'تقنية',strongAgainst:'سرعة',power:52,rank:2,cost:8400,desc:'حوّل الاشتباك القريب إلى وضعية تمنحك تحكمًا أكبر.'},
+ {id:'overhand-arc',title:'قوس الضربة الثقيلة',style:'قوة',strongAgainst:'دفاع',power:57,rank:2,cost:9600,desc:'هجوم محسوب يستهدف فتح الحراسة بدل تكرار الضغط.'},
+ {id:'tempo-break',title:'كسر الإيقاع',style:'سرعة',strongAgainst:'تقنية',power:58,rank:3,cost:12800,desc:'بدّل سرعة الحركة حتى لا يستطيع المنافس توقع توقيتك.'},
+ {id:'body-lock-shift',title:'تحويل السيطرة',style:'تقنية',strongAgainst:'قوة',power:60,rank:3,cost:14100,desc:'استخدم التوازن لتغيير اتجاه ضغط المنافس.'},
+ {id:'guard-split',title:'اختراق الحراسة',style:'قوة',strongAgainst:'دفاع',power:63,rank:3,cost:15400,desc:'ركّز الهجوم على فتحة صغيرة بدل استنزاف الطاقة بلا هدف.'},
+ {id:'last-minute-shell',title:'حماية الدقيقة الأخيرة',style:'دفاع',strongAgainst:'قوة',power:65,rank:4,cost:18700,desc:'حافظ على دفاعك وهدوءك عندما يشتد ضغط الجولة الأخيرة.'},
+ {id:'champion-angle',title:'زاوية البطل',style:'تقنية',strongAgainst:'دفاع',power:68,rank:4,cost:22000,desc:'خطة متقدمة تجمع تغيير الزاوية وقراءة رد فعل المنافس.'}
 ];
 const combatTacticCatalog=[
  {id:'tactic-guard',title:'حراسة متحركة',style:'دفاع',strongAgainst:'قوة',power:31,energyCost:5,desc:'خفّف الاندفاع وحافظ على توازنك في الجولة.'},
