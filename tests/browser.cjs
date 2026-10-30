@@ -146,6 +146,33 @@ async function run() {
 
     const shownName = (await page.locator('#characterName').innerText()).trim();
     assert.ok(shownName.includes(seedSave.name), 'the legacy v1 save should render the seeded player');
+
+    // Dialogs must move focus inside, keep keyboard navigation contained, and restore the trigger on Escape.
+    await page.locator('[data-panel="career"]').click();
+    await page.locator('#modalRoot [role="dialog"]').waitFor();
+    const initialDialogFocus = await page.evaluate(() => {
+      const dialog = document.querySelector('#modalRoot [role="dialog"]');
+      return !!dialog && dialog.contains(document.activeElement);
+    });
+    assert.equal(initialDialogFocus, true, 'opening a dialog should move keyboard focus inside it');
+    await page.keyboard.press('Shift+Tab');
+    const wrappedToLast = await page.evaluate(() => {
+      const dialog = document.querySelector('#modalRoot [role="dialog"]');
+      const focusable = Array.from(dialog.querySelectorAll('button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),a[href],[tabindex]:not([tabindex="-1"])')).filter(element => element.getClientRects().length > 0 && element.getAttribute('aria-hidden') !== 'true');
+      return focusable.length > 0 && document.activeElement === focusable[focusable.length - 1];
+    });
+    assert.equal(wrappedToLast, true, 'Shift+Tab from the first control should wrap to the last control');
+    await page.keyboard.press('Tab');
+    const wrappedToFirst = await page.evaluate(() => {
+      const dialog = document.querySelector('#modalRoot [role="dialog"]');
+      const focusable = Array.from(dialog.querySelectorAll('button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),a[href],[tabindex]:not([tabindex="-1"])')).filter(element => element.getClientRects().length > 0 && element.getAttribute('aria-hidden') !== 'true');
+      return focusable.length > 0 && document.activeElement === focusable[0];
+    });
+    assert.equal(wrappedToFirst, true, 'Tab from the last control should wrap to the first control');
+    await page.keyboard.press('Escape');
+    await page.waitForFunction(() => !document.querySelector('#modalRoot [role="dialog"]'));
+    assert.equal(await page.evaluate(() => document.activeElement && document.activeElement.getAttribute('data-panel')), 'career',
+      'closing a dialog should restore focus to the button that opened it');
     const legacyBusinessDefaults = await page.evaluate(() => {
       const saved = JSON.parse(localStorage.getItem('hekayat_hayah_save_v1') || 'null');
       return { products: saved.business.products, research: saved.business.productResearch, pendingCosts: saved.business.pendingProductCosts, facilities: saved.business.facilities, pendingFacilityCosts: saved.business.pendingFacilityCosts };
@@ -165,7 +192,10 @@ async function run() {
     await doctorChoice.click();
     await page.getByText(/مستوى التعليم المطلوب 5/).waitFor();
     await page.getByText(/الذكاء المطلوب 76%/).waitFor();
-    await page.locator('#closeModal').click();
+    await page.keyboard.press('Escape');
+    await page.waitForFunction(() => !document.querySelector('#modalRoot [role="dialog"]'));
+    assert.equal(await page.evaluate(() => document.activeElement && document.activeElement.getAttribute('data-panel')), 'career',
+      'Escape from a nested information dialog should return focus to the original career entry point');
     await page.locator('[data-panel="assets"]').click();
     await page.locator('.choice').filter({ hasText: 'إدارة مشروعي' }).click();
     await page.locator('.choice').filter({ hasText: 'التعاقد مع مورد' }).click();

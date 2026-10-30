@@ -2146,3 +2146,17 @@ body.theme-dark .ad-slot{background:#555}
  .activity-pack-feature strong{font-size:12px!important}
  .activity-pack-buy{min-height:59px!important}.activity-pack-buy span{font-size:20px!important}
 }
+
+
+/* Keyboard focus remains visible inside life decision dialogs. */
+.modal button:focus-visible,
+.modal input:focus-visible,
+.modal select:focus-visible,
+.modal textarea:focus-visible,
+.modal a:focus-visible{outline:3px solid #087fbd!important;outline-offset:2px;position:relative;z-index:3}
+body.theme-dark .modal button:focus-visible,
+body.theme-dark .modal input:focus-visible,
+body.theme-dark .modal select:focus-visible,
+body.theme-dark .modal textarea:focus-visible,
+body.theme-dark .modal a:focus-visible{outline-color:#f1bd4b!important}
+.modal[tabindex="-1"]:focus{outline:none}

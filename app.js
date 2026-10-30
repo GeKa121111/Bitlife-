@@ -75,6 +75,7 @@ function perkEnabled(id){return perkOwned(id)&&!!(permanentPerks.enabled&&perman
 function careerIncomeMultiplier(){return perkEnabled('goldenNeko')?1.2:1;}
 function specialCareerIncomeMultiplier(){return careerIncomeMultiplier()*(perkEnabled('bossMode')?1.1:1);}
 let state, dead=false, logBatchDepth=0, logBatchDirty=false, saveRecovered=false;
+let activeDialogKeyHandler=null, modalReturnFocus=null;
 let managedCompanyId = null;
 let uiSettings={theme:'light',textScale:'normal'};
 let permanentPerks={owned:{},enabled:{},streakSavers:0};
@@ -860,11 +861,22 @@ function syncBusinessAsset(){
 function render(){
  syncBusinessAsset();renderHeader();renderStats();renderFeed();document.querySelectorAll('.navbtn').forEach(b=>b.classList.remove('active'));save();
 }
-function closeModal(){ $('modalRoot').innerHTML=''; }
+function closeModal(){
+ const root=$('modalRoot');
+ if(activeDialogKeyHandler){document.removeEventListener('keydown',activeDialogKeyHandler);activeDialogKeyHandler=null;}
+ root.innerHTML='';
+ const returnFocus=modalReturnFocus;modalReturnFocus=null;
+ if(returnFocus&&returnFocus.isConnected&&typeof returnFocus.focus==='function'){
+  try{returnFocus.focus({preventScroll:true});}catch(e){returnFocus.focus();}
+ }
+}
 function section(title){return {section:true,title};}
 function choice(icon,title,desc,action,price='',progress=null,locked=false){return {icon,title,desc,action,price,progress,locked};}
 function modal(icon,title,desc,choices,closable=true,extra=''){
  const root=$('modalRoot');
+ const activeElement=document.activeElement;
+ if(activeElement&&!root.contains(activeElement)&&activeElement!==document.body&&activeElement!==document.documentElement)modalReturnFocus=activeElement;
+ if(activeDialogKeyHandler){document.removeEventListener('keydown',activeDialogKeyHandler);activeDialogKeyHandler=null;}
  const isDrawer=['الدراسة والشغل','School','University','Class','Cliques','Faculty','Activities','الأصول','الأصول والمشتريات','العلاقات','العلاقات والأسرة','الأنشطة والحياة اليومية','السوشيال ميديا','التسوق'].includes(title)||SOCIAL_PLATFORM_CATALOG.some(p=>p.title===title);
  const context=String(title||'')+' '+String(desc||'')+' '+String(extra||'');
  const symptom=/(عرض|أعراض|صداع|غثيان|حمى|حُمّى|زكام|سعال|ألم|وجع|دوخة|symptom|headache|nausea|flu|diagnosis)/i.test(context);
@@ -930,6 +942,23 @@ function modal(icon,title,desc,choices,closable=true,extra=''){
   }
   if(actualChoices.length)pick(actualChoices).action();
  });
+ const dialog=typeof root.querySelector==='function'?root.querySelector('[role="dialog"]'):null;
+ if(dialog){
+  dialog.setAttribute('tabindex','-1');
+  const getFocusable=()=>Array.from(dialog.querySelectorAll('button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),a[href],[tabindex]:not([tabindex="-1"])')).filter(element=>element.getClientRects().length>0&&element.getAttribute('aria-hidden')!=='true');
+  activeDialogKeyHandler=event=>{
+   if(event.key==='Escape'&&closable){event.preventDefault();closeModal();return;}
+   if(event.key!=='Tab')return;
+   const focusable=getFocusable();
+   if(!focusable.length){event.preventDefault();dialog.focus();return;}
+   const first=focusable[0],last=focusable[focusable.length-1];
+   if(event.shiftKey&&(document.activeElement===first||!dialog.contains(document.activeElement))){event.preventDefault();last.focus();}
+   else if(!event.shiftKey&&(document.activeElement===last||!dialog.contains(document.activeElement))){event.preventDefault();first.focus();}
+  };
+  document.addEventListener('keydown',activeDialogKeyHandler);
+  const initialFocus=$('closeModal')||getFocusable()[0]||dialog;
+  try{initialFocus.focus({preventScroll:true});}catch(e){initialFocus.focus();}
+ }
 }
 function info(icon,title,desc,choices=[choice('✓','تمام','',closeModal)]){modal(icon,title,desc,choices);}
 function validState(){return state&&state.status==='حي'&&!dead;}
