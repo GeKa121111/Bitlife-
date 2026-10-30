@@ -163,8 +163,14 @@ async function run() {
     await page.locator('.choice').filter({ hasText: 'مورد اقتصادي' }).click();
     await page.waitForFunction(() => {
       const saved = JSON.parse(localStorage.getItem('hekayat_hayah_save_v1') || 'null');
-      return saved && saved.business && saved.business.supplier && saved.business.supplier.id === 'economy' && saved.business.supplier.yearsLeft === 3;
+      return saved && saved.business && saved.business.supplier && saved.business.supplier.id === 'economy' && saved.business.supplier.yearsLeft === 1;
     });
+    const supplierMarketAt30 = await page.evaluate(() => {
+      const saved = JSON.parse(localStorage.getItem('hekayat_hayah_save_v1') || 'null');
+      return saved && saved.business && saved.business.supplierMarket;
+    });
+    assert.equal(supplierMarketAt30.year, 30, 'supplier offers should be tied to the current life year');
+    assert.equal(supplierMarketAt30.offers.length, 3, 'the annual market should expose all three supplier tiers');
     await page.locator('.choice').filter({ hasText: 'إدارة الموظفين' }).click();
     await page.locator('.choice').filter({ hasText: 'توظيف موظف' }).click();
     await page.locator('.choice').filter({ hasText: 'مندوب مبيعات' }).click();
@@ -228,6 +234,7 @@ async function run() {
       return {
         supplier: saved && saved.business && saved.business.supplier,
         staff: saved && saved.business && saved.business.staff,
+        supplierMarket: saved && saved.business && saved.business.supplierMarket,
         report: history[history.length - 1]
       };
     });
@@ -237,11 +244,15 @@ async function run() {
     assert.equal(businessYear.report.profit, businessYear.report.revenue - businessYear.report.costs);
     assert.ok(Number.isFinite(businessYear.report.margin) && Number.isFinite(businessYear.report.growthRate));
     assert.equal(businessYear.report.supplier, 'مورد اقتصادي');
+    assert.ok(businessYear.report.supplierQuality >= 40 && businessYear.report.supplierQuality <= 99);
+    assert.ok(businessYear.report.supplierCostMultiplier >= 0.7 && businessYear.report.supplierCostMultiplier <= 1.3);
+    assert.equal(businessYear.supplier, null, 'new supplier contracts should expire after one fiscal year');
+    assert.equal(businessYear.supplierMarket.year, 30, 'the prior market snapshot should remain saved until the next review');
     assert.equal(businessYear.report.staffCount, 1, 'the annual report should record the active team size');
     assert.equal(businessYear.report.payroll, businessYear.staff[0].salary, 'annual payroll should match the hired employee salary');
     assert.ok(businessYear.report.costs >= businessYear.report.payroll, 'employee payroll should be included in annual business costs');
     assert.equal(businessYear.staff[0].years, 1, 'employee experience should advance with the business year');
-    assert.equal(businessYear.supplier.yearsLeft, 2, 'a three-year supplier contract should have two years left after one annual report');
+
     await page.waitForTimeout(450);
     const readingAfterYear = await page.evaluate(() => {
       const feed = document.querySelector('#lifeFeed');
@@ -260,6 +271,56 @@ async function run() {
         feed.scrollHeight - feed.scrollTop - feed.clientHeight <= 8;
     });
     assert.ok((await page.locator('#characterName').innerText()).includes(seedSave.name), 'the player identity should persist after reload');
+
+    // The supplier market refreshes for the new fiscal year and remains stable after reload.
+    await page.locator('[data-panel="assets"]').click();
+    await page.locator('.choice').filter({ hasText: 'إدارة مشروعي' }).click();
+    await page.locator('.choice').filter({ hasText: 'التعاقد مع مورد' }).click();
+    await page.waitForFunction(() => {
+      const saved = JSON.parse(localStorage.getItem('hekayat_hayah_save_v1') || 'null');
+      return saved && saved.business && saved.business.supplierMarket &&
+        saved.business.supplierMarket.year === 31 && saved.business.supplierMarket.offers.length === 3;
+    });
+    const supplierMarketAt31 = await page.evaluate(() => {
+      const saved = JSON.parse(localStorage.getItem('hekayat_hayah_save_v1') || 'null');
+      return saved.business.supplierMarket;
+    });
+    assert.notDeepEqual(supplierMarketAt31.offers, supplierMarketAt30.offers,
+      'supplier quality and cost quotes should vary between fiscal years');
+    assert.ok(supplierMarketAt31.offers.every(offer =>
+      offer.quality >= 40 && offer.quality <= 99 &&
+      offer.costMultiplier >= 0.7 && offer.costMultiplier <= 1.3),
+      'annual supplier quotes should stay within safe economic bounds');
+
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await page.waitForFunction(() => {
+      const saved = JSON.parse(localStorage.getItem('hekayat_hayah_save_v1') || 'null');
+      return saved && saved.business && saved.business.supplierMarket && saved.business.supplierMarket.year === 31;
+    });
+    const persistedSupplierMarket = await page.evaluate(() => {
+      const saved = JSON.parse(localStorage.getItem('hekayat_hayah_save_v1') || 'null');
+      return saved.business.supplierMarket;
+    });
+    assert.deepEqual(persistedSupplierMarket, supplierMarketAt31,
+      'the generated supplier offers should remain unchanged after reload');
+
+    await page.locator('[data-panel="assets"]').click();
+    await page.locator('.choice').filter({ hasText: 'إدارة مشروعي' }).click();
+    await page.locator('.choice').filter({ hasText: 'التعاقد مع مورد' }).click();
+    await page.locator('.choice').filter({ hasText: 'مورد متوازن' }).click();
+    await page.waitForFunction(() => {
+      const saved = JSON.parse(localStorage.getItem('hekayat_hayah_save_v1') || 'null');
+      return saved && saved.business && saved.business.supplier &&
+        saved.business.supplier.id === 'balanced' && saved.business.supplier.yearsLeft === 1;
+    });
+    const selectedSupplier = await page.evaluate(() => {
+      const saved = JSON.parse(localStorage.getItem('hekayat_hayah_save_v1') || 'null');
+      return saved.business.supplier;
+    });
+    const balancedOffer = supplierMarketAt31.offers.find(offer => offer.id === 'balanced');
+    assert.equal(selectedSupplier.quality, balancedOffer.quality);
+    assert.equal(selectedSupplier.costMultiplier, balancedOffer.costMultiplier);
+    await page.locator('#closeModal').click();
 
     await page.locator('#menuBtn').click();
     await page.locator('.choice').filter({ hasText: 'الرجوع بالزمن' }).click();
@@ -531,7 +592,7 @@ async function run() {
 
     assert.deepEqual(pageErrors, [], 'the browser run should complete without uncaught JavaScript errors');
 
-    console.log('PASS: mobile layout, legacy v1 load, persistence, rewind, JSON import, inheritance, insolvent estate, career promotion migration, supplier contracts, and annual business reports.');
+    console.log('PASS: mobile layout, legacy v1 load, persistence, rewind, JSON import, inheritance, insolvent estate, career promotion migration, annual supplier market, and business reports.');
     await context.close();
   } finally {
     if (browser) await browser.close();
