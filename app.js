@@ -45,6 +45,118 @@ function businessIndustryProfile(industry){
  if(/عناية|تجميل|مستحضرات/.test(label))return BUSINESS_INDUSTRY_PROFILES.care;
  return BUSINESS_INDUSTRY_PROFILES.other;
 }
+const BUSINESS_RIVAL_SECTORS = {
+ technology:[['مدار للحلول الرقمية','منصة إدارة سحابية'],['نواة التقنية','أنظمة أعمال ذكية'],['أفق للبرمجيات','خدمات رقمية متكاملة'],['سحابة الشرق','بنية رقمية مرنة'],['حلول نقطة','أدوات إنتاجية'],['رؤية البيانات','تحليلات الأعمال'],['شبكات المستقبل','خدمات اتصال رقمية'],['ابتكار تك','حلول المؤسسات'],['مسار رقمي','منصات تشغيل'],['تقنية الجسر','خدمات تقنية'],['منظومة بلس','أنظمة اشتراك'],['بوابة المدار','حلول التجارة الرقمية']],
+ logistics:[['مسارات المدن','خدمات توزيع سريع'],['خطوة للنقل','نقل وتخزين'],['جسر الإمداد','حلول سلاسل التوريد'],['مدار الشحن','خدمات شحن محلي'],['وصلة لوجستية','توصيل للشركات'],['طريق آمن','نقل متخصص'],['مخازن النيل','إدارة مستودعات'],['شبكة وصول','توزيع إقليمي'],['خط الإمداد','خدمات شحن'],['رحاب للنقل','نقل بري'],['بوابة الشحن','إدارة الطلبات'],['اتجاه للتوزيع','خدمات الميل الأخير']],
+ restaurants:[['مذاق الحارة','وجبات سريعة'],['سفرة ولمة','وجبات عائلية'],['فرن البلد','مخبوزات طازجة'],['ركن النكهة','وجبات يومية'],['طبق وريحة','أطعمة جاهزة'],['بيت التتبيلة','وجبات مميزة'],['مائدة زمان','أطباق منزلية'],['لقمة هنا','وجبات خفيفة'],['سوق المذاق','أطعمة متنوعة'],['صحن المدينة','وجبات سريعة'],['فرن الصباح','مخبوزات'],['مطبخ الدار','وجبات منزلية']],
+ retail:[['سوق الحي','سلع استهلاكية'],['رفوف المدينة','منتجات يومية'],['متجر المدى','تجارة متنوعة'],['بيت الاختيار','مستلزمات منزلية'],['ركن التوفير','سلع اقتصادية'],['واجهة السوق','منتجات عامة'],['سلة المدينة','احتياجات يومية'],['المخزن المفتوح','تجزئة متنوعة'],['دكان بلس','مستلزمات شخصية'],['سوق الجوار','سلع أساسية'],['دار التجزئة','منتجات منزلية'],['رف الاختيار','منتجات متنوعة']],
+ food:[['زاد الحقول','منتجات غذائية'],['مونة الدار','مواد غذائية'],['حصاد طازج','أغذية معبأة'],['سلة الريف','منتجات زراعية'],['مذاق الطبيعة','أطعمة صحية'],['مخازن الزاد','مواد تموينية'],['خير الموسم','منتجات موسمية'],['مائدة طازجة','أغذية يومية'],['مزارع النماء','منتجات طازجة'],['زاد البلد','أغذية أساسية'],['حصاد اليوم','منتجات غذائية'],['مونة الموسم','مواد تموينية']],
+ care:[['نضارة بلس','منتجات عناية'],['لمسة صفاء','مستحضرات شخصية'],['روتينك','عناية يومية'],['بيت الجمال','منتجات تجميل'],['إشراقة','عناية بالبشرة'],['لمسة طبيعية','مستحضرات نباتية'],['نقاء','منتجات شخصية'],['رونق','عناية متخصصة'],['بشرة وحياة','منتجات عناية'],['توازن','مستحضرات يومية'],['ندى الصباح','عناية بالبشرة'],['لمعة','منتجات تجميل']],
+ other:[['مجموعة المدار','خدمات متنوعة'],['حلول الأفق','منتجات عامة'],['شركة خطوة','خدمات محلية'],['رواد السوق','حلول أعمال'],['مدى الأعمال','خدمات متعددة'],['نقطة نمو','منتجات متنوعة'],['أصول المستقبل','خدمات تشغيل'],['بوابة النجاح','حلول متكاملة'],['مسار جديد','خدمات عامة'],['ركن الأعمال','منتجات يومية'],['رؤية السوق','خدمات متنوعة'],['إمداد بلس','حلول مؤسسات']]
+};
+function businessRivalSectorKey(industry){
+ const label=String(industry||'');
+ if(/تقنية|برمجيات|رقمية/.test(label))return 'technology';
+ if(/لوجست|نقل|توزيع/.test(label))return 'logistics';
+ if(/مطاعم|مطعم|مأكولات/.test(label))return 'restaurants';
+ if(/تجزئة|متاجر|تجارة/.test(label))return 'retail';
+ if(/أغذية|وجبات|طعام/.test(label))return 'food';
+ if(/عناية|تجميل|مستحضرات/.test(label))return 'care';
+ return 'other';
+}
+function businessRivalHash(value){
+ const source=String(value||'');
+ let hash=2166136261;
+ for(let i=0;i<source.length;i++)hash=Math.imul(hash^source.charCodeAt(i),16777619);
+ return hash>>>0;
+}
+function businessRivalIdentity(business){
+ return String(business&&(business.ownerLifeId||business.lifeId)||state.lifeId||state.name||'hayah')+'|'+String(business&&(business.assetId||business.id||business.title)||'business');
+}
+function createBusinessRivals(business,industry,year,count,baselinePrice){
+ const templates=BUSINESS_RIVAL_SECTORS[businessRivalSectorKey(industry)]||BUSINESS_RIVAL_SECTORS.other;
+ const identity=businessRivalIdentity(business);
+ const safeCount=Math.max(2,Math.min(12,Math.floor(Number(count)||3)));
+ const priceBase=Math.max(75,Math.min(135,Math.round(Number(baselinePrice)||100)));
+ return Array.from({length:safeCount},(_,index)=>{
+  const seed=businessRivalHash(identity+'|rival|'+index);
+  const template=templates[(index+(seed%templates.length))%templates.length];
+  return {id:'rival-'+(index+1)+'-'+seed.toString(36),name:template[0],product:template[1],
+   priceIndex:Math.max(75,Math.min(135,priceBase+((seed>>>8)%15)-7)),
+   qualityIndex:55+((seed>>>12)%40),capacityIndex:70+((seed>>>17)%71),marketingIndex:65+((seed>>>22)%66),
+   marketShare:0,cashBalance:150000+((seed>>>2)%1350000),lastYearRevenue:0,lastYearProfit:0,
+   lastDecision:'يحافظ على موقعه في السوق',decisionYear:Math.max(0,Math.floor(Number(year)||0)),losingYears:0,active:true};
+ });
+}
+function normalizeBusinessRivals(raw,business,industry,year,count,baselinePrice){
+ const source=Array.isArray(raw)?raw.filter(rival=>rival&&typeof rival==='object'&&!Array.isArray(rival)).slice(0,12):[];
+ if(!source.length)return createBusinessRivals(business,industry,year,count,baselinePrice);
+ const templates=BUSINESS_RIVAL_SECTORS[businessRivalSectorKey(industry)]||BUSINESS_RIVAL_SECTORS.other;
+ const identity=businessRivalIdentity(business);
+ return source.map((rival,index)=>{
+  const seed=businessRivalHash(identity+'|legacy-rival|'+index),template=templates[index%templates.length];
+  const finite=(value,fallback)=>Number.isFinite(Number(value))?Number(value):fallback;
+  return {id:String(rival.id||('rival-'+(index+1)+'-'+seed.toString(36))).slice(0,80),
+   name:typeof rival.name==='string'&&rival.name.trim()?rival.name.slice(0,48):template[0],
+   product:typeof rival.product==='string'&&rival.product.trim()?rival.product.slice(0,48):template[1],
+   priceIndex:Math.max(70,Math.min(145,Math.round(finite(rival.priceIndex,baselinePrice||100)))),
+   qualityIndex:Math.max(35,Math.min(100,Math.round(finite(rival.qualityIndex,70)))),
+   capacityIndex:Math.max(40,Math.min(180,Math.round(finite(rival.capacityIndex,100)))),
+   marketingIndex:Math.max(35,Math.min(170,Math.round(finite(rival.marketingIndex,95)))),
+   marketShare:Math.round(Math.max(0,Math.min(85,finite(rival.marketShare,0)))*10)/10,
+   cashBalance:Math.max(0,Math.min(50000000000,Math.round(finite(rival.cashBalance,250000)))),
+   lastYearRevenue:Math.max(0,Math.min(8000000000,Math.round(finite(rival.lastYearRevenue,0)))),
+   lastYearProfit:Math.max(-8000000000,Math.min(8000000000,Math.round(finite(rival.lastYearProfit,0)))),
+   lastDecision:typeof rival.lastDecision==='string'?rival.lastDecision.slice(0,64):'يحافظ على موقعه في السوق',
+   decisionYear:Math.max(0,Math.min(200,Math.floor(finite(rival.decisionYear,year)))),
+   losingYears:Math.max(0,Math.min(10,Math.floor(finite(rival.losingYears,0)))),active:rival.active!==false};
+ });
+}
+function advanceBusinessRivals(raw,business,industry,year,profile,demandIndex){
+ const previous=normalizeBusinessRivals(raw,business,industry,Math.max(0,year-1),Array.isArray(raw)?raw.length:3,profile.rivalPriceMin);
+ const identity=businessRivalIdentity(business),marketSize=Math.max(180000,Math.min(100000000,Math.round((Number(business.value)||180000)*1.25)));
+ return previous.map(rival=>{
+  if(rival.decisionYear>=year)return rival;
+  const seed=businessRivalHash(identity+'|'+rival.id+'|year|'+year);
+  let priceIndex=rival.priceIndex,qualityIndex=rival.qualityIndex,capacityIndex=rival.capacityIndex,marketingIndex=rival.marketingIndex;
+  let decision='حافظ على استراتيجيته',investment=0;
+  const choice=seed%4;
+  if(choice===0){priceIndex=Math.max(75,priceIndex-3-((seed>>>5)%5));marketingIndex=Math.min(170,marketingIndex+1+((seed>>>10)%3));decision='خفض الأسعار لجذب عملاء جدد';}
+  else if(choice===1){qualityIndex=Math.min(100,qualityIndex+2+((seed>>>6)%5));priceIndex=Math.min(145,priceIndex+1+((seed>>>11)%2));investment=Math.round(marketSize*.018);decision='استثمر في تحسين الجودة';}
+  else if(choice===2){capacityIndex=Math.min(180,capacityIndex+5+((seed>>>7)%9));investment=Math.round(marketSize*.035);decision='وسّع الطاقة الإنتاجية';}
+  else{marketingIndex=Math.min(170,marketingIndex+5+((seed>>>8)%8));investment=Math.round(marketSize*.024);decision='كثّف الحملات التسويقية';}
+  const share=Math.max(1,Math.min(65,Number(rival.marketShare)||100/Math.max(2,previous.length)));
+  const demandFactor=Math.max(.65,Math.min(1.3,(Number(demandIndex)||75)/80));
+  const revenue=Math.max(0,Math.round(marketSize*(share/100)*demandFactor*(capacityIndex/100)*(marketingIndex/100)*(priceIndex/100)*4));
+  const margin=Math.max(.04,Math.min(.32,.14+(qualityIndex-70)*.002-(priceIndex-100)*.0008));
+  const upkeep=Math.round(marketSize*.003*(capacityIndex/100));
+  const profit=Math.round(revenue*margin-upkeep);
+  const cashBalance=Math.max(0,Math.min(50000000000,Math.round(rival.cashBalance+profit-investment)));
+  return {...rival,priceIndex,qualityIndex,capacityIndex,marketingIndex,cashBalance,lastYearRevenue:revenue,lastYearProfit:profit,
+   lastDecision:decision,decisionYear:year,losingYears:profit<0?Math.min(10,rival.losingYears+1):0};
+ });
+}
+function summarizeBusinessRivals(rivals,baselineCompetition,profile){
+ const active=(Array.isArray(rivals)?rivals:[]).filter(rival=>rival&&rival.active!==false);
+ const average=key=>active.length?active.reduce((sum,rival)=>sum+Number(rival[key]||0),0)/active.length:100;
+ const count=active.length,avgPrice=Math.round(average('priceIndex')),avgQuality=Math.round(average('qualityIndex'));
+ const avgMarketing=Math.round(average('marketingIndex')),avgCapacity=Math.round(average('capacityIndex'));
+ const profileMin=profile?profile.competitionMin:10,profileMax=profile?profile.competitionMin+profile.competitionRange-1:95;
+ const base=Math.max(profileMin,Math.min(profileMax,Math.round(Number(baselineCompetition)||profileMin)));
+ const pressure=Math.round((avgMarketing-95)*.12+(avgCapacity-100)*.04+(count-4)*.65);
+ return {competitorCount:count,rivalPriceIndex:Math.max(70,Math.min(145,avgPrice||100)),
+  rivalQualityIndex:Math.max(35,Math.min(100,avgQuality||70)),rivalMarketingIndex:Math.max(35,Math.min(170,avgMarketing||95)),
+  rivalCapacityIndex:Math.max(40,Math.min(180,avgCapacity||100)),competitionIndex:Math.max(profileMin,Math.min(profileMax,base+pressure))};
+}
+function reconcileBusinessRivalShares(market){
+ if(!market||!Array.isArray(market.rivals))return;
+ const active=market.rivals.filter(rival=>rival&&rival.active!==false);
+ if(!active.length)return;
+ const playerShare=Math.max(3,Math.min(45,Number(market.marketShare)||0)),remaining=Math.max(0,100-playerShare);
+ const weights=active.map(rival=>Math.max(.1,((Number(rival.qualityIndex)||70)*.42+(Number(rival.marketingIndex)||95)*.25+(Number(rival.capacityIndex)||100)*.33)/Math.max(70,Number(rival.priceIndex)||100)));
+ const total=weights.reduce((sum,value)=>sum+value,0)||active.length;
+ active.forEach((rival,index)=>{rival.marketShare=Math.round(remaining*weights[index]/total*10)/10;});
+}
 const BUSINESS_FACILITY_CATALOG = [
  {id:'store',title:'متجر إضافي',emoji:'🏬',costRate:.08,minCost:12000,capacityBonus:.3,upkeepRate:.06,minUpkeep:900,description:'نقطة بيع إضافية توسّع الوصول للعملاء والطاقة البيعية.'},
  {id:'factory',title:'مصنع صغير',emoji:'🏭',costRate:.16,minCost:22000,capacityBonus:.7,upkeepRate:.085,minUpkeep:1800,description:'منشأة إنتاج ترفع القدرة على تلبية الطلب، مع صيانة أعلى.'}
@@ -639,20 +751,33 @@ function normalizeCoreState(data){
   entity.pendingFacilityCosts=Math.max(0,Math.min(8000000000,Number.isFinite(pendingFacilityCosts)?Math.round(pendingFacilityCosts):0));
   if(entity.market&&typeof entity.market==='object'&&!Array.isArray(entity.market)){
    const market=entity.market;
-   const marketYear=Number(market.year);
+   const marketYear=Math.max(0,Math.floor(Number.isFinite(Number(market.year))?Number(market.year):Number(data.age)||0));
+   const marketIndustry=typeof market.industry==='string'?market.industry.slice(0,48):String(entity.sector||'سوق متنوع').slice(0,48);
+   const profile=businessIndustryProfile(marketIndustry);
+   const competitorCount=Math.max(2,Math.min(12,Math.floor(Number(market.competitorCount)||3)));
+   const rivalPriceIndex=Math.max(75,Math.min(125,Math.round(Number(market.rivalPriceIndex)||100)));
+   const baseCompetitionIndex=Math.max(profile.competitionMin,Math.min(profile.competitionMin+profile.competitionRange-1,
+    Math.round(Number(market.baseCompetitionIndex!==undefined?market.baseCompetitionIndex:market.competitionIndex)||profile.competitionMin)));
    entity.market={
-    year:Math.max(0,Math.floor(Number.isFinite(marketYear)?marketYear:Number(data.age)||0)),
-    industry:typeof market.industry==='string'?market.industry.slice(0,48):String(entity.sector||'سوق متنوع').slice(0,48),
+    year:marketYear,industry:marketIndustry,
     demandIndex:Math.max(35,Math.min(115,Math.round(Number(market.demandIndex)||75))),
-    competitionIndex:Math.max(10,Math.min(95,Math.round(Number(market.competitionIndex)||50))),
-    competitorCount:Math.max(2,Math.min(12,Math.floor(Number(market.competitorCount)||3))),
-    rivalPriceIndex:Math.max(75,Math.min(125,Math.round(Number(market.rivalPriceIndex)||100))),
+    baseCompetitionIndex,
+    competitionIndex:Math.max(profile.competitionMin,Math.min(profile.competitionMin+profile.competitionRange-1,Math.round(Number(market.competitionIndex)||baseCompetitionIndex))),
+    competitorCount,rivalPriceIndex,
+    rivalQualityIndex:Math.max(35,Math.min(100,Math.round(Number(market.rivalQualityIndex)||70))),
+    rivalMarketingIndex:Math.max(35,Math.min(170,Math.round(Number(market.rivalMarketingIndex)||95))),
+    rivalCapacityIndex:Math.max(40,Math.min(180,Math.round(Number(market.rivalCapacityIndex)||100))),
     marketShare:Math.round(Math.max(3,Math.min(45,Number.isFinite(Number(market.marketShare))?Number(market.marketShare):12))*10)/10,
     lastYearShareChange:Math.round(Math.max(-10,Math.min(10,Number(market.lastYearShareChange)||0))*10)/10,
     lastYearProfit:Math.max(-8000000000,Math.min(8000000000,Math.round(Number(market.lastYearProfit)||0))),
     lastYearUnits:Math.max(0,Math.min(100000000,Math.floor(Number(market.lastYearUnits)||0))),
-    lastYearRevenue:Math.max(0,Math.min(8000000000,Math.round(Number(market.lastYearRevenue)||0)))
+    lastYearRevenue:Math.max(0,Math.min(8000000000,Math.round(Number(market.lastYearRevenue)||0))),
+    rivals:normalizeBusinessRivals(market.rivals,{...entity,ownerLifeId:data.lifeId||data.name},marketIndustry,marketYear,competitorCount,rivalPriceIndex)
    };
+   reconcileBusinessRivalShares(entity.market);
+   const rivalSummary=summarizeBusinessRivals(entity.market.rivals,baseCompetitionIndex,profile);
+   Object.assign(entity.market,rivalSummary);
+   entity.market.baseCompetitionIndex=baseCompetitionIndex;
   }
   if(!Array.isArray(entity.products))entity.products=[];
   entity.products=entity.products.filter(product=>product&&typeof product==='object'&&!Array.isArray(product)).slice(-20).map((product,index)=>{
@@ -1216,6 +1341,7 @@ function recordBusinessFinancialReport(entity,report){
  const marketRivalPriceIndex=Math.max(0,Math.min(150,Math.floor(Number(report.marketRivalPriceIndex)||0)));
  const marketShare=Math.max(0,Math.min(45,Math.round((Number(report.marketShare)||0)*10)/10));
  const marketShareChange=Math.max(-10,Math.min(10,Math.round((Number(report.marketShareChange)||0)*10)/10));
+ const marketRivalPlans=typeof report.marketRivalPlans==='string'?report.marketRivalPlans.slice(0,360):'';
  const marketIndustry=typeof report.marketIndustry==='string'?report.marketIndustry.slice(0,48):'';
  const industryRevenueMultiplier=Math.round(Math.max(.7,Math.min(1.5,Number(report.industryRevenueMultiplier)||1))*1000)/1000;
  const industryOperatingCostMultiplier=Math.round(Math.max(.7,Math.min(1.5,Number(report.industryOperatingCostMultiplier)||1))*1000)/1000;
@@ -1236,7 +1362,7 @@ function recordBusinessFinancialReport(entity,report){
  const closingCashBalance=Math.max(-1000000000000,Math.min(1000000000000,Math.round(Number(report.closingCashBalance)||0)));
  const ownerContributions=Math.max(0,Math.min(1000000000000,Math.round(Number(report.ownerContributions)||0)));
  const ownerWithdrawals=Math.max(0,Math.min(1000000000000,Math.round(Number(report.ownerWithdrawals)||0)));
- history.push({year:Math.max(0,Math.floor(Number(report.year)||0)),openingValue,revenue,costs,profit,margin,growthRate,closingValue,level:Math.max(1,Math.floor(Number(report.level)||1)),supplier:typeof report.supplier==='string'?report.supplier:'',supplierQuality,supplierCostMultiplier,payroll,staffCount,productRevenue,productCosts,productProfit,productUnits,productCount,facilityUpkeep,facilityInvestment,facilityCount,capacityMultiplier,marketIndustry,marketDemandIndex,marketCompetitionIndex,marketCompetitorCount,marketRivalPriceIndex,marketShare,marketShareChange,industryRevenueMultiplier,industryOperatingCostMultiplier,industryUnitCostMultiplier,businessLoanInterest,businessLoanInterestPaid,businessLoanInterestAccrued,businessLoanBalance,taxableProfit,corporateTaxRate,corporateTax,corporateTaxPaid,corporateTaxAccrued,taxLiability,openingTaxLiability,treasuryMode,openingCashBalance,closingCashBalance,ownerContributions,ownerWithdrawals});
+ history.push({year:Math.max(0,Math.floor(Number(report.year)||0)),openingValue,revenue,costs,profit,margin,growthRate,closingValue,level:Math.max(1,Math.floor(Number(report.level)||1)),supplier:typeof report.supplier==='string'?report.supplier:'',supplierQuality,supplierCostMultiplier,payroll,staffCount,productRevenue,productCosts,productProfit,productUnits,productCount,facilityUpkeep,facilityInvestment,facilityCount,capacityMultiplier,marketIndustry,marketDemandIndex,marketCompetitionIndex,marketCompetitorCount,marketRivalPriceIndex,marketShare,marketShareChange,marketRivalPlans,industryRevenueMultiplier,industryOperatingCostMultiplier,industryUnitCostMultiplier,businessLoanInterest,businessLoanInterestPaid,businessLoanInterestAccrued,businessLoanBalance,taxableProfit,corporateTaxRate,corporateTax,corporateTaxPaid,corporateTaxAccrued,taxLiability,openingTaxLiability,treasuryMode,openingCashBalance,closingCashBalance,ownerContributions,ownerWithdrawals});
  entity.financialHistory=history.slice(-10);
 }
 
@@ -1247,42 +1373,40 @@ function businessMarketSnapshot(business){
  const catalog=activeProduct&&BUSINESS_PRODUCT_CATALOG.find(item=>item.id===activeProduct.catalogId);
  const industry=String(business.sector||business.industry||(catalog&&catalog.category)||'سوق متنوع').slice(0,48);
  const previous=business.market&&typeof business.market==='object'&&!Array.isArray(business.market)?business.market:null;
- if(previous&&Number(previous.year)===year){
-  const market={
-   year,
-   industry:typeof previous.industry==='string'&&previous.industry.trim()?previous.industry.slice(0,48):industry,
-   demandIndex:Math.max(35,Math.min(115,Math.round(Number(previous.demandIndex)||75))),
-   competitionIndex:Math.max(10,Math.min(95,Math.round(Number(previous.competitionIndex)||50))),
-   competitorCount:Math.max(2,Math.min(12,Math.floor(Number(previous.competitorCount)||3))),
-   rivalPriceIndex:Math.max(75,Math.min(125,Math.round(Number(previous.rivalPriceIndex)||100))),
-   marketShare:Math.round(Math.max(3,Math.min(45,Number.isFinite(Number(previous.marketShare))?Number(previous.marketShare):12))*10)/10,
-   lastYearShareChange:Math.round(Math.max(-10,Math.min(10,Number(previous.lastYearShareChange)||0))*10)/10,
-   lastYearProfit:Math.max(-8000000000,Math.min(8000000000,Math.round(Number(previous.lastYearProfit)||0))),
-   lastYearUnits:Math.max(0,Math.min(100000000,Math.floor(Number(previous.lastYearUnits)||0))),
-   lastYearRevenue:Math.max(0,Math.min(8000000000,Math.round(Number(previous.lastYearRevenue)||0)))
-  };
-  business.market=market;
-  return market;
- }
- const identity=String(state.lifeId||state.name||'hayah')+'|'+String(business.assetId||business.id||business.title||'business')+'|'+year+'|market';
- let hash=2166136261;
- for(let i=0;i<identity.length;i++)hash=Math.imul(hash^identity.charCodeAt(i),16777619);
- hash=hash>>>0;
- const previousShare=previous&&Number.isFinite(Number(previous.marketShare))?Number(previous.marketShare):null;
- const profile=businessIndustryProfile(industry);
+ const profile=businessIndustryProfile(industry),identity=businessRivalIdentity(business);
+ const yearHash=businessRivalHash(identity+'|'+year+'|market');
+ const previousYear=previous?Math.max(0,Math.floor(Number(previous.year)||0)):year;
+ const sameYear=!!previous&&previousYear===year,canReusePrevious=!!previous&&previousYear<=year;
+ const previousShare=canReusePrevious&&Number.isFinite(Number(previous.marketShare))?Number(previous.marketShare):null;
+ const demandIndex=sameYear?Math.max(35,Math.min(115,Math.round(Number(previous.demandIndex)||75))):profile.demandMin+(yearHash%profile.demandRange);
+ const baselineCompetition=sameYear?Math.max(profile.competitionMin,Math.min(profile.competitionMin+profile.competitionRange-1,Math.round(Number(previous.baseCompetitionIndex||previous.competitionIndex)||profile.competitionMin))):profile.competitionMin+((yearHash>>>8)%profile.competitionRange);
+ const baselinePrice=previous&&Number.isFinite(Number(previous.rivalPriceIndex))?Math.max(75,Math.min(125,Math.round(Number(previous.rivalPriceIndex)))):profile.rivalPriceMin+((yearHash>>>24)%profile.rivalPriceRange);
+ const rosterSeed=businessRivalHash(identity+'|rival-roster');
+ const profileCount=profile.competitorMin+(rosterSeed%profile.competitorRange);
+ const fallbackCount=previous?Math.max(2,Math.min(12,Math.floor(Number(previous.competitorCount)||profileCount))):profileCount;
+ let rivals;
+ if(sameYear)rivals=normalizeBusinessRivals(previous.rivals,business,industry,year,fallbackCount,baselinePrice);
+ else if(canReusePrevious&&previousYear<year){
+  rivals=normalizeBusinessRivals(previous.rivals,business,industry,previousYear,fallbackCount,baselinePrice);
+  for(let nextYear=previousYear+1;nextYear<=year;nextYear++){
+   const nextHash=businessRivalHash(identity+'|'+nextYear+'|market');
+   rivals=advanceBusinessRivals(rivals,business,industry,nextYear,profile,profile.demandMin+(nextHash%profile.demandRange));
+  }
+ }else rivals=createBusinessRivals(business,industry,year,profileCount,baselinePrice);
+ const summary=summarizeBusinessRivals(rivals,baselineCompetition,profile);
  const market={
-  year,
-  industry,
-  demandIndex:profile.demandMin+(hash%profile.demandRange),
-  competitionIndex:profile.competitionMin+((hash>>>8)%profile.competitionRange),
-  competitorCount:profile.competitorMin+((hash>>>16)%profile.competitorRange),
-  rivalPriceIndex:profile.rivalPriceMin+((hash>>>24)%profile.rivalPriceRange),
-  marketShare:Math.round(Math.max(3,Math.min(45,previousShare===null?8+((hash>>>4)%13):previousShare))*10)/10,
-  lastYearShareChange:0,
-  lastYearProfit:0,
-  lastYearUnits:0,
-  lastYearRevenue:0
+  year,industry,demandIndex,baseCompetitionIndex:baselineCompetition,
+  competitionIndex:summary.competitionIndex,competitorCount:summary.competitorCount,
+  rivalPriceIndex:summary.rivalPriceIndex,rivalQualityIndex:summary.rivalQualityIndex,
+  rivalMarketingIndex:summary.rivalMarketingIndex,rivalCapacityIndex:summary.rivalCapacityIndex,
+  marketShare:Math.round(Math.max(3,Math.min(45,previousShare===null?8+((yearHash>>>4)%13):previousShare))*10)/10,
+  lastYearShareChange:sameYear?Math.round(Math.max(-10,Math.min(10,Number(previous.lastYearShareChange)||0))*10)/10:0,
+  lastYearProfit:sameYear?Math.max(-8000000000,Math.min(8000000000,Math.round(Number(previous.lastYearProfit)||0))):0,
+  lastYearUnits:sameYear?Math.max(0,Math.min(100000000,Math.floor(Number(previous.lastYearUnits)||0))):0,
+  lastYearRevenue:sameYear?Math.max(0,Math.min(8000000000,Math.round(Number(previous.lastYearRevenue)||0))):0,
+  rivals
  };
+ reconcileBusinessRivalShares(market);
  business.market=market;
  return market;
 }
@@ -1326,8 +1450,12 @@ function simulateBusinessProducts(business,openingValue,supplier,staffRevenueBon
   const priceFactor=Math.max(.55,Math.min(1.2,1.12-Math.max(0,priceRatio-1)*.45+Math.max(0,1-priceRatio)*.18));
   const relativePrice=price/Math.max(1,catalog.unitPrice*(market.rivalPriceIndex/100));
   const marketPriceFactor=Math.max(.82,Math.min(1.12,1.04-Math.max(0,relativePrice-1)*.3+Math.max(0,1-relativePrice)*.12));
-  const marketFactor=(demand/100)*Math.max(.25,1.02-competition/150)*marketDemandFactor*marketCompetitionFactor*marketPriceFactor*marketShareFactor;
-  const qualityFactor=.72+clamp(product.quality,20,100)*.003;
+  const productQuality=clamp(product.quality,20,100);
+  const rivalQualityFactor=Math.max(.9,Math.min(1.1,1+(productQuality-market.rivalQualityIndex)/500));
+  const rivalMarketingFactor=Math.max(.9,Math.min(1.08,1-(market.rivalMarketingIndex-100)/500));
+  const rivalCapacityFactor=Math.max(.92,Math.min(1.05,1-(market.rivalCapacityIndex-100)/900));
+  const marketFactor=(demand/100)*Math.max(.25,1.02-competition/150)*marketDemandFactor*marketCompetitionFactor*marketPriceFactor*marketShareFactor*rivalMarketingFactor*rivalCapacityFactor;
+  const qualityFactor=(.72+productQuality*.003)*rivalQualityFactor;
   const teamFactor=1+Math.min(.15,Math.max(0,Number(staffRevenueBonus)||0)*.5);
   const unitsSold=Math.max(0,Math.round(capacity*marketFactor*priceFactor*qualityFactor*teamFactor*(.9+Math.random()*.2)));
   const revenue=unitsSold*price;
@@ -1361,6 +1489,7 @@ function simulateBusinessProducts(business,openingValue,supplier,staffRevenueBon
   market.lastYearProfit=result.productProfit;
   market.lastYearUnits=result.units;
   market.lastYearRevenue=result.revenue;
+  reconcileBusinessRivalShares(market);
  }
  result.marketShare=market.marketShare;
  result.marketShareChange=market.lastYearShareChange;
@@ -1451,7 +1580,7 @@ function simulateBusinessEntityYear(business,kind){
  const ownerContributions=separateTreasury?Math.max(0,Math.round(Number(business.pendingOwnerContributions)||0)):0;
  const ownerWithdrawals=separateTreasury?Math.max(0,Math.round(Number(business.pendingOwnerWithdrawals)||0)):0;
  business.pendingOwnerContributions=0;business.pendingOwnerWithdrawals=0;
- recordBusinessFinancialReport(business,{year:state.age,openingValue,revenue,costs,profit,closingValue:business.value,treasuryMode:separateTreasury?'separate':'shared',openingCashBalance,closingCashBalance,ownerContributions,ownerWithdrawals,level,supplier:supplier?supplier.title:'',supplierQuality:supplier?supplier.quality:0,supplierCostMultiplier:supplier?supplier.costMultiplier:0,payroll:staffPayroll,staffCount:staff.length,productRevenue:productResult.revenue,productCosts:productResult.costs+productResult.upfrontCosts,productProfit:productResult.productProfit,productUnits:productResult.units,productCount:productResult.count,facilityUpkeep,facilityInvestment:facilityInvestmentCosts,facilityCount:facilities.length,capacityMultiplier:productResult.capacityMultiplier,marketIndustry:market.industry,marketDemandIndex:market.demandIndex,marketCompetitionIndex:market.competitionIndex,marketCompetitorCount:market.competitorCount,marketRivalPriceIndex:market.rivalPriceIndex,marketShare:market.marketShare,marketShareChange:market.lastYearShareChange,industryRevenueMultiplier:industryProfile.revenueMultiplier,industryOperatingCostMultiplier:industryProfile.operatingCostMultiplier,industryUnitCostMultiplier:industryProfile.unitCostMultiplier,businessLoanInterest,businessLoanInterestPaid,businessLoanInterestAccrued,businessLoanBalance:businessCreditBalance(business),taxableProfit,corporateTaxRate,corporateTax,corporateTaxPaid,corporateTaxAccrued,taxLiability:businessTaxLiability(business),openingTaxLiability});
+ recordBusinessFinancialReport(business,{year:state.age,openingValue,revenue,costs,profit,closingValue:business.value,treasuryMode:separateTreasury?'separate':'shared',openingCashBalance,closingCashBalance,ownerContributions,ownerWithdrawals,level,supplier:supplier?supplier.title:'',supplierQuality:supplier?supplier.quality:0,supplierCostMultiplier:supplier?supplier.costMultiplier:0,payroll:staffPayroll,staffCount:staff.length,productRevenue:productResult.revenue,productCosts:productResult.costs+productResult.upfrontCosts,productProfit:productResult.productProfit,productUnits:productResult.units,productCount:productResult.count,facilityUpkeep,facilityInvestment:facilityInvestmentCosts,facilityCount:facilities.length,capacityMultiplier:productResult.capacityMultiplier,marketIndustry:market.industry,marketDemandIndex:market.demandIndex,marketCompetitionIndex:market.competitionIndex,marketCompetitorCount:market.competitorCount,marketRivalPriceIndex:market.rivalPriceIndex,marketShare:market.marketShare,marketShareChange:market.lastYearShareChange,marketRivalPlans:(market.rivals||[]).slice(0,6).map(rival=>rival.name+': '+rival.lastDecision).join('، ').slice(0,360),industryRevenueMultiplier:industryProfile.revenueMultiplier,industryOperatingCostMultiplier:industryProfile.operatingCostMultiplier,industryUnitCostMultiplier:industryProfile.unitCostMultiplier,businessLoanInterest,businessLoanInterestPaid,businessLoanInterestAccrued,businessLoanBalance:businessCreditBalance(business),taxableProfit,corporateTaxRate,corporateTax,corporateTaxPaid,corporateTaxAccrued,taxLiability:businessTaxLiability(business),openingTaxLiability});
  const supplierLabel=supplier?' · المورد '+supplier.title:'';
  const creditBalance=businessCreditBalance(business);
  const creditLabel=creditBalance?' · تمويل قائم '+cash(creditBalance):'';
@@ -2108,7 +2237,7 @@ function businessReportsMenu(entity,title,back){
  if(!reports.length){info('📊','لا توجد تقارير بعد','التقرير المالي الأول هيظهر بعد مرور سنة مالية كاملة.');return;}
  const opts=reports.map(report=>choice('📅','السنة '+report.year,'الإيرادات '+cash(report.revenue)+' · المصروفات '+cash(report.costs)+' · '+(report.profit>=0?'صافي ربح ':'صافي خسارة ')+cash(Math.abs(report.profit)),()=>{
   closeModal();
-  const detail='الإيرادات: '+cash(report.revenue)+'\nالمصروفات التشغيلية: '+cash(Math.max(0,report.costs-(report.payroll||0)-(report.facilityUpkeep||0)))+'\nرواتب الموظفين: '+cash(report.payroll||0)+' ('+(report.staffCount||0)+' موظف)\nصيانة الفروع والمصانع: '+cash(report.facilityUpkeep||0)+' ('+(report.facilityCount||0)+' منشأة)'+(report.facilityInvestment?'\nاستثمارات إنشاء منشآت: '+cash(report.facilityInvestment):'')+'\nإجمالي المصروفات: '+cash(report.costs)+'\nصافي النتيجة: '+(report.profit>=0?'ربح ':'خسارة ')+cash(Math.abs(report.profit))+'\nهامش الربح: '+report.margin+'%\nتغير قيمة النشاط: '+(report.growthRate>=0?'+':'')+report.growthRate+'%\nالقيمة الختامية: '+cash(report.closingValue)+(report.supplier?'\nالمورد: '+report.supplier+(report.supplierQuality?'\nجودة المورد: '+report.supplierQuality+'%':'')+(report.supplierCostMultiplier?'\nمعامل تكلفة المورد: '+Math.round(report.supplierCostMultiplier*100)+'%':''):'')+(report.productCount?'\nمبيعات المنتجات: '+cash(report.productRevenue||0)+' · تكاليفها: '+cash(report.productCosts||0)+' · صافيها: '+cash(report.productProfit||0)+' · الوحدات المباعة: '+fmt(report.productUnits||0):'')+(Number.isFinite(Number(report.marketShare))?'\nالسوق: '+(report.marketIndustry||'متنوع')+' · الحصة: '+report.marketShare+'% · التغير: '+(report.marketShareChange>=0?'+':'')+report.marketShareChange+'% · المنافسون: '+(report.marketCompetitorCount||0)+' · الطلب: '+(report.marketDemandIndex||0)+' · المنافسة: '+(report.marketCompetitionIndex||0):'')+(Number.isFinite(Number(report.industryRevenueMultiplier))?'\nمعاملات القطاع: الإيرادات ×'+Number(report.industryRevenueMultiplier).toFixed(2)+' · التشغيل ×'+Number(report.industryOperatingCostMultiplier).toFixed(2)+' · تكلفة الوحدة ×'+Number(report.industryUnitCostMultiplier).toFixed(2):'');
+  const detail='الإيرادات: '+cash(report.revenue)+'\nالمصروفات التشغيلية: '+cash(Math.max(0,report.costs-(report.payroll||0)-(report.facilityUpkeep||0)))+'\nرواتب الموظفين: '+cash(report.payroll||0)+' ('+(report.staffCount||0)+' موظف)\nصيانة الفروع والمصانع: '+cash(report.facilityUpkeep||0)+' ('+(report.facilityCount||0)+' منشأة)'+(report.facilityInvestment?'\nاستثمارات إنشاء منشآت: '+cash(report.facilityInvestment):'')+'\nإجمالي المصروفات: '+cash(report.costs)+'\nصافي النتيجة: '+(report.profit>=0?'ربح ':'خسارة ')+cash(Math.abs(report.profit))+'\nهامش الربح: '+report.margin+'%\nتغير قيمة النشاط: '+(report.growthRate>=0?'+':'')+report.growthRate+'%\nالقيمة الختامية: '+cash(report.closingValue)+(report.supplier?'\nالمورد: '+report.supplier+(report.supplierQuality?'\nجودة المورد: '+report.supplierQuality+'%':'')+(report.supplierCostMultiplier?'\nمعامل تكلفة المورد: '+Math.round(report.supplierCostMultiplier*100)+'%':''):'')+(report.productCount?'\nمبيعات المنتجات: '+cash(report.productRevenue||0)+' · تكاليفها: '+cash(report.productCosts||0)+' · صافيها: '+cash(report.productProfit||0)+' · الوحدات المباعة: '+fmt(report.productUnits||0):'')+(Number.isFinite(Number(report.marketShare))?'\nالسوق: '+(report.marketIndustry||'متنوع')+' · الحصة: '+report.marketShare+'% · التغير: '+(report.marketShareChange>=0?'+':'')+report.marketShareChange+'% · المنافسون: '+(report.marketCompetitorCount||0)+' · الطلب: '+(report.marketDemandIndex||0)+' · المنافسة: '+(report.marketCompetitionIndex||0):'')+(report.marketRivalPlans?'\nتحركات المنافسين: '+report.marketRivalPlans:'')+(Number.isFinite(Number(report.industryRevenueMultiplier))?'\nمعاملات القطاع: الإيرادات ×'+Number(report.industryRevenueMultiplier).toFixed(2)+' · التشغيل ×'+Number(report.industryOperatingCostMultiplier).toFixed(2)+' · تكلفة الوحدة ×'+Number(report.industryUnitCostMultiplier).toFixed(2):'');
   const creditDetail=Number.isFinite(Number(report.businessLoanBalance))?'\nالتمويل التجاري: فائدة السنة '+cash(report.businessLoanInterest||0)+' · المدفوع '+cash(report.businessLoanInterestPaid||0)+' · المضاف للدين '+cash(report.businessLoanInterestAccrued||0)+' · الرصيد '+cash(report.businessLoanBalance):'';
   const taxDetail=Number(report.corporateTaxRate)>0?'\nضريبة الأرباح المحاكية: '+cash(report.corporateTax||0)+' على ربح خاضع '+cash(report.taxableProfit||0)+' بنسبة '+(Number(report.corporateTaxRate)*100).toFixed(1)+'% · المدفوع خلال السنة '+cash(report.corporateTaxPaid||0)+' · المتبقي '+cash(report.taxLiability||report.corporateTaxAccrued||0):'';
    const treasuryDetail=report.treasuryMode==='separate'?'\nخزينة الشركة: بداية السنة '+cash(report.openingCashBalance||0)+' · نهاية السنة '+cash(report.closingCashBalance||0)+' · تحويلات المالك '+cash(report.ownerContributions||0)+' · مسحوبات المالك '+cash(report.ownerWithdrawals||0):'';
@@ -2417,10 +2546,12 @@ function businessMarketMenu(){
  const market=businessMarketSnapshot(business);
  if(previousYear!==market.year)save();
  const change=Number(market.lastYearShareChange)||0;
- const detail='القطاع: '+market.industry+'\nمؤشر الطلب: '+market.demandIndex+'/115\nحدة المنافسة: '+market.competitionIndex+'/100\nعدد المنافسين الافتراضيين: '+market.competitorCount+'\nمؤشر سعر المنافسين: '+market.rivalPriceIndex+'% من السعر المرجعي\nحصتك التقديرية: '+market.marketShare+'%\nآخر تغير في الحصة: '+(change>=0?'+':'')+change+'%\nالسوق يتغير مع كل سنة مالية، وهذه مؤشرات محاكاة داخلية وليست بيانات سوق حقيقية.';
+ const rivals=(market.rivals||[]).filter(rival=>rival&&rival.active!==false).slice(0,6);
+ const rivalDetail=rivals.length?'\nالشركات المنافسة داخل المحاكاة:\n'+rivals.map((rival,index)=>(index+1)+'. '+rival.name+' — '+rival.product+'\nقرار السنة: '+rival.lastDecision+' · السعر '+rival.priceIndex+'% · الجودة '+rival.qualityIndex+'% · الطاقة '+rival.capacityIndex+'% · الحصة '+rival.marketShare+'%').join('\n\n'):'\nلا توجد كيانات منافسة مسجلة لهذا السوق بعد.';
+ const detail='القطاع: '+market.industry+'\nمؤشر الطلب: '+market.demandIndex+'/115\nحدة المنافسة: '+market.competitionIndex+'/100\nعدد الشركات المنافسة: '+market.competitorCount+'\nمتوسط سعر المنافسين: '+market.rivalPriceIndex+'% من السعر المرجعي\nمتوسط الجودة: '+market.rivalQualityIndex+'% · التسويق: '+market.rivalMarketingIndex+'% · الطاقة: '+market.rivalCapacityIndex+'%\nحصتك التقديرية: '+market.marketShare+'%\nآخر تغير في الحصة: '+(change>=0?'+':'')+change+'%'+rivalDetail+'\nتتحرك الشركات مع كل سنة مالية بقرارات مستقلة محفوظة داخل هذا النشاط. هذه محاكاة داخلية وليست بيانات سوق حقيقية.';
  modal('📈','السوق والمنافسون',detail,[
   choice('🧪','إدارة المنتجات','راجع أسعارك ونتائج المنتجات.',businessProductsMenu),
-  choice('📊','التقرير السنوي','راجع أثر السوق على الإيرادات والحصة.',()=>businessReportsMenu(business,business.title||'النشاط',businessMenu)),
+  choice('📊','التقرير السنوي','راجع أثر السوق وتحركات المنافسين.',()=>businessReportsMenu(business,business.title||'النشاط',businessMenu)),
   choice('↩️','رجوع لإدارة النشاط','',businessMenu)
  ]);
 }
