@@ -437,3 +437,18 @@ test('واجهة الهاتف الجديدة تطابق تخطيط الصفحا�
   assert.match(css, /grid-template-columns:minmax\(0,1fr\)/);
   assert.doesNotMatch(html, /BITLIFE|BitLife|Candywriter/);
 });
+
+
+test('إدارة المشروع تدعم عقود الموردين وتقاريرًا مالية سنوية محدودة ومتوافقة مع الحفظ القديم', () => {
+  assert.match(app, /const BUSINESS_SUPPLIER_CATALOG = \[/);
+  assert.match(app, /function businessSupplierMenu\(\)/);
+  assert.match(app, /function contractBusinessSupplier\(id\)/);
+  assert.match(app, /function recordBusinessFinancialReport\(entity,report\)/);
+  assert.match(app, /function businessReportsMenu\(entity,title,back\)/);
+  assert.match(app, /entity\.financialHistory=history\.slice\(-10\)/);
+  assert.match(app, /business\.supplier\.yearsLeft=Math\.max\(0,/);
+  assert.match(app, /choice\('📦','التعاقد مع مورد'/);
+  assert.match(app, /choice\('📊','سجل التقارير'/);
+  assert.match(app, /function normalizeBusinessEntity\(entity\)/);
+  assert.match(read('sw.js'), /hayah-shell-v22/);
+});
