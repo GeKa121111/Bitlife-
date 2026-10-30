@@ -330,7 +330,12 @@ const combatMoveCatalog=[
  {id:'iron-guard',title:'حراسة صلبة',style:'دفاع',strongAgainst:'قوة',power:43,rank:2,cost:6200,desc:'دفاع منضبط أمام أسلوب القوة.'},
  {id:'flash-step',title:'خطوة خاطفة',style:'سرعة',strongAgainst:'تقنية',power:50,rank:3,cost:9000,desc:'حركة متقدمة تعتمد على سرعة رد الفعل.'},
  {id:'champion-finish',title:'إنهاء البطولة',style:'قوة',strongAgainst:'دفاع',power:58,rank:4,cost:16000,desc:'حركة نهائية متقدمة لا تُفتح إلا قرب قمة الترتيب.'},
- {id:'ring-general',title:'إدارة الحلبة',style:'تقنية',strongAgainst:'دفاع',power:52,rank:3,cost:11000,desc:'قراءة تكتيكية توازن بين التوقيت والطاقة.'}
+ {id:'ring-general',title:'إدارة الحلبة',style:'تقنية',strongAgainst:'دفاع',power:52,rank:3,cost:11000,desc:'قراءة تكتيكية توازن بين التوقيت والطاقة.'},
+ {id:'low-kick',title:'ركلة جانبية',style:'سرعة',strongAgainst:'قوة',power:38,rank:0,cost:1200,desc:'حركة سريعة لاستغلال المسافة وإرباك المنافس القوي.'},
+ {id:'pivot-counter',title:'هجمة الدوران المضاد',style:'تقنية',strongAgainst:'سرعة',power:47,rank:1,cost:3600,desc:'غيّر زاوية المواجهة واستغل اندفاع الخصم.'},
+ {id:'shell-defense',title:'الصد المتحرك',style:'دفاع',strongAgainst:'تقنية',power:46,rank:2,cost:6900,desc:'حافظ على التوازن وامتص اندفاع المنافس الفني.'},
+ {id:'burst-combo',title:'تركيبة الاندفاع',style:'قوة',strongAgainst:'دفاع',power:55,rank:3,cost:10800,desc:'مجموعة هجومية قوية تحتاج توقيتًا وطاقة مناسبين.'},
+ {id:'last-round-read',title:'قراءة الجولة الأخيرة',style:'تقنية',strongAgainst:'دفاع',power:61,rank:4,cost:17500,desc:'خطة متقدمة تستغل ثغرات الدفاع في اللحظات الحاسمة.'}
 ];
 const combatCoachCatalog=[
  {id:'local',name:'كابتن كريم',title:'مدرب البداية',level:1,price:4500,annualCost:700,bonus:3,desc:'أساسيات التدريب والمتابعة.'},
@@ -344,6 +349,13 @@ const combatOpponentTypes=[
  {id:'technique',title:'الفني المتمرس',style:'تقنية',weakTo:'دفاع',emoji:'🧠'}
 ];
 const combatOpponentNames=['آدم منصور','مالك شريف','ياسين حمدي','عمر لطفي','كريم فوزي','سيف كمال','علي ناصر','زياد حسن','حمزة فريد','نوح عادل'];
+function combatDifficultyLabel(rating){
+ const score=clamp(Number(rating)||0);
+ if(score<35)return 'سهل';
+ if(score<55)return 'متوسط';
+ if(score<70)return 'صعب';
+ return 'نخبة';
+}
 function createCombatCareer(){
  return {rank:0,leaguePoints:0,streetCred:0,streetWins:0,leagueWins:0,wins:0,losses:0,knockouts:0,draws:0,
   technique:32+Math.floor(Math.random()*8),power:28+Math.floor(Math.random()*8),speed:31+Math.floor(Math.random()*8),defense:28+Math.floor(Math.random()*8),stamina:34+Math.floor(Math.random()*8),energy:100,
@@ -3630,6 +3642,7 @@ function startCombatBout(mode){
   const m=combatMoveCatalog.find(x=>x.id===id);if(!m)return null;
   return choice(m.id===c.selectedMove?'🎯':'🥋',m.title,'أسلوبك '+m.style+' · قوي أمام '+m.strongAgainst+' · القوة '+m.power+'.'+(m.strongAgainst===opponent.style?' ميزة تكتيكية أمام أسلوب المنافس الحالي.':''),()=>resolveCombatBout(mode,opponent,m.id),'',m.power);
  }).filter(Boolean);
+ opts.unshift({icon:'📊',title:'صعوبة المنافس',desc:combatDifficultyLabel(opponent.rating)+' · '+opponent.rating+'/100',progress:opponent.rating,disabled:true});
  opts.push(choice('↩️','انسحب من الاختيار','ارجع من غير دفع رسوم أو لعب النزال.',combatCareerMenu));
  modal(mode==='league'?'🏆':'🥊',mode==='league'?'نزال الدوري':'نزال الشوارع',opponent.emoji+' '+opponent.name+' · أسلوبه '+opponent.style+' · مستوى التحدي '+opponent.rating+'. اختار حركتك. '+(mode==='league'?'رسوم النزال '+cash(opponent.fee)+'.':'لا توجد رسوم دخول.'),opts);
 }
