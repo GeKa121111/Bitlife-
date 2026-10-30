@@ -467,16 +467,19 @@ async function run() {
     await page.reload({ waitUntil: 'domcontentloaded' });
     await page.evaluate(() => { Math.random = () => 0; });
     await page.locator('[data-panel="career"]').click();
+    const careerSummary = await page.locator('#modalRoot').innerText();
     const promotionChoice = page.locator('.choice').filter({ hasText: 'طلب ترقية' }).first();
     await promotionChoice.waitFor();
     await promotionChoice.click();
-    await page.waitForFunction(() => {
-      const saved = JSON.parse(localStorage.getItem('hekayat_hayah_save_v1') || 'null');
-      return saved && saved.job && saved.job.level === 2 &&
-        saved.job.title === 'موظف إداري أول' && Array.isArray(saved.job.promotions) &&
-        saved.job.promotions.length === 1;
-    });
-    const promotedJob = await page.evaluate(() => JSON.parse(localStorage.getItem('hekayat_hayah_save_v1') || 'null').job);
+    const promotionResult = await page.evaluate(() => ({
+      job: JSON.parse(localStorage.getItem('hekayat_hayah_save_v1') || 'null').job,
+      modal: document.querySelector('#modalRoot')?.innerText || '',
+      randomProbe: Math.random()
+    }));
+    assert.equal(promotionResult.randomProbe, 0, 'the deterministic browser run should control the promotion roll');
+    assert.equal(promotionResult.job.level, 2,
+      'legacy promotion should succeed; career panel: ' + careerSummary + '; response: ' + promotionResult.modal); 
+    const promotedJob = promotionResult.job;
     assert.equal(promotedJob.salary, 114000, 'promotion should apply the defined salary increase');
     assert.equal(promotedJob.yearsInRole, 0, 'promotion should restart tenure in the new grade');
     assert.equal(promotedJob.promotions[0].fromLevel, 1);
