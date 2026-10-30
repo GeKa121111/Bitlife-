@@ -584,3 +584,15 @@ test('إعدادات الصوت والاهتزاز اختيارية ومستقل
   assert.ok(app.includes("localStorage.setItem(SETTINGS_KEY,JSON.stringify(uiSettings))"));
   assert.match(read('sw.js'), /hayah-shell-v30/);
 });
+
+
+test('سجل الحياة يضيف الأحداث الجديدة تدريجيًا ويحافظ على عناصر السجل القديمة', () => {
+  assert.match(app, /let renderedLogSnapshot=null, renderedFeedElement=null/);
+  assert.match(app, /function logEntrySignature\(entry\)/);
+  assert.match(app, /function appendLogEntryNode\(feed,entry,lastAge\)/);
+  assert.match(app, /if\(renderedFeedElement===feed&&Array\.isArray\(previous\)\)/);
+  assert.match(app, /for\(let candidate=359;candidate>0;candidate--\)/);
+  assert.match(app, /renderedLogSnapshot=signatures;renderedFeedElement=feed/);
+  assert.match(html, /id="lifeFeed"[^>]*aria-relevant="additions" aria-atomic="false"/);
+  assert.match(read('sw.js'), /hayah-shell-v31/);
+});
