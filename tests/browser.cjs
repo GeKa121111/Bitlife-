@@ -1253,9 +1253,131 @@ async function run() {
     assert.ok(blockedSale.company && blockedSale.asset,
       'the company and its asset must remain when sale proceeds cannot settle the debt');
 
+    // Corporate tax is assessed only on positive pre-tax profit, paid from the selected business treasury, and carried when cash is insufficient.
+    const taxSetup = await page.evaluate(() => {
+      const key = 'hekayat_hayah_save_v1';
+      const saved = JSON.parse(localStorage.getItem(key) || 'null');
+      const profitableId = 'tax-profitable-test';
+      const arrearsId = 'tax-arrears-test';
+      const lossId = 'tax-loss-test';
+      const companies = [
+        { id: profitableId, assetId: profitableId, title: 'شركة اختبار ضريبي', sector: 'تقنية',
+          value: 100000000, level: 1, treasuryMode: 'separate', cashBalance: 1000000,
+          staff: [], products: [], facilities: [], taxLiability: 0, pendingTaxPayments: 0, financialHistory: [] },
+        { id: arrearsId, assetId: arrearsId, title: 'شركة اختبار متأخرات', sector: 'تجزئة',
+          value: 100000000, level: 1, treasuryMode: 'separate', cashBalance: -100000000,
+          taxLiability: 15000, pendingTaxPayments: 0, staff: [], products: [], facilities: [], financialHistory: [] },
+        { id: lossId, assetId: lossId, title: 'شركة اختبار خسارة', sector: 'تقنية',
+          value: 1000000, level: 1, treasuryMode: 'separate', cashBalance: 2000000000,
+          taxLiability: 0, pendingTaxPayments: 0, products: [], facilities: [], financialHistory: [],
+          staff: [{ id: 'tax-loss-staff', name: 'محاسب اختبار', role: 'finance', salary: 1000000000,
+            skill: 50, morale: 50, years: 0 }] }
+      ];
+      saved.companies.unshift(...companies);
+      saved.assets.unshift(...companies.map(company => ({ id: company.id, title: company.title, emoji: '🏢',
+        kind: 'business', value: company.value, upkeep: 0, bought: saved.age, companyPortfolio: true })));
+      localStorage.setItem(key, JSON.stringify(saved));
+      return { age: saved.age };
+    });
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await page.evaluate(() => { Math.random = () => 0.99; });
+    await page.locator('#ageUpBtn').click();
+    await page.waitForFunction(previousAge => {
+      const saved = JSON.parse(localStorage.getItem('hekayat_hayah_save_v1') || 'null');
+      return saved && saved.age === previousAge + 1 && saved.companies &&
+        ['tax-profitable-test', 'tax-arrears-test', 'tax-loss-test'].every(id => {
+          const company = saved.companies.find(item => item.id === id);
+          return company && Array.isArray(company.financialHistory) &&
+            company.financialHistory.some(report => report.year === previousAge + 1);
+        });
+    }, taxSetup.age);
+    const taxReports = await page.evaluate(() => {
+      const saved = JSON.parse(localStorage.getItem('hekayat_hayah_save_v1') || 'null');
+      return Object.fromEntries(['tax-profitable-test', 'tax-arrears-test', 'tax-loss-test'].map(id => {
+        const company = saved.companies.find(item => item.id === id);
+        return [id, { company, report: company.financialHistory[company.financialHistory.length - 1] }];
+      }));
+    });
+    const profitableTax = taxReports['tax-profitable-test'];
+    assert.equal(profitableTax.report.corporateTaxRate, .12);
+    assert.ok(profitableTax.report.taxableProfit > 0, 'a profitable company should have a positive tax base');
+    assert.equal(profitableTax.report.corporateTax,
+      Math.round(profitableTax.report.taxableProfit * profitableTax.report.corporateTaxRate));
+    assert.equal(profitableTax.report.corporateTaxPaid, profitableTax.report.corporateTax,
+      'the solvent company should pay its current assessment from its own treasury');
+    assert.equal(profitableTax.report.corporateTaxAccrued, 0);
+    assert.equal(profitableTax.company.taxLiability, 0);
+    assert.equal(profitableTax.report.profit, profitableTax.report.revenue - profitableTax.report.costs);
+    assert.equal(profitableTax.report.closingCashBalance,
+      profitableTax.report.openingCashBalance + profitableTax.report.revenue - profitableTax.report.costs,
+      'cash flow should reconcile after tax, with no owner transfer or launch fee in this fixture');
+
+    const arrearsTax = taxReports['tax-arrears-test'];
+    assert.ok(arrearsTax.report.corporateTax > 0);
+    assert.equal(arrearsTax.report.corporateTaxPaid, 0,
+      'a company with deeply negative cash must not use the owner balance to pay tax');
+    assert.equal(arrearsTax.report.corporateTaxAccrued, 15000 + arrearsTax.report.corporateTax);
+    assert.equal(arrearsTax.company.taxLiability, arrearsTax.report.corporateTaxAccrued);
+    assert.ok(arrearsTax.report.closingCashBalance < 0);
+
+    const lossTax = taxReports['tax-loss-test'];
+    assert.ok(lossTax.report.profit < 0, 'the high-payroll fixture should make an operating loss');
+    assert.equal(lossTax.report.taxableProfit, 0);
+    assert.equal(lossTax.report.corporateTax, 0, 'loss-making companies should not be assessed profit tax');
+
+    const taxPaymentSetup = await page.evaluate(() => {
+      const key = 'hekayat_hayah_save_v1';
+      const saved = JSON.parse(localStorage.getItem(key) || 'null');
+      const company = saved.companies.find(item => item.id === 'tax-profitable-test');
+      company.cashBalance = 100000;
+      company.taxLiability = 20000;
+      company.pendingTaxPayments = 0;
+      saved.bank = 777777;
+      localStorage.setItem(key, JSON.stringify(saved));
+      return { ownerBank: saved.bank };
+    });
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await page.locator('[data-panel="assets"]').click();
+    await page.locator('.choice').filter({ hasText: 'شركة اختبار ضريبي' }).click();
+    await page.locator('.choice').filter({ hasText: 'إدارة التشغيل' }).click();
+    await page.locator('.choice').filter({ hasText: 'خزينة النشاط ورأس المال' }).click();
+    await page.locator('.choice').filter({ hasText: 'سداد 50% من المتأخرات الضريبية' }).click();
+    const partialTaxPayment = await page.evaluate(() => {
+      const saved = JSON.parse(localStorage.getItem('hekayat_hayah_save_v1') || 'null');
+      const company = saved.companies.find(item => item.id === 'tax-profitable-test');
+      return { bank: saved.bank, cashBalance: company.cashBalance, taxLiability: company.taxLiability,
+        pendingTaxPayments: company.pendingTaxPayments };
+    });
+    assert.equal(partialTaxPayment.bank, taxPaymentSetup.ownerBank,
+      'manual tax settlement must not debit the owner balance for a separate treasury');
+    assert.equal(partialTaxPayment.cashBalance, 90000);
+    assert.equal(partialTaxPayment.taxLiability, 10000);
+    assert.equal(partialTaxPayment.pendingTaxPayments, 10000);
+
+    await page.locator('#closeModal').click();
+    const taxAgeBeforeSettlement = await page.evaluate(() =>
+      JSON.parse(localStorage.getItem('hekayat_hayah_save_v1')).age);
+    await page.locator('#ageUpBtn').click();
+    await page.waitForFunction(previousAge => {
+      const saved = JSON.parse(localStorage.getItem('hekayat_hayah_save_v1') || 'null');
+      const company = saved && saved.companies.find(item => item.id === 'tax-profitable-test');
+      return saved && saved.age === previousAge + 1 && company && company.financialHistory &&
+        company.financialHistory.some(report => report.year === previousAge + 1);
+    }, taxAgeBeforeSettlement);
+    const settledTax = await page.evaluate(() => {
+      const saved = JSON.parse(localStorage.getItem('hekayat_hayah_save_v1') || 'null');
+      const company = saved.companies.find(item => item.id === 'tax-profitable-test');
+      return { report: company.financialHistory[company.financialHistory.length - 1],
+        taxLiability: company.taxLiability, pendingTaxPayments: company.pendingTaxPayments };
+    });
+    assert.ok(settledTax.report.corporateTaxPaid >= 10000,
+      'the next report should include the earlier manual tax payment');
+    assert.equal(settledTax.taxLiability, 0);
+    assert.equal(settledTax.pendingTaxPayments, 0);
+
     assert.deepEqual(pageErrors, [], 'the browser run should complete without uncaught JavaScript errors');
 
-    console.log('PASS: mobile layout, legacy v1 load, persistence, rewind, JSON import, inheritance, insolvent estate, career promotion migration, annual supplier market, persistent competitor market, facilities and production capacity, researched and instinct product launches, product pricing, annual product sales, business reports, independent portfolio-company operations, and business credit accrual, repayment, persistence, sale settlement, unpaid-interest capitalization, and underwater-sale protection.');
+    console.log('PASS: mobile layout, legacy v1 load, persistence, rewind, JSON import, inheritance, insolvent estate, career promotion migration, annual supplier market, persistent competitor market, facilities and production capacity, researched and instinct product launches, product pricing, annual product sales, business reports, independent portfolio-company operations, and business credit accrual, repayment, persistence, sale settlement, unpaid-interest capitalization, underwater-sale protection, industry tax assessment, tax arrears, loss exemption, treasury-only tax payment, and annual tax reconciliation.');
     await context.close();
   } finally {
     if (browser) await browser.close();
