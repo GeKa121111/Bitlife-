@@ -123,7 +123,9 @@ assert.match(app, /if\(state\.specialCareer\.id==='fighter'\)\{opts\.unshift\(ch
 assert.match(app, /state\.combatCareer=c\.id==='fighter'\?createCombatCareer\(\):null/, 'changing to the fighter career should initialize the dedicated profile');
 assert.match(app, /c\.streetCred\+=12/, 'street wins should build street credibility');
 assert.match(app, /Losing a street fight does not remove street credibility/, 'street losses should not remove credibility');
-assert.match(app, /probability=clamp\(50\+\(playerScore-opponentScore\)\*1\.65\+counterBonus,12,88\)/, 'combat outcomes should use stats and counter bonuses with bounded odds');
+assert.ok(app.includes('probabilityOverride!==null&&probabilityOverride!==undefined'), 'completed round scores should override the legacy one-shot probability');
+assert.ok(app.includes('clamp(50+(playerScore-opponentScore)*1.65+counterBonus,12,88)'), 'the legacy fallback should remain bounded for older direct calls');
+assert.ok(app.includes('clamp(50+((completed.playerScore-completed.opponentScore)/3)*1.65,12,88)'), 'three-round outcomes should use the average score margin');
 assert.match(app, /if\(cc\.coach&&cc\.coach\.yearsLeft>0\)/, 'coach contracts should be accounted for over time');
 assert.match(app, /combatProfile:state\.specialCareer\.id==='fighter'\?JSON\.parse\(JSON\.stringify\(state\.combatCareer\|\|null\)\):null/, 'switching career paths should archive the fighter profile');
 const combatMoveBlock = app.match(/const combatMoveCatalog=\[([\s\S]*?)\n\];/);
