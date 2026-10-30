@@ -809,6 +809,7 @@ test('مجتمع المقاتلين يحفظ العلاقات والتحالفا
   assert.ok(app.includes("startCombatBout('street',fighter.id)"));
   assert.ok(app.includes('communityFighter.respect=clamp(communityFighter.respect+(won?10:3))'));
   assert.ok(app.includes('communityFighter.tension=clamp(communityFighter.tension+(won?-12:14))'));
+  assert.ok(app.includes('communityFighterId:session&&session.communityFighterId?session.communityFighterId:null'));
   assert.ok(app.includes("const KEY = 'hekayat_hayah_save_v1';"));
   assert.ok(app.includes('return {version:1,lifeId:'));
   assert.match(read('sw.js'), /hayah-shell-v47/);
