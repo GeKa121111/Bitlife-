@@ -529,9 +529,10 @@ test('الفروع والمصانع محفوظة لكل نشاط وتزيد طا
 
 test('استثمار المنشأة رأسمالي منفصل عن صافي الربح والصيانة السنوية', () => {
   const annualSimulation = functionSource('simulateBusinessEntityYear', 'advanceAge');
-  assert.match(annualSimulation, /const costs=operatingCosts\+staffPayroll\+facilityUpkeep\+productResult\.costs\+productResult\.upfrontCosts/);
+  assert.match(annualSimulation, /const operatingCostsTotal=operatingCosts\+staffPayroll\+facilityUpkeep\+productResult\.costs/);
+  assert.match(annualSimulation, /const costs=operatingCostsTotal\+productResult\.upfrontCosts\+businessLoanInterest/);
   assert.match(annualSimulation, /facilityInvestmentCosts/);
-  assert.match(annualSimulation, /state\.bank\+=profit\+productResult\.upfrontCosts/);
+  assert.match(annualSimulation, /state\.bank\+=profit\+productResult\.upfrontCosts\+businessLoanInterestAccrued/);
 });
 
 test('نسب طاقة المنشآت العشرية لا تُقرّب إلى أعداد صحيحة', () => {
@@ -613,22 +614,24 @@ test('اقتصاد الشركات يختلف حسب الصناعة ويظهر أ
 
 
 test('تمويل النشاط مستقل لكل شركة ويُحتسب مرة واحدة مع حماية الحفظ القديم', () => {
-  assert.match(app, /function businessCreditBalance\\(business\\)/);
-  assert.match(app, /function businessCreditLimit\\(business\\)/);
-  assert.match(app, /function businessCreditRate\\(business\\)/);
-  assert.match(app, /function businessCreditMenu\\(\\)/);
-  assert.match(app, /function borrowBusinessCredit\\(amount\\)/);
-  assert.match(app, /function repayBusinessCredit\\(amount\\)/);
-  assert.match(app, /entity\\.credit=principal\\+accruedInterest>0\\?/);
-  assert.match(app, /businessLoanInterestPaid/);
-  assert.match(app, /businessLoanInterestAccrued/);
-  assert.match(app, /businessLoanBalance/);
-  assert.match(app, /Number\\(credit\\.lastInterestAge\\)!==Number\\(state\\.age\\)/);
-  assert.match(app, /grossProceeds-creditBalance/);
-  assert.match(app, /سداد كامل الرصيد/);
-  assert.match(app, /return \\{version:1,lifeId:/);
+  [
+    "function businessCreditBalance(business)",
+    "function businessCreditLimit(business)",
+    "function businessCreditRate(business)",
+    "function businessCreditMenu()",
+    "function borrowBusinessCredit(amount)",
+    "function repayBusinessCredit(amount)",
+    "entity.credit=principal+accruedInterest>0?",
+    "businessLoanInterestPaid",
+    "businessLoanInterestAccrued",
+    "businessLoanBalance",
+    "Number(credit.lastInterestAge)!==Number(state.age)",
+    "grossProceeds-creditBalance",
+    "سداد كامل الرصيد",
+    "return {version:1,lifeId:"
+  ].forEach(fragment => assert.ok(app.includes(fragment), 'missing business credit behavior: ' + fragment));
   const annualSimulation = functionSource('simulateBusinessEntityYear', 'advanceAge');
-  assert.match(annualSimulation, /const costs=operatingCostsTotal\\+productResult\\.upfrontCosts\\+businessLoanInterest/);
-  assert.match(annualSimulation, /state\\.bank\\+=profit\\+productResult\\.upfrontCosts\\+businessLoanInterestAccrued/);
-  assert.match(read('sw.js'), /hayah-shell-v33/);
+  assert.ok(annualSimulation.includes("const costs=operatingCostsTotal+productResult.upfrontCosts+businessLoanInterest"));
+  assert.ok(annualSimulation.includes("state.bank+=profit+productResult.upfrontCosts+businessLoanInterestAccrued"));
+  assert.ok(read('sw.js').includes("hayah-shell-v33"));
 });
