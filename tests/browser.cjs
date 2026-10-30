@@ -445,9 +445,46 @@ async function run() {
     assert.equal(insolventInheritance.recorded, 0, 'insolvent estate should record zero inheritance');
     assert.equal(insolventInheritance.bank + insolventInheritance.assetValue + insolventInheritance.investmentValue, insolventInheritance.recorded, 'insolvent inheritance components should reconcile to zero');
     assert.equal(insolventInheritance.debt, 0, 'the heir must not inherit the parent debt as personal debt');
+    // A legacy job record should migrate into the new career ladder and accept a promotion request.
+    await page.evaluate(() => {
+      const key = 'hekayat_hayah_save_v1';
+      const saved = JSON.parse(localStorage.getItem(key) || 'null');
+      saved.lifeId = 676767;
+      saved.name = 'اختبار المسار المهني';
+      saved.age = 32;
+      saved.yearCount = 32;
+      saved.status = 'حي';
+      saved.cause = null;
+      saved.retired = false;
+      saved.job = { id: 'admin', title: 'موظف إداري', salary: 100000, startAge: 30 };
+      saved.performance = 95;
+      saved.stats = { ...saved.stats, smart: 85 };
+      saved.education = { ...saved.education, level: 3, yearsLeft: 0, clubs: [] };
+      saved.timeMachineSnapshots = [];
+      saved.log = [{ icon: '🧪', title: 'اختبار الترقية', text: 'حفظ قديم بلا بيانات درجات مهنية.', type: 'special', age: 32 }];
+      localStorage.setItem(key, JSON.stringify(saved));
+    });
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await page.evaluate(() => { Math.random = () => 0; });
+    await page.locator('[data-panel="career"]').click();
+    const promotionChoice = page.locator('.choice').filter({ hasText: 'طلب ترقية' }).first();
+    await promotionChoice.waitFor();
+    await promotionChoice.click();
+    await page.waitForFunction(() => {
+      const saved = JSON.parse(localStorage.getItem('hekayat_hayah_save_v1') || 'null');
+      return saved && saved.job && saved.job.level === 2 &&
+        saved.job.title === 'موظف إداري أول' && Array.isArray(saved.job.promotions) &&
+        saved.job.promotions.length === 1;
+    });
+    const promotedJob = await page.evaluate(() => JSON.parse(localStorage.getItem('hekayat_hayah_save_v1') || 'null').job);
+    assert.equal(promotedJob.salary, 114000, 'promotion should apply the defined salary increase');
+    assert.equal(promotedJob.yearsInRole, 0, 'promotion should restart tenure in the new grade');
+    assert.equal(promotedJob.promotions[0].fromLevel, 1);
+    assert.equal(promotedJob.promotions[0].toLevel, 2);
+
     assert.deepEqual(pageErrors, [], 'the browser run should complete without uncaught JavaScript errors');
 
-    console.log('PASS: mobile layout, legacy v1 load, persistence, rewind, valid/invalid JSON import, multi-asset inheritance, and insolvent-estate handling.');
+    console.log('PASS: mobile layout, legacy v1 load, persistence, rewind, JSON import, inheritance, insolvent estate, and career promotion migration.');
     await context.close();
   } finally {
     if (browser) await browser.close();
