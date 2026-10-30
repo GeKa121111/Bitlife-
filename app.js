@@ -2202,7 +2202,7 @@ function businessMarketMenu(){
  const market=businessMarketSnapshot(business);
  if(previousYear!==market.year)save();
  const change=Number(market.lastYearShareChange)||0;
- const detail='القطاع: '+market.industry+'\\nمؤشر الطلب: '+market.demandIndex+'/115\\nحدة المنافسة: '+market.competitionIndex+'/100\\nعدد المنافسين المحاكاة: '+market.competitorCount+'\\nمؤشر سعر المنافسين: '+market.rivalPriceIndex+'% من السعر المرجعي\\nحصتك التقديرية: '+market.marketShare+'%\\nآخر تغير في الحصة: '+(change>=0?'+':'')+change+'%\\nالسوق يتغير مع كل سنة مالية، وهذه مؤشرات محاكاة داخلية وليست بيانات سوق حقيقية.';
+ const detail='القطاع: '+market.industry+'\nمؤشر الطلب: '+market.demandIndex+'/115\nحدة المنافسة: '+market.competitionIndex+'/100\nعدد المنافسين الافتراضيين: '+market.competitorCount+'\nمؤشر سعر المنافسين: '+market.rivalPriceIndex+'% من السعر المرجعي\nحصتك التقديرية: '+market.marketShare+'%\nآخر تغير في الحصة: '+(change>=0?'+':'')+change+'%\nالسوق يتغير مع كل سنة مالية، وهذه مؤشرات محاكاة داخلية وليست بيانات سوق حقيقية.';
  modal('📈','السوق والمنافسون',detail,[
   choice('🧪','إدارة المنتجات','راجع أسعارك ونتائج المنتجات.',businessProductsMenu),
   choice('📊','التقرير السنوي','راجع أثر السوق على الإيرادات والحصة.',()=>businessReportsMenu(business,business.title||'النشاط',businessMenu)),
