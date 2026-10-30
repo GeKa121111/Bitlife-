@@ -1031,7 +1031,7 @@ async function run() {
       const key = 'hekayat_hayah_save_v1';
       const saved = JSON.parse(localStorage.getItem(key) || 'null');
       const company = saved && saved.companies && saved.companies.find(item => item.id === 'portfolio-company-browser');
-      assert.ok(company, 'the portfolio company should still exist before the credit test');
+      if (!company) throw new Error('the portfolio company should still exist before the credit test');
       saved.bank = 1000000;
       company.credit = null;
       localStorage.setItem(key, JSON.stringify(saved));
