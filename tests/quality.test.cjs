@@ -751,16 +751,18 @@ test('مسيرة القتال تعرض صعوبة المنافس وتضيف حر
 
 
 test('المهرجان الأسبوعي يدوّر المواسم ويطبع الحفظ القديم ويمنع المكافآت المكررة', () => {
-  assert.match(app, /function seasonalWeekDetails\\(date\\)/);
-  assert.match(app, /function ensureSeasonalEvent\\(\\)/);
-  assert.match(app, /function seasonalEventMenu\\(\\)/);
-  assert.match(app, /function claimSeasonalEventBadge\\(id\\)/);
-  assert.match(app, /data\\.seasonalEvent=normalizeSeasonalEvent\\(data\\.seasonalEvent\\)/);
-  assert.match(app, /seasonalEvent:null,seasonalEventArchive:\\[\\]/);
-  assert.match(app, /choice\\('🏅','مهرجان صُنّاع الحكاية'/);
-  assert.match(app, /function seasonalEventArchiveMenu\\(\\)/);
-  assert.match(app, /const KEY = 'hekayat_hayah_save_v1';/);
-  assert.match(app, /return \\{version:1,lifeId:/);
+  [
+    "function seasonalWeekDetails(date)",
+    "function ensureSeasonalEvent()",
+    "function seasonalEventMenu()",
+    "function claimSeasonalEventBadge(id)",
+    "data.seasonalEvent=normalizeSeasonalEvent(data.seasonalEvent)",
+    "seasonalEvent:null,seasonalEventArchive:[]",
+    "choice('🏅','مهرجان صُنّاع الحكاية'",
+    "function seasonalEventArchiveMenu()",
+    "const KEY = 'hekayat_hayah_save_v1';",
+    "return {version:1,lifeId:"
+  ].forEach(fragment => assert.ok(app.includes(fragment), 'missing weekly event behavior: ' + fragment));
 
   const helpers = app.slice(app.indexOf('function challengeDateKey('), app.indexOf('function ensureDailyChallengeBoard('));
   const context = {
@@ -797,6 +799,7 @@ test('المهرجان الأسبوعي يدوّر المواسم ويطبع ا�
   assert.equal(archiveContext.normalizedArchive.length,8);
   assert.match(read('sw.js'), /hayah-shell-v43/);
 });
+
 
 test('السوشيال ميديا تحفظ صدى الجمهور وتدعم مسار SoundCloud دون كسر حفظ v1', () => {
   assert.match(app, /function normalizeSocialFeed\(raw\)/);
