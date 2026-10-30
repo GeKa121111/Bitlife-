@@ -9,6 +9,11 @@ const PERKS_KEY = 'hayah_permanent_perks_v1';
 const PERK_IDS = ['challengeVault','goldTheme','expandedTime','actorPack','bossMode','healthShield','goldenWrench','goldenPassport','goldenPiggyBank','goldenNeko','fameFortuneBundle','billionairesBundle','crimePaysBundle','partyAnimalBundle','hollywoodStar','goldenResume','goldenDiploma','friendshipBracelet','goldenPacifier','jailCard','businessPack','landlordPack','investorPack','mafiaPack','blackMarketPack','assassinsBlade','zooExpansionPack','superstarMode','cultPack','casinoPack','godMode','bitizenship','movieDirectorPack','dealerPack','auraRing','fighterPack','proAthletePack','politicianPack','astronautPack','modelPack','musicianPack','musicProducerPack','vampireMode','outdoorsPack','gatedCommunityPack'];
 const PERK_TOGGLE_IDS = ['goldTheme','healthShield','goldenWrench','bossMode','goldenNeko','hollywoodStar','goldenResume','goldenPacifier','godMode','bitizenship'];
 const JOB_PACK_IDS = ['actorPack','fighterPack','proAthletePack','politicianPack','astronautPack','businessPack','dealerPack','mafiaPack','movieDirectorPack','modelPack','musicianPack','musicProducerPack'];
+const BUSINESS_SUPPLIER_CATALOG = [
+ {id:'economy',title:'مورد اقتصادي',emoji:'💸',quality:58,costMultiplier:.84,feeRate:.006,description:'تكلفة أقل تساعد السيولة، مع جودة متوسطة تحتاج متابعة.'},
+ {id:'balanced',title:'مورد متوازن',emoji:'📦',quality:76,costMultiplier:.96,feeRate:.01,description:'توازن بين الجودة والتكلفة واستقرار التوريد.'},
+ {id:'premium',title:'مورد متخصص',emoji:'⭐',quality:94,costMultiplier:1.12,feeRate:.016,description:'جودة مرتفعة تدعم المبيعات، لكن بسعر تشغيل أعلى.'}
+];
 const JOB_PACK_PROMOS = {
  actorPack:{title:'Actor Job Pack',emoji:'🎭',cost:25000,description:'Are you the center of attention? Do you live for drama? Hire an agent, book an acting gig, and rise to fame with this job pack!',features:['Hire a professional agent!','Book auditions and acting gigs!','Film commercials and rise to fame!']},
  fighterPack:{title:'Ultimate Fighter Mode',emoji:'🥊',cost:45000,description:'Step into the cage and fight your way to the top!',features:['Become a WORLD CHAMPION!','Brawl in STREET FIGHTS!','LEARN and level up 200+ moves!','FIGHT in an epic MMA mini game!','Hire a PROFESSIONAL coach!','ENGAGE with other fighters!']},
@@ -546,6 +551,17 @@ function normalizeCoreState(data){
  data.followers=Math.max(0,Number(data.followers)||0);data.socialMediaPosts=Math.max(0,Number(data.socialMediaPosts)||0);
  data.socialMediaAccount=SOCIAL_PLATFORM_CATALOG.some(platform=>data.socialPlatforms[platform.id].active);
  if(!Array.isArray(data.companies))data.companies=[];
+ const normalizeBusinessEntity=entity=>{
+  if(!entity||typeof entity!=='object'||Array.isArray(entity))return;
+  if(!Array.isArray(entity.financialHistory))entity.financialHistory=[];
+  entity.financialHistory=entity.financialHistory.filter(report=>report&&typeof report==='object'&&Number.isFinite(Number(report.year))&&Number.isFinite(Number(report.revenue))&&Number.isFinite(Number(report.costs))&&Number.isFinite(Number(report.profit))).slice(-10);
+  if(entity.supplier&&typeof entity.supplier==='object'&&!Array.isArray(entity.supplier)){
+   const supplier=BUSINESS_SUPPLIER_CATALOG.find(item=>item.id===entity.supplier.id);
+   entity.supplier=supplier?{id:supplier.id,yearsLeft:clamp(Number(entity.supplier.yearsLeft)||3,1,3),startedAtAge:Math.max(0,Number(entity.supplier.startedAtAge)||0)}:null;
+  }else entity.supplier=null;
+ };
+ normalizeBusinessEntity(data.business);
+ data.companies.forEach(normalizeBusinessEntity);
  if(!data.mafia||typeof data.mafia!=='object'||Array.isArray(data.mafia))data.mafia={joined:false,rank:0,rep:0,earnings:0};
  data.mafia.joined=!!data.mafia.joined;data.mafia.rank=clamp(Number(data.mafia.rank)||0,0,4);data.mafia.rep=clamp(Number(data.mafia.rep)||0,0,100);data.mafia.earnings=Math.max(0,Number(data.mafia.earnings)||0);
  if(!data.museum||typeof data.museum!=='object'||Array.isArray(data.museum))data.museum={opened:false,displayed:[]};
@@ -902,6 +918,20 @@ function familyTreeMenu(){
  modal('🌳','شجرة العائلة','استعرض الجيل السابق وشخصيتك الحالية والشريك والأبناء، واضغط على فرد من القائمة لإدارة علاقتك به.',opts,true,extra);
 }
 
+function recordBusinessFinancialReport(entity,report){
+ if(!entity||typeof entity!=='object')return;
+ const history=Array.isArray(entity.financialHistory)?entity.financialHistory:[];
+ const revenue=Math.max(0,Math.round(Number(report.revenue)||0));
+ const costs=Math.max(0,Math.round(Number(report.costs)||0));
+ const profit=Math.round(Number(report.profit)||0);
+ const openingValue=Math.max(0,Math.round(Number(report.openingValue)||0));
+ const closingValue=Math.max(0,Math.round(Number(report.closingValue)||0));
+ const margin=revenue>0?Math.round(profit/revenue*1000)/10:0;
+ const growthRate=openingValue>0?Math.round((closingValue-openingValue)/openingValue*1000)/10:0;
+ history.push({year:Math.max(0,Math.floor(Number(report.year)||0)),openingValue,revenue,costs,profit,margin,growthRate,closingValue,level:Math.max(1,Math.floor(Number(report.level)||1)),supplier:typeof report.supplier==='string'?report.supplier:''});
+ entity.financialHistory=history.slice(-10);
+}
+
 function advanceAge(){
  if(!validState())return;
  state.age++;state.yearCount++;if(perkEnabled('hollywoodStar')&&(state.job||state.specialCareer))state.fame=100;
@@ -937,8 +967,35 @@ function advanceAge(){
  if(state.museum&&state.museum.opened){const visitorIncome=(state.museum.displayed||[]).length*2400;state.bank+=visitorIncome;if(visitorIncome)log('🏛️','دخل المتحف السنوي','جاء '+cash(visitorIncome)+' من الزوار بفضل المقتنيات المعروضة.','good');}if(rentIncome>0){state.bank+=rentIncome;log('🏠','دخل إيجار سنوي','دخل لك '+cash(rentIncome)+' من تأجير العقارات.','good');}
  if(state.debt>0){const interest=Math.max(100,Math.round(state.debt*.08));state.debt+=interest;log('🏦','فوائد الديون','زادت ديونك بمقدار '+cash(interest)+' بسبب الفوائد. إجمالي الدين '+cash(state.debt)+'.','bad');}
  if((state.investments||[]).length){let totalGain=0;state.investments.forEach(inv=>{const before=inv.value;let move=inv.kind==='عملات رقمية'?(Math.random()*.9-.35):inv.kind==='أسهم'?(Math.random()*.3-.09):inv.kind==='سندات'?(Math.random()*.08-.02):inv.kind==='مخاطرة عالية'?(Math.random()*.46-.18):(Math.random()*.24-.04);if(inv.strategy==='long')move=move*.62+.008;else if(inv.strategy==='short')move=move*1.2;if(state.investmentAdvisor&&state.investmentAdvisor.hired)move=move>=0?move*1.08:move*.72;inv.value=Math.max(0,Math.round(inv.value*(1+move)));totalGain+=inv.value-before;});if(totalGain)log('📈','تقرير الاستثمارات',(totalGain>=0?'استثماراتك زادت بقيمة ':'استثماراتك خسرت بقيمة ')+cash(Math.abs(totalGain))+'. السوق بيتحرك صعودًا وهبوطًا. ',totalGain>=0?'good':'bad');}
- if(state.business){const level=Math.max(1,state.business.level||1);const revenue=Math.round(state.business.value*(.03+Math.random()*.08)*(.8+level*.15));const costs=Math.round(state.business.value*(.02+Math.random()*.05)*(1+Math.max(0,level-1)*.08));const profit=revenue-costs;state.bank+=profit;state.business.value=Math.max(1000,Math.round(state.business.value*(profit>=0?1.04:.97)));log('🏪','التقرير السنوي للمشروع',(profit>=0?'صافي الأرباح ':'صافي الخسارة ')+cash(Math.abs(profit))+' · مستوى الإدارة '+level+'.','special');}
- (state.companies||[]).forEach(company=>{const revenue=Math.round(company.value*(.03+Math.random()*.10)*(.85+(company.level||1)*.12));const costs=Math.round(company.value*(.025+Math.random()*.055)*(1+Math.max(0,(company.level||1)-1)*.06));const profit=revenue-costs;state.bank+=profit;company.value=Math.max(1000,Math.round(company.value*(profit>=0?1.04:.97)));const asset=state.assets.find(a=>a.id===company.id);if(asset)asset.value=company.value;log('🏢','التقرير السنوي: '+company.title,(profit>=0?'صافي الأرباح ':'صافي الخسارة ')+cash(Math.abs(profit))+'.','special');});
+ if(state.business){
+  const business=state.business,level=Math.max(1,business.level||1),openingValue=Math.max(1000,Number(business.value)||1000);
+  const supplier=BUSINESS_SUPPLIER_CATALOG.find(item=>business.supplier&&item.id===business.supplier.id);
+  const baseRevenue=Math.round(openingValue*(.03+Math.random()*.08)*(.8+level*.15));
+  const baseCosts=Math.round(openingValue*(.02+Math.random()*.05)*(1+Math.max(0,level-1)*.08));
+  const revenue=supplier?Math.round(baseRevenue*(.9+supplier.quality/100*.15)):baseRevenue;
+  const costs=supplier?Math.round(baseCosts*supplier.costMultiplier):baseCosts;
+  const profit=revenue-costs;
+  state.bank+=profit;
+  business.value=Math.max(1000,Math.round(openingValue*(profit>=0?1.04:.97)));
+  recordBusinessFinancialReport(business,{year:state.age,openingValue,revenue,costs,profit,closingValue:business.value,level,supplier:supplier?supplier.title:''});
+  const supplierLabel=supplier?' · المورد '+supplier.title:'';
+  log('🏪','التقرير السنوي للمشروع','الإيرادات '+cash(revenue)+' · المصروفات '+cash(costs)+' · '+(profit>=0?'صافي الربح ':'صافي الخسارة ')+cash(Math.abs(profit))+' · مستوى الإدارة '+level+supplierLabel+'.','special');
+  if(supplier){
+   business.supplier.yearsLeft=Math.max(0,(Number(business.supplier.yearsLeft)||3)-1);
+   if(business.supplier.yearsLeft===0){business.supplier=null;log('📦','انتهاء عقد المورد','انتهى عقد المورد. راجع خيارات التوريد قبل السنة المالية القادمة.','bad');}
+  }
+ }
+ (state.companies||[]).forEach(company=>{
+  const level=Math.max(1,company.level||1),openingValue=Math.max(1000,Number(company.value)||1000);
+  const revenue=Math.round(openingValue*(.03+Math.random()*.10)*(.85+level*.12));
+  const costs=Math.round(openingValue*(.025+Math.random()*.055)*(1+Math.max(0,level-1)*.06));
+  const profit=revenue-costs;
+  state.bank+=profit;
+  company.value=Math.max(1000,Math.round(openingValue*(profit>=0?1.04:.97)));
+  recordBusinessFinancialReport(company,{year:state.age,openingValue,revenue,costs,profit,closingValue:company.value,level});
+  const asset=state.assets.find(a=>a.id===company.id);if(asset)asset.value=company.value;
+  log('🏢','التقرير السنوي: '+company.title,'الإيرادات '+cash(revenue)+' · المصروفات '+cash(costs)+' · '+(profit>=0?'صافي الربح ':'صافي الخسارة ')+cash(Math.abs(profit))+'.','special');
+ });
  if((state.pets||[]).length){const care=state.pets.length*350;state.bank-=care;state.pets.forEach(p=>{p.age=(p.age||0)+1;p.happiness=clamp((p.happiness||70)+(chance(.7)?3:-6));p.health=clamp((p.health||70)-(p.age>10?2:0)+(p.happiness>40&&chance(.5)?1:-1));});const lost=state.pets.filter(p=>(p.species==='طائر'?p.age>19:p.age>15)&&chance(.35));if(lost.length){state.pets=state.pets.filter(p=>!lost.includes(p));lost.forEach(p=>log('🐾','وداع صديق','توفي '+p.name+' بعد سنوات من الرفقة. ستفضل ذكراه جزءًا من حكايتك.','bad'));}if(state.bank<0)log('🐾','مصاريف الحيوانات','رعاية الحيوانات كلفتك '+cash(care)+' هذا العام.','bad');}
  if((state.hobbies||[]).length&&chance(.7)){state.stats.happiness=clamp(state.stats.happiness+1);if(state.hobbies.some(h=>h.id==='reading'||h.id==='writing'))state.stats.smart=clamp(state.stats.smart+1);}
  if(state.partner){const loyalty=clamp(state.partner.loyalty??55),reliability=clamp(state.partner.reliability??55),generosity=clamp(state.partner.generosity??50),petulance=clamp(state.partner.petulance??50),jealousy=clamp(state.partner.jealousy??40);const stability=clamp(36+loyalty*.22+reliability*.20+generosity*.12-petulance*.16-jealousy*.10+(state.partner.personality==='حنون'?8:0),8,92);const drift=state.partner.relationshipLevel<35?-3:(chance(stability/100)?1:-1);state.partner.relationshipLevel=clamp((state.partner.relationshipLevel||50)+drift);if(jealousy>=75&&state.partner.relationshipLevel<45&&chance(.12)){state.partner.relationshipLevel=clamp(state.partner.relationshipLevel-3);stat('happiness',-2);log('💬','غيرة وسوء تفاهم','الغيرة العالية عند '+state.partner.name+' سببت سوء تفاهم محتاج حوارًا وطمأنة.','bad');}if(state.married&&state.partner.relationshipLevel<15&&chance(clamp(10+petulance*.20+jealousy*.28,10,70)/100)){state.married=false;log('💔','أزمة زوجية','الخلافات زادت بينك وبين '+state.partner.name+'. محتاجين حوار واهتمام قبل ما العلاقة تنهار.','bad');}}
@@ -1466,15 +1523,52 @@ function acquireCompany(title,sector,value,emoji){
  log('🏢','استحواذ على شركة','اشتريت '+title+' في قطاع '+sector+'. الأرباح تعتمد على الإدارة والتقلبات السنوية.','special');achievement('تنويع محفظة الشركات');save();render();companyPortfolioMenu();
 }
 
+function businessSupplierMenu(){
+ if(!state.business){info('🏪','لا يوجد مشروع','امتلك مشروعًا أولًا حتى تختار مورّدًا.');return;}
+ const business=state.business;
+ const current=BUSINESS_SUPPLIER_CATALOG.find(item=>business.supplier&&item.id===business.supplier.id);
+ const opts=BUSINESS_SUPPLIER_CATALOG.map(supplier=>{
+  const fee=Math.max(500,Math.round(Math.max(0,Number(business.value)||0)*supplier.feeRate));
+  const active=current&&current.id===supplier.id&&Number(business.supplier.yearsLeft)>0;
+  return choice(supplier.emoji,supplier.title+(active?' · المتعاقد الحالي':''),supplier.description+' الجودة '+supplier.quality+'% · معامل التكلفة '+Math.round(supplier.costMultiplier*100)+'% · مدة العقد 3 سنوات.',()=>contractBusinessSupplier(supplier.id),cash(fee));
+ });
+ opts.push(choice('↩️','رجوع لإدارة المشروع','',businessMenu));
+ modal('📦','اختيار المورد','قارن بين الجودة والتكلفة قبل توقيع عقد جديد. رسوم التعاقد تُدفع مرة واحدة، والعقد يستمر ثلاث سنوات.',opts);
+}
+function contractBusinessSupplier(id){
+ closeModal();if(!state.business)return;
+ const supplier=BUSINESS_SUPPLIER_CATALOG.find(item=>item.id===id);
+ if(!supplier){info('⚠️','مورد غير متاح','اختار موردًا من القائمة الحالية.');return;}
+ if(state.business.supplier&&state.business.supplier.id===id&&Number(state.business.supplier.yearsLeft)>0){info('📦','العقد ما زال ساريًا','أنت متعاقد بالفعل مع '+supplier.title+'.');return;}
+ const fee=Math.max(500,Math.round(Math.max(0,Number(state.business.value)||0)*supplier.feeRate));
+ if(state.bank<fee){info('💳','الرصيد غير كافٍ','رسوم التعاقد مع '+supplier.title+' هي '+cash(fee)+'.');return;}
+ state.bank-=fee;
+ state.business.supplier={id:supplier.id,yearsLeft:3,startedAtAge:state.age};
+ log('📦','توقيع عقد توريد','تعاقدت مع '+supplier.title+' لمدة 3 سنوات. الجودة والتكلفة هتظهر آثارهم في التقارير السنوية.','good');
+ save();render();businessMenu();
+}
+function businessReportsMenu(entity,title,back){
+ const reports=(Array.isArray(entity&&entity.financialHistory)?entity.financialHistory:[]).slice(-5).reverse();
+ if(!reports.length){info('📊','لا توجد تقارير بعد','التقرير المالي الأول هيظهر بعد مرور سنة مالية كاملة.');return;}
+ const opts=reports.map(report=>choice('📅','السنة '+report.year,'الإيرادات '+cash(report.revenue)+' · المصروفات '+cash(report.costs)+' · '+(report.profit>=0?'صافي ربح ':'صافي خسارة ')+cash(Math.abs(report.profit)),()=>{
+  closeModal();
+  const detail='الإيرادات: '+cash(report.revenue)+'\\nالمصروفات التشغيلية: '+cash(report.costs)+'\\nصافي النتيجة: '+(report.profit>=0?'ربح ':'خسارة ')+cash(Math.abs(report.profit))+'\\nهامش الربح: '+report.margin+'%\\nتغير قيمة النشاط: '+(report.growthRate>=0?'+':'')+report.growthRate+'%\\nالقيمة الختامية: '+cash(report.closingValue)+(report.supplier?'\\nالمورد: '+report.supplier:'');
+  info('📊','التقرير المالي · '+title,detail,[choice('↩️','رجوع للتقارير','',()=>businessReportsMenu(entity,title,back))]);
+ }));
+ opts.push(choice('↩️','رجوع','',back));
+ modal('📊','سجل التقارير · '+title,'آخر خمس سنوات مالية محفوظة. احتفظنا بعشر سنوات كحد أقصى لتقليل حجم ملف الحفظ.',opts);
+}
+
 function companyDetailMenu(index){
  const company=(state.companies||[])[index];if(!company){companyPortfolioMenu();return;}
  modal(company.emoji||'🏢','إدارة '+company.title,'قيمة تقديرية '+cash(company.value)+' · القطاع '+company.sector+' · المستوى '+company.level+'. نتائج السنة القادمة غير مضمونة.',[
-  choice('📊','تقرير الأرباح','عرض تقديري للعائد السنوي قبل التكاليف.',()=>{closeModal();const forecast=Math.round(company.value*(.01+company.level*.02));info('📊','تقرير الشركة','القيمة '+cash(company.value)+' · دخل تشغيلي تقديري '+cash(forecast)+' قبل التكاليف.');}),
+  choice('📊','سجل التقارير','راجع الإيرادات والمصروفات وصافي النتيجة عبر السنوات.',()=>businessReportsMenu(company,company.title,()=>companyDetailMenu(index))),
   choice('📈','إعادة استثمار','ضخ رأس مال لرفع المستوى والنمو.',()=>reinvestCompany(index),'20,000 '+state.place.unit),
   choice('💵','بيع الشركة','تصفية الشركة مقابل 75% تقريبًا من قيمتها الحالية.',()=>sellCompany(index),cash(Math.round(company.value*.75))),
   choice('↩️','رجوع للمحفظة','',companyPortfolioMenu)
  ]);
 }
+
 function reinvestCompany(index){
  closeModal();const company=(state.companies||[])[index];if(!company)return;const cost=20000;
  if(state.bank<cost){info('💳','الرصيد مش كفاية','إعادة الاستثمار تحتاج '+cash(cost)+'.');return;}
@@ -1489,9 +1583,11 @@ function sellCompany(index){
 }
 function businessMenu(){
  if(!state.business){if(perkOwned('businessPack')){companyPortfolioMenu();return;}info('🏪','مفيش مشروع حاليًا','اشتري مشروعًا صغيرًا من قائمة الأصول عشان تبدأ الإدارة.');return;}
- const b=state.business,level=Math.max(1,b.level||1);
- modal('🏪','إدارة '+(b.title||'مشروعك'),'قيمة المشروع '+cash(b.value)+' · مستوى الإدارة '+level+' · الشهرة '+(state.fame||0)+'%. اختيارات الإدارة تؤثر على دخل السنوات القادمة.',[
-  choice('📊','التقرير السنوي','عرض تقديري عن قيمة المشروع وأرباحه المتوقعة.',()=>{closeModal();const forecast=Math.round(b.value*(.02+level*.015));info('📊','تقرير المشروع','القيمة الحالية '+cash(b.value)+'. الدخل التقريبي المحتمل '+cash(forecast)+' إلى '+cash(forecast*3)+' قبل التكاليف. النتائج مش مضمونة.');}),
+ const b=state.business,level=Math.max(1,b.level||1),supplier=BUSINESS_SUPPLIER_CATALOG.find(item=>b.supplier&&item.id===b.supplier.id);
+ const supplierStatus=supplier?' · المورد '+supplier.title+' ('+(Number(b.supplier.yearsLeft)||0)+' سنوات متبقية)':' · لم يتم التعاقد مع مورد';
+ modal('🏪','إدارة '+(b.title||'مشروعك'),'قيمة المشروع '+cash(b.value)+' · مستوى الإدارة '+level+' · الشهرة '+(state.fame||0)+'%'+supplierStatus+'. اختيارات الإدارة تؤثر على دخل السنوات القادمة.',[
+  choice('📊','التقرير السنوي','راجع تقارير الإيرادات والمصروفات وصافي النتيجة.',()=>businessReportsMenu(b,b.title||'مشروعك',businessMenu)),
+  choice('📦','التعاقد مع مورد','قارن الجودة والتكلفة ومدة العقد قبل الاختيار.',businessSupplierMenu),
   choice('📣','حملة تسويق','حملة تكلف 2,500 '+state.place.unit+' قد ترفع المبيعات والسمعة.',()=>businessAction('marketing'),'2,500 '+state.place.unit),
   choice('👔','تعيين مدير','تحسين الإدارة مقابل 5,000 '+state.place.unit+'؛ يزيد الكفاءة السنوية.',()=>businessAction('manager'),'5,000 '+state.place.unit),
   choice('🏗️','توسيع المشروع','استثمار 10,000 '+state.place.unit+' لزيادة قيمة النشاط.',()=>businessAction('expand'),'10,000 '+state.place.unit),
