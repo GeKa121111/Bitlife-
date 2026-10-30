@@ -798,6 +798,7 @@ async function run() {
       'product identifiers should be unique to their owning portfolio company');
     assert.equal(portfolioBeforeYear.company.facilities.length, 1, 'the portfolio company should own its factory independently');
     assert.equal(portfolioBeforeYear.company.facilities[0].type, 'factory');
+    await page.locator('.choice').filter({ hasText: 'رجوع للمنتجات' }).click();
     await page.locator('.choice').filter({ hasText: 'رجوع لإدارة المشروع' }).click();
     await page.locator('.choice').filter({ hasText: 'تحليل السوق والمنافسين' }).click();
     const marketBeforeReload = await page.evaluate(() => {
