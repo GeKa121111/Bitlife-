@@ -2431,12 +2431,12 @@ function activateBusinessTreasury(amount){
  const business=currentManagedBusiness();
  if(!business)return;
  if(businessUsesSeparateTreasury(business)){businessTreasuryMenu();return;}
- const capital=Math.max(0,Math.round(Number(amount)||0));
+ const capital=Math.min(1000000000000,Math.max(0,Math.round(Number(amount)||0)));
  if(capital>0&&Number(state.bank||0)<capital){info('💳','الرصيد الشخصي غير كافٍ','لا يمكن تحويل رأس مال أكبر من رصيدك الحالي.');return;}
  state.bank=Math.round(Number(state.bank)||0)-capital;
  business.treasuryMode='separate';
  business.cashBalance=capital;
- business.pendingOwnerContributions=Math.max(0,Math.round(Number(business.pendingOwnerContributions)||0))+capital;
+ business.pendingOwnerContributions=Math.min(1000000000000,Math.max(0,Math.round(Number(business.pendingOwnerContributions)||0))+capital);
  business.pendingOwnerWithdrawals=Math.max(0,Math.round(Number(business.pendingOwnerWithdrawals)||0));
  log('🏦','فصل خزينة '+(business.title||'النشاط'),'أصبحت أموال النشاط مستقلة عن رصيدك الشخصي. حُوّل '+cash(capital)+' كرأس مال افتتاحي من المالك.','good');
  save();render();businessTreasuryMenu();
@@ -2445,19 +2445,22 @@ function transferBusinessCapital(direction,amount){
  closeModal();
  const business=currentManagedBusiness();
  if(!business||!businessUsesSeparateTreasury(business))return;
- const value=Math.max(0,Math.round(Number(amount)||0));
- if(!value){businessTreasuryMenu();return;}
+ const requested=Math.min(1000000000000,Math.max(0,Math.round(Number(amount)||0)));
+ if(!requested){businessTreasuryMenu();return;}
  if(direction==='ownerToCompany'){
+  const value=Math.min(requested,Math.max(0,1000000000000-businessTreasuryBalance(business)));
+  if(value<=0){info('🏦','الخزينة وصلت للحد','لا يمكن إضافة رأس مال أكثر من الحد الآمن لخزينة الشركة.');return;}
   if(Number(state.bank||0)<value){info('💳','الرصيد الشخصي غير كافٍ','لا يمكن تحويل '+cash(value)+' إلى خزينة الشركة.');return;}
   state.bank=Math.round(Number(state.bank)||0)-value;
   adjustBusinessTreasury(business,value);
-  business.pendingOwnerContributions=Math.max(0,Math.round(Number(business.pendingOwnerContributions)||0))+value;
+  business.pendingOwnerContributions=Math.min(1000000000000,Math.max(0,Math.round(Number(business.pendingOwnerContributions)||0))+value);
   log('🏦','زيادة رأس مال الشركة','حوّلت '+cash(value)+' من رصيدك الشخصي إلى خزينة '+(business.title||'النشاط')+'.','good');
  }else if(direction==='companyToOwner'){
-  if(businessTreasuryBalance(business)<value){info('💳','خزينة الشركة غير كافية','لا يمكن سحب '+cash(value)+' من أموال النشاط.');return;}
+  const value=Math.min(requested,Math.max(0,businessTreasuryBalance(business)));
+  if(value<=0){info('💳','خزينة الشركة غير كافية','لا توجد نقدية موجبة قابلة للسحب من النشاط.');return;}
   adjustBusinessTreasury(business,-value);
   state.bank=Math.round(Number(state.bank)||0)+value;
-  business.pendingOwnerWithdrawals=Math.max(0,Math.round(Number(business.pendingOwnerWithdrawals)||0))+value;
+  business.pendingOwnerWithdrawals=Math.min(1000000000000,Math.max(0,Math.round(Number(business.pendingOwnerWithdrawals)||0))+value);
   log('💵','سحب من خزينة الشركة','حوّلت '+cash(value)+' من خزينة '+(business.title||'النشاط')+' إلى رصيدك الشخصي.','good');
  }
  save();render();businessTreasuryMenu();
@@ -2472,7 +2475,7 @@ function businessTreasuryMenu(){
  if(!separate){
   const seen=new Set();
   [.1,.25,.5].forEach(ratio=>{
-   const amount=Math.round(ownerCash*ratio);
+   const amount=Math.min(1000000000000,Math.round(ownerCash*ratio));
    if(amount<=0||seen.has(amount))return;
    seen.add(amount);
    opts.push(choice('🔓','فصل الخزينة وتحويل '+Math.round(ratio*100)+'% من رصيدك','نقل '+cash(amount)+' كرأس مال افتتاحي من أموالك الشخصية إلى الشركة.',()=>activateBusinessTreasury(amount),cash(amount)));
@@ -2481,14 +2484,14 @@ function businessTreasuryMenu(){
  }else{
   const seenIn=new Set();
   [.1,.25,.5].forEach(ratio=>{
-   const amount=Math.round(ownerCash*ratio);
+   const amount=Math.min(1000000000000,Math.round(ownerCash*ratio));
    if(amount<=0||seenIn.has(amount))return;
    seenIn.add(amount);
    opts.push(choice('➕','إضافة '+Math.round(ratio*100)+'% من رصيدك إلى الشركة','تحويل '+cash(amount)+' من أموالك الشخصية إلى خزينة النشاط.',()=>transferBusinessCapital('ownerToCompany',amount),cash(amount)));
   });
   const seenOut=new Set();
   [.25,.5,1].forEach(ratio=>{
-   const amount=Math.round(companyCash*ratio);
+   const amount=Math.min(1000000000000,Math.round(companyCash*ratio));
    if(amount<=0||seenOut.has(amount))return;
    seenOut.add(amount);
    opts.push(choice('↗️','سحب '+Math.round(ratio*100)+'% من خزينة الشركة','تحويل '+cash(amount)+' من أموال النشاط إلى رصيدك الشخصي.',()=>transferBusinessCapital('companyToOwner',amount),cash(amount)));
