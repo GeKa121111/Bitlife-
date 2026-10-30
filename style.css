@@ -2536,3 +2536,11 @@ body.text-large .navbtn{font-size:10px!important}
   flex:1 1 0%!important;min-width:0!important;min-height:0!important;
   max-height:none!important;overflow-x:hidden!important;overflow-y:auto!important;
 }
+
+
+/* Contextual stat recovery controls — original Hayah UI. */
+.stathead{gap:4px;min-width:0}
+.statboost-btn{width:18px;height:18px;min-height:18px;flex:0 0 18px;display:inline-grid;place-items:center;padding:0;border:1px solid #176b66;border-radius:50%;background:#e9f5f1;color:#176b66;font-size:12px;font-weight:1000;line-height:1;cursor:pointer}
+.statboost-btn:focus-visible{outline:2px solid #176b66;outline-offset:2px}
+body.theme-dark .statboost-btn{background:#25443f;color:#b7e4d4;border-color:#568f80}
+body.theme-gold .statboost-btn{background:#f7edcf;color:#89631a;border-color:#c8a34e}
