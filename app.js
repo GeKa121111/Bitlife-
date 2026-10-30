@@ -410,7 +410,7 @@ function normalizePendingCombatBout(raw){
   lastStyle:styles.includes(raw.lastStyle)?raw.lastStyle:(last?last.style:''),
   lastMoveId:typeof raw.lastMoveId==='string'?raw.lastMoveId.slice(0,48):(last?last.actionId:''),
   startedAge:finite(raw.startedAge,18,0,120),
-  feePaid:mode==='league'?true:true
+  feePaid:mode==='league'
  };
 }
 function combatDifficultyLabel(rating){
