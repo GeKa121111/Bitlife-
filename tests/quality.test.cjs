@@ -171,7 +171,7 @@ test('تطبيق الويب قابل للتثبيت ويحتفظ بملفات ا
   assert.ok(manifest.icons.some(item => item.src === './icon.svg'));
   assert.match(html, /rel="manifest" href="manifest\.webmanifest"/);
   assert.match(app, /navigator\.serviceWorker\.register\('\.\/sw\.js'\)/);
-  assert.match(worker, /const CACHE_NAME = 'hayah-shell-v44'/);
+  assert.match(worker, /const CACHE_NAME = 'hayah-shell-v45'/);
   assert.match(worker, /cache\.addAll\(APP_SHELL\)/);
   assert.match(worker, /caches\.match\(APP_SHELL\[0\]\)/);
   assert.match(icon, /حياة/);
@@ -259,7 +259,7 @@ test('مسيرة الرياضات الإلكترونية أصلية وتحافظ
   assert.match(app, /function upgradeEsportsSetup\(\)/);
   assert.match(app, /موهبة الألعاب الإلكترونية/);
   assert.match(app, /data\.talents\.gaming=clamp\(Number\(data\.talents\.gaming\),0,100\)/);
-  assert.match(read('sw.js'), /hayah-shell-v44/);
+  assert.match(read('sw.js'), /hayah-shell-v45/);
   assert.match(functionSource('rewindToSnapshot', 'customizeMenu'), /ensureGamingTalent\(\)/, 'rewinding a pre-feature snapshot should restore a valid talent default');
 });
 
@@ -483,7 +483,7 @@ test('إدارة المشروع تدعم عقود الموردين وتقاري�
   assert.match(app, /choice\('📦','التعاقد مع مورد'/);
   assert.match(app, /choice\('📊','سجل التقارير'/);
   assert.match(app, /const normalizeBusinessEntity=entity=>/);
-  assert.match(read('sw.js'), /hayah-shell-v44/);
+  assert.match(read('sw.js'), /hayah-shell-v45/);
 });
 
 
@@ -498,7 +498,7 @@ test('إدارة فريق المشروع تحفظ الموظفين وتؤثر ف
   assert.match(app, /staffPayroll/);
   assert.match(app, /staffCount/);
   assert.match(app, /choice\('👥','إدارة الموظفين'/);
-  assert.match(read('sw.js'), /hayah-shell-v44/);
+  assert.match(read('sw.js'), /hayah-shell-v45/);
 });
 
 
@@ -511,7 +511,7 @@ test('سوق الموردين يتجدد سنويًا ويحفظ عروض الأ
   assert.match(app, /supplierCostMultiplier/);
   assert.match(app, /entity\.supplier\.yearsLeft\)\|\|3,1,3/);
   assert.match(app, /entity\.supplier\.quality/);
-  assert.match(read('sw.js'), /hayah-shell-v44/);
+  assert.match(read('sw.js'), /hayah-shell-v45/);
 });
 
 
@@ -526,7 +526,7 @@ test('إدارة المنتجات تدعم بحث السوق والمبيعات 
   assert.match(app, /competition/);
   assert.match(app, /choice\('🧪','إدارة المنتجات'/);
   assert.match(app, /entity\.productResearch=entity\.productResearch\.filter/);
-  assert.match(read('sw.js'), /hayah-shell-v44/);
+  assert.match(read('sw.js'), /hayah-shell-v45/);
 });
 
 
@@ -541,7 +541,7 @@ test('شركات المحفظة تدير الموردين والموظفين و�
   assert.match(app, /simulateBusinessEntityYear\(state\.business,'business'\)/);
   assert.match(app, /simulateBusinessEntityYear\(company,'portfolio'\)/);
   assert.match(app, /business\.assetId\|\|business\.id\|\|business\.title/);
-  assert.match(read('sw.js'), /hayah-shell-v44/);
+  assert.match(read('sw.js'), /hayah-shell-v45/);
 });
 
 
@@ -557,7 +557,7 @@ test('الفروع والمصانع محفوظة لكل نشاط وتزيد طا
   assert.match(app, /facilityInvestment/);
   assert.match(app, /choice\('🏗️','الفروع والمصانع'/);
   assert.match(app, /return \{version:1,lifeId:/);
-  assert.match(read('sw.js'), /hayah-shell-v44/);
+  assert.match(read('sw.js'), /hayah-shell-v45/);
 });
 
 test('استثمار المنشأة رأسمالي منفصل عن صافي الربح والصيانة السنوية', () => {
@@ -591,7 +591,7 @@ test('سوق المنافسة يحفظ شركات مستقلة وقرارات س
     "choice('📈','تحليل السوق والمنافسين'",
     "return {version:1,lifeId:"
   ].forEach(fragment => assert.ok(app.includes(fragment), 'missing independent rival behavior: '+fragment));
-  assert.match(read('sw.js'), /hayah-shell-v44/);
+  assert.match(read('sw.js'), /hayah-shell-v45/);
 });
 
 
@@ -604,7 +604,7 @@ test('النوافذ الحوارية تدير التركيز بلوحة الم�
   assert.match(app, /returnFocus&&returnFocus\.isConnected/);
   assert.match(app, /const initialFocus=\$\('closeModal'\)\|\|getFocusable\(\)\[0\]\|\|dialog/);
   assert.match(read('style.css'), /\.modal button:focus-visible/);
-  assert.match(read('sw.js'), /hayah-shell-v44/);
+  assert.match(read('sw.js'), /hayah-shell-v45/);
 });
 
 test('اختبارات Node دون DOM كامل لا تتطلب querySelector من عنصر الجذر', () => {
@@ -622,7 +622,7 @@ test('إعدادات الصوت والاهتزاز اختيارية ومستقل
   assert.ok(app.includes("choice(uiSettings.sound?'🔊':'🔇'"));
   assert.ok(app.includes("choice(uiSettings.haptics?'📳':'📴'"));
   assert.ok(app.includes("localStorage.setItem(SETTINGS_KEY,JSON.stringify(uiSettings))"));
-  assert.match(read('sw.js'), /hayah-shell-v44/);
+  assert.match(read('sw.js'), /hayah-shell-v45/);
 });
 
 
@@ -634,7 +634,7 @@ test('سجل الحياة يضيف الأحداث الجديدة تدريجيً�
   assert.match(app, /for\(let candidate=359;candidate>0;candidate--\)/);
   assert.match(app, /renderedLogSnapshot=signatures;renderedFeedElement=feed/);
   assert.match(html, /id="lifeFeed"[^>]*aria-relevant="additions" aria-atomic="false"/);
-  assert.match(read('sw.js'), /hayah-shell-v44/);
+  assert.match(read('sw.js'), /hayah-shell-v45/);
 });
 
 
@@ -648,7 +648,7 @@ test('اقتصاد الشركات يختلف حسب الصناعة ويظهر أ
   assert.ok(app.includes("industryOperatingCostMultiplier"));
   assert.ok(app.includes("industryUnitCostMultiplier"));
   assert.ok(app.includes("معاملات القطاع: الإيرادات"));
-  assert.match(read('sw.js'), /hayah-shell-v44/);
+  assert.match(read('sw.js'), /hayah-shell-v45/);
 });
 
 
@@ -672,7 +672,7 @@ test('تمويل النشاط مستقل لكل شركة ويُحتسب مرة �
   const annualSimulation = functionSource('simulateBusinessEntityYear', 'advanceAge');
   assert.ok(annualSimulation.includes("const costs=operatingCostsTotal+productResult.upfrontCosts+businessLoanInterest"));
   assert.ok(annualSimulation.includes("const cashDelta=revenue-operatingCostsTotal-businessLoanInterestPaid-corporateTaxPaidFromCash"));
-  assert.ok(read('sw.js').includes("hayah-shell-v44"));
+  assert.ok(read('sw.js').includes("hayah-shell-v45"));
 });
 
 
@@ -699,7 +699,7 @@ test('الخزينة المستقلة تفصل نقدية كل شركة عن ر�
   assert.ok(annualSimulation.includes("businessTreasuryBalance(business)+revenue-operatingCostsTotal"));
   assert.ok(annualSimulation.includes("const cashDelta=revenue-operatingCostsTotal-businessLoanInterestPaid-corporateTaxPaidFromCash"));
   assert.ok(annualSimulation.includes("treasuryMode:separateTreasury?'separate':'shared'"));
-  assert.match(read('sw.js'), /hayah-shell-v44/);
+  assert.match(read('sw.js'), /hayah-shell-v45/);
 });
 
 
@@ -720,7 +720,7 @@ test('ضرائب الشركات تُحسب على الربح الموجب وتُ
   assert.ok(annualSimulation.includes('const taxableProfit=Math.max(0,Math.round(preTaxProfit))'));
   assert.ok(annualSimulation.includes('const cashDelta=revenue-operatingCostsTotal-businessLoanInterestPaid-corporateTaxPaidFromCash'));
   assert.ok(annualSimulation.includes('const costs=operatingCostsTotal+productResult.upfrontCosts+businessLoanInterest+corporateTax'));
-  assert.match(read('sw.js'), /hayah-shell-v44/);
+  assert.match(read('sw.js'), /hayah-shell-v45/);
 });
 
 test('مسيرة القتال تعرض صعوبة المنافس وتضيف حركات تكتيكية أصلية مع حفظ v1', () => {
@@ -750,13 +750,15 @@ test('مسيرة القتال تعرض صعوبة المنافس وتضيف حر
 
 
 
-test('المهرجان الأسبوعي يدوّر المواسم ويطبع الحفظ القديم ويمنع المكافآت المكررة', () => {
+test('المهرجان الأسبوعي يدعم 11 شارة ويطبع بيانات المواسم القديمة دون مكافآت مجانية', () => {
   [
     "function seasonalWeekDetails(date)",
     "function ensureSeasonalEvent()",
     "function seasonalEventMenu()",
     "function claimSeasonalEventBadge(id)",
-    "data.seasonalEvent=normalizeSeasonalEvent(data.seasonalEvent)",
+    "function seasonalEventBadges(event)",
+    "data.seasonalEvent=normalizeSeasonalEvent(data.seasonalEvent,data)",
+    "data.seasonalEventArchive=normalizeSeasonalEventArchive(data.seasonalEventArchive,data)",
     "seasonalEvent:null,seasonalEventArchive:[]",
     "choice('🏅','مهرجان صُنّاع الحكاية'",
     "function seasonalEventArchiveMenu()",
@@ -766,17 +768,32 @@ test('المهرجان الأسبوعي يدوّر المواسم ويطبع ا�
 
   const helpers = app.slice(app.indexOf('function challengeDateKey('), app.indexOf('function ensureDailyChallengeBoard('));
   const context = {
-    state: {age:21,friends:[{}],hobbies:[{}],socialMediaPosts:1,stats:{smart:40,health:78,happiness:74}},
+    state: {
+      age:21,
+      friends:[{relationshipLevel:80}],
+      hobbies:[{}],
+      socialMediaPosts:1,
+      stats:{smart:44,health:78,happiness:74},
+      jobHistory:[{}],specialCareerHistory:[],job:null,specialCareer:null,
+      assets:[{}],investments:[{}],pets:[{}],travelHistory:[{}],children:[{}],
+      family:[{relationshipLevel:80}],partner:null
+    },
     clamp: value => Math.max(0, Math.min(100, Number(value) || 0))
   };
   vm.runInNewContext(helpers + `
     globalThis.week = seasonalWeekDetails(new Date('2026-10-30T12:00:00'));
     globalThis.event = normalizeSeasonalEvent({
       weekId:'2026-W44',startDate:'2026-10-26',endDate:'2026-11-01',
-      baseline:{age:20,friends:0,hobbies:0,posts:0,smart:40,health:70,happiness:70},
+      baseline:{age:20,friends:0,hobbies:0,posts:0,smart:40,health:70,happiness:70,
+        careerProgress:0,assets:0,investments:0,pets:0,trips:0,children:0,bestRelationship:70},
       claimed:['chapter','chapter','unknown','friend'],bonusClaimed:false
-    });
+    },state);
     globalThis.badges = seasonalEventBadges(globalThis.event);
+    globalThis.legacyEvent = normalizeSeasonalEvent({
+      weekId:'2026-W43',
+      baseline:{age:20,friends:0,hobbies:0,posts:0,smart:40,health:70,happiness:70},
+      claimed:['chapter','friend','hobby','voice','balance'],bonusClaimed:false
+    },state);
   `, context);
   assert.equal(context.week.id, '2026-W44');
   assert.equal(context.week.startDate, '2026-10-26');
@@ -798,22 +815,34 @@ test('المهرجان الأسبوعي يدوّر المواسم ويطبع ا�
   vm.runInNewContext(helpers + "globalThis.newYearWeek=seasonalWeekDetails(new Date('2027-01-01T12:00:00'));", context);
   assert.equal(context.newYearWeek.id, '2026-W53', 'ISO weeks spanning New Year must keep the ISO year');
   assert.deepEqual(Array.from(context.event.claimed), ['chapter','friend']);
-  assert.deepEqual(Array.from(context.badges.map(badge=>badge.id)), ['chapter','friend','hobby','voice','balance']);
+  assert.deepEqual(Array.from(context.badges.map(badge=>badge.id)), [
+    'chapter','friend','hobby','voice','balance','career','asset','invest','pet','travel','family'
+  ]);
   assert.ok(context.badges.every(badge=>badge.done));
+  assert.equal(context.legacyEvent.claimed.length, 5, 'legacy five-badge records should remain readable');
+  assert.equal(context.legacyEvent.baseline.assets, 1, 'missing legacy counters should use the saved life as baseline');
+  assert.equal(context.legacyEvent.baseline.investments, 1);
+  assert.equal(context.legacyEvent.baseline.pets, 1);
+  assert.equal(context.legacyEvent.baseline.trips, 1);
 
   const childContext = {
-    state:{age:12,friends:[],hobbies:[],socialMediaPosts:0,stats:{smart:44,health:75,happiness:72}},
+    state:{age:12,friends:[],hobbies:[],socialMediaPosts:0,stats:{smart:44,health:75,happiness:72},
+      jobHistory:[],specialCareerHistory:[],assets:[],investments:[],pets:[],travelHistory:[],children:[],family:[],partner:null},
     clamp:value=>Math.max(0,Math.min(100,Number(value)||0)),
-    childEvent:{weekId:'2026-W44',baseline:{age:12,friends:0,hobbies:0,posts:0,smart:40,health:70,happiness:70}}
+    childEvent:{weekId:'2026-W44',baseline:{age:12,friends:0,hobbies:0,posts:0,smart:40,health:70,happiness:70,
+      careerProgress:0,assets:0,investments:0,pets:0,trips:0,children:0,bestRelationship:0}}
   };
   vm.runInNewContext(helpers+'globalThis.childBadges=seasonalEventBadges(childEvent);',childContext);
+  assert.equal(childContext.childBadges.length,11);
   assert.ok(childContext.childBadges.some(badge=>badge.id==='learning'&&badge.done));
+  assert.ok(!childContext.childBadges.some(badge=>badge.id==='voice'));
 
-  const archive=Array.from({length:10},(_,index)=>({weekId:'2026-W'+String(index+1).padStart(2,'0'),claimed:['chapter'],bonusClaimed:false}));
-  const archiveContext={archive};
-  vm.runInNewContext(helpers+'globalThis.normalizedArchive=normalizeSeasonalEventArchive(archive);',archiveContext);
+  const archive=Array.from({length:10},(_,index)=>({weekId:'2026-W'+String(index+1).padStart(2,'0'),claimed:['chapter','family','travel'],bonusClaimed:false}));
+  const archiveContext={archive,state:context.state,clamp:context.clamp};
+  vm.runInNewContext(helpers+'globalThis.normalizedArchive=normalizeSeasonalEventArchive(archive,state);',archiveContext);
   assert.equal(archiveContext.normalizedArchive.length,8);
-  assert.match(read('sw.js'), /hayah-shell-v44/);
+  assert.ok(archiveContext.normalizedArchive[0].claimed.includes('family'));
+  assert.match(read('sw.js'), /hayah-shell-v45/);
 });
 
 
@@ -845,7 +874,7 @@ test('السوشيال ميديا تحفظ صدى الجمهور وتدعم مس
   vm.runInNewContext(normalizer + "\nglobalThis.limited=normalizeSocialFeed(input);", limitedContext);
   assert.equal(limitedContext.limited.length, 30);
   assert.equal(limitedContext.limited[0].id, 'p10');
-  assert.match(read('sw.js'), /hayah-shell-v44/);
+  assert.match(read('sw.js'), /hayah-shell-v45/);
 });
 
 

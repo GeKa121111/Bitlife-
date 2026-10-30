@@ -218,6 +218,7 @@ async function run() {
     // Weekly story festival: collect all badges and verify the completion bonus cannot be claimed twice.
     const seasonalSeed = await page.evaluate(() => {
       const key='hekayat_hayah_save_v1',saved=JSON.parse(localStorage.getItem(key)||'null');
+      const original=JSON.stringify(saved);
       const now=new Date(),day=new Date(now.getFullYear(),now.getMonth(),now.getDate());
       const start=new Date(day);start.setDate(start.getDate()-((start.getDay()+6)%7));
       const end=new Date(start);end.setDate(end.getDate()+6);
@@ -228,27 +229,40 @@ async function run() {
       const weekNumber=Math.floor((startUtc-firstMondayUtc)/604800000)+1;
       const dateKey=value=>value.getFullYear()+'-'+String(value.getMonth()+1).padStart(2,'0')+'-'+String(value.getDate()).padStart(2,'0');
       const week={id:isoYear+'-W'+String(weekNumber).padStart(2,'0'),startDate:dateKey(start),endDate:dateKey(end)};
-      saved.seasonalEvent={weekId:week.id,startDate:week.startDate,endDate:week.endDate,baseline:{age:29,friends:0,hobbies:0,posts:0,smart:0,health:0,happiness:0},claimed:[],bonusClaimed:false};
+      saved.seasonalEvent={weekId:week.id,startDate:week.startDate,endDate:week.endDate,
+        baseline:{age:29,friends:0,hobbies:0,posts:0,smart:0,health:0,happiness:0,
+          careerProgress:0,assets:1,investments:0,pets:0,trips:0,children:0,bestRelationship:70},
+        claimed:[],bonusClaimed:false};
+      saved.jobHistory=[{title:'خطوة مهنية جديدة'}];
+      saved.assets.push({id:'festival-property',title:'أصل تجريبي',emoji:'🏠',kind:'property',value:75000,upkeep:0});
+      saved.investments=[{id:'festival-investment',type:'fund',name:'استثمار تجريبي',value:5000,units:1}];
+      saved.pets=[{id:'festival-pet',name:'رفيق المهرجان',type:'cat',emoji:'🐾',age:1,health:100}];
+      saved.travelHistory=[{country:'الأردن',city:'عمّان',age:saved.age}];
+      saved.children=[{id:'festival-child',name:'طفل المهرجان',age:1,gender:'male',relationshipLevel:75}];
+      saved.family[0].relationshipLevel=80;
       saved.friends=[{id:'festival-friend',name:'صديق المهرجان',relation:'صديق',relationshipLevel:70}];
       saved.hobbies=[{id:'festival-hobby',title:'الرسم'}];
       saved.socialMediaPosts=1;saved.stats.happiness=82;saved.stats.health=91;
-      localStorage.setItem(key,JSON.stringify(saved));return week;
+      localStorage.setItem(key,JSON.stringify(saved));return {week,original};
     });
-    assert.ok(seasonalSeed.id);
+
+    assert.ok(seasonalSeed.week.id);
     await page.reload({waitUntil:'domcontentloaded'});
     await page.locator('#menuBtn').click();
     await page.locator('.choice').filter({hasText:'مهرجان صُنّاع الحكاية'}).click();
-    for(const badgeTitle of ['فصل جديد','صاحب جديد','موهبة بتكبر','صوتك وصل','توازن جميل']){
+    for(const badgeTitle of ['فصل جديد','صاحب جديد','موهبة بتكبر','صوتك وصل','توازن جميل','خطوة لقدّام','أصل جديد','عقلية استثمار','رفيق جديد','اكتشاف جديد','رابطة أقوى']){
       const badge=page.locator('#modalRoot .choice').filter({hasText:badgeTitle});
       await badge.waitFor();await badge.click();
     }
     const completedFestival=await page.evaluate(()=>{const saved=JSON.parse(localStorage.getItem('hekayat_hayah_save_v1')||'null');return {event:saved.seasonalEvent,bank:saved.bank};});
-    assert.equal(completedFestival.event.claimed.length,5);
+    assert.equal(completedFestival.event.claimed.length,11);
     assert.equal(completedFestival.event.bonusClaimed,true);
     const bankAfterCompletion=completedFestival.bank;
     await page.locator('#modalRoot .choice').filter({hasText:'فصل جديد'}).click();
     const bankAfterDuplicate=await page.evaluate(()=>JSON.parse(localStorage.getItem('hekayat_hayah_save_v1')||'null').bank);
     assert.equal(bankAfterDuplicate,bankAfterCompletion);
+    await page.evaluate(original => localStorage.setItem('hekayat_hayah_save_v1', original), seasonalSeed.original);
+    await page.reload({waitUntil:'domcontentloaded'});
     await page.keyboard.press('Escape');
     await page.waitForFunction(()=>!document.querySelector('#modalRoot [role="dialog"]'));
     await page.locator('#menuBtn').click();
