@@ -4190,7 +4190,8 @@ function seasonalWeekDetails(date){
  const isoYear=thursday.getFullYear();
  const jan4=new Date(isoYear,0,4);
  const firstMonday=new Date(jan4);firstMonday.setDate(firstMonday.getDate()-((firstMonday.getDay()+6)%7));
- const week=Math.floor((start.getTime()-firstMonday.getTime())/604800000)+1;
+ const startUtc=Date.UTC(start.getFullYear(),start.getMonth(),start.getDate()),firstMondayUtc=Date.UTC(firstMonday.getFullYear(),firstMonday.getMonth(),firstMonday.getDate());
+ const week=Math.floor((startUtc-firstMondayUtc)/604800000)+1;
  return {id:isoYear+'-W'+String(week).padStart(2,'0'),startDate:challengeDateKey(start),endDate:challengeDateKey(end)};
 }
 function seasonalEventBaseline(){
@@ -4240,7 +4241,9 @@ function seasonalEventMenu(){
  if(!validState())return;
  const event=ensureSeasonalEvent(),badges=seasonalEventBadges(event);
  const claimedCount=badges.filter(badge=>event.claimed.includes(badge.id)).length,readyCount=badges.filter(badge=>badge.done&&!event.claimed.includes(badge.id)).length;
- const endAt=event.endDate?new Date(event.endDate+'T23:59:59'):null,daysLeft=endAt&&Number.isFinite(endAt.getTime())?Math.max(0,Math.ceil((endAt.getTime()-Date.now())/86400000)):0;
+ const today=new Date(),endAt=event.endDate?new Date(event.endDate+'T00:00:00'):null;
+ const dayDistance=endAt&&Number.isFinite(endAt.getTime())?Math.floor((Date.UTC(endAt.getFullYear(),endAt.getMonth(),endAt.getDate())-Date.UTC(today.getFullYear(),today.getMonth(),today.getDate()))/86400000):0;
+ const daysLeft=Math.max(0,dayDistance+1);
  const opts=[{icon:'📊',title:'تقدم الأسبوع',desc:'جمعت '+claimedCount+' من '+badges.length+' شارات · '+readyCount+' جاهزة للاستلام · متبقي '+daysLeft+' يوم.',progress:Math.round(claimedCount/badges.length*100),disabled:true}];
  badges.forEach(badge=>{const claimed=event.claimed.includes(badge.id),status=claimed?'تم جمع الشارة':badge.done?'جاهزة للاستلام':'قيد التقدم';opts.push(choice(claimed?'🏅':badge.done?'🎁':'🔒',badge.title,badge.desc+' الحالة: '+status+' · المكافأة '+cash(badge.reward)+'.',()=>claimSeasonalEventBadge(badge.id)));});
  if(event.bonusClaimed)opts.push({icon:'🏆',title:'مكافأة إكمال المهرجان',desc:'استلمت المكافأة الختامية بالفعل. إجمالي الشارات '+badges.length+'.',disabled:true});
