@@ -1623,7 +1623,8 @@ function businessSupplierMenu(){
   const active=current&&current.id===supplier.id&&currentYears>0;
   const fee=Math.max(500,Math.round(Math.max(0,Number(business.value)||0)*offer.feeRate));
   const exitFee=current&&currentYears>0&&!active?earlyExitFee:0;
-  const detail=supplier.description+' الجودة '+offer.quality+'% · معامل التكلفة '+Math.round(offer.costMultiplier*100)+'% · رسوم التعاقد '+cash(fee)+' · عقد سنة مالية واحدة'+(exitFee?' · إنهاء العقد الحالي '+cash(exitFee):'');
+  const termLabel=active?'العقد الحالي · متبقي '+currentYears+' سنة':'عقد جديد لمدة سنة مالية واحدة';
+  const detail=supplier.description+' الجودة '+offer.quality+'% · معامل التكلفة '+Math.round(offer.costMultiplier*100)+'% · رسوم التعاقد '+cash(fee)+' · '+termLabel+(exitFee?' · إنهاء العقد الحالي '+cash(exitFee):'');
   return choice(supplier.emoji,supplier.title+(active?' · المتعاقد الحالي':''),detail,()=>contractBusinessSupplier(supplier.id),active?'ساري':cash(fee+exitFee));
  }).filter(Boolean);
  opts.push(choice('↩️','رجوع لإدارة المشروع','',businessMenu));
