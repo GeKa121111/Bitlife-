@@ -165,6 +165,20 @@ async function run() {
       const saved = JSON.parse(localStorage.getItem('hekayat_hayah_save_v1') || 'null');
       return saved && saved.business && saved.business.supplier && saved.business.supplier.id === 'economy' && saved.business.supplier.yearsLeft === 3;
     });
+    await page.locator('.choice').filter({ hasText: 'إدارة الموظفين' }).click();
+    await page.locator('.choice').filter({ hasText: 'توظيف موظف' }).click();
+    await page.locator('.choice').filter({ hasText: 'مندوب مبيعات' }).click();
+    await page.waitForFunction(() => {
+      const saved = JSON.parse(localStorage.getItem('hekayat_hayah_save_v1') || 'null');
+      return saved && saved.business && Array.isArray(saved.business.staff) &&
+        saved.business.staff.length === 1 && saved.business.staff[0].role === 'sales';
+    });
+    await page.locator('.choice').filter({ hasText: 'مندوب مبيعات 1' }).click();
+    await page.locator('.choice').filter({ hasText: 'تدريب الموظف' }).click();
+    await page.waitForFunction(() => {
+      const saved = JSON.parse(localStorage.getItem('hekayat_hayah_save_v1') || 'null');
+      return saved && saved.business && saved.business.staff[0].skill === 62;
+    });
     await page.locator('#closeModal').click();
 
     const mobileGeometry = await page.evaluate(() => {
@@ -211,7 +225,11 @@ async function run() {
     const businessYear = await page.evaluate(() => {
       const saved = JSON.parse(localStorage.getItem('hekayat_hayah_save_v1') || 'null');
       const history = saved && saved.business && Array.isArray(saved.business.financialHistory) ? saved.business.financialHistory : [];
-      return { supplier: saved && saved.business && saved.business.supplier, report: history[history.length - 1] };
+      return {
+        supplier: saved && saved.business && saved.business.supplier,
+        staff: saved && saved.business && saved.business.staff,
+        report: history[history.length - 1]
+      };
     });
     assert.ok(businessYear.report, 'a full financial report should be saved after the first business year');
     assert.equal(businessYear.report.year, 31);
@@ -219,6 +237,10 @@ async function run() {
     assert.equal(businessYear.report.profit, businessYear.report.revenue - businessYear.report.costs);
     assert.ok(Number.isFinite(businessYear.report.margin) && Number.isFinite(businessYear.report.growthRate));
     assert.equal(businessYear.report.supplier, 'مورد اقتصادي');
+    assert.equal(businessYear.report.staffCount, 1, 'the annual report should record the active team size');
+    assert.equal(businessYear.report.payroll, businessYear.staff[0].salary, 'annual payroll should match the hired employee salary');
+    assert.ok(businessYear.report.costs >= businessYear.report.payroll, 'employee payroll should be included in annual business costs');
+    assert.equal(businessYear.staff[0].years, 1, 'employee experience should advance with the business year');
     assert.equal(businessYear.supplier.yearsLeft, 2, 'a three-year supplier contract should have two years left after one annual report');
     await page.waitForTimeout(450);
     const readingAfterYear = await page.evaluate(() => {

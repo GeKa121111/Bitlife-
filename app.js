@@ -14,6 +14,12 @@ const BUSINESS_SUPPLIER_CATALOG = [
  {id:'balanced',title:'مورد متوازن',emoji:'📦',quality:76,costMultiplier:.96,feeRate:.01,description:'توازن بين الجودة والتكلفة واستقرار التوريد.'},
  {id:'premium',title:'مورد متخصص',emoji:'⭐',quality:94,costMultiplier:1.12,feeRate:.016,description:'جودة مرتفعة تدعم المبيعات، لكن بسعر تشغيل أعلى.'}
 ];
+const BUSINESS_STAFF_ROLES = [
+ {id:'sales',title:'مندوب مبيعات',emoji:'🧑‍💼',salaryRate:.024,revenueBonus:.055,costReduction:0,description:'يساعد في جذب عملاء جدد وتحويل الفرص إلى مبيعات.'},
+ {id:'operations',title:'مسؤول تشغيل',emoji:'⚙️',salaryRate:.022,revenueBonus:.01,costReduction:.07,description:'يحسن سير العمل ويقلل الهدر والتكاليف التشغيلية.'},
+ {id:'marketing',title:'مسؤول تسويق',emoji:'📣',salaryRate:.026,revenueBonus:.045,costReduction:0,description:'يدعم الوصول للعملاء ويرفع أثر الحملات التسويقية.'},
+ {id:'finance',title:'محاسب',emoji:'🧾',salaryRate:.02,revenueBonus:0,costReduction:.05,description:'ينظم المصروفات ويراقب الميزانية والتدفق النقدي.'}
+];
 const JOB_PACK_PROMOS = {
  actorPack:{title:'Actor Job Pack',emoji:'🎭',cost:25000,description:'Are you the center of attention? Do you live for drama? Hire an agent, book an acting gig, and rise to fame with this job pack!',features:['Hire a professional agent!','Book auditions and acting gigs!','Film commercials and rise to fame!']},
  fighterPack:{title:'Ultimate Fighter Mode',emoji:'🥊',cost:45000,description:'Step into the cage and fight your way to the top!',features:['Become a WORLD CHAMPION!','Brawl in STREET FIGHTS!','LEARN and level up 200+ moves!','FIGHT in an epic MMA mini game!','Hire a PROFESSIONAL coach!','ENGAGE with other fighters!']},
@@ -555,6 +561,21 @@ function normalizeCoreState(data){
   if(!entity||typeof entity!=='object'||Array.isArray(entity))return;
   if(!Array.isArray(entity.financialHistory))entity.financialHistory=[];
   entity.financialHistory=entity.financialHistory.filter(report=>report&&typeof report==='object'&&Number.isFinite(Number(report.year))&&Number.isFinite(Number(report.revenue))&&Number.isFinite(Number(report.costs))&&Number.isFinite(Number(report.profit))).slice(-10);
+  if(!Array.isArray(entity.staff))entity.staff=[];
+  entity.staff=entity.staff.filter(employee=>employee&&typeof employee==='object'&&!Array.isArray(employee)).slice(0,5).map((employee,index)=>{
+   const role=BUSINESS_STAFF_ROLES.find(item=>item.id===employee.role);
+   if(!role)return null;
+   const salary=Number(employee.salary);
+   return {
+    id:String(employee.id||('legacy-staff-'+role.id+'-'+index)),
+    name:typeof employee.name==='string'&&employee.name.trim()?employee.name:role.title+' '+(index+1),
+    role:role.id,
+    salary:Math.max(0,Math.min(1000000000,Number.isFinite(salary)?salary:Math.max(1200,Math.round((Number(entity.value)||0)*role.salaryRate)))),
+    skill:clamp(Number.isFinite(Number(employee.skill))?Number(employee.skill):55),
+    morale:clamp(Number.isFinite(Number(employee.morale))?Number(employee.morale):65),
+    years:Math.max(0,Math.floor(Number(employee.years)||0))
+   };
+  }).filter(Boolean);
   if(entity.supplier&&typeof entity.supplier==='object'&&!Array.isArray(entity.supplier)){
    const supplier=BUSINESS_SUPPLIER_CATALOG.find(item=>item.id===entity.supplier.id);
    entity.supplier=supplier?{id:supplier.id,yearsLeft:clamp(Number(entity.supplier.yearsLeft)||3,1,3),startedAtAge:Math.max(0,Number(entity.supplier.startedAtAge)||0)}:null;
@@ -928,7 +949,9 @@ function recordBusinessFinancialReport(entity,report){
  const closingValue=Math.max(0,Math.round(Number(report.closingValue)||0));
  const margin=revenue>0?Math.round(profit/revenue*1000)/10:0;
  const growthRate=openingValue>0?Math.round((closingValue-openingValue)/openingValue*1000)/10:0;
- history.push({year:Math.max(0,Math.floor(Number(report.year)||0)),openingValue,revenue,costs,profit,margin,growthRate,closingValue,level:Math.max(1,Math.floor(Number(report.level)||1)),supplier:typeof report.supplier==='string'?report.supplier:''});
+ const payroll=Math.max(0,Math.round(Number(report.payroll)||0));
+ const staffCount=Math.max(0,Math.min(5,Math.floor(Number(report.staffCount)||0)));
+ history.push({year:Math.max(0,Math.floor(Number(report.year)||0)),openingValue,revenue,costs,profit,margin,growthRate,closingValue,level:Math.max(1,Math.floor(Number(report.level)||1)),supplier:typeof report.supplier==='string'?report.supplier:'',payroll,staffCount});
  entity.financialHistory=history.slice(-10);
 }
 
@@ -970,16 +993,38 @@ function advanceAge(){
  if(state.business){
   const business=state.business,level=Math.max(1,business.level||1),openingValue=Math.max(1000,Number(business.value)||1000);
   const supplier=BUSINESS_SUPPLIER_CATALOG.find(item=>business.supplier&&item.id===business.supplier.id);
+  const staff=Array.isArray(business.staff)?business.staff:[];
+  let staffRevenueBonus=0,staffCostReduction=0,staffPayroll=0;
+  staff.forEach(employee=>{
+   const role=BUSINESS_STAFF_ROLES.find(item=>item.id===employee.role);
+   if(!role)return;
+   const salary=Math.max(0,Math.round(Number(employee.salary)||0));
+   const skill=clamp(Number.isFinite(Number(employee.skill))?Number(employee.skill):55);
+   const morale=clamp(Number.isFinite(Number(employee.morale))?Number(employee.morale):65);
+   const effectiveness=Math.max(.35,Math.min(1,(skill*.65+morale*.35)/100));
+   staffRevenueBonus+=role.revenueBonus*effectiveness;
+   staffCostReduction+=role.costReduction*effectiveness;
+   staffPayroll+=salary;
+  });
   const baseRevenue=Math.round(openingValue*(.03+Math.random()*.08)*(.8+level*.15));
   const baseCosts=Math.round(openingValue*(.02+Math.random()*.05)*(1+Math.max(0,level-1)*.08));
-  const revenue=supplier?Math.round(baseRevenue*(.9+supplier.quality/100*.15)):baseRevenue;
-  const costs=supplier?Math.round(baseCosts*supplier.costMultiplier):baseCosts;
+  const supplierRevenueFactor=supplier?(.9+supplier.quality/100*.15):1;
+  const revenue=Math.round(baseRevenue*supplierRevenueFactor*(1+Math.min(.25,staffRevenueBonus)));
+  const supplierCosts=supplier?Math.round(baseCosts*supplier.costMultiplier):baseCosts;
+  const operatingCosts=Math.round(supplierCosts*(1-Math.min(.25,staffCostReduction)));
+  const costs=operatingCosts+staffPayroll;
   const profit=revenue-costs;
   state.bank+=profit;
   business.value=Math.max(1000,Math.round(openingValue*(profit>=0?1.04:.97)));
-  recordBusinessFinancialReport(business,{year:state.age,openingValue,revenue,costs,profit,closingValue:business.value,level,supplier:supplier?supplier.title:''});
+  staff.forEach(employee=>{
+   employee.years=Math.min(80,Math.max(0,Math.floor(Number(employee.years)||0))+1);
+   employee.morale=clamp((Number.isFinite(Number(employee.morale))?Number(employee.morale):65)+(profit>=0?2:-4));
+   if(employee.morale>=70&&chance(.25))employee.skill=clamp((Number(employee.skill)||55)+1);
+  });
+  recordBusinessFinancialReport(business,{year:state.age,openingValue,revenue,costs,profit,closingValue:business.value,level,supplier:supplier?supplier.title:'',payroll:staffPayroll,staffCount:staff.length});
   const supplierLabel=supplier?' · المورد '+supplier.title:'';
-  log('🏪','التقرير السنوي للمشروع','الإيرادات '+cash(revenue)+' · المصروفات '+cash(costs)+' · '+(profit>=0?'صافي الربح ':'صافي الخسارة ')+cash(Math.abs(profit))+' · مستوى الإدارة '+level+supplierLabel+'.','special');
+  const staffLabel=staff.length?' · الرواتب '+cash(staffPayroll)+' لعدد '+staff.length+' موظف':'';
+  log('🏪','التقرير السنوي للمشروع','الإيرادات '+cash(revenue)+' · المصروفات '+cash(costs)+' · '+(profit>=0?'صافي الربح ':'صافي الخسارة ')+cash(Math.abs(profit))+' · مستوى الإدارة '+level+supplierLabel+staffLabel+'.','special');
   if(supplier){
    business.supplier.yearsLeft=Math.max(0,(Number(business.supplier.yearsLeft)||3)-1);
    if(business.supplier.yearsLeft===0){business.supplier=null;log('📦','انتهاء عقد المورد','انتهى عقد المورد. راجع خيارات التوريد قبل السنة المالية القادمة.','bad');}
@@ -1552,7 +1597,7 @@ function businessReportsMenu(entity,title,back){
  if(!reports.length){info('📊','لا توجد تقارير بعد','التقرير المالي الأول هيظهر بعد مرور سنة مالية كاملة.');return;}
  const opts=reports.map(report=>choice('📅','السنة '+report.year,'الإيرادات '+cash(report.revenue)+' · المصروفات '+cash(report.costs)+' · '+(report.profit>=0?'صافي ربح ':'صافي خسارة ')+cash(Math.abs(report.profit)),()=>{
   closeModal();
-  const detail='الإيرادات: '+cash(report.revenue)+'\nالمصروفات التشغيلية: '+cash(report.costs)+'\nصافي النتيجة: '+(report.profit>=0?'ربح ':'خسارة ')+cash(Math.abs(report.profit))+'\nهامش الربح: '+report.margin+'%\nتغير قيمة النشاط: '+(report.growthRate>=0?'+':'')+report.growthRate+'%\nالقيمة الختامية: '+cash(report.closingValue)+(report.supplier?'\nالمورد: '+report.supplier:'');
+  const detail='الإيرادات: '+cash(report.revenue)+'\nالمصروفات التشغيلية: '+cash(Math.max(0,report.costs-(report.payroll||0)))+'\nرواتب الموظفين: '+cash(report.payroll||0)+' ('+(report.staffCount||0)+' موظف)\nإجمالي المصروفات: '+cash(report.costs)+'\nصافي النتيجة: '+(report.profit>=0?'ربح ':'خسارة ')+cash(Math.abs(report.profit))+'\nهامش الربح: '+report.margin+'%\nتغير قيمة النشاط: '+(report.growthRate>=0?'+':'')+report.growthRate+'%\nالقيمة الختامية: '+cash(report.closingValue)+(report.supplier?'\nالمورد: '+report.supplier:'');
   info('📊','التقرير المالي · '+title,detail,[choice('↩️','رجوع للتقارير','',()=>businessReportsMenu(entity,title,back))]);
  }));
  opts.push(choice('↩️','رجوع','',back));
@@ -1581,13 +1626,102 @@ function sellCompany(index){
  state.bank+=proceeds;state.companies.splice(index,1);state.assets=state.assets.filter(a=>a.id!==company.id);
  log('💵','بيع شركة','بعت '+company.title+' مقابل '+cash(proceeds)+'.','good');save();render();companyPortfolioMenu();
 }
+function businessStaffSalary(role,businessValue){
+ return Math.max(1200,Math.min(1000000000,Math.round(Math.max(0,Number(businessValue)||0)*role.salaryRate)));
+}
+function businessStaffMenu(){
+ const business=state.business;
+ if(!business){info('🏪','لا يوجد مشروع','امتلك مشروعًا أولًا حتى تدير فريق العمل.');return;}
+ if(!Array.isArray(business.staff))business.staff=[];
+ const staff=business.staff;
+ const payroll=staff.reduce((sum,employee)=>sum+Math.max(0,Number(employee.salary)||0),0);
+ const opts=staff.map((employee,index)=>{
+  const role=BUSINESS_STAFF_ROLES.find(item=>item.id===employee.role);
+  return choice(role?role.emoji:'👤',employee.name||((role&&role.title)||'موظف')+' '+(index+1),(role?role.title:'موظف')+' · الخبرة '+(employee.years||0)+' سنة · المهارة '+(employee.skill||0)+'% · الرضا '+(employee.morale||0)+'% · الراتب السنوي '+cash(employee.salary),()=>businessStaffMemberMenu(employee.id));
+ });
+ if(staff.length<5)opts.push(choice('➕','توظيف موظف','اختر تخصصًا يضيف قيمة للمشروع مقابل راتب سنوي ورسوم تعيين.',businessStaffHiringMenu));
+ else opts.push(choice('👥','اكتمل الفريق','الحد الأقصى للفريق الحالي خمسة موظفين.',()=>info('👥','الفريق مكتمل','أنهِ تعاقد أحد الموظفين قبل إضافة عضو جديد.')));
+ opts.push(choice('↩️','رجوع لإدارة المشروع','',businessMenu));
+ modal('👥','فريق العمل','عدد الموظفين '+staff.length+'/5 · إجمالي الرواتب السنوية '+cash(payroll)+'. الرواتب تُخصم من نتيجة المشروع عند التقدم سنة.',opts);
+}
+function businessStaffHiringMenu(){
+ const business=state.business;
+ if(!business)return;
+ const staff=Array.isArray(business.staff)?business.staff:[];
+ if(staff.length>=5){info('👥','الفريق مكتمل','الحد الأقصى للفريق الحالي خمسة موظفين.');return;}
+ const opts=BUSINESS_STAFF_ROLES.map(role=>{
+  const salary=businessStaffSalary(role,business.value),fee=Math.max(250,Math.round(salary*.1));
+  return choice(role.emoji,role.title,role.description+' · الراتب السنوي '+cash(salary)+' · رسوم التعيين '+cash(fee),()=>hireBusinessStaff(role.id),cash(fee));
+ });
+ opts.push(choice('↩️','رجوع للفريق','',businessStaffMenu));
+ modal('🧑‍💼','توظيف موظف','اختار المهارة المناسبة لاحتياج مشروعك. رسوم التعيين تُدفع مرة واحدة، والراتب يُخصم سنويًا.',opts);
+}
+function hireBusinessStaff(roleId){
+ closeModal();
+ const business=state.business;
+ if(!business)return;
+ const role=BUSINESS_STAFF_ROLES.find(item=>item.id===roleId);
+ if(!role){info('⚠️','وظيفة غير متاحة','اختار تخصصًا من القائمة الحالية.');return;}
+ if(!Array.isArray(business.staff))business.staff=[];
+ if(business.staff.length>=5){info('👥','الفريق مكتمل','الحد الأقصى للفريق الحالي خمسة موظفين.');return;}
+ const salary=businessStaffSalary(role,business.value),fee=Math.max(250,Math.round(salary*.1));
+ if(state.bank<fee){info('💳','الرصيد غير كافٍ','رسوم تعيين '+role.title+' هي '+cash(fee)+'.');return;}
+ state.bank-=fee;
+ const roleCount=business.staff.filter(employee=>employee.role===role.id).length+1;
+ const employee={id:'staff-'+String(state.lifeId||state.age)+'-'+Date.now()+'-'+business.staff.length,name:role.title+' '+roleCount,role:role.id,salary,skill:55,morale:65,years:0};
+ business.staff.push(employee);
+ log('👥','تعيين '+employee.name,'دفعت رسوم تعيين '+cash(fee)+'. الراتب السنوي '+cash(salary)+'، وسيظهر أثر الفريق في التقارير المالية.','good');
+ save();render();businessStaffMenu();
+}
+function businessStaffMemberMenu(id){
+ const business=state.business,staff=business&&Array.isArray(business.staff)?business.staff:[];
+ const employee=staff.find(item=>String(item.id)===String(id));
+ if(!employee){businessStaffMenu();return;}
+ const role=BUSINESS_STAFF_ROLES.find(item=>item.id===employee.role);
+ const trainingFee=Math.max(250,Math.round((Number(employee.salary)||0)*.08));
+ const severance=Math.max(200,Math.round((Number(employee.salary)||0)*.15));
+ modal(role?role.emoji:'👤',employee.name,(role?role.title:'موظف')+' · المهارة '+employee.skill+'% · الرضا '+employee.morale+'% · الخبرة '+employee.years+' سنة · الراتب السنوي '+cash(employee.salary),[
+  choice('📚','تدريب الموظف','رفع المهارة 7 درجات وتحسين الرضا مقابل '+cash(trainingFee)+'.',()=>trainBusinessStaff(id),cash(trainingFee)),
+  choice('🚪','إنهاء التعاقد','إزالة الموظف مقابل تعويض إنهاء '+cash(severance)+'.',()=>fireBusinessStaff(id),cash(severance)),
+  choice('↩️','رجوع للفريق','',businessStaffMenu)
+ ]);
+}
+function trainBusinessStaff(id){
+ closeModal();
+ const business=state.business,staff=business&&Array.isArray(business.staff)?business.staff:[];
+ const employee=staff.find(item=>String(item.id)===String(id));
+ if(!employee)return;
+ const fee=Math.max(250,Math.round((Number(employee.salary)||0)*.08));
+ if(state.bank<fee){info('💳','الرصيد غير كافٍ','تدريب الموظف يحتاج '+cash(fee)+'.');return;}
+ state.bank-=fee;
+ employee.skill=clamp((Number(employee.skill)||55)+7);
+ employee.morale=clamp((Number(employee.morale)||65)+4);
+ log('📚','تدريب '+employee.name,'ارتفعت المهارة إلى '+employee.skill+'% وتحسن الرضا إلى '+employee.morale+'%.','good');
+ save();render();businessStaffMemberMenu(id);
+}
+function fireBusinessStaff(id){
+ closeModal();
+ const business=state.business,staff=business&&Array.isArray(business.staff)?business.staff:[];
+ const index=staff.findIndex(item=>String(item.id)===String(id));
+ if(index<0)return;
+ const employee=staff[index],fee=Math.max(200,Math.round((Number(employee.salary)||0)*.15));
+ if(state.bank<fee){info('💳','الرصيد غير كافٍ','تعويض إنهاء التعاقد يحتاج '+cash(fee)+'.');return;}
+ state.bank-=fee;staff.splice(index,1);
+ log('🚪','إنهاء تعاقد '+employee.name,'دفعت تعويض إنهاء '+cash(fee)+'. تم تحديث حجم الفريق والرواتب السنوية.','bad');
+ save();render();businessStaffMenu();
+}
+
 function businessMenu(){
  if(!state.business){if(perkOwned('businessPack')){companyPortfolioMenu();return;}info('🏪','مفيش مشروع حاليًا','اشتري مشروعًا صغيرًا من قائمة الأصول عشان تبدأ الإدارة.');return;}
  const b=state.business,level=Math.max(1,b.level||1),supplier=BUSINESS_SUPPLIER_CATALOG.find(item=>b.supplier&&item.id===b.supplier.id);
+ const staff=Array.isArray(b.staff)?b.staff:[];
+ const staffPayroll=staff.reduce((sum,employee)=>sum+Math.max(0,Number(employee.salary)||0),0);
  const supplierStatus=supplier?' · المورد '+supplier.title+' ('+(Number(b.supplier.yearsLeft)||0)+' سنوات متبقية)':' · لم يتم التعاقد مع مورد';
- modal('🏪','إدارة '+(b.title||'مشروعك'),'قيمة المشروع '+cash(b.value)+' · مستوى الإدارة '+level+' · الشهرة '+(state.fame||0)+'%'+supplierStatus+'. اختيارات الإدارة تؤثر على دخل السنوات القادمة.',[
-  choice('📊','التقرير السنوي','راجع تقارير الإيرادات والمصروفات وصافي النتيجة.',()=>businessReportsMenu(b,b.title||'مشروعك',businessMenu)),
+ const staffStatus=' · فريق العمل '+staff.length+'/5 · الرواتب السنوية '+cash(staffPayroll);
+ modal('🏪','إدارة '+(b.title||'مشروعك'),'قيمة المشروع '+cash(b.value)+' · مستوى الإدارة '+level+' · الشهرة '+(state.fame||0)+'%'+supplierStatus+staffStatus+'. اختيارات الإدارة تؤثر على دخل السنوات القادمة.',[
+  choice('📊','التقرير السنوي','راجع الإيرادات والمصروفات وصافي النتيجة.',()=>businessReportsMenu(b,b.title||'مشروعك',businessMenu)),
   choice('📦','التعاقد مع مورد','قارن الجودة والتكلفة ومدة العقد قبل الاختيار.',businessSupplierMenu),
+  choice('👥','إدارة الموظفين','عيّن فريقًا صغيرًا ودرّبه وراجع أثر الرواتب على أرباح المشروع.',businessStaffMenu),
   choice('📣','حملة تسويق','حملة تكلف 2,500 '+state.place.unit+' قد ترفع المبيعات والسمعة.',()=>businessAction('marketing'),'2,500 '+state.place.unit),
   choice('👔','تعيين مدير','تحسين الإدارة مقابل 5,000 '+state.place.unit+'؛ يزيد الكفاءة السنوية.',()=>businessAction('manager'),'5,000 '+state.place.unit),
   choice('🏗️','توسيع المشروع','استثمار 10,000 '+state.place.unit+' لزيادة قيمة النشاط.',()=>businessAction('expand'),'10,000 '+state.place.unit),
