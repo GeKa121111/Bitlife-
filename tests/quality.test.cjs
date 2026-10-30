@@ -599,14 +599,14 @@ test('سجل الحياة يضيف الأحداث الجديدة تدريجيً�
 
 
 test('اقتصاد الشركات يختلف حسب الصناعة ويظهر أثره في التقرير المالي', () => {
-  assert.match(app, /const BUSINESS_INDUSTRY_PROFILES = \\{/);
-  assert.match(app, /function businessIndustryProfile\\(industry\\)/);
-  assert.match(app, /industryProfile\\.revenueMultiplier/);
-  assert.match(app, /industryProfile\\.operatingCostMultiplier/);
-  assert.match(app, /industryProfile\\.unitCostMultiplier/);
-  assert.match(app, /industryRevenueMultiplier/);
-  assert.match(app, /industryOperatingCostMultiplier/);
-  assert.match(app, /industryUnitCostMultiplier/);
-  assert.match(app, /معاملات القطاع: الإيرادات/);
+  assert.ok(app.includes("const BUSINESS_INDUSTRY_PROFILES = {"));
+  assert.ok(app.includes("function businessIndustryProfile(industry)"));
+  assert.ok(app.includes("industryProfile.revenueMultiplier"));
+  assert.ok(app.includes("industryProfile.operatingCostMultiplier"));
+  assert.ok(app.includes("industryProfile.unitCostMultiplier"));
+  assert.ok(app.includes("industryRevenueMultiplier"));
+  assert.ok(app.includes("industryOperatingCostMultiplier"));
+  assert.ok(app.includes("industryUnitCostMultiplier"));
+  assert.ok(app.includes("معاملات القطاع: الإيرادات"));
   assert.match(read('sw.js'), /hayah-shell-v32/);
 });
