@@ -502,6 +502,8 @@ test('شركات المحفظة تدير الموردين والموظفين و�
   assert.match(app, /function currentManagedBusiness\(\)/);
   assert.match(app, /function openPrimaryBusinessMenu\(\)/);
   assert.match(app, /choice\('🧰','إدارة التشغيل'/);
+  assert.match(app, /section\('الشركات المملوكة'\)/);
+  assert.match(app, /companyDetailMenu\(i\)/);
   assert.match(app, /function simulateBusinessEntityYear\(business,kind\)/);
   assert.match(app, /simulateBusinessEntityYear\(state\.business,'business'\)/);
   assert.match(app, /simulateBusinessEntityYear\(company,'portfolio'\)/);
