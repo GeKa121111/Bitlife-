@@ -1661,6 +1661,26 @@ async function run() {
     assert.ok(communityBout.respect > communityAfterChat.respect,
       'a completed rivalry match should update community respect even after a loss');
 
+    const originalBoostSave = await page.evaluate(() => localStorage.getItem('hekayat_hayah_save_v1'));
+    await page.evaluate(() => {
+      const key = 'hekayat_hayah_save_v1';
+      const saved = JSON.parse(localStorage.getItem(key) || 'null');
+      saved.stats.happiness = 20;
+      saved.boostUsedAge = null;
+      localStorage.setItem(key, JSON.stringify(saved));
+    });
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    const happinessBoost = page.locator('[data-stat-boost="happiness"]');
+    await happinessBoost.waitFor();
+    await happinessBoost.click();
+    await page.locator('#modalRoot .choice').filter({ hasText: 'وقت مع شخص قريب' }).click();
+    const boostedLife = await page.evaluate(() => JSON.parse(localStorage.getItem('hekayat_hayah_save_v1') || 'null'));
+    assert.equal(boostedLife.stats.happiness, 27, 'the free recovery choice should improve the selected stat by seven points');
+    assert.equal(boostedLife.boostUsedAge, boostedLife.age, 'only one recovery opportunity should be available in the current life year');
+    assert.equal(await page.locator('[data-stat-boost="happiness"]').count(), 0, 'the used recovery button should disappear until the next year');
+    await page.evaluate(original => localStorage.setItem('hekayat_hayah_save_v1', original), originalBoostSave);
+    await page.reload({ waitUntil: 'domcontentloaded' });
+
     assert.deepEqual(pageErrors, [], 'the browser run should complete without uncaught JavaScript errors');
 
     console.log('PASS: mobile layout, legacy v1 load, persistence, rewind, JSON import, inheritance, insolvent estate, career promotion migration, annual supplier market, persistent competitor market, facilities and production capacity, researched and instinct product launches, product pricing, annual product sales, business reports, independent portfolio-company operations, and business credit accrual, repayment, persistence, sale settlement, unpaid-interest capitalization, underwater-sale protection, industry tax assessment, tax arrears, loss exemption, treasury-only tax payment, and annual tax reconciliation, fighter community relationships, friendly interactions, and named rival bouts.');
