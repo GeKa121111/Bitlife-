@@ -139,7 +139,7 @@ test('تطبيق الويب قابل للتثبيت ويحتفظ بملفات ا
   assert.ok(manifest.icons.some(item => item.src === './icon.svg'));
   assert.match(html, /rel="manifest" href="manifest\.webmanifest"/);
   assert.match(app, /navigator\.serviceWorker\.register\('\.\/sw\.js'\)/);
-  assert.match(worker, /const CACHE_NAME = 'hayah-shell-v21'/);
+  assert.match(worker, /const CACHE_NAME = 'hayah-shell-v22'/);
   assert.match(worker, /cache\.addAll\(APP_SHELL\)/);
   assert.match(worker, /caches\.match\(APP_SHELL\[0\]\)/);
   assert.match(icon, /حياة/);
@@ -227,7 +227,7 @@ test('مسيرة الرياضات الإلكترونية أصلية وتحافظ
   assert.match(app, /function upgradeEsportsSetup\(\)/);
   assert.match(app, /موهبة الألعاب الإلكترونية/);
   assert.match(app, /data\.talents\.gaming=clamp\(Number\(data\.talents\.gaming\),0,100\)/);
-  assert.match(read('sw.js'), /hayah-shell-v21/);
+  assert.match(read('sw.js'), /hayah-shell-v22/);
   assert.match(functionSource('rewindToSnapshot', 'customizeMenu'), /ensureGamingTalent\(\)/, 'rewinding a pre-feature snapshot should restore a valid talent default');
 });
 
@@ -436,4 +436,19 @@ test('واجهة الهاتف الجديدة تطابق تخطيط الصفحا�
   assert.match(css, /\.list-section/);
   assert.match(css, /grid-template-columns:minmax\(0,1fr\)/);
   assert.doesNotMatch(html, /BITLIFE|BitLife|Candywriter/);
+});
+
+
+test('إدارة المشروع تدعم عقود الموردين وتقاريرًا مالية سنوية محدودة ومتوافقة مع الحفظ القديم', () => {
+  assert.match(app, /const BUSINESS_SUPPLIER_CATALOG = \[/);
+  assert.match(app, /function businessSupplierMenu\(\)/);
+  assert.match(app, /function contractBusinessSupplier\(id\)/);
+  assert.match(app, /function recordBusinessFinancialReport\(entity,report\)/);
+  assert.match(app, /function businessReportsMenu\(entity,title,back\)/);
+  assert.match(app, /entity\.financialHistory=history\.slice\(-10\)/);
+  assert.match(app, /business\.supplier\.yearsLeft=Math\.max\(0,/);
+  assert.match(app, /choice\('📦','التعاقد مع مورد'/);
+  assert.match(app, /choice\('📊','سجل التقارير'/);
+  assert.match(app, /const normalizeBusinessEntity=entity=>/);
+  assert.match(read('sw.js'), /hayah-shell-v22/);
 });
