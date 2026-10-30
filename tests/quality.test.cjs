@@ -781,6 +781,22 @@ test('المهرجان الأسبوعي يدوّر المواسم ويطبع ا�
   assert.equal(context.week.id, '2026-W44');
   assert.equal(context.week.startDate, '2026-10-26');
   assert.equal(context.week.endDate, '2026-11-01');
+  const originalTimezone = process.env.TZ;
+  try {
+    process.env.TZ = 'Africa/Cairo';
+    const cairoContext = {
+      state: {age:30,friends:[],hobbies:[],socialMediaPosts:0,stats:{smart:60,health:80,happiness:70}},
+      clamp: value => Math.max(0, Math.min(100, Number(value) || 0))
+    };
+    vm.runInNewContext(helpers + "globalThis.cairoWeek=seasonalWeekDetails(new Date(2026,9,30,12));", cairoContext);
+    assert.equal(cairoContext.cairoWeek.id, '2026-W44', 'DST changes must not shift the ISO week');
+    assert.equal(cairoContext.cairoWeek.startDate, '2026-10-26');
+  } finally {
+    if (originalTimezone === undefined) delete process.env.TZ;
+    else process.env.TZ = originalTimezone;
+  }
+  vm.runInNewContext(helpers + "globalThis.newYearWeek=seasonalWeekDetails(new Date('2027-01-01T12:00:00'));", context);
+  assert.equal(context.newYearWeek.id, '2026-W53', 'ISO weeks spanning New Year must keep the ISO year');
   assert.deepEqual(Array.from(context.event.claimed), ['chapter','friend']);
   assert.deepEqual(Array.from(context.badges.map(badge=>badge.id)), ['chapter','friend','hobby','voice','balance']);
   assert.ok(context.badges.every(badge=>badge.done));
