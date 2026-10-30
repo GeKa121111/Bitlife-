@@ -1016,3 +1016,37 @@ test('الواجهة الرئيسية منظمة وتعرض عناوين أحد�
   assert.match(css, /body\.theme-dark \.story-heading/);
   assert.match(css, /body\.theme-gold \.story-heading/);
 });
+
+
+test('كتالوج القتال يضم 30 حركة أصلية بمعرّفات وخصائص متسقة مع الرتب القديمة', () => {
+  const block = app.match(/const combatMoveCatalog=\[([\s\S]*?)\n\];/);
+  assert.ok(block, 'combat move catalog should remain data-driven');
+  const context = {};
+  vm.runInNewContext('globalThis.moves = [' + block[1] + '];', context);
+  const moves = Array.from(context.moves);
+  const ids = moves.map(move => move.id);
+  assert.equal(moves.length, 30, 'the catalog should contain the original 20 plus 10 new moves');
+  assert.equal(new Set(ids).size, moves.length, 'every move id must be unique');
+  const legacyIds = [
+    'quick-jab','high-guard','footwork','counter-read','body-force',
+    'clinch-control','iron-guard','flash-step','champion-finish','ring-general',
+    'low-kick','pivot-counter','shell-defense','burst-combo','last-round-read',
+    'angle-pivot','low-line-kick','shoulder-shell','rhythm-barrage','champion-plan'
+  ];
+  legacyIds.forEach(id => assert.ok(ids.includes(id), 'legacy move id must remain available: ' + id));
+  const newIds = [
+    'inside-slip','rear-angle-check','frame-wall','clinch-turn','overhand-arc',
+    'tempo-break','body-lock-shift','guard-split','last-minute-shell','champion-angle'
+  ];
+  newIds.forEach(id => assert.ok(ids.includes(id), 'new move should be registered: ' + id));
+  for (const move of moves) {
+    assert.ok(['سرعة','قوة','دفاع','تقنية'].includes(move.style), move.id + ' needs a known style');
+    assert.ok(['سرعة','قوة','دفاع','تقنية'].includes(move.strongAgainst), move.id + ' needs a valid counter style');
+    assert.ok(Number.isFinite(move.power) && move.power >= 25 && move.power <= 75, move.id + ' power should stay balanced');
+    assert.ok(Number.isInteger(move.rank) && move.rank >= 0 && move.rank <= 4, move.id + ' rank should be supported');
+    assert.ok(Number.isFinite(move.cost) && move.cost >= 0, move.id + ' cost should be valid');
+    assert.ok(typeof move.title === 'string' && move.title.length > 0 && typeof move.desc === 'string' && move.desc.length > 0);
+  }
+  assert.match(app, /const KEY = 'hekayat_hayah_save_v1';/);
+  assert.match(app, /return \{version:1,lifeId:/);
+});
