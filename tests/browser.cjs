@@ -809,7 +809,7 @@ async function run() {
     assert.ok(marketBeforeReload.competitorCount >= 2 && marketBeforeReload.competitorCount <= 8);
     assert.ok(marketBeforeReload.marketShare >= 3 && marketBeforeReload.marketShare <= 45);
     const marketDialog = await page.locator('#modalRoot').innerText();
-    assert.match(marketDialog, /المنافسون المحاكاة/);
+    assert.match(marketDialog, /المنافسين الافتراضيين/);
     await page.locator('#closeModal').click();
     await page.reload({ waitUntil: 'domcontentloaded' });
     await page.evaluate(() => { Math.random = () => 0.99; });
