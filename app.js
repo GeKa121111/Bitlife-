@@ -5857,7 +5857,7 @@ document.querySelectorAll('[data-panel]').forEach(btn=>btn.addEventListener('cli
  document.querySelectorAll('.navbtn').forEach(b=>{
   const selected=b===btn;
   b.classList.toggle('active',selected);
-  b.setAttribute('aria-pressed',String(selected));
+  if(typeof b.setAttribute==='function')b.setAttribute('aria-pressed',String(selected));
  });
  const p=btn.dataset.panel;if(p==='career')showCareer();if(p==='assets')assets();if(p==='relations')relations();if(p==='activities')activities();
 }));
