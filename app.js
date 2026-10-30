@@ -1353,12 +1353,13 @@ function simulateBusinessEntityYear(business,kind){
   staffCostReduction+=role.costReduction*effectiveness;
   staffPayroll+=salary;
  });
- const market=businessMarketSnapshot(business);
- const industryProfile=businessIndustryProfile(market.industry);
+ const initialMarket=businessMarketSnapshot(business);
+ const industryProfile=businessIndustryProfile(initialMarket.industry);
  const baseRevenue=(portfolio?Math.round(openingValue*(.03+Math.random()*.10)*(.85+level*.12)):Math.round(openingValue*(.03+Math.random()*.08)*(.8+level*.15)))*industryProfile.revenueMultiplier;
  const baseCosts=(portfolio?Math.round(openingValue*(.025+Math.random()*.055)*(1+Math.max(0,level-1)*.06)):Math.round(openingValue*(.02+Math.random()*.05)*(1+Math.max(0,level-1)*.08)))*industryProfile.operatingCostMultiplier;
  const supplierRevenueFactor=supplier?(.9+supplier.quality/100*.15):1;
  const productResult=simulateBusinessProducts(business,openingValue,supplier,staffRevenueBonus);
+ const market=businessMarketSnapshot(business);
  const revenue=Math.round(baseRevenue*supplierRevenueFactor*(1+Math.min(.25,staffRevenueBonus)))+productResult.revenue;
  const supplierCosts=supplier?Math.round(baseCosts*supplier.costMultiplier):baseCosts;
  const operatingCosts=Math.round(supplierCosts*(1-Math.min(.25,staffCostReduction)));
