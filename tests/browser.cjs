@@ -146,6 +146,13 @@ async function run() {
 
     const shownName = (await page.locator('#characterName').innerText()).trim();
     assert.ok(shownName.includes(seedSave.name), 'the legacy v1 save should render the seeded player');
+    const legacyBusinessDefaults = await page.evaluate(() => {
+      const saved = JSON.parse(localStorage.getItem('hekayat_hayah_save_v1') || 'null');
+      return { products: saved.business.products, research: saved.business.productResearch, pendingCosts: saved.business.pendingProductCosts };
+    });
+    assert.deepEqual(legacyBusinessDefaults.products, [], 'legacy businesses should receive an empty product list');
+    assert.deepEqual(legacyBusinessDefaults.research, [], 'legacy businesses should receive an empty research list');
+    assert.equal(legacyBusinessDefaults.pendingCosts, 0, 'legacy businesses should receive a zero pending-cost balance');
 
     // The career catalog should keep aspirational jobs visible and explain missing requirements.
     await page.locator('[data-panel="career"]').click();
@@ -185,6 +192,76 @@ async function run() {
       const saved = JSON.parse(localStorage.getItem('hekayat_hayah_save_v1') || 'null');
       return saved && saved.business && saved.business.staff[0].skill === 62;
     });
+    await page.locator('#closeModal').click();
+
+    // Launch an original product after paid market research; the next fiscal report must account for its sales and costs.
+    await page.locator('[data-panel="assets"]').click();
+    await page.locator('.choice').filter({ hasText: 'إدارة مشروعي' }).click();
+    await page.locator('.choice').filter({ hasText: 'إدارة المنتجات' }).click();
+    await page.locator('.choice').filter({ hasText: 'إطلاق منتج جديد' }).click();
+    await page.locator('.choice').filter({ hasText: 'خدمة رقمية' }).click();
+    await page.locator('.choice').filter({ hasText: 'إجراء بحث السوق' }).click();
+    await page.waitForFunction(() => {
+      const saved = JSON.parse(localStorage.getItem('hekayat_hayah_save_v1') || 'null');
+      return saved && saved.business && Array.isArray(saved.business.productResearch) &&
+        saved.business.productResearch.some(item => item.productId === 'digital-service' && item.year === 30);
+    });
+    const marketResearch = await page.evaluate(() => {
+      const saved = JSON.parse(localStorage.getItem('hekayat_hayah_save_v1') || 'null');
+      return saved.business.productResearch.find(item => item.productId === 'digital-service' && item.year === 30);
+    });
+    assert.ok(marketResearch.demand >= 20 && marketResearch.demand <= 90);
+    assert.ok(marketResearch.competition >= 10 && marketResearch.competition <= 90);
+    assert.ok(marketResearch.suggestedPrice > 0 && marketResearch.confidence >= 60);
+    await page.locator('.choice').filter({ hasText: 'إطلاق بنتائج البحث' }).click();
+    await page.waitForFunction(() => {
+      const saved = JSON.parse(localStorage.getItem('hekayat_hayah_save_v1') || 'null');
+      return saved && saved.business && Array.isArray(saved.business.products) && saved.business.products.some(item => item.catalogId === 'digital-service' && item.active);
+    });
+    const launchedProduct = await page.evaluate(() => {
+      const saved = JSON.parse(localStorage.getItem('hekayat_hayah_save_v1') || 'null');
+      return saved.business.products.find(item => item.catalogId === 'digital-service' && item.active);
+    });
+    assert.equal(launchedProduct.demand, marketResearch.demand, 'the product should use researched demand');
+    assert.equal(launchedProduct.competition, marketResearch.competition, 'the product should use researched competition');
+    assert.equal(launchedProduct.unitPrice, marketResearch.suggestedPrice, 'the product should use the researched price');
+    assert.ok(launchedProduct.id && launchedProduct.history.length === 0);
+    const originalPrice = launchedProduct.unitPrice;
+    await page.locator('.choice').filter({ hasText: 'رفع السعر 10%' }).click();
+    await page.waitForFunction(price => {
+      const saved = JSON.parse(localStorage.getItem('hekayat_hayah_save_v1') || 'null');
+      const product = saved && saved.business && saved.business.products.find(item => item.catalogId === 'digital-service');
+      return product && product.unitPrice === Math.round(price * 1.1);
+    }, originalPrice);
+    await page.locator('.choice').filter({ hasText: 'رجوع للمنتجات' }).click();
+
+    // A researched item can still be launched on instinct; the selected route must ignore the research snapshot.
+    await page.locator('.choice').filter({ hasText: 'إطلاق منتج جديد' }).click();
+    await page.locator('.choice').filter({ hasText: 'وجبات منزلية' }).click();
+    await page.locator('.choice').filter({ hasText: 'إجراء بحث السوق' }).click();
+    await page.waitForFunction(() => {
+      const saved = JSON.parse(localStorage.getItem('hekayat_hayah_save_v1') || 'null');
+      return saved && saved.business && saved.business.productResearch.some(item => item.productId === 'home-meals' && item.year === 30);
+    });
+    const secondResearch = await page.evaluate(() => {
+      const saved = JSON.parse(localStorage.getItem('hekayat_hayah_save_v1') || 'null');
+      return saved.business.productResearch.find(item => item.productId === 'home-meals' && item.year === 30);
+    });
+    await page.locator('.choice').filter({ hasText: 'إطلاق دون بحث' }).click();
+    await page.waitForFunction(() => {
+      const saved = JSON.parse(localStorage.getItem('hekayat_hayah_save_v1') || 'null');
+      return saved && saved.business && saved.business.products.filter(item => item.active).length === 2;
+    });
+    const instinctProduct = await page.evaluate(() => {
+      const saved = JSON.parse(localStorage.getItem('hekayat_hayah_save_v1') || 'null');
+      return saved.business.products.find(item => item.catalogId === 'home-meals' && item.active);
+    });
+    assert.equal(instinctProduct.demand, 80, 'an unresearched launch should use the explicit instinct estimate');
+    assert.equal(instinctProduct.competition, 82, 'an unresearched launch should not copy researched competition');
+    assert.equal(instinctProduct.unitPrice, 461, 'an unresearched launch should not copy the researched suggested price');
+    assert.notEqual(instinctProduct.unitPrice, secondResearch.suggestedPrice, 'the no-research route should ignore the saved research price');
+    await page.locator('.choice').filter({ hasText: 'رجوع للمنتجات' }).click();
+    await page.locator('.choice').filter({ hasText: 'رجوع لإدارة المشروع' }).click();
     await page.locator('#closeModal').click();
 
     const mobileGeometry = await page.evaluate(() => {
@@ -235,6 +312,8 @@ async function run() {
         supplier: saved && saved.business && saved.business.supplier,
         staff: saved && saved.business && saved.business.staff,
         supplierMarket: saved && saved.business && saved.business.supplierMarket,
+        products: saved && saved.business && saved.business.products,
+        pendingProductCosts: saved && saved.business && saved.business.pendingProductCosts,
         report: history[history.length - 1]
       };
     });
@@ -250,6 +329,15 @@ async function run() {
     assert.equal(businessYear.supplierMarket.year, 30, 'the prior market snapshot should remain saved until the next review');
     assert.equal(businessYear.report.staffCount, 1, 'the annual report should record the active team size');
     assert.equal(businessYear.report.payroll, businessYear.staff[0].salary, 'annual payroll should match the hired employee salary');
+    assert.equal(businessYear.report.productCount, 2, 'the annual report should count both launched products');
+    assert.ok(businessYear.report.productRevenue > 0 && businessYear.report.productUnits > 0, 'the product should generate sales after one fiscal year');
+    assert.ok(businessYear.report.productCosts >= 4650, 'both research fees and both launch fees should be included in product costs');
+    assert.equal(businessYear.pendingProductCosts, 0, 'upfront product costs should clear after the fiscal report');
+    assert.equal(businessYear.report.productProfit, businessYear.report.productRevenue - businessYear.report.productCosts);
+    assert.equal(businessYear.products.filter(item => item.active).length, 2);
+    assert.equal(businessYear.products[0].history.length, 1, 'the product should retain its first annual performance record');
+    assert.equal(businessYear.products[0].history[0].demand, marketResearch.demand, 'the first report should use the researched demand snapshot');
+    assert.equal(businessYear.products[1].history[0].demand, 80, 'the instinct launch should use its own demand estimate');
     assert.ok(businessYear.report.costs >= businessYear.report.payroll, 'employee payroll should be included in annual business costs');
     assert.equal(businessYear.staff[0].years, 1, 'employee experience should advance with the business year');
 
@@ -271,6 +359,12 @@ async function run() {
         feed.scrollHeight - feed.scrollTop - feed.clientHeight <= 8;
     });
     assert.ok((await page.locator('#characterName').innerText()).includes(seedSave.name), 'the player identity should persist after reload');
+    const persistedProducts = await page.evaluate(() => {
+      const saved = JSON.parse(localStorage.getItem('hekayat_hayah_save_v1') || 'null');
+      return saved && saved.business && saved.business.products;
+    });
+    assert.equal(persistedProducts.length, 2, 'launched products should survive a reload');
+    assert.deepEqual(persistedProducts.map(item => item.catalogId), ['digital-service','home-meals']);
 
     // The supplier market refreshes for the new fiscal year and remains stable after reload.
     await page.locator('[data-panel="assets"]').click();
@@ -621,7 +715,7 @@ async function run() {
 
     assert.deepEqual(pageErrors, [], 'the browser run should complete without uncaught JavaScript errors');
 
-    console.log('PASS: mobile layout, legacy v1 load, persistence, rewind, JSON import, inheritance, insolvent estate, career promotion migration, annual supplier market, and business reports.');
+    console.log('PASS: mobile layout, legacy v1 load, persistence, rewind, JSON import, inheritance, insolvent estate, career promotion migration, annual supplier market, researched and instinct product launches, product pricing, annual product sales, and business reports.');
     await context.close();
   } finally {
     if (browser) await browser.close();
