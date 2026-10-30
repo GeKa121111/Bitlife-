@@ -1224,8 +1224,8 @@ function simulateBusinessEntityYear(business,kind){
  const baseRevenue=portfolio?Math.round(openingValue*(.03+Math.random()*.10)*(.85+level*.12)):Math.round(openingValue*(.03+Math.random()*.08)*(.8+level*.15));
  const baseCosts=portfolio?Math.round(openingValue*(.025+Math.random()*.055)*(1+Math.max(0,level-1)*.06)):Math.round(openingValue*(.02+Math.random()*.05)*(1+Math.max(0,level-1)*.08));
  const supplierRevenueFactor=supplier?(.9+supplier.quality/100*.15):1;
- const market=businessMarketSnapshot(business);
  const productResult=simulateBusinessProducts(business,openingValue,supplier,staffRevenueBonus);
+ const market=businessMarketSnapshot(business);
  const revenue=Math.round(baseRevenue*supplierRevenueFactor*(1+Math.min(.25,staffRevenueBonus)))+productResult.revenue;
  const supplierCosts=supplier?Math.round(baseCosts*supplier.costMultiplier):baseCosts;
  const operatingCosts=Math.round(supplierCosts*(1-Math.min(.25,staffCostReduction)));
