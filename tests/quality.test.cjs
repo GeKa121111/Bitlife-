@@ -573,12 +573,12 @@ test('اختبارات Node دون DOM كامل لا تتطلب querySelector م
 
 
 test('إعدادات الصوت والاهتزاز اختيارية ومستقلة عن حفظ الحياة', () => {
-  assert.match(app, /let uiSettings=\\{theme:'light',textScale:'normal',sound:false,haptics:false\\}/);
-  assert.match(app, /function playUiFeedback\\(kind='tap'\\)/);
-  assert.match(app, /typeof navigator\\.vibrate==='function'/);
-  assert.match(app, /window\\.AudioContext\\|\\|window\\.webkitAudioContext/);
-  assert.match(app, /if\\(typeof raw\\.sound==='boolean'\\)/);
-  assert.match(app, /if\\(typeof raw\\.haptics==='boolean'\\)/);
+  assert.ok(app.includes("let uiSettings={theme:'light',textScale:'normal',sound:false,haptics:false}"));
+  assert.ok(app.includes("function playUiFeedback(kind='tap')"));
+  assert.ok(app.includes("typeof navigator.vibrate==='function'"));
+  assert.ok(app.includes("window.AudioContext||window.webkitAudioContext"));
+  assert.ok(app.includes("if(typeof raw.sound==='boolean')"));
+  assert.ok(app.includes("if(typeof raw.haptics==='boolean')"));
   assert.ok(app.includes("choice(uiSettings.sound?'🔊':'🔇'"));
   assert.ok(app.includes("choice(uiSettings.haptics?'📳':'📴'"));
   assert.ok(app.includes("localStorage.setItem(SETTINGS_KEY,JSON.stringify(uiSettings))"));
