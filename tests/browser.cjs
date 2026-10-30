@@ -1026,9 +1026,180 @@ async function run() {
       assert.ok(result.product.history.some(entry => entry.year === 37));
     }
 
+    // Business credit is attached to the selected company, accrues once per fiscal year, and settles before sale proceeds reach the owner.
+    await page.evaluate(() => {
+      const key = 'hekayat_hayah_save_v1';
+      const saved = JSON.parse(localStorage.getItem(key) || 'null');
+      const company = saved && saved.companies && saved.companies.find(item => item.id === 'portfolio-company-browser');
+      if (!company) throw new Error('the portfolio company should still exist before the credit test');
+      saved.bank = 1000000;
+      company.credit = null;
+      localStorage.setItem(key, JSON.stringify(saved));
+    });
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await page.evaluate(() => { Math.random = () => 0.99; });
+    await page.locator('[data-panel="assets"]').click();
+    await page.locator('.choice').filter({ hasText: 'شركة محفظة اختبار' }).click();
+    await page.locator('.choice').filter({ hasText: 'إدارة التشغيل' }).click();
+    await page.locator('.choice').filter({ hasText: 'تمويل النشاط' }).click();
+    const creditMenuBeforeBorrow = await page.locator('#modalRoot').innerText();
+    assert.match(creditMenuBeforeBorrow, /حد التمويل التقديري/);
+    await page.locator('.choice').filter({ hasText: 'طلب تمويل' }).last().click();
+    const creditAfterBorrow = await page.evaluate(() => {
+      const saved = JSON.parse(localStorage.getItem('hekayat_hayah_save_v1') || 'null');
+      const company = saved && saved.companies.find(item => item.id === 'portfolio-company-browser');
+      return { bank: saved && saved.bank, credit: company && company.credit, value: company && company.value };
+    });
+    assert.ok(creditAfterBorrow.credit && creditAfterBorrow.credit.principal > 0);
+    assert.equal(creditAfterBorrow.credit.principal, Math.round(creditAfterBorrow.value * .35));
+    assert.ok(creditAfterBorrow.credit.annualRate >= .075 && creditAfterBorrow.credit.annualRate <= .14);
+    assert.equal(creditAfterBorrow.credit.accruedInterest, 0);
+    assert.ok(creditAfterBorrow.bank > 1000000, 'borrowed capital should increase available liquidity');
+
+    const ageBeforeCreditInterest = await page.evaluate(() => JSON.parse(localStorage.getItem('hekayat_hayah_save_v1')).age);
+    await page.locator('#closeModal').click();
+    await page.locator('#ageUpBtn').click();
+    await page.waitForFunction(previousAge => {
+      const saved = JSON.parse(localStorage.getItem('hekayat_hayah_save_v1') || 'null');
+      const company = saved && saved.companies && saved.companies.find(item => item.id === 'portfolio-company-browser');
+      return saved && saved.age === previousAge + 1 && company && company.financialHistory &&
+        company.financialHistory.some(report => report.year === previousAge + 1);
+    }, ageBeforeCreditInterest);
+    const creditAfterInterest = await page.evaluate(() => {
+      const saved = JSON.parse(localStorage.getItem('hekayat_hayah_save_v1') || 'null');
+      const company = saved && saved.companies.find(item => item.id === 'portfolio-company-browser');
+      const report = company.financialHistory[company.financialHistory.length - 1];
+      return { credit: company.credit, report, age: saved.age };
+    });
+    const expectedInterest = Math.round(creditAfterBorrow.credit.principal * creditAfterBorrow.credit.annualRate);
+    assert.equal(creditAfterInterest.report.businessLoanInterest, expectedInterest);
+    assert.equal(creditAfterInterest.report.businessLoanInterestPaid, expectedInterest);
+    assert.equal(creditAfterInterest.report.businessLoanInterestAccrued, 0);
+    assert.equal(creditAfterInterest.report.businessLoanBalance, creditAfterBorrow.credit.principal);
+    assert.equal(creditAfterInterest.credit.lastInterestAge, creditAfterInterest.age);
+    assert.equal(creditAfterInterest.report.profit,
+      creditAfterInterest.report.revenue - creditAfterInterest.report.costs,
+      'annual profit should include accrued business-loan interest exactly once');
+
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await page.evaluate(() => { Math.random = () => 0.99; });
+    await page.locator('[data-panel="assets"]').click();
+    await page.locator('.choice').filter({ hasText: 'شركة محفظة اختبار' }).click();
+    await page.locator('.choice').filter({ hasText: 'إدارة التشغيل' }).click();
+    await page.locator('.choice').filter({ hasText: 'تمويل النشاط' }).click();
+    await page.locator('.choice').filter({ hasText: 'سداد 50%' }).click();
+    const partialRepayment = await page.evaluate(() => {
+      const saved = JSON.parse(localStorage.getItem('hekayat_hayah_save_v1') || 'null');
+      const company = saved && saved.companies.find(item => item.id === 'portfolio-company-browser');
+      return company && company.credit;
+    });
+    assert.ok(partialRepayment && partialRepayment.principal < creditAfterBorrow.credit.principal,
+      'partial repayment should reduce the company principal');
+    await page.locator('.choice').filter({ hasText: 'سداد كامل الرصيد' }).click();
+    const fullyRepaid = await page.evaluate(() => {
+      const saved = JSON.parse(localStorage.getItem('hekayat_hayah_save_v1') || 'null');
+      const company = saved && saved.companies.find(item => item.id === 'portfolio-company-browser');
+      return company && company.credit;
+    });
+    assert.equal(fullyRepaid, null, 'full repayment should clear the optional credit record');
+
+    const saleBefore = await page.evaluate(() => {
+      const key = 'hekayat_hayah_save_v1';
+      const saved = JSON.parse(localStorage.getItem(key) || 'null');
+      const company = saved.companies.find(item => item.id === 'portfolio-company-browser');
+      company.credit = { principal: 10000, accruedInterest: 0, annualRate: .1, openedAtAge: saved.age, lastInterestAge: saved.age };
+      localStorage.setItem(key, JSON.stringify(saved));
+      return { bank: saved.bank, grossProceeds: Math.round(company.value * .75) };
+    });
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await page.locator('[data-panel="assets"]').click();
+    await page.locator('.choice').filter({ hasText: 'شركة محفظة اختبار' }).click();
+    await page.locator('.choice').filter({ hasText: 'بيع الشركة' }).click();
+    const saleAfter = await page.evaluate(() => {
+      const saved = JSON.parse(localStorage.getItem('hekayat_hayah_save_v1') || 'null');
+      return { bank: saved.bank, company: saved.companies.find(item => item.id === 'portfolio-company-browser'),
+        asset: saved.assets.find(item => item.id === 'portfolio-company-browser') };
+    });
+    assert.equal(saleAfter.company, undefined, 'a sold portfolio company should be removed from the company list');
+    assert.equal(saleAfter.asset, undefined, 'the matching business asset should also be removed');
+    assert.equal(saleAfter.bank, saleBefore.bank + saleBefore.grossProceeds - 10000,
+      'sale proceeds should settle the company loan before paying the owner');
+
+    // When a company cannot cover its interest from available liquidity, the unpaid amount is capitalized once.
+    const accrualSetup = await page.evaluate(() => {
+      const key = 'hekayat_hayah_save_v1';
+      const saved = JSON.parse(localStorage.getItem(key) || 'null');
+      const id = 'credit-accrual-test';
+      saved.bank = -1000000;
+      saved.debt = 0;
+      const staff = Array.from({ length: 5 }, (_, index) => ({
+        id: id + '-staff-' + index, name: 'موظف اختبار ' + (index + 1), role: 'sales',
+        salary: 1000000, skill: 55, morale: 50, years: 0
+      }));
+      saved.companies.unshift({
+        id, assetId: id, title: 'شركة اختبار تعثر', sector: 'مطاعم', value: 1000, level: 1,
+        staff, credit: { principal: 20000, accruedInterest: 0, annualRate: .1,
+          openedAtAge: saved.age, lastInterestAge: saved.age }
+      });
+      saved.assets.unshift({ id, title: 'شركة اختبار تعثر', emoji: '🏦', kind: 'business',
+        value: 1000, upkeep: 0, bought: saved.age, companyPortfolio: true });
+      localStorage.setItem(key, JSON.stringify(saved));
+      return { age: saved.age };
+    });
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await page.evaluate(() => { Math.random = () => 0.99; });
+    await page.locator('#ageUpBtn').click();
+    await page.waitForFunction(previousAge => {
+      const saved = JSON.parse(localStorage.getItem('hekayat_hayah_save_v1') || 'null');
+      const company = saved && saved.companies.find(item => item.id === 'credit-accrual-test');
+      return saved && saved.age === previousAge + 1 && company && company.financialHistory &&
+        company.financialHistory.some(report => report.year === previousAge + 1);
+    }, accrualSetup.age);
+    const unpaidInterest = await page.evaluate(() => {
+      const saved = JSON.parse(localStorage.getItem('hekayat_hayah_save_v1') || 'null');
+      const company = saved.companies.find(item => item.id === 'credit-accrual-test');
+      return { credit: company.credit, report: company.financialHistory[company.financialHistory.length - 1] };
+    });
+    assert.equal(unpaidInterest.report.businessLoanInterest, 2000);
+    assert.equal(unpaidInterest.report.businessLoanInterestPaid, 0);
+    assert.equal(unpaidInterest.report.businessLoanInterestAccrued, 2000);
+    assert.equal(unpaidInterest.report.businessLoanBalance, 22000);
+    assert.equal(unpaidInterest.credit.accruedInterest, 2000,
+      'unpaid annual interest should be capitalized instead of disappearing or being charged twice');
+
+    // A company cannot be sold for less than its outstanding business debt.
+    const underwaterSetup = await page.evaluate(() => {
+      const key = 'hekayat_hayah_save_v1';
+      const saved = JSON.parse(localStorage.getItem(key) || 'null');
+      const id = 'credit-underwater-test';
+      saved.bank = 50000;
+      saved.debt = 0;
+      const company = { id, assetId: id, title: 'شركة مديونية مرتفعة', sector: 'تجزئة', value: 10000,
+        level: 1, credit: { principal: 9000, accruedInterest: 0, annualRate: .1,
+          openedAtAge: saved.age, lastInterestAge: saved.age } };
+      saved.companies.push(company);
+      saved.assets.push({ id, title: company.title, emoji: '🏦', kind: 'business',
+        value: company.value, upkeep: 0, bought: saved.age, companyPortfolio: true });
+      localStorage.setItem(key, JSON.stringify(saved));
+      return { bank: saved.bank };
+    });
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await page.locator('[data-panel="assets"]').click();
+    await page.locator('.choice').filter({ hasText: 'شركة مديونية مرتفعة' }).click();
+    await page.locator('.choice').filter({ hasText: 'بيع الشركة' }).click();
+    const blockedSale = await page.evaluate(() => {
+      const saved = JSON.parse(localStorage.getItem('hekayat_hayah_save_v1') || 'null');
+      return { bank: saved.bank,
+        company: saved.companies.find(item => item.id === 'credit-underwater-test'),
+        asset: saved.assets.find(item => item.id === 'credit-underwater-test') };
+    });
+    assert.equal(blockedSale.bank, underwaterSetup.bank, 'a blocked sale must not change the shared cash balance');
+    assert.ok(blockedSale.company && blockedSale.asset,
+      'the company and its asset must remain when sale proceeds cannot settle the debt');
+
     assert.deepEqual(pageErrors, [], 'the browser run should complete without uncaught JavaScript errors');
 
-    console.log('PASS: mobile layout, legacy v1 load, persistence, rewind, JSON import, inheritance, insolvent estate, career promotion migration, annual supplier market, persistent competitor market, facilities and production capacity, researched and instinct product launches, product pricing, annual product sales, business reports, and independent portfolio-company operations.');
+    console.log('PASS: mobile layout, legacy v1 load, persistence, rewind, JSON import, inheritance, insolvent estate, career promotion migration, annual supplier market, persistent competitor market, facilities and production capacity, researched and instinct product launches, product pricing, annual product sales, business reports, independent portfolio-company operations, and business credit accrual, repayment, persistence, sale settlement, unpaid-interest capitalization, and underwater-sale protection.');
     await context.close();
   } finally {
     if (browser) await browser.close();

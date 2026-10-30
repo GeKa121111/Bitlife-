@@ -685,6 +685,15 @@ function normalizeCoreState(data){
   }));
   const pendingProductCosts=Number(entity.pendingProductCosts);
   entity.pendingProductCosts=Math.max(0,Math.min(1000000000,Number.isFinite(pendingProductCosts)?Math.round(pendingProductCosts):0));
+  const rawCredit=entity.credit&&typeof entity.credit==='object'&&!Array.isArray(entity.credit)?entity.credit:null;
+  if(rawCredit){
+   const principal=Math.max(0,Math.min(100000000,Math.round(Number(rawCredit.principal)||0)));
+   const accruedInterest=Math.max(0,Math.min(100000000,Math.round(Number(rawCredit.accruedInterest)||0)));
+   const annualRate=Math.max(.05,Math.min(.2,Number.isFinite(Number(rawCredit.annualRate))?Number(rawCredit.annualRate):.095));
+   const openedAtAge=Math.max(0,Math.min(150,Math.floor(Number(rawCredit.openedAtAge)||0)));
+   const lastInterestAge=Number.isFinite(Number(rawCredit.lastInterestAge))?Math.max(-1,Math.min(150,Math.floor(Number(rawCredit.lastInterestAge)))):-1;
+   entity.credit=principal+accruedInterest>0?{principal,accruedInterest,annualRate:Math.round(annualRate*10000)/10000,openedAtAge,lastInterestAge}:null;
+  }else entity.credit=null;
   if(entity.supplier&&typeof entity.supplier==='object'&&!Array.isArray(entity.supplier)){
    const supplier=BUSINESS_SUPPLIER_CATALOG.find(item=>item.id===entity.supplier.id);
    entity.supplier=supplier?{
@@ -1200,7 +1209,11 @@ function recordBusinessFinancialReport(entity,report){
  const industryRevenueMultiplier=Math.round(Math.max(.7,Math.min(1.5,Number(report.industryRevenueMultiplier)||1))*1000)/1000;
  const industryOperatingCostMultiplier=Math.round(Math.max(.7,Math.min(1.5,Number(report.industryOperatingCostMultiplier)||1))*1000)/1000;
  const industryUnitCostMultiplier=Math.round(Math.max(.7,Math.min(1.5,Number(report.industryUnitCostMultiplier)||1))*1000)/1000;
- history.push({year:Math.max(0,Math.floor(Number(report.year)||0)),openingValue,revenue,costs,profit,margin,growthRate,closingValue,level:Math.max(1,Math.floor(Number(report.level)||1)),supplier:typeof report.supplier==='string'?report.supplier:'',supplierQuality,supplierCostMultiplier,payroll,staffCount,productRevenue,productCosts,productProfit,productUnits,productCount,facilityUpkeep,facilityInvestment,facilityCount,capacityMultiplier,marketIndustry,marketDemandIndex,marketCompetitionIndex,marketCompetitorCount,marketRivalPriceIndex,marketShare,marketShareChange,industryRevenueMultiplier,industryOperatingCostMultiplier,industryUnitCostMultiplier});
+ const businessLoanInterest=Math.max(0,Math.round(Number(report.businessLoanInterest)||0));
+ const businessLoanInterestPaid=Math.max(0,Math.min(businessLoanInterest,Math.round(Number(report.businessLoanInterestPaid)||0)));
+ const businessLoanInterestAccrued=Math.max(0,Math.min(businessLoanInterest,Math.round(Number(report.businessLoanInterestAccrued)||0)));
+ const businessLoanBalance=Math.max(0,Math.min(200000000,Math.round(Number(report.businessLoanBalance)||0)));
+ history.push({year:Math.max(0,Math.floor(Number(report.year)||0)),openingValue,revenue,costs,profit,margin,growthRate,closingValue,level:Math.max(1,Math.floor(Number(report.level)||1)),supplier:typeof report.supplier==='string'?report.supplier:'',supplierQuality,supplierCostMultiplier,payroll,staffCount,productRevenue,productCosts,productProfit,productUnits,productCount,facilityUpkeep,facilityInvestment,facilityCount,capacityMultiplier,marketIndustry,marketDemandIndex,marketCompetitionIndex,marketCompetitorCount,marketRivalPriceIndex,marketShare,marketShareChange,industryRevenueMultiplier,industryOperatingCostMultiplier,industryUnitCostMultiplier,businessLoanInterest,businessLoanInterestPaid,businessLoanInterestAccrued,businessLoanBalance});
  entity.financialHistory=history.slice(-10);
 }
 
@@ -1368,23 +1381,42 @@ function simulateBusinessEntityYear(business,kind){
  const facilityInvestmentCosts=Math.max(0,Math.min(8000000000,Math.round(Number(business.pendingFacilityCosts)||0)));
  business.pendingFacilityCosts=0;
  // Facility construction is capital expenditure: it was paid at purchase time, so report it separately from annual operating profit.
- const costs=operatingCosts+staffPayroll+facilityUpkeep+productResult.costs+productResult.upfrontCosts;
+ const operatingCostsTotal=operatingCosts+staffPayroll+facilityUpkeep+productResult.costs;
+ const credit=business.credit&&typeof business.credit==='object'?business.credit:null;
+ const creditPrincipal=credit?Math.max(0,Math.round(Number(credit.principal)||0)):0;
+ const creditRate=credit?Math.max(.05,Math.min(.2,Number(credit.annualRate)||.095)):.095;
+ const businessLoanInterest=credit&&creditPrincipal>0&&Number(credit.lastInterestAge)!==Number(state.age)?Math.max(0,Math.round(creditPrincipal*creditRate)):0;
+ if(credit&&businessLoanInterest){
+  const cashBeforeInterest=Math.max(0,Number(state.bank||0)+revenue-operatingCostsTotal);
+  const businessLoanInterestPaid=Math.min(businessLoanInterest,Math.floor(cashBeforeInterest));
+  const businessLoanInterestAccrued=businessLoanInterest-businessLoanInterestPaid;
+  credit.accruedInterest=Math.min(100000000,Math.max(0,Math.round(Number(credit.accruedInterest)||0)+businessLoanInterestAccrued));
+  credit.lastInterestAge=Number(state.age);
+  credit._lastInterestPaid=businessLoanInterestPaid;
+  credit._lastInterestAccrued=businessLoanInterestAccrued;
+ }else if(credit){credit._lastInterestPaid=0;credit._lastInterestAccrued=0;}
+ const businessLoanInterestPaid=credit?Math.max(0,Math.round(Number(credit._lastInterestPaid)||0)):0;
+ const businessLoanInterestAccrued=credit?Math.max(0,Math.round(Number(credit._lastInterestAccrued)||0)):0;
+ if(credit){delete credit._lastInterestPaid;delete credit._lastInterestAccrued;}
+ const costs=operatingCostsTotal+productResult.upfrontCosts+businessLoanInterest;
  const profit=revenue-costs;
- // Product research and launch fees were already paid; include them in the report once without charging cash twice.
- state.bank+=profit+productResult.upfrontCosts;
+ // Product research and launch fees were already paid; include them in the report once without charging cash twice. Unpaid loan interest is capitalized instead of being charged twice to the shared cash balance.
+ state.bank+=profit+productResult.upfrontCosts+businessLoanInterestAccrued;
  business.value=Math.max(1000,Math.round(openingValue*(profit>=0?1.04:.97)));
  staff.forEach(employee=>{
   employee.years=Math.min(80,Math.max(0,Math.floor(Number(employee.years)||0))+1);
   employee.morale=clamp((Number.isFinite(Number(employee.morale))?Number(employee.morale):65)+(profit>=0?2:-4));
   if(employee.morale>=70&&chance(.25))employee.skill=clamp((Number(employee.skill)||55)+1);
  });
- recordBusinessFinancialReport(business,{year:state.age,openingValue,revenue,costs,profit,closingValue:business.value,level,supplier:supplier?supplier.title:'',supplierQuality:supplier?supplier.quality:0,supplierCostMultiplier:supplier?supplier.costMultiplier:0,payroll:staffPayroll,staffCount:staff.length,productRevenue:productResult.revenue,productCosts:productResult.costs+productResult.upfrontCosts,productProfit:productResult.productProfit,productUnits:productResult.units,productCount:productResult.count,facilityUpkeep,facilityInvestment:facilityInvestmentCosts,facilityCount:facilities.length,capacityMultiplier:productResult.capacityMultiplier,marketIndustry:market.industry,marketDemandIndex:market.demandIndex,marketCompetitionIndex:market.competitionIndex,marketCompetitorCount:market.competitorCount,marketRivalPriceIndex:market.rivalPriceIndex,marketShare:market.marketShare,marketShareChange:market.lastYearShareChange,industryRevenueMultiplier:industryProfile.revenueMultiplier,industryOperatingCostMultiplier:industryProfile.operatingCostMultiplier,industryUnitCostMultiplier:industryProfile.unitCostMultiplier});
+ recordBusinessFinancialReport(business,{year:state.age,openingValue,revenue,costs,profit,closingValue:business.value,level,supplier:supplier?supplier.title:'',supplierQuality:supplier?supplier.quality:0,supplierCostMultiplier:supplier?supplier.costMultiplier:0,payroll:staffPayroll,staffCount:staff.length,productRevenue:productResult.revenue,productCosts:productResult.costs+productResult.upfrontCosts,productProfit:productResult.productProfit,productUnits:productResult.units,productCount:productResult.count,facilityUpkeep,facilityInvestment:facilityInvestmentCosts,facilityCount:facilities.length,capacityMultiplier:productResult.capacityMultiplier,marketIndustry:market.industry,marketDemandIndex:market.demandIndex,marketCompetitionIndex:market.competitionIndex,marketCompetitorCount:market.competitorCount,marketRivalPriceIndex:market.rivalPriceIndex,marketShare:market.marketShare,marketShareChange:market.lastYearShareChange,industryRevenueMultiplier:industryProfile.revenueMultiplier,industryOperatingCostMultiplier:industryProfile.operatingCostMultiplier,industryUnitCostMultiplier:industryProfile.unitCostMultiplier,businessLoanInterest,businessLoanInterestPaid,businessLoanInterestAccrued,businessLoanBalance:businessCreditBalance(business)});
  const supplierLabel=supplier?' · المورد '+supplier.title:'';
+ const creditBalance=businessCreditBalance(business);
+ const creditLabel=creditBalance?' · تمويل قائم '+cash(creditBalance):'';
  const staffLabel=staff.length?' · الرواتب '+cash(staffPayroll)+' لعدد '+staff.length+' موظف':'';
  const productLabel=productResult.count?' · المنتجات '+productResult.count+' · مبيعاتها '+cash(productResult.revenue)+' · الوحدات المباعة '+fmt(productResult.units):productResult.upfrontCosts?' · مصروفات تطوير المنتجات '+cash(productResult.upfrontCosts):'';
  const facilityLabel=facilities.length?' · المنشآت '+facilities.length+' · صيانتها '+cash(facilityUpkeep)+' سنويًا · طاقة المنتجات ×'+productResult.capacityMultiplier.toFixed(2):facilityInvestmentCosts?' · استثمار منشآت '+cash(facilityInvestmentCosts):'';
  const marketLabel=' · السوق '+market.industry+' · الحصة '+market.marketShare+'% · المنافسون '+market.competitorCount;
- log(portfolio?'🏢':'🏪',portfolio?'التقرير السنوي: '+(business.title||'شركة من المحفظة'):'التقرير السنوي للمشروع','الإيرادات '+cash(revenue)+' · المصروفات '+cash(costs)+' · '+(profit>=0?'صافي الربح ':'صافي الخسارة ')+cash(Math.abs(profit))+' · مستوى الإدارة '+level+supplierLabel+staffLabel+productLabel+facilityLabel+marketLabel+'.','special');
+ log(portfolio?'🏢':'🏪',portfolio?'التقرير السنوي: '+(business.title||'شركة من المحفظة'):'التقرير السنوي للمشروع','الإيرادات '+cash(revenue)+' · المصروفات '+cash(costs)+' · '+(profit>=0?'صافي الربح ':'صافي الخسارة ')+cash(Math.abs(profit))+' · مستوى الإدارة '+level+supplierLabel+staffLabel+productLabel+facilityLabel+marketLabel+creditLabel+'.','special');
  if(supplier){
   business.supplier.yearsLeft=Math.max(0,(Number(business.supplier.yearsLeft)||3)-1);
   if(business.supplier.yearsLeft===0){business.supplier=null;log('📦','انتهاء عقد المورد · '+(business.title||'النشاط'),'انتهى عقد المورد. راجع عروض السوق قبل السنة المالية القادمة.','bad');}
@@ -2034,7 +2066,8 @@ function businessReportsMenu(entity,title,back){
  const opts=reports.map(report=>choice('📅','السنة '+report.year,'الإيرادات '+cash(report.revenue)+' · المصروفات '+cash(report.costs)+' · '+(report.profit>=0?'صافي ربح ':'صافي خسارة ')+cash(Math.abs(report.profit)),()=>{
   closeModal();
   const detail='الإيرادات: '+cash(report.revenue)+'\nالمصروفات التشغيلية: '+cash(Math.max(0,report.costs-(report.payroll||0)-(report.facilityUpkeep||0)))+'\nرواتب الموظفين: '+cash(report.payroll||0)+' ('+(report.staffCount||0)+' موظف)\nصيانة الفروع والمصانع: '+cash(report.facilityUpkeep||0)+' ('+(report.facilityCount||0)+' منشأة)'+(report.facilityInvestment?'\nاستثمارات إنشاء منشآت: '+cash(report.facilityInvestment):'')+'\nإجمالي المصروفات: '+cash(report.costs)+'\nصافي النتيجة: '+(report.profit>=0?'ربح ':'خسارة ')+cash(Math.abs(report.profit))+'\nهامش الربح: '+report.margin+'%\nتغير قيمة النشاط: '+(report.growthRate>=0?'+':'')+report.growthRate+'%\nالقيمة الختامية: '+cash(report.closingValue)+(report.supplier?'\nالمورد: '+report.supplier+(report.supplierQuality?'\nجودة المورد: '+report.supplierQuality+'%':'')+(report.supplierCostMultiplier?'\nمعامل تكلفة المورد: '+Math.round(report.supplierCostMultiplier*100)+'%':''):'')+(report.productCount?'\nمبيعات المنتجات: '+cash(report.productRevenue||0)+' · تكاليفها: '+cash(report.productCosts||0)+' · صافيها: '+cash(report.productProfit||0)+' · الوحدات المباعة: '+fmt(report.productUnits||0):'')+(Number.isFinite(Number(report.marketShare))?'\nالسوق: '+(report.marketIndustry||'متنوع')+' · الحصة: '+report.marketShare+'% · التغير: '+(report.marketShareChange>=0?'+':'')+report.marketShareChange+'% · المنافسون: '+(report.marketCompetitorCount||0)+' · الطلب: '+(report.marketDemandIndex||0)+' · المنافسة: '+(report.marketCompetitionIndex||0):'')+(Number.isFinite(Number(report.industryRevenueMultiplier))?'\nمعاملات القطاع: الإيرادات ×'+Number(report.industryRevenueMultiplier).toFixed(2)+' · التشغيل ×'+Number(report.industryOperatingCostMultiplier).toFixed(2)+' · تكلفة الوحدة ×'+Number(report.industryUnitCostMultiplier).toFixed(2):'');
-  info('📊','التقرير المالي · '+title,detail,[choice('↩️','رجوع للتقارير','',()=>businessReportsMenu(entity,title,back))]);
+  const creditDetail=Number.isFinite(Number(report.businessLoanBalance))?'\nالتمويل التجاري: فائدة السنة '+cash(report.businessLoanInterest||0)+' · المدفوع '+cash(report.businessLoanInterestPaid||0)+' · المضاف للدين '+cash(report.businessLoanInterestAccrued||0)+' · الرصيد '+cash(report.businessLoanBalance):'';
+  info('📊','التقرير المالي · '+title,detail+creditDetail,[choice('↩️','رجوع للتقارير','',()=>businessReportsMenu(entity,title,back))]);
  }));
  opts.push(choice('↩️','رجوع','',back));
  modal('📊','سجل التقارير · '+title,'آخر خمس سنوات مالية محفوظة. احتفظنا بعشر سنوات كحد أقصى لتقليل حجم ملف الحفظ.',opts);
@@ -2059,7 +2092,9 @@ function companyDetailMenu(index){
  const productCount=Array.isArray(company.products)?company.products.filter(product=>product&&product.active!==false).length:0;
  const supplier=BUSINESS_SUPPLIER_CATALOG.find(item=>company.supplier&&item.id===company.supplier.id);
  const supplierLabel=supplier?' · المورد '+supplier.title:' · دون مورد متعاقد';
- const detail='قيمة تقديرية '+cash(company.value)+' · القطاع '+company.sector+' · المستوى '+company.level+' · الفريق '+staffCount+'/5 · المنتجات '+productCount+supplierLabel+'. نتائج السنة القادمة غير مضمونة.';
+ const creditBalance=businessCreditBalance(company);
+ const creditLabel=creditBalance?' · تمويل مستحق '+cash(creditBalance):'';
+ const detail='قيمة تقديرية '+cash(company.value)+' · القطاع '+company.sector+' · المستوى '+company.level+' · الفريق '+staffCount+'/5 · المنتجات '+productCount+supplierLabel+creditLabel+'. نتائج السنة القادمة غير مضمونة.';
  modal(company.emoji||'🏢','إدارة '+company.title,detail,[
   choice('🧰','إدارة التشغيل','إدارة الموردين والموظفين والمنتجات لهذه الشركة بشكل مستقل.',()=>{managedCompanyId=String(company.id);businessMenu();}),
   choice('📊','سجل التقارير','راجع الإيرادات والمصروفات وصافي النتيجة عبر السنوات.',()=>businessReportsMenu(company,company.title,()=>companyDetailMenu(index))),
@@ -2077,10 +2112,12 @@ function reinvestCompany(index){
  log('📈','إعادة استثمار في '+company.title,'ارتفع مستوى الشركة إلى '+company.level+' والقيمة التقديرية إلى '+cash(company.value)+'.','good');save();render();companyDetailMenu(index);
 }
 function sellCompany(index){
- closeModal();const company=(state.companies||[])[index];if(!company)return;const proceeds=Math.round(company.value*.75);
+ closeModal();const company=(state.companies||[])[index];if(!company)return;const grossProceeds=Math.round(company.value*.75),creditBalance=businessCreditBalance(company);
+ if(creditBalance>grossProceeds){info('🏦','تعذر بيع الشركة','قيمة البيع المتوقعة '+cash(grossProceeds)+' لا تكفي لتسوية التمويل المستحق '+cash(creditBalance)+'. سدّد جزءًا من التمويل أولًا.');return;}
+ const proceeds=grossProceeds-creditBalance;
  if(managedCompanyId!==null&&String(managedCompanyId)===String(company.id))managedCompanyId=null;
- state.bank+=proceeds;state.companies.splice(index,1);state.assets=state.assets.filter(a=>a.id!==company.id);
- log('💵','بيع شركة','بعت '+company.title+' مقابل '+cash(proceeds)+'.','good');save();render();companyPortfolioMenu();
+ state.bank+=proceeds;company.credit=null;state.companies.splice(index,1);state.assets=state.assets.filter(a=>a.id!==company.id);
+ log('💵','بيع شركة','بعت '+company.title+' بقيمة '+cash(grossProceeds)+'، وسُوّي تمويلها '+cash(creditBalance)+'، وصافي المتحصل '+cash(proceeds)+'.','good');save();render();companyPortfolioMenu();
 }
 function businessStaffSalary(role,businessValue){
  return Math.max(1200,Math.min(1000000000,Math.round(Math.max(0,Number(businessValue)||0)*role.salaryRate)));
@@ -2344,6 +2381,77 @@ function businessMarketMenu(){
  ]);
 }
 
+function businessCreditBalance(business){
+ if(!business||typeof business!=='object')return 0;
+ const credit=business.credit&&typeof business.credit==='object'?business.credit:null;
+ if(!credit)return 0;
+ return Math.max(0,Math.min(200000000,Math.round(Number(credit.principal)||0)+Math.round(Number(credit.accruedInterest)||0)));
+}
+function businessCreditLimit(business){
+ const value=Math.max(1000,Number(business&&business.value)||1000);
+ return Math.max(10000,Math.min(100000000,Math.round(value*.35)));
+}
+function businessCreditRate(business){
+ const market=businessMarketSnapshot(business);
+ const profile=businessIndustryProfile(market&&market.industry);
+ const competition=Math.max(10,Math.min(95,Number(market&&market.competitionIndex)||50));
+ const riskPremium=Math.max(0,(profile.operatingCostMultiplier-1)*.08)+Math.max(0,competition-45)*.0002;
+ return Math.round(Math.max(.075,Math.min(.14,.085+riskPremium))*10000)/10000;
+}
+function businessCreditMenu(){
+ const business=currentManagedBusiness();
+ if(!business){info('🏦','لا يوجد نشاط','اختار مشروعًا أو شركة من المحفظة أولًا.');return;}
+ const credit=business.credit&&typeof business.credit==='object'?business.credit:null;
+ const balance=businessCreditBalance(business),principal=credit?Math.max(0,Math.round(Number(credit.principal)||0)):0;
+ const accrued=credit?Math.max(0,Math.round(Number(credit.accruedInterest)||0)):0;
+ const limit=businessCreditLimit(business),rate=credit?Number(credit.annualRate)||businessCreditRate(business):businessCreditRate(business);
+ save();
+ const opts=[];
+ if(balance<=0){
+  const amounts=[...new Set([Math.max(5000,Math.round(limit*.5)),limit])].filter(amount=>amount>0&&amount<=limit);
+  amounts.forEach(amount=>opts.push(choice('🏦','طلب تمويل '+cash(amount),'تسهيل برصيد '+cash(amount)+' · فائدة سنوية '+(rate*100).toFixed(2)+'% · السداد اختياري على دفعات من السيولة المتاحة.',()=>borrowBusinessCredit(amount),cash(amount))));
+ }else{
+  [0.25,0.5,1].forEach(ratio=>{
+   const amount=Math.min(balance,Math.max(1,Math.round(balance*ratio)));
+   opts.push(choice('💵',ratio===1?'سداد كامل الرصيد':'سداد '+Math.round(ratio*100)+'%','سداد '+cash(amount)+'؛ تُسوى الفوائد المتراكمة أولًا ثم أصل التمويل.',()=>repayBusinessCredit(amount),cash(amount)));
+  });
+ }
+ opts.push(choice('↩️','رجوع لإدارة النشاط','',businessMenu));
+ const detail='حد التمويل التقديري '+cash(limit)+' · الرصيد المستحق '+cash(balance)+' · أصل التمويل '+cash(principal)+' · فوائد متراكمة '+cash(accrued)+' · الفائدة السنوية '+(rate*100).toFixed(2)+'%. التمويل يضيف سيولة إلى الرصيد الموحد للعبة، بينما تظل مديونيته وتقاريره مرتبطة بهذا النشاط وحده.';
+ modal('🏦','تمويل النشاط',detail,opts);
+}
+function borrowBusinessCredit(amount){
+ closeModal();
+ const business=currentManagedBusiness();
+ if(!business)return;
+ if(businessCreditBalance(business)>0){info('🏦','يوجد تمويل قائم','سدّد التمويل الحالي قبل طلب تسهيل جديد.');return;}
+ const limit=businessCreditLimit(business),value=Math.round(Number(amount)||0);
+ if(value<5000||value>limit){info('🏦','قيمة التمويل غير متاحة','قيمة التسهيل يجب أن تكون بين '+cash(5000)+' و'+cash(limit)+'.');return;}
+ const rate=businessCreditRate(business);
+ business.credit={principal:value,accruedInterest:0,annualRate:rate,openedAtAge:Math.max(0,Number(state.age)||0),lastInterestAge:Math.max(-1,Number(state.age)||0)};
+ state.bank+=value;
+ log('🏦','تمويل تجاري · '+(business.title||'النشاط'),'حصل النشاط على تسهيل '+cash(value)+' بفائدة سنوية '+(rate*100).toFixed(2)+'%. أُضيفت السيولة إلى رصيدك المتاح، ويظل الدين مرتبطًا بالشركة.','good');
+ save();render();businessCreditMenu();
+}
+function repayBusinessCredit(amount){
+ closeModal();
+ const business=currentManagedBusiness();
+ if(!business||!business.credit)return;
+ const credit=business.credit,balance=businessCreditBalance(business),payment=Math.min(balance,Math.max(0,Math.round(Number(amount)||0)));
+ if(payment<=0){businessCreditMenu();return;}
+ if(state.bank<payment){info('💳','السيولة غير كافية','سداد '+cash(payment)+' يحتاج رصيدًا متاحًا كافيًا.');return;}
+ state.bank-=payment;
+ let remaining=payment;
+ const interestPaid=Math.min(Math.max(0,Number(credit.accruedInterest)||0),remaining);
+ credit.accruedInterest=Math.max(0,Math.round((Number(credit.accruedInterest)||0)-interestPaid));
+ remaining-=interestPaid;
+ const principalPaid=Math.min(Math.max(0,Number(credit.principal)||0),remaining);
+ credit.principal=Math.max(0,Math.round((Number(credit.principal)||0)-principalPaid));
+ if(businessCreditBalance(business)===0)business.credit=null;
+ log('💵','سداد تمويل · '+(business.title||'النشاط'),'سددت '+cash(payment)+'؛ منها '+cash(interestPaid)+' فوائد و'+cash(principalPaid)+' من أصل التمويل.','good');
+ save();render();businessCreditMenu();
+}
+
 function businessMenu(){
  const b=currentManagedBusiness();
  if(!b){if(perkOwned('businessPack')){companyPortfolioMenu();return;}info('🏪','مفيش مشروع حاليًا','اشتري مشروعًا صغيرًا من قائمة الأصول عشان تبدأ الإدارة.');return;}
@@ -2359,8 +2467,11 @@ function businessMenu(){
  const supplierStatus=supplier?' · المورد '+supplier.title+' ('+(Number(b.supplier.yearsLeft)||0)+' سنوات متبقية)':' · لم يتم التعاقد مع مورد';
  const staffStatus=' · فريق العمل '+staff.length+'/5 · الرواتب السنوية '+cash(staffPayroll);
  const productStatus=' · المنتجات النشطة '+activeProducts+'/'+BUSINESS_PRODUCT_CATALOG.length;
+ const creditBalance=businessCreditBalance(b);
+ const creditStatus=creditBalance?' · تمويل مستحق '+cash(creditBalance):' · دون تمويل تجاري';
  const opts=[
   choice('📊','التقرير السنوي','راجع الإيرادات والمصروفات وصافي النتيجة.',()=>businessReportsMenu(b,b.title||'مشروعك',businessMenu)),
+  choice('🏦','تمويل النشاط','اطلب تسهيلًا تجاريًا أو سدّد التمويل القائم مع متابعة الفوائد.',businessCreditMenu,creditBalance?cash(creditBalance):cash(businessCreditLimit(b))),
   choice('📦','التعاقد مع مورد','قارن الجودة والتكلفة ومدة العقد قبل الاختيار.',businessSupplierMenu),
   choice('👥','إدارة الموظفين','عيّن فريقًا صغيرًا ودرّبه وراجع أثر الرواتب على أرباح النشاط.',businessStaffMenu),
   choice('🧪','إدارة المنتجات','أطلق منتجات جديدة وابحث عن الطلب والمنافسة قبل الاستثمار.',businessProductsMenu),
@@ -2374,7 +2485,7 @@ function businessMenu(){
    ?choice('↩️','رجوع لملف الشركة','العودة إلى ملخص الشركة في المحفظة.',()=>companyDetailMenu(portfolioIndex))
    :choice('↩️','رجوع للأصول','',()=>{closeModal();assets();})
  ];
- modal('🏪','إدارة '+(b.title||'مشروعك'),'قيمة النشاط '+cash(b.value)+' · مستوى الإدارة '+level+' · الشهرة '+(state.fame||0)+'%'+supplierStatus+staffStatus+productStatus+facilityStatus+'. اختيارات الإدارة تؤثر على دخل السنوات القادمة.',opts);
+ modal('🏪','إدارة '+(b.title||'مشروعك'),'قيمة النشاط '+cash(b.value)+' · مستوى الإدارة '+level+' · الشهرة '+(state.fame||0)+'%'+supplierStatus+staffStatus+productStatus+facilityStatus+creditStatus+'. اختيارات الإدارة تؤثر على دخل السنوات القادمة.',opts);
 }
 
 function businessAction(action){
