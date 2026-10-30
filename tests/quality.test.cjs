@@ -139,7 +139,7 @@ test('تطبيق الويب قابل للتثبيت ويحتفظ بملفات ا
   assert.ok(manifest.icons.some(item => item.src === './icon.svg'));
   assert.match(html, /rel="manifest" href="manifest\.webmanifest"/);
   assert.match(app, /navigator\.serviceWorker\.register\('\.\/sw\.js'\)/);
-  assert.match(worker, /const CACHE_NAME = 'hayah-shell-v27'/);
+  assert.match(worker, /const CACHE_NAME = 'hayah-shell-v28'/);
   assert.match(worker, /cache\.addAll\(APP_SHELL\)/);
   assert.match(worker, /caches\.match\(APP_SHELL\[0\]\)/);
   assert.match(icon, /حياة/);
@@ -227,7 +227,7 @@ test('مسيرة الرياضات الإلكترونية أصلية وتحافظ
   assert.match(app, /function upgradeEsportsSetup\(\)/);
   assert.match(app, /موهبة الألعاب الإلكترونية/);
   assert.match(app, /data\.talents\.gaming=clamp\(Number\(data\.talents\.gaming\),0,100\)/);
-  assert.match(read('sw.js'), /hayah-shell-v27/);
+  assert.match(read('sw.js'), /hayah-shell-v28/);
   assert.match(functionSource('rewindToSnapshot', 'customizeMenu'), /ensureGamingTalent\(\)/, 'rewinding a pre-feature snapshot should restore a valid talent default');
 });
 
@@ -450,7 +450,7 @@ test('إدارة المشروع تدعم عقود الموردين وتقاري�
   assert.match(app, /choice\('📦','التعاقد مع مورد'/);
   assert.match(app, /choice\('📊','سجل التقارير'/);
   assert.match(app, /const normalizeBusinessEntity=entity=>/);
-  assert.match(read('sw.js'), /hayah-shell-v27/);
+  assert.match(read('sw.js'), /hayah-shell-v28/);
 });
 
 
@@ -465,7 +465,7 @@ test('إدارة فريق المشروع تحفظ الموظفين وتؤثر ف
   assert.match(app, /staffPayroll/);
   assert.match(app, /staffCount/);
   assert.match(app, /choice\('👥','إدارة الموظفين'/);
-  assert.match(read('sw.js'), /hayah-shell-v27/);
+  assert.match(read('sw.js'), /hayah-shell-v28/);
 });
 
 
@@ -478,7 +478,7 @@ test('سوق الموردين يتجدد سنويًا ويحفظ عروض الأ
   assert.match(app, /supplierCostMultiplier/);
   assert.match(app, /entity\.supplier\.yearsLeft\)\|\|3,1,3/);
   assert.match(app, /entity\.supplier\.quality/);
-  assert.match(read('sw.js'), /hayah-shell-v27/);
+  assert.match(read('sw.js'), /hayah-shell-v28/);
 });
 
 
@@ -493,7 +493,7 @@ test('إدارة المنتجات تدعم بحث السوق والمبيعات 
   assert.match(app, /competition/);
   assert.match(app, /choice\('🧪','إدارة المنتجات'/);
   assert.match(app, /entity\.productResearch=entity\.productResearch\.filter/);
-  assert.match(read('sw.js'), /hayah-shell-v27/);
+  assert.match(read('sw.js'), /hayah-shell-v28/);
 });
 
 
@@ -508,7 +508,7 @@ test('شركات المحفظة تدير الموردين والموظفين و�
   assert.match(app, /simulateBusinessEntityYear\(state\.business,'business'\)/);
   assert.match(app, /simulateBusinessEntityYear\(company,'portfolio'\)/);
   assert.match(app, /business\.assetId\|\|business\.id\|\|business\.title/);
-  assert.match(read('sw.js'), /hayah-shell-v27/);
+  assert.match(read('sw.js'), /hayah-shell-v28/);
 });
 
 
@@ -524,7 +524,7 @@ test('الفروع والمصانع محفوظة لكل نشاط وتزيد طا
   assert.match(app, /facilityInvestment/);
   assert.match(app, /choice\('🏗️','الفروع والمصانع'/);
   assert.match(app, /return \{version:1,lifeId:/);
-  assert.match(read('sw.js'), /hayah-shell-v27/);
+  assert.match(read('sw.js'), /hayah-shell-v28/);
 });
 
 test('استثمار المنشأة رأسمالي منفصل عن صافي الربح والصيانة السنوية', () => {
@@ -537,4 +537,19 @@ test('استثمار المنشأة رأسمالي منفصل عن صافي ال
 test('نسب طاقة المنشآت العشرية لا تُقرّب إلى أعداد صحيحة', () => {
   assert.match(app, /Math\.max\(0,Math\.min\(1\.5,Number\.isFinite\(capacityBonus\)\?capacityBonus:catalog\.capacityBonus\)\)/);
   assert.match(app, /facilityCapacityBonus=facilities\.reduce\(\(sum,facility\)=>sum\+Math\.max\(0,Math\.min\(1\.5,Number\(facility\.capacityBonus\)\|\|0\)\),0\)/);
+});
+
+test('سوق المنافسة مستقل لكل شركة وثابت خلال السنة ويؤثر في مبيعات المنتجات والتقارير', () => {
+  assert.match(app, /function businessMarketSnapshot\\(business\\)/);
+  assert.match(app, /function businessMarketMenu\\(\\)/);
+  assert.match(app, /marketDemandFactor/);
+  assert.match(app, /marketCompetitionFactor/);
+  assert.match(app, /marketPriceFactor/);
+  assert.match(app, /marketShareFactor/);
+  assert.match(app, /marketShareChange/);
+  assert.match(app, /marketCompetitorCount/);
+  assert.match(app, /choice\\('📈','تحليل السوق والمنافسين'/);
+  assert.match(app, /if\\(entity\\.market&&typeof entity\\.market==='object'&&!Array\\.isArray\\(entity\\.market\\)\\)/);
+  assert.match(app, /return \\{version:1,lifeId:/);
+  assert.match(read('sw.js'), /hayah-shell-v28/);
 });
