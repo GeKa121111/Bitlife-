@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#050505">
+<meta name="theme-color" content="#123e3a">
 <meta name="application-name" content="حياة">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -28,7 +28,6 @@
       <button class="sr-only" id="heirloomBtn" type="button" aria-label="المكافأة اليومية" tabindex="-1" aria-hidden="true">🎁</button>
       <span id="saveStatus" class="sr-only" aria-live="polite">● محفوظة</span>
     </div>
-    <span id="lifeMeta" class="sr-only">السنة الأولى</span>
   </header>
   <section class="hero" aria-label="معلومات الشخصية والرصيد">
     <div class="profile">
@@ -49,6 +48,13 @@
       <div class="wealthsmall" id="wealthNote">بداية حكايتك</div>
     </div>
   </section>
+  <div class="story-heading" aria-label="يوميات الشخصية">
+    <div class="story-heading-copy">
+      <span class="story-eyebrow">رحلة الشخصية</span>
+      <h1>حكايتك سنة ورا سنة</h1>
+    </div>
+    <span id="lifeMeta" class="story-year" aria-live="polite">السنة الأولى</span>
+  </div>
   <main class="feed" id="lifeFeed" aria-label="سجل الحياة والأحداث" aria-live="polite" aria-relevant="additions" aria-atomic="false"></main>
   <div class="bottom-dock">
     <nav class="nav" aria-label="القائمة الرئيسية">
