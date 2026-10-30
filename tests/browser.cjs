@@ -214,6 +214,44 @@ async function run() {
     const mainMenuSections = await page.locator('#modalRoot .list-section').allTextContents();
     assert.deepEqual(mainMenuSections, ['الحياة والشخصية', 'الإنجازات والمكافآت', 'المزايا والأنشطة', 'الإعدادات وبيانات الحفظ'],
       'main menu actions should be grouped into clear sections');
+
+    // Weekly story festival: collect all badges and verify the completion bonus cannot be claimed twice.
+    const seasonalSeed = await page.evaluate(() => {
+      const key='hekayat_hayah_save_v1',saved=JSON.parse(localStorage.getItem(key)||'null');
+      const now=new Date(),day=new Date(now.getFullYear(),now.getMonth(),now.getDate());
+      const start=new Date(day);start.setDate(start.getDate()-((start.getDay()+6)%7));
+      const end=new Date(start);end.setDate(end.getDate()+6);
+      const thursday=new Date(start);thursday.setDate(thursday.getDate()+3);
+      const isoYear=thursday.getFullYear(),jan4=new Date(isoYear,0,4);
+      const firstMonday=new Date(jan4);firstMonday.setDate(firstMonday.getDate()-((firstMonday.getDay()+6)%7));
+      const weekNumber=Math.floor((start.getTime()-firstMonday.getTime())/604800000)+1;
+      const dateKey=value=>value.getFullYear()+'-'+String(value.getMonth()+1).padStart(2,'0')+'-'+String(value.getDate()).padStart(2,'0');
+      const week={id:isoYear+'-W'+String(weekNumber).padStart(2,'0'),startDate:dateKey(start),endDate:dateKey(end)};
+      saved.seasonalEvent={weekId:week.id,startDate:week.startDate,endDate:week.endDate,baseline:{age:29,friends:0,hobbies:0,posts:0,smart:0,health:0,happiness:0},claimed:[],bonusClaimed:false};
+      saved.friends=[{id:'festival-friend',name:'صديق المهرجان',relation:'صديق',relationshipLevel:70}];
+      saved.hobbies=[{id:'festival-hobby',title:'الرسم'}];
+      saved.socialMediaPosts=1;saved.stats.happiness=82;saved.stats.health=91;
+      localStorage.setItem(key,JSON.stringify(saved));return week;
+    });
+    assert.ok(seasonalSeed.id);
+    await page.reload({waitUntil:'domcontentloaded'});
+    await page.locator('#menuBtn').click();
+    await page.locator('.choice').filter({hasText:'مهرجان صُنّاع الحكاية'}).click();
+    for(const badgeTitle of ['فصل جديد','صاحب جديد','موهبة بتكبر','صوتك وصل','توازن جميل']){
+      const badge=page.locator('#modalRoot .choice').filter({hasText:badgeTitle});
+      await badge.waitFor();await badge.click();
+    }
+    const completedFestival=await page.evaluate(()=>{const saved=JSON.parse(localStorage.getItem('hekayat_hayah_save_v1')||'null');return {event:saved.seasonalEvent,bank:saved.bank};});
+    assert.equal(completedFestival.event.claimed.length,5);
+    assert.equal(completedFestival.event.bonusClaimed,true);
+    const bankAfterCompletion=completedFestival.bank;
+    await page.locator('#modalRoot .choice').filter({hasText:'فصل جديد'}).click();
+    const bankAfterDuplicate=await page.evaluate(()=>JSON.parse(localStorage.getItem('hekayat_hayah_save_v1')||'null').bank);
+    assert.equal(bankAfterDuplicate,bankAfterCompletion);
+    await page.keyboard.press('Escape');
+    await page.waitForFunction(()=>!document.querySelector('#modalRoot [role="dialog"]'));
+    await page.locator('#menuBtn').click();
+
     await page.locator('.choice').filter({ hasText: 'إعدادات العرض' }).click();
     await page.locator('.choice').filter({ hasText: 'الأصوات: متوقفة' }).click();
     await page.locator('.choice').filter({ hasText: 'الاهتزاز: متوقف' }).click();

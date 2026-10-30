@@ -662,7 +662,7 @@ function newLife(){
  const father=makePerson('male','الأب','👨',28+Math.floor(Math.random()*12),68+Math.floor(Math.random()*28));
  const mother=makePerson('female','الأم','👩',25+Math.floor(Math.random()*12),72+Math.floor(Math.random()*26));
  const sibling=makePerson(gender,'الأخ/الأخت','🧒',Math.floor(Math.random()*8),55+Math.floor(Math.random()*35));
- return {version:1,lifeId:Date.now()+Math.random(),cemeterySaved:false,name:pick(names[gender])+' '+pick(names.family),gender,age:0,place,bank:(perkOwned('goldenPiggyBank')?Math.max(1000000,place.start):place.start),stats:{happiness:65+Math.floor(Math.random()*26),health:76+Math.floor(Math.random()*22),smart:35+Math.floor(Math.random()*41),looks:35+Math.floor(Math.random()*51)},education:{level:0,school:'لم تبدأ الدراسة',major:null,yearsLeft:0,tuition:0},job:null,jobHistory:[],specialCareer:null,specialCareerHistory:[],combatCareer:null,filmStudio:null,esportsCareer:null,talents:{gaming:15+Math.floor(Math.random()*71)},performance:50,assets:[],investments:[],business:null,companies:[],mafia:{joined:false,rank:0,rep:0,earnings:0},museum:{opened:false,displayed:[]},zoo:{opened:false,animals:[],rareDiscoveries:0},assassinBladeLastUsedAge:null,cult:{founded:false,name:'',doctrine:'',members:[],fund:0,ceremonies:0,discipline:50},casino:{opened:false,games:[],amenities:[],celebrityHires:0,accessories:[]},dealer:{joined:false,rank:0,rep:0,earnings:0,territory:1},royalty:{active:false,title:null,house:null},investmentAdvisor:{hired:false,yearsLeft:0,fee:4500},marketTip:null,family:[father,mother,sibling],friends:[],partner:null,married:false,children:[],coParentingPlans:[],pets:[],hobbies:[],fame:0,followers:0,socialMediaAccount:false,socialMediaPosts:0,socialPlatforms:{},socialFeed:[],reputation:50,sti:false,crimeRecord:0,prison:null,debt:0,willDistribution:'الأسرة بالتساوي',heirlooms:[],dailyRewardDate:null,dailyChallenges:null,challengeArchive:[],timeMachineSnapshots:[],legacy:{name:null,inheritance:0,heirloom:null},driversLicense:false,travelHistory:[],log:[],accomplishments:['بدأت رحلة الحياة'],status:'حي',cause:null,retired:false,yearCount:0,wealthPeak:place.start};
+ return {version:1,lifeId:Date.now()+Math.random(),cemeterySaved:false,name:pick(names[gender])+' '+pick(names.family),gender,age:0,place,bank:(perkOwned('goldenPiggyBank')?Math.max(1000000,place.start):place.start),stats:{happiness:65+Math.floor(Math.random()*26),health:76+Math.floor(Math.random()*22),smart:35+Math.floor(Math.random()*41),looks:35+Math.floor(Math.random()*51)},education:{level:0,school:'لم تبدأ الدراسة',major:null,yearsLeft:0,tuition:0},job:null,jobHistory:[],specialCareer:null,specialCareerHistory:[],combatCareer:null,filmStudio:null,esportsCareer:null,talents:{gaming:15+Math.floor(Math.random()*71)},performance:50,assets:[],investments:[],business:null,companies:[],mafia:{joined:false,rank:0,rep:0,earnings:0},museum:{opened:false,displayed:[]},zoo:{opened:false,animals:[],rareDiscoveries:0},assassinBladeLastUsedAge:null,cult:{founded:false,name:'',doctrine:'',members:[],fund:0,ceremonies:0,discipline:50},casino:{opened:false,games:[],amenities:[],celebrityHires:0,accessories:[]},dealer:{joined:false,rank:0,rep:0,earnings:0,territory:1},royalty:{active:false,title:null,house:null},investmentAdvisor:{hired:false,yearsLeft:0,fee:4500},marketTip:null,family:[father,mother,sibling],friends:[],partner:null,married:false,children:[],coParentingPlans:[],pets:[],hobbies:[],fame:0,followers:0,socialMediaAccount:false,socialMediaPosts:0,socialPlatforms:{},socialFeed:[],reputation:50,sti:false,crimeRecord:0,prison:null,debt:0,willDistribution:'الأسرة بالتساوي',heirlooms:[],dailyRewardDate:null,dailyChallenges:null,seasonalEvent:null,seasonalEventArchive:[],challengeArchive:[],timeMachineSnapshots:[],legacy:{name:null,inheritance:0,heirloom:null},driversLicense:false,travelHistory:[],log:[],accomplishments:['بدأت رحلة الحياة'],status:'حي',cause:null,retired:false,yearCount:0,wealthPeak:place.start};
 }
 
 function isValidSaveData(data){
@@ -714,6 +714,8 @@ function normalizeCoreState(data){
  data.followers=Math.max(0,Number(data.followers)||0);data.socialMediaPosts=Math.max(0,Number(data.socialMediaPosts)||0);
  data.socialMediaAccount=SOCIAL_PLATFORM_CATALOG.some(platform=>data.socialPlatforms[platform.id].active);
  data.socialFeed=normalizeSocialFeed(data.socialFeed);
+ data.seasonalEvent=normalizeSeasonalEvent(data.seasonalEvent);
+ data.seasonalEventArchive=normalizeSeasonalEventArchive(data.seasonalEventArchive);
  if(!Array.isArray(data.companies))data.companies=[];
  const normalizeBusinessEntity=entity=>{
   if(!entity||typeof entity!=='object'||Array.isArray(entity))return;
@@ -907,7 +909,7 @@ function load(){
   }
   if(isValidSaveData(x)){
   normalizeCoreState(x);
-  const defaults={lifeId:Date.now()+Math.random(),cemeterySaved:false,jobHistory:[],specialCareer:null,specialCareerHistory:[],combatCareer:null,filmStudio:null,investments:[],business:null,married:false,children:[],coParentingPlans:[],pets:[],hobbies:[],fame:0,followers:0,socialMediaAccount:false,socialMediaPosts:0,socialFeed:[],reputation:50,crimeRecord:0,prison:null,debt:0,willDistribution:'الأسرة بالتساوي',heirlooms:[],dailyRewardDate:null,dailyChallenges:null,timeMachineSnapshots:[],legacy:{name:null,inheritance:0,heirloom:null},driversLicense:false,travelHistory:[]};
+  const defaults={lifeId:Date.now()+Math.random(),cemeterySaved:false,jobHistory:[],specialCareer:null,specialCareerHistory:[],combatCareer:null,filmStudio:null,investments:[],business:null,married:false,children:[],coParentingPlans:[],pets:[],hobbies:[],fame:0,followers:0,socialMediaAccount:false,socialMediaPosts:0,socialFeed:[],seasonalEvent:null,seasonalEventArchive:[],reputation:50,crimeRecord:0,prison:null,debt:0,willDistribution:'الأسرة بالتساوي',heirlooms:[],dailyRewardDate:null,dailyChallenges:null,timeMachineSnapshots:[],legacy:{name:null,inheritance:0,heirloom:null},driversLicense:false,travelHistory:[]};
   Object.keys(defaults).forEach(k=>{if(x[k]===undefined||x[k]===null)x[k]=defaults[k];});
   if(!Array.isArray(x.family))x.family=[];if(!Array.isArray(x.friends))x.friends=[];if(!Array.isArray(x.assets))x.assets=[];if(!Array.isArray(x.timeMachineSnapshots))x.timeMachineSnapshots=[];if(!Array.isArray(x.coParentingPlans))x.coParentingPlans=[];x.coParentingPlans.forEach(p=>{if(p&&typeof p==='object'){if(!Array.isArray(p.childIds))p.childIds=[];if(!Array.isArray(p.history))p.history=[];if(!Number.isFinite(Number(p.supportPerChild)))p.supportPerChild=2200;if(!Number.isFinite(Number(p.arrears)))p.arrears=0;}});
   if(!x.education||typeof x.education!=='object')x.education={level:0,school:'لم تبدأ الدراسة',major:null,yearsLeft:0,tuition:0};
@@ -4177,6 +4179,94 @@ function challengeDateKey(date){
 function challengeYesterdayKey(date){
  const d=new Date(date);d.setDate(d.getDate()-1);return challengeDateKey(d);
 }
+function seasonalWeekDetails(date){
+ const input=date instanceof Date?date:new Date(date||Date.now());
+ const current=Number.isFinite(input.getTime())?input:new Date();
+ const localDay=new Date(current.getFullYear(),current.getMonth(),current.getDate());
+ const mondayOffset=(localDay.getDay()+6)%7;
+ const start=new Date(localDay);start.setDate(start.getDate()-mondayOffset);
+ const end=new Date(start);end.setDate(end.getDate()+6);
+ const thursday=new Date(start);thursday.setDate(thursday.getDate()+3);
+ const isoYear=thursday.getFullYear();
+ const jan4=new Date(isoYear,0,4);
+ const firstMonday=new Date(jan4);firstMonday.setDate(firstMonday.getDate()-((firstMonday.getDay()+6)%7));
+ const week=Math.floor((start.getTime()-firstMonday.getTime())/604800000)+1;
+ return {id:isoYear+'-W'+String(week).padStart(2,'0'),startDate:challengeDateKey(start),endDate:challengeDateKey(end)};
+}
+function seasonalEventBaseline(){
+ const stats=state&&state.stats&&typeof state.stats==='object'?state.stats:{};
+ const count=value=>Math.max(0,Math.min(1000000000,Math.floor(Number.isFinite(Number(value))?Number(value):0)));
+ return {age:Math.max(0,Math.min(120,count(state&&state.age))),friends:count(state&&Array.isArray(state.friends)?state.friends.length:0),hobbies:count(state&&Array.isArray(state.hobbies)?state.hobbies.length:0),posts:count(state&&state.socialMediaPosts),smart:clamp(Number.isFinite(Number(stats.smart))?Number(stats.smart):40),health:clamp(Number.isFinite(Number(stats.health))?Number(stats.health):80),happiness:clamp(Number.isFinite(Number(stats.happiness))?Number(stats.happiness):65)};
+}
+function normalizeSeasonalEvent(raw){
+ if(!raw||typeof raw!=='object'||Array.isArray(raw)||!/^\d{4}-W\d{2}$/.test(String(raw.weekId||'')))return null;
+ const baseline=raw.baseline&&typeof raw.baseline==='object'&&!Array.isArray(raw.baseline)?raw.baseline:{};
+ const number=(value,fallback,min,max)=>{const parsed=Number(value);return Math.max(min,Math.min(max,Number.isFinite(parsed)?parsed:fallback));};
+ const validBadgeIds=['chapter','friend','hobby','voice','learning','balance'];
+ const claimed=Array.isArray(raw.claimed)?Array.from(new Set(raw.claimed.map(value=>String(value)).filter(id=>validBadgeIds.includes(id)))).slice(0,5):[];
+ return {weekId:String(raw.weekId),title:'مهرجان صُنّاع الحكاية',startDate:/^\d{4}-\d{2}-\d{2}$/.test(String(raw.startDate||''))?String(raw.startDate):'',endDate:/^\d{4}-\d{2}-\d{2}$/.test(String(raw.endDate||''))?String(raw.endDate):'',baseline:{age:number(baseline.age,0,0,120),friends:number(baseline.friends,0,0,1000000000),hobbies:number(baseline.hobbies,0,0,1000000000),posts:number(baseline.posts,0,0,1000000000),smart:number(baseline.smart,40,0,100),health:number(baseline.health,80,0,100),happiness:number(baseline.happiness,65,0,100)},claimed,bonusClaimed:raw.bonusClaimed===true};
+}
+function normalizeSeasonalEventArchive(raw){
+ if(!Array.isArray(raw))return [];
+ return raw.filter(item=>item&&typeof item==='object'&&!Array.isArray(item)&&/^\d{4}-W\d{2}$/.test(String(item.weekId||''))).slice(0,8).map(item=>{const normalized=normalizeSeasonalEvent(item);return normalized?{weekId:normalized.weekId,title:normalized.title,startDate:normalized.startDate,endDate:normalized.endDate,claimed:normalized.claimed,bonusClaimed:normalized.bonusClaimed}:null;}).filter(Boolean);
+}
+function ensureSeasonalEvent(){
+ if(!state)return null;
+ state.seasonalEventArchive=normalizeSeasonalEventArchive(state.seasonalEventArchive);
+ const week=seasonalWeekDetails();
+ let event=normalizeSeasonalEvent(state.seasonalEvent);
+ if(!event||event.weekId!==week.id){
+  if(event&&!state.seasonalEventArchive.some(item=>item.weekId===event.weekId)){state.seasonalEventArchive.unshift({weekId:event.weekId,title:event.title,startDate:event.startDate,endDate:event.endDate,claimed:event.claimed.slice(0,5),bonusClaimed:event.bonusClaimed});state.seasonalEventArchive=state.seasonalEventArchive.slice(0,8);}
+  event={weekId:week.id,title:'مهرجان صُنّاع الحكاية',startDate:week.startDate,endDate:week.endDate,baseline:seasonalEventBaseline(),claimed:[],bonusClaimed:false};
+  state.seasonalEvent=event;save();
+ }else{event.startDate=event.startDate||week.startDate;event.endDate=event.endDate||week.endDate;state.seasonalEvent=event;}
+ return event;
+}
+function seasonalEventBadges(event){
+ if(!state||!event)return [];
+ const baseline=event.baseline||seasonalEventBaseline(),stats=state.stats&&typeof state.stats==='object'?state.stats:{};
+ const currentAge=Math.max(0,Number(state.age)||0),currentFriends=Array.isArray(state.friends)?state.friends.length:0,currentHobbies=Array.isArray(state.hobbies)?state.hobbies.length:0,currentPosts=Math.max(0,Number(state.socialMediaPosts)||0);
+ const badges=[
+  {id:'chapter',title:'فصل جديد',desc:'قدّم عمر شخصيتك سنة واحدة خلال الأسبوع.',reward:2600,rewardStat:'happiness',done:currentAge>=baseline.age+1},
+  {id:'friend',title:'صاحب جديد',desc:'كوّن صداقة جديدة ووسّع دايرة معارفك.',reward:2200,rewardStat:'happiness',done:currentFriends>=baseline.friends+1},
+  {id:'hobby',title:'موهبة بتكبر',desc:'ابدأ هواية جديدة وخصص لها وقتًا.',reward:2200,rewardStat:'smart',done:currentHobbies>=baseline.hobbies+1}
+ ];
+ if(baseline.age<13)badges.push({id:'learning',title:'عقل بيتفتح',desc:'طوّر ذكاءك أربع نقاط على الأقل خلال الأسبوع.',reward:2800,rewardStat:'smart',done:(Number(stats.smart)||0)>=Math.min(100,baseline.smart+4)});
+ else badges.push({id:'voice',title:'صوتك وصل',desc:'انشر محتوى واحدًا على الأقل في إحدى قنواتك.',reward:3200,rewardStat:'happiness',done:currentPosts>=baseline.posts+1});
+ badges.push({id:'balance',title:'توازن جميل',desc:'حافظ على الصحة والسعادة عند 70% أو أعلى.',reward:3000,rewardStat:'health',done:(Number(stats.health)||0)>=Math.max(70,baseline.health)&&(Number(stats.happiness)||0)>=Math.max(70,baseline.happiness)});
+ return badges;
+}
+function seasonalEventMenu(){
+ if(!validState())return;
+ const event=ensureSeasonalEvent(),badges=seasonalEventBadges(event);
+ const claimedCount=badges.filter(badge=>event.claimed.includes(badge.id)).length,readyCount=badges.filter(badge=>badge.done&&!event.claimed.includes(badge.id)).length;
+ const endAt=event.endDate?new Date(event.endDate+'T23:59:59'):null,daysLeft=endAt&&Number.isFinite(endAt.getTime())?Math.max(0,Math.ceil((endAt.getTime()-Date.now())/86400000)):0;
+ const opts=[{icon:'📊',title:'تقدم الأسبوع',desc:'جمعت '+claimedCount+' من '+badges.length+' شارات · '+readyCount+' جاهزة للاستلام · متبقي '+daysLeft+' يوم.',progress:Math.round(claimedCount/badges.length*100),disabled:true}];
+ badges.forEach(badge=>{const claimed=event.claimed.includes(badge.id),status=claimed?'تم جمع الشارة':badge.done?'جاهزة للاستلام':'قيد التقدم';opts.push(choice(claimed?'🏅':badge.done?'🎁':'🔒',badge.title,badge.desc+' الحالة: '+status+' · المكافأة '+cash(badge.reward)+'.',()=>claimSeasonalEventBadge(badge.id)));});
+ if(event.bonusClaimed)opts.push({icon:'🏆',title:'مكافأة إكمال المهرجان',desc:'استلمت المكافأة الختامية بالفعل. إجمالي الشارات '+badges.length+'.',disabled:true});
+ else opts.push({icon:'🏆',title:'مكافأة إكمال المهرجان',desc:'تُمنح تلقائيًا بعد جمع الشارات الخمس: '+cash(9000)+' وزيادة السعادة.',disabled:true,progress:Math.round(claimedCount/badges.length*100)});
+ if(state.seasonalEventArchive.length)opts.push(choice('📚','سجل المواسم السابقة','راجع الشارات التي جمعتها في الأسابيع الماضية.',seasonalEventArchiveMenu));
+ modal('🏅','مهرجان صُنّاع الحكاية','حدث أسبوعي محلي من تصميم حياة. اجمع الشارات قبل نهاية الأسبوع ('+event.startDate+' إلى '+event.endDate+'). تقدمك محفوظ مع هذه الحياة ولا يحتاج اتصالًا بخدمة خارجية.',opts);
+}
+function claimSeasonalEventBadge(id){
+ if(!validState())return;
+ const event=ensureSeasonalEvent(),badges=seasonalEventBadges(event),badge=badges.find(item=>item.id===id);
+ if(!badge){closeModal();info('🏅','الشارة غير متاحة','هذه الشارة ليست ضمن موسمك الحالي.');return;}
+ if(event.claimed.includes(id)){closeModal();info('🏅','الشارة مستلمة بالفعل','المكافأة الخاصة بهذه الشارة لا تُصرف أكثر من مرة.');return;}
+ if(!badge.done){closeModal();info('🎯','كمّل الشرط الأول',badge.desc);return;}
+ event.claimed.push(id);state.bank=(Number(state.bank)||0)+badge.reward;stat(badge.rewardStat||'happiness',2);
+ log('🏅','جمعت شارة '+badge.title,'حصلت على '+cash(badge.reward)+' بعد إكمال تحدي المهرجان.','good');
+ if(badges.every(item=>event.claimed.includes(item.id))&&!event.bonusClaimed){event.bonusClaimed=true;state.bank+=9000;stat('happiness',4);log('🏆','اكتمل مهرجان صُنّاع الحكاية','جمعت كل الشارات الخمس وحصلت على مكافأة ختامية '+cash(9000)+'.','special');}
+ save();render();seasonalEventMenu();
+}
+function seasonalEventArchiveMenu(){
+ const archive=normalizeSeasonalEventArchive(state&&state.seasonalEventArchive);
+ const badgeNames={chapter:'فصل جديد',friend:'صاحب جديد',hobby:'موهبة بتكبر',voice:'صوتك وصل',learning:'عقل بيتفتح',balance:'توازن جميل'};
+ const opts=archive.map(item=>choice('📜','موسم '+item.weekId,'جمعت '+item.claimed.length+' من 5 شارات'+(item.bonusClaimed?' · أكملت المهرجان':' · لم تكتمل كل الشارات'),()=>{closeModal();info('📜','موسم '+item.weekId,'الشارات المحفوظة: '+(item.claimed.map(id=>badgeNames[id]||'شارة').join('، ')||'لا توجد')+'.');}));
+ if(!opts.length)opts.push({icon:'📚',title:'لا توجد مواسم سابقة',desc:'سيظهر سجل الموسم بعد انتقال الأسبوع التالي.',disabled:true});
+ opts.push(choice('↩️','العودة للمهرجان الحالي','',seasonalEventMenu));
+ modal('📚','سجل المواسم السابقة','ملخص آخر ثمانية مواسم محفوظة داخل هذه الحياة.',opts);
+}
 function ensureDailyChallengeBoard(){
  if(!state)return null;
  const now=new Date(),today=challengeDateKey(now),old=state.dailyChallenges&&typeof state.dailyChallenges==='object'?state.dailyChallenges:null;
@@ -5255,6 +5345,7 @@ function mainMenu(){
   section('الإنجازات والمكافآت'),
   choice('🏆','الإنجازات والأشرطة','الأهداف التي حققتها في رحلتك.',()=>achievementsMenu()),
   choice('🎯','تحديات اليوم','ثلاث مهام يومية ومكافآت إضافية عند إكمالها.',()=>dailyChallengesMenu()),
+  choice('🏅','مهرجان صُنّاع الحكاية','حدث أسبوعي محلي من خمس شارات ومكافأة ختامية.',()=>seasonalEventMenu()),
   choice('🎁','المكافأة اليومية','احصل على مكافأتك اليومية إن كانت متاحة.',()=>dailyReward()),
 
   section('المزايا والأنشطة'),
