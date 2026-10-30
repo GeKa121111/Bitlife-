@@ -4261,7 +4261,8 @@ function claimSeasonalEventBadge(id){
 }
 function seasonalEventArchiveMenu(){
  const archive=normalizeSeasonalEventArchive(state&&state.seasonalEventArchive);
- const opts=archive.map(item=>choice('📜','موسم '+item.weekId,'جمعت '+item.claimed.length+' من 5 شارات'+(item.bonusClaimed?' · أكملت المهرجان':' · لم تكتمل كل الشارات'),()=>{closeModal();info('📜','موسم '+item.weekId,'الشارات المحفوظة: '+(item.claimed.join('، ')||'لا توجد')+'.');}));
+ const badgeNames={chapter:'فصل جديد',friend:'صاحب جديد',hobby:'موهبة بتكبر',voice:'صوتك وصل',learning:'عقل بيتفتح',balance:'توازن جميل'};
+ const opts=archive.map(item=>choice('📜','موسم '+item.weekId,'جمعت '+item.claimed.length+' من 5 شارات'+(item.bonusClaimed?' · أكملت المهرجان':' · لم تكتمل كل الشارات'),()=>{closeModal();info('📜','موسم '+item.weekId,'الشارات المحفوظة: '+(item.claimed.map(id=>badgeNames[id]||'شارة').join('، ')||'لا توجد')+'.');}));
  if(!opts.length)opts.push({icon:'📚',title:'لا توجد مواسم سابقة',desc:'سيظهر سجل الموسم بعد انتقال الأسبوع التالي.',disabled:true});
  opts.push(choice('↩️','العودة للمهرجان الحالي','',seasonalEventMenu));
  modal('📚','سجل المواسم السابقة','ملخص آخر ثمانية مواسم محفوظة داخل هذه الحياة.',opts);
