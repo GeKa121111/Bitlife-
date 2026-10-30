@@ -526,3 +526,10 @@ test('الفروع والمصانع محفوظة لكل نشاط وتزيد طا
   assert.match(app, /return \{version:1,lifeId:/);
   assert.match(read('sw.js'), /hayah-shell-v27/);
 });
+
+test('استثمار المنشأة رأسمالي منفصل عن صافي الربح والصيانة السنوية', () => {
+  const annualSimulation = functionSource('simulateBusinessEntityYear', 'advanceAge');
+  assert.match(annualSimulation, /const costs=operatingCosts\+staffPayroll\+facilityUpkeep\+productResult\.costs\+productResult\.upfrontCosts/);
+  assert.match(annualSimulation, /facilityInvestmentCosts/);
+  assert.match(annualSimulation, /state\.bank\+=profit\+productResult\.upfrontCosts/);
+});
