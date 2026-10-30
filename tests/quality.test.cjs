@@ -668,7 +668,7 @@ test('اختبارات Node دون DOM كامل لا تتطلب querySelector م
 
 
 test('إعدادات الصوت والاهتزاز اختيارية ومستقلة عن حفظ الحياة', () => {
-  assert.ok(app.includes("let uiSettings={theme:'light',textScale:'normal',sound:false,haptics:false}"));
+  assert.ok(app.includes("let uiSettings={theme:'light',textScale:'normal',sound:false,haptics:false,boosts:true}"));
   assert.ok(app.includes("function playUiFeedback(kind='tap')"));
   assert.ok(app.includes("typeof navigator.vibrate==='function'"));
   assert.ok(app.includes("window.AudioContext||window.webkitAudioContext"));
