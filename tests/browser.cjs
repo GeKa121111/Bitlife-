@@ -44,9 +44,10 @@ const seedSave = {
   esportsCareer: null,
   talents: { gaming: 55 },
   performance: 50,
-  assets: [],
+  assets: [{ id: 'browser-business', title: 'مشروع اختبار', emoji: '🏪', kind: 'business', value: 150000, upkeep: 0 }],
   investments: [],
-  business: null,
+  business: { assetId: 'browser-business', title: 'مشروع اختبار', value: 150000, level: 1 },
+  companies: [],
   family: [
     { id: 'browser-father', name: 'الأب التجريبي', relation: 'الأب', emoji: '👨', age: 62, relationshipLevel: 72 },
     { id: 'browser-mother', name: 'الأم التجريبية', relation: 'الأم', emoji: '👩', age: 58, relationshipLevel: 80 }
@@ -156,6 +157,15 @@ async function run() {
     await page.getByText(/مستوى التعليم المطلوب 5/).waitFor();
     await page.getByText(/الذكاء المطلوب 76%/).waitFor();
     await page.locator('#closeModal').click();
+    await page.locator('[data-panel="assets"]').click();
+    await page.locator('.choice').filter({ hasText: 'إدارة مشروعي' }).click();
+    await page.locator('.choice').filter({ hasText: 'التعاقد مع مورد' }).click();
+    await page.locator('.choice').filter({ hasText: 'مورد اقتصادي' }).click();
+    await page.waitForFunction(() => {
+      const saved = JSON.parse(localStorage.getItem('hekayat_hayah_save_v1') || 'null');
+      return saved && saved.business && saved.business.supplier && saved.business.supplier.id === 'economy' && saved.business.supplier.yearsLeft === 3;
+    });
+    await page.locator('#closeModal').click();
 
     const mobileGeometry = await page.evaluate(() => {
       const viewportWidth = window.innerWidth;
@@ -198,6 +208,18 @@ async function run() {
       const saved = JSON.parse(localStorage.getItem('hekayat_hayah_save_v1') || 'null');
       return saved && saved.age === 31 && Array.isArray(saved.timeMachineSnapshots) && saved.timeMachineSnapshots.length === 1;
     });
+    const businessYear = await page.evaluate(() => {
+      const saved = JSON.parse(localStorage.getItem('hekayat_hayah_save_v1') || 'null');
+      const history = saved && saved.business && Array.isArray(saved.business.financialHistory) ? saved.business.financialHistory : [];
+      return { supplier: saved && saved.business && saved.business.supplier, report: history[history.length - 1] };
+    });
+    assert.ok(businessYear.report, 'a full financial report should be saved after the first business year');
+    assert.equal(businessYear.report.year, 31);
+    assert.ok(businessYear.report.revenue > 0 && businessYear.report.costs >= 0);
+    assert.equal(businessYear.report.profit, businessYear.report.revenue - businessYear.report.costs);
+    assert.ok(Number.isFinite(businessYear.report.margin) && Number.isFinite(businessYear.report.growthRate));
+    assert.equal(businessYear.report.supplier, 'مورد اقتصادي');
+    assert.equal(businessYear.supplier.yearsLeft, 2, 'a three-year supplier contract should have two years left after one annual report');
     await page.waitForTimeout(450);
     const readingAfterYear = await page.evaluate(() => {
       const feed = document.querySelector('#lifeFeed');
@@ -487,7 +509,7 @@ async function run() {
 
     assert.deepEqual(pageErrors, [], 'the browser run should complete without uncaught JavaScript errors');
 
-    console.log('PASS: mobile layout, legacy v1 load, persistence, rewind, JSON import, inheritance, insolvent estate, and career promotion migration.');
+    console.log('PASS: mobile layout, legacy v1 load, persistence, rewind, JSON import, inheritance, insolvent estate, career promotion migration, supplier contracts, and annual business reports.');
     await context.close();
   } finally {
     if (browser) await browser.close();
