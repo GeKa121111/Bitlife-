@@ -313,6 +313,7 @@ async function run() {
         staff: saved && saved.business && saved.business.staff,
         supplierMarket: saved && saved.business && saved.business.supplierMarket,
         products: saved && saved.business && saved.business.products,
+        pendingProductCosts: saved && saved.business && saved.business.pendingProductCosts,
         report: history[history.length - 1]
       };
     });
@@ -330,7 +331,8 @@ async function run() {
     assert.equal(businessYear.report.payroll, businessYear.staff[0].salary, 'annual payroll should match the hired employee salary');
     assert.equal(businessYear.report.productCount, 2, 'the annual report should count both launched products');
     assert.ok(businessYear.report.productRevenue > 0 && businessYear.report.productUnits > 0, 'the product should generate sales after one fiscal year');
-    assert.ok(businessYear.report.productCosts > 0, 'research, launch, and operating costs should be represented');
+    assert.ok(businessYear.report.productCosts >= 4650, 'both research fees and both launch fees should be included in product costs');
+    assert.equal(businessYear.pendingProductCosts, 0, 'upfront product costs should clear after the fiscal report');
     assert.equal(businessYear.report.productProfit, businessYear.report.productRevenue - businessYear.report.productCosts);
     assert.equal(businessYear.products.filter(item => item.active).length, 2);
     assert.equal(businessYear.products[0].history.length, 1, 'the product should retain its first annual performance record');
