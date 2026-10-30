@@ -692,9 +692,9 @@ test('ضرائب الشركات تُحسب على الربح الموجب وتُ
 });
 
 test('مسيرة القتال تعرض صعوبة المنافس وتضيف حركات تكتيكية أصلية مع حفظ v1', () => {
-  const catalog = app.match(/const combatMoveCatalog=\\[([\\s\\S]*?)\\];\\s*const combatCoachCatalog=/);
+  const catalog = app.match(/const combatMoveCatalog=\[([\s\S]*?)\];\s*const combatCoachCatalog=/);
   assert.ok(catalog, 'the combat move catalogue should remain available');
-  const ids = [...catalog[1].matchAll(/\\{id:'([^']+)'/g)].map(match => match[1]);
+  const ids = [...catalog[1].matchAll(/\{id:'([^']+)'/g)].map(match => match[1]);
   assert.equal(ids.length, 15, 'the original catalogue should contain fifteen moves');
   assert.equal(new Set(ids).size, ids.length, 'every move should have a unique id');
   for (const id of ['low-kick', 'pivot-counter', 'shell-defense', 'burst-combo', 'last-round-read']) {
@@ -702,16 +702,16 @@ test('مسيرة القتال تعرض صعوبة المنافس وتضيف حر
   }
   assert.match(catalog[1], /style:'[^']+'/);
   assert.match(catalog[1], /strongAgainst:'[^']+'/);
-  assert.match(app, /move\\.strongAgainst===opponent\\.style/);
+  assert.match(app, /move\.strongAgainst===opponent\.style/);
 
   const helper = functionSource('combatDifficultyLabel', 'createCombatCareer');
   const context = { clamp: value => Math.max(0, Math.min(100, Number(value) || 0)) };
   vm.runInNewContext(helper + ';globalThis.levels=[combatDifficultyLabel(10),combatDifficultyLabel(45),combatDifficultyLabel(62),combatDifficultyLabel(90)];', context);
   assert.deepEqual(Array.from(context.levels), ['سهل', 'متوسط', 'صعب', 'نخبة']);
 
-  assert.match(app, /opts\\.unshift\\(\\{icon:'📊',title:'صعوبة المنافس',desc:combatDifficultyLabel\\(opponent\\.rating\\)[\\s\\S]*?progress:opponent\\.rating,disabled:true\\}\\)/);
+  assert.match(app, /opts\.unshift\(\{icon:'📊',title:'صعوبة المنافس',desc:combatDifficultyLabel\(opponent\.rating\)[\s\S]*?progress:opponent\.rating,disabled:true\}\)/);
   assert.match(app, /choice-progress/);
-  assert.match(app, /c\\.movesKnown=\\['quick-jab','high-guard'\\]/, 'old fighter saves should retain their known move defaults');
+  assert.match(app, /c\.movesKnown=\['quick-jab','high-guard'\]/, 'old fighter saves should retain their known move defaults');
   assert.match(app, /const KEY = 'hekayat_hayah_save_v1';/);
-  assert.match(app, /return \\{version:1,lifeId:/);
+  assert.match(app, /return \{version:1,lifeId:/);
 });
