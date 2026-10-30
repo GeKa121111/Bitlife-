@@ -217,7 +217,16 @@ async function run() {
 
     // Weekly story festival: collect all badges and verify the completion bonus cannot be claimed twice.
     const seasonalSeed = await page.evaluate(() => {
-      const key='hekayat_hayah_save_v1',saved=JSON.parse(localStorage.getItem(key)||'null'),week=seasonalWeekDetails();
+      const key='hekayat_hayah_save_v1',saved=JSON.parse(localStorage.getItem(key)||'null');
+      const now=new Date(),day=new Date(now.getFullYear(),now.getMonth(),now.getDate());
+      const start=new Date(day);start.setDate(start.getDate()-((start.getDay()+6)%7));
+      const end=new Date(start);end.setDate(end.getDate()+6);
+      const thursday=new Date(start);thursday.setDate(thursday.getDate()+3);
+      const isoYear=thursday.getFullYear(),jan4=new Date(isoYear,0,4);
+      const firstMonday=new Date(jan4);firstMonday.setDate(firstMonday.getDate()-((firstMonday.getDay()+6)%7));
+      const weekNumber=Math.floor((start.getTime()-firstMonday.getTime())/604800000)+1;
+      const dateKey=value=>value.getFullYear()+'-'+String(value.getMonth()+1).padStart(2,'0')+'-'+String(value.getDate()).padStart(2,'0');
+      const week={id:isoYear+'-W'+String(weekNumber).padStart(2,'0'),startDate:dateKey(start),endDate:dateKey(end)};
       saved.seasonalEvent={weekId:week.id,startDate:week.startDate,endDate:week.endDate,baseline:{age:29,friends:0,hobbies:0,posts:0,smart:0,health:0,happiness:0},claimed:[],bonusClaimed:false};
       saved.friends=[{id:'festival-friend',name:'صديق المهرجان',relation:'صديق',relationshipLevel:70}];
       saved.hobbies=[{id:'festival-hobby',title:'الرسم'}];
