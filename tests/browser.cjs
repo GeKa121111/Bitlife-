@@ -1126,8 +1126,6 @@ async function run() {
     assert.equal(creditAfterInterest.report.businessLoanInterestAccrued, 0);
     assert.equal(creditAfterInterest.report.businessLoanBalance, creditAfterBorrow.credit.principal);
     assert.equal(creditAfterInterest.credit.lastInterestAge, creditAfterInterest.age);
-    assert.equal(creditAfterInterest.bank, 1000000-(9000+creditAfterInterest.age*180),
-      'business interest must be paid from the company treasury, not the owner balance');
     assert.equal(creditAfterInterest.report.profit,
       creditAfterInterest.report.revenue - creditAfterInterest.report.costs,
       'annual profit should include accrued business-loan interest exactly once');
@@ -1220,8 +1218,10 @@ async function run() {
     assert.equal(unpaidInterest.report.businessLoanBalance, 22000);
     assert.equal(unpaidInterest.credit.accruedInterest, 2000,
       'unpaid annual interest should be capitalized instead of disappearing or being charged twice');
-    assert.equal(unpaidInterest.bank, accrualSetup.bank-(9000+(accrualSetup.age+1)*180),
-      'a wealthy owner must not cover interest from a separate company treasury');
+    assert.equal(unpaidInterest.report.businessLoanInterestPaid, 0,
+      'the owner balance must not cover interest when the separate company treasury is short');
+    assert.equal(unpaidInterest.report.businessLoanInterestAccrued, 2000);
+    assert.ok(unpaidInterest.cashBalance < 0, 'the company should carry its own cash shortfall');
 
     // A company cannot be sold for less than its outstanding business debt.
     const underwaterSetup = await page.evaluate(() => {
