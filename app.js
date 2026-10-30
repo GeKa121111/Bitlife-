@@ -1371,7 +1371,8 @@ function simulateBusinessEntityYear(business,kind){
  if(!business||typeof business!=='object')return;
  const portfolio=kind==='portfolio';
  const separateTreasury=businessUsesSeparateTreasury(business);
- const openingCashBalance=separateTreasury?businessTreasuryBalance(business):0;
+ const pendingTaxPayments=Math.max(0,Math.round(Number(business.pendingTaxPayments)||0));
+ const openingCashBalance=separateTreasury?businessTreasuryBalance(business)+pendingTaxPayments:0;
  const level=Math.max(1,Math.floor(Number(business.level)||1)),openingValue=Math.max(1000,Number(business.value)||1000);
  const supplierBase=BUSINESS_SUPPLIER_CATALOG.find(item=>business.supplier&&item.id===business.supplier.id);
  const supplier=supplierBase?{...supplierBase,
@@ -1427,10 +1428,9 @@ function simulateBusinessEntityYear(business,kind){
  const taxableProfit=Math.max(0,Math.round(preTaxProfit));
  const corporateTaxRate=Math.max(.05,Math.min(.25,Number(industryProfile.corporateTaxRate)||.14));
  const corporateTax=Math.max(0,Math.round(taxableProfit*corporateTaxRate));
- const openingTaxLiability=businessTaxLiability(business);
- const pendingTaxPayments=Math.max(0,Math.round(Number(business.pendingTaxPayments)||0));
+ const openingTaxLiability=businessTaxLiability(business)+pendingTaxPayments;
  business.pendingTaxPayments=0;
- const totalTaxDue=Math.min(8000000000,openingTaxLiability+corporateTax);
+ const totalTaxDue=Math.min(8000000000,openingTaxLiability-pendingTaxPayments+corporateTax);
  const cashAfterInterest=businessTreasuryBalance(business)+revenue-operatingCostsTotal-businessLoanInterestPaid;
  const corporateTaxPaidFromCash=Math.min(totalTaxDue,Math.max(0,Math.floor(cashAfterInterest)));
  const corporateTaxAccrued=Math.max(0,totalTaxDue-corporateTaxPaidFromCash);
