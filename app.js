@@ -3792,6 +3792,7 @@ function resolveCombatBout(mode,opponent,moveId,probabilityOverride=null,session
   tone='good';
  }else{
   c.losses++;
+  // Losing a street fight does not remove street credibility; this follows the current official rule.
   const injuryGain=12+Math.floor(Math.random()*19)+(state.age>38?5:0);c.injury=clamp(c.injury+injuryGain);c.injuryYears=Math.max(c.injuryYears,c.injury>=65?2:1);
   state.stats.health=clamp(state.stats.health-(5+Math.floor(Math.random()*7)));state.stats.happiness=clamp(state.stats.happiness-3);
   if(mode==='league'){c.leaguePoints=Math.max(0,c.leaguePoints-4);title='خسارة في الدوري';detail='خسرت أمام '+opponent.name+'. لم ينقص رصيدك في الشوارع، لكن ترتيب الدوري تراجع قليلًا.';}
