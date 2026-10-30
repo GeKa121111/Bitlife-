@@ -126,18 +126,18 @@ test('تخطيط الهاتف وإمكانية الوصول ما زالا موج
 
 test('القائمة الرئيسية مقسمة بوضوح وحالة التبويب لا تختفي عند تحديث الشخصية', () => {
   const menu = functionSource('mainMenu', 'auraRingMenu');
-  assert.match(menu, /section\\('الحياة والشخصية'\\)/);
-  assert.match(menu, /section\\('الإنجازات والمكافآت'\\)/);
-  assert.match(menu, /section\\('المزايا والأنشطة'\\)/);
-  assert.match(menu, /section\\('الإعدادات وبيانات الحفظ'\\)/);
+  assert.match(menu, /section\('الحياة والشخصية'\)/);
+  assert.match(menu, /section\('الإنجازات والمكافآت'\)/);
+  assert.match(menu, /section\('المزايا والأنشطة'\)/);
+  assert.match(menu, /section\('الإعدادات وبيانات الحفظ'\)/);
 
   const modalSource = functionSource('modal', 'info');
   assert.match(modalSource, /'القائمة الرئيسية'/, 'the long main menu should open in a scrollable drawer');
 
   const renderSource = functionSource('render', 'closeModal');
-  assert.doesNotMatch(renderSource, /classList\\.remove\\('active'\\)/);
+  assert.doesNotMatch(renderSource, /classList\.remove\('active'\)/);
   assert.match(renderSource, /aria-pressed/);
-  assert.match(app, /b\\.setAttribute\\('aria-pressed',String\\(selected\\)\\)/);
+  assert.match(app, /b\.setAttribute\('aria-pressed',String\(selected\)\)/);
 });
 
 test('سجل الحياة يحافظ على موضع القراءة ولا يقفز عند مراجعة الأحداث القديمة', () => {
