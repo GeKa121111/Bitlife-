@@ -174,6 +174,22 @@ async function run() {
     const shownName = (await page.locator('#characterName').innerText()).trim();
     assert.ok(shownName.includes(seedSave.name), 'the legacy v1 save should render the seeded player');
 
+    assert.equal(await page.locator('.story-heading').isVisible(), true,
+      'the life diary should have a visible section heading');
+    assert.equal(await page.locator('#lifeMeta').isVisible(), true,
+      'the current life year should be visible in the diary heading');
+    assert.equal(await page.locator('.logtitle').first().isVisible(), true,
+      'life events should display their titles, not only body text');
+    const initialLayout = await page.evaluate(() => ({
+      appWidth: document.querySelector('#app').clientWidth,
+      feedWidth: document.querySelector('#lifeFeed').clientWidth,
+      feedScrollWidth: document.querySelector('#lifeFeed').scrollWidth
+    }));
+    assert.ok(initialLayout.appWidth > 0 && initialLayout.feedWidth > 0,
+      'the refreshed mobile layout should render its main regions');
+    assert.equal(initialLayout.feedScrollWidth, initialLayout.feedWidth,
+      'the life feed should not introduce horizontal scrolling');
+
     // Sensory feedback is opt-in, stored separately from the life save, and exposed in settings.
     const initialSensorySettings = await page.evaluate(() => JSON.parse(localStorage.getItem('hayah_ui_settings_v1') || '{}'));
     assert.equal(initialSensorySettings.sound, false, 'sound should be off by default');
