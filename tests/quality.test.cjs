@@ -82,6 +82,22 @@ test('كتالوج الوظائف يعرض المسارات المقفولة و�
   assert.match(css, /\.locked-choice/);
 });
 
+test('المسار المهني يدعم درجات متعددة ويهيئ الحفظ القديم دون تغيير الإصدار', () => {
+  assert.match(app, /function jobRankLabel\(level\)/);
+  assert.match(app, /function ensureJobProgress\(job,currentAge\)/);
+  assert.match(app, /function jobPromotionRequirements\(job\)/);
+  assert.match(app, /function jobPromotionChance\(job,manual\)/);
+  assert.match(app, /function grantJobPromotion\(source\)/);
+  assert.match(app, /function requestJobPromotion\(\)/);
+  assert.match(app, /ensureJobProgress\(data\.job,data\.age\)/);
+  assert.match(app, /job\.promotions\.push/);
+  assert.match(app, /roleStartAge/);
+  assert.match(app, /choice\('🏅','طلب ترقية'/);
+  assert.match(app, /state\.job=\{id:job\.id,title:job\.title,baseTitle:job\.title[\s\S]*?promotions:\[\]\}/);
+  assert.match(app, /promotionChance>0&&chance\(promotionChance\)\)grantJobPromotion\('annual'\)/);
+  assert.match(app, /return \{version:1,lifeId:/);
+});
+
 test('الرسائل المالية تستخدم عملة بلد الشخصية بدل افتراض الجنيه المصري', () => {
   const relationship = functionSource('relationshipAction', 'addFriend');
   const activity = functionSource('activity', 'importSave');
@@ -123,7 +139,7 @@ test('تطبيق الويب قابل للتثبيت ويحتفظ بملفات ا
   assert.ok(manifest.icons.some(item => item.src === './icon.svg'));
   assert.match(html, /rel="manifest" href="manifest\.webmanifest"/);
   assert.match(app, /navigator\.serviceWorker\.register\('\.\/sw\.js'\)/);
-  assert.match(worker, /const CACHE_NAME = 'hayah-shell-v20'/);
+  assert.match(worker, /const CACHE_NAME = 'hayah-shell-v21'/);
   assert.match(worker, /cache\.addAll\(APP_SHELL\)/);
   assert.match(worker, /caches\.match\(APP_SHELL\[0\]\)/);
   assert.match(icon, /حياة/);
@@ -211,7 +227,7 @@ test('مسيرة الرياضات الإلكترونية أصلية وتحافظ
   assert.match(app, /function upgradeEsportsSetup\(\)/);
   assert.match(app, /موهبة الألعاب الإلكترونية/);
   assert.match(app, /data\.talents\.gaming=clamp\(Number\(data\.talents\.gaming\),0,100\)/);
-  assert.match(read('sw.js'), /hayah-shell-v20/);
+  assert.match(read('sw.js'), /hayah-shell-v21/);
   assert.match(functionSource('rewindToSnapshot', 'customizeMenu'), /ensureGamingTalent\(\)/, 'rewinding a pre-feature snapshot should restore a valid talent default');
 });
 
