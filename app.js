@@ -75,6 +75,7 @@ function perkEnabled(id){return perkOwned(id)&&!!(permanentPerks.enabled&&perman
 function careerIncomeMultiplier(){return perkEnabled('goldenNeko')?1.2:1;}
 function specialCareerIncomeMultiplier(){return careerIncomeMultiplier()*(perkEnabled('bossMode')?1.1:1);}
 let state, dead=false, logBatchDepth=0, logBatchDirty=false, saveRecovered=false;
+let renderedLogSnapshot=null, renderedFeedElement=null;
 let activeDialogKeyHandler=null, modalReturnFocus=null;
 let managedCompanyId = null;
 let uiSettings={theme:'light',textScale:'normal',sound:false,haptics:false};
@@ -831,17 +832,94 @@ function renderStats(){
   return '<div class="statrow '+(r[0]==='fame'?'fame-row':'')+'"><div class="stathead"><span class="statlabel">'+r[2]+' '+r[1]+warn+'</span></div><div class="statbar"><div class="track"><div class="fill" style="width:'+v+'%;background:'+color+'"></div><span class="statvalue">'+v+'%</span></div></div></div>';
  }).join('');
 }
+function logEntrySignature(entry){
+ const item=entry&&typeof entry==='object'?entry:{};
+ return JSON.stringify([item.age??null,item.icon??'',item.title??'',item.text??'',item.tone??'']);
+}
+function appendLogEntryNode(feed,entry,lastAge){
+ if(entry.age!==lastAge){
+  const group=document.createElement('div');group.className='agegroup';
+  const label=document.createElement('span');label.textContent='العمر: '+fmt(entry.age)+' سنة';group.appendChild(label);feed.appendChild(group);
+ }
+ const tone=entry.tone==='good'?' good':entry.tone==='bad'?' bad':entry.tone==='special'?' special':'';
+ const article=document.createElement('article');article.className='logcard'+tone;
+ const icon=document.createElement('div');icon.className='logicon';if(typeof icon.setAttribute==='function')icon.setAttribute('aria-hidden','true');icon.textContent=String(entry.icon||'');
+ const content=document.createElement('div');content.className='logcontent';
+ const title=document.createElement('div');title.className='logtitle';title.textContent=String(entry.title||'');
+ const textNode=document.createElement('p');textNode.className='logtext';textNode.textContent=String(entry.text||'');
+ content.appendChild(title);content.appendChild(textNode);article.appendChild(icon);article.appendChild(content);feed.appendChild(article);
+ return entry.age;
+}
 function renderFeed(){
  const feed=$('lifeFeed');
- if(!state.log.length){feed.innerHTML='<div class="empty">لسه حكايتك في أولها. اضغط على زر <b>+ سنة</b> عشان تشوف إيه اللي هيحصل.</div>';return;}
+ if(!feed)return;
+ const entries=Array.isArray(state&&state.log)?state.log:[];
+ const signatures=entries.map(logEntrySignature);
  const shouldFollowLatest=feed.scrollHeight-feed.scrollTop-feed.clientHeight<=80;
+ const previous=renderedLogSnapshot;
+ const supportsIncrementalDom=typeof document!=='undefined'&&typeof document.createElement==='function'&&typeof feed.appendChild==='function'&&'firstElementChild' in feed;
+ let appendFrom=-1,shiftCount=0;
+ if(renderedFeedElement===feed&&Array.isArray(previous)&&supportsIncrementalDom){
+  let samePrefix=signatures.length>=previous.length;
+  if(samePrefix){
+   for(let i=0;i<previous.length;i++){if(previous[i]!==signatures[i]){samePrefix=false;break;}}
+  }
+  if(samePrefix)appendFrom=previous.length;
+  else if(previous.length===360&&signatures.length===360){
+   let overlap=0;
+   for(let candidate=359;candidate>0;candidate--){
+    let matches=true;
+    for(let i=0;i<candidate;i++){
+     if(previous[previous.length-candidate+i]!==signatures[i]){matches=false;break;}
+    }
+    if(matches){overlap=candidate;break;}
+   }
+   if(overlap){shiftCount=previous.length-overlap;appendFrom=overlap;}
+  }
+ }
+ if(appendFrom>=0){
+  let removedHeight=0;
+  if(shiftCount){
+   const beforeRemovalHeight=feed.scrollHeight;
+   for(let i=0;i<shiftCount;i++){
+    const group=feed.firstElementChild;
+    const card=group&&group.nextElementSibling;
+    if(!group||!group.classList||!group.classList.contains('agegroup')||!card||!card.classList||!card.classList.contains('logcard')){appendFrom=-1;break;}
+    card.remove();
+    const next=group.nextElementSibling;
+    if(!next||(next.classList&&next.classList.contains('agegroup')))group.remove();
+   }
+   if(appendFrom>=0){
+    removedHeight=Math.max(0,beforeRemovalHeight-feed.scrollHeight);
+    if(!shouldFollowLatest&&removedHeight)feed.scrollTop=Math.max(0,feed.scrollTop-removedHeight);
+   }
+  }
+  if(appendFrom>=0){
+   if(previous.length===0&&entries.length)feed.innerHTML='';
+   let lastAge=appendFrom>0?entries[appendFrom-1].age:null;
+   for(let i=appendFrom;i<entries.length;i++)lastAge=appendLogEntryNode(feed,entries[i],lastAge);
+   renderedLogSnapshot=signatures;renderedFeedElement=feed;
+   if(shouldFollowLatest&&appendFrom<entries.length){
+    requestAnimationFrame(()=>{
+     if(typeof feed.scrollTo==='function')feed.scrollTo({top:feed.scrollHeight,behavior:'smooth'});
+     else feed.scrollTop=feed.scrollHeight;
+    });
+   }
+   return;
+  }
+ }
+ if(!entries.length){
+  feed.innerHTML='<div class="empty">لسه حكايتك في أولها. اضغط على زر <b>+ سنة</b> عشان تشوف إيه اللي هيحصل.</div>';
+  renderedLogSnapshot=[];renderedFeedElement=feed;return;
+ }
  let html='',last=null;
- state.log.forEach(x=>{
+ entries.forEach(x=>{
   if(x.age!==last){last=x.age;html+='<div class="agegroup"><span>العمر: '+fmt(last)+' سنة</span></div>';}
   const tone=x.tone==='good'?' good':x.tone==='bad'?' bad':x.tone==='special'?' special':'';
   html+='<article class="logcard'+tone+'"><div class="logicon" aria-hidden="true">'+esc(x.icon)+'</div><div class="logcontent"><div class="logtitle">'+esc(x.title)+'</div><p class="logtext">'+esc(x.text)+'</p></div></article>';
  });
  feed.innerHTML=html;
+ renderedLogSnapshot=signatures;renderedFeedElement=feed;
  requestAnimationFrame(()=>{
   if(!shouldFollowLatest)return;
   if(typeof feed.scrollTo==='function')feed.scrollTo({top:feed.scrollHeight,behavior:'smooth'});

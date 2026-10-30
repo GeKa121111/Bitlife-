@@ -18,6 +18,7 @@ assert.match(app, /navigator\.serviceWorker\.register\('\.\/sw\.js'\)/);
 assert.match(serviceWorker, /request\.mode === 'navigate'/);
 assert.match(serviceWorker, /caches\.match\(APP_SHELL\[0\]\)/);
 assert.match(index, /id="ageUpBtn"/);
+assert.match(index, /id="lifeFeed"[^>]*aria-relevant="additions" aria-atomic="false"/);
 assert.match(css, /max-width:500px/);
 assert.match(app, /const dailyChallengeDefs=\[/, 'daily challenge catalog should be available');
 assert.match(app, /function ensureDailyChallengeBoard\(\)/, 'daily challenges should rotate and persist by day');
@@ -166,7 +167,7 @@ assert.match(finalUi, /\.fill\s*\{[^}]*position:absolute[^}]*right:0/s, 'status 
 assert.match(finalUi, /\.statvalue\s*\{[^}]*position:absolute[^}]*z-index:1/s, 'status values should overlay the progress bars');
 assert.match(finalUi, /\.nav\{direction:ltr\}/, 'tab positions should follow the original left-to-right order');
 assert.match(finalUi, /\.fill\{left:0;right:auto\}/, 'progress fills should grow from the left edge like the reference');
-assert.match(serviceWorker, /hayah-shell-v30/, 'the app shell cache should refresh the new styles');
+assert.match(serviceWorker, /hayah-shell-v31/, 'the app shell cache should refresh the new styles');
 assert.match(app, /function schoolHub\(\)/);
 assert.match(app, /function maintainAsset\(index\)/);
 assert.match(app, /function schoolClubs\(\)/, 'student clubs should have interactive actions');
@@ -511,4 +512,4 @@ console.log('Smoke tests passed: RTL/PWA shell, autosave recovery, legacy migrat
 assert.ok(app.includes("function playUiFeedback(kind='tap')"), 'optional sound and haptic feedback should be available');
 assert.ok(app.includes('uiSettings.sound'));
 assert.ok(app.includes('uiSettings.haptics'));
-assert.match(serviceWorker, /hayah-shell-v30/);
+assert.match(serviceWorker, /hayah-shell-v31/);

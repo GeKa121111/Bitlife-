@@ -393,12 +393,24 @@ async function run() {
       return { scrollHeight: feed.scrollHeight, clientHeight: feed.clientHeight };
     });
     assert.ok(readingStart.scrollHeight > readingStart.clientHeight, 'the seeded mobile history should be scrollable');
+    await page.evaluate(() => { window.__hayahFirstLogCard = document.querySelector('#lifeFeed .logcard'); });
 
     await page.locator('#ageUpBtn').click();
     await page.waitForFunction(() => {
       const saved = JSON.parse(localStorage.getItem('hekayat_hayah_save_v1') || 'null');
       return saved && saved.age === 31 && Array.isArray(saved.timeMachineSnapshots) && saved.timeMachineSnapshots.length === 1;
     });
+    const incrementalFeed = await page.evaluate(() => ({
+      firstCardPreserved: window.__hayahFirstLogCard === document.querySelector('#lifeFeed .logcard'),
+      cardCount: document.querySelectorAll('#lifeFeed .logcard').length,
+      relevant: document.querySelector('#lifeFeed').getAttribute('aria-relevant'),
+      atomic: document.querySelector('#lifeFeed').getAttribute('aria-atomic')
+    }));
+    assert.equal(incrementalFeed.firstCardPreserved, true, 'adding a new year should append events without rebuilding the existing log cards');
+    assert.ok(incrementalFeed.cardCount > 45, 'new annual events should appear in the life feed');
+    assert.equal(incrementalFeed.relevant, 'additions', 'screen readers should be notified about new log entries rather than all history');
+    assert.equal(incrementalFeed.atomic, 'false', 'the life feed should announce new entries independently');
+
     const businessYear = await page.evaluate(() => {
       const saved = JSON.parse(localStorage.getItem('hekayat_hayah_save_v1') || 'null');
       const history = saved && saved.business && Array.isArray(saved.business.financialHistory) ? saved.business.financialHistory : [];
