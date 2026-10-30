@@ -578,7 +578,15 @@ function normalizeCoreState(data){
   }).filter(Boolean);
   if(entity.supplier&&typeof entity.supplier==='object'&&!Array.isArray(entity.supplier)){
    const supplier=BUSINESS_SUPPLIER_CATALOG.find(item=>item.id===entity.supplier.id);
-   entity.supplier=supplier?{id:supplier.id,yearsLeft:clamp(Number(entity.supplier.yearsLeft)||3,1,3),startedAtAge:Math.max(0,Number(entity.supplier.startedAtAge)||0)}:null;
+   entity.supplier=supplier?{
+   id:supplier.id,
+   yearsLeft:clamp(Number(entity.supplier.yearsLeft)||3,1,3),
+   startedAtAge:Math.max(0,Number(entity.supplier.startedAtAge)||0),
+   quality:clamp(entity.supplier.quality!==null&&Number.isFinite(Number(entity.supplier.quality))?Number(entity.supplier.quality):supplier.quality,40,99),
+   costMultiplier:Math.round(Math.max(.7,Math.min(1.3,entity.supplier.costMultiplier!==null&&Number.isFinite(Number(entity.supplier.costMultiplier))?Number(entity.supplier.costMultiplier):supplier.costMultiplier))*1000)/1000,
+   feeRate:Math.round(Math.max(.004,Math.min(.03,entity.supplier.feeRate!==null&&Number.isFinite(Number(entity.supplier.feeRate))?Number(entity.supplier.feeRate):supplier.feeRate))*10000)/10000,
+   marketYear:Math.max(0,Math.floor(Number(entity.supplier.marketYear)||Number(entity.supplier.startedAtAge)||0))
+  }:null;
   }else entity.supplier=null;
  };
  normalizeBusinessEntity(data.business);
@@ -951,7 +959,9 @@ function recordBusinessFinancialReport(entity,report){
  const growthRate=openingValue>0?Math.round((closingValue-openingValue)/openingValue*1000)/10:0;
  const payroll=Math.max(0,Math.round(Number(report.payroll)||0));
  const staffCount=Math.max(0,Math.min(5,Math.floor(Number(report.staffCount)||0)));
- history.push({year:Math.max(0,Math.floor(Number(report.year)||0)),openingValue,revenue,costs,profit,margin,growthRate,closingValue,level:Math.max(1,Math.floor(Number(report.level)||1)),supplier:typeof report.supplier==='string'?report.supplier:'',payroll,staffCount});
+ const supplierQuality=Number.isFinite(Number(report.supplierQuality))?clamp(Number(report.supplierQuality),0,100):0;
+ const supplierCostMultiplier=Number.isFinite(Number(report.supplierCostMultiplier))?Math.round(Math.max(0,Number(report.supplierCostMultiplier))*1000)/1000:0;
+ history.push({year:Math.max(0,Math.floor(Number(report.year)||0)),openingValue,revenue,costs,profit,margin,growthRate,closingValue,level:Math.max(1,Math.floor(Number(report.level)||1)),supplier:typeof report.supplier==='string'?report.supplier:'',supplierQuality,supplierCostMultiplier,payroll,staffCount});
  entity.financialHistory=history.slice(-10);
 }
 
@@ -992,7 +1002,11 @@ function advanceAge(){
  if((state.investments||[]).length){let totalGain=0;state.investments.forEach(inv=>{const before=inv.value;let move=inv.kind==='عملات رقمية'?(Math.random()*.9-.35):inv.kind==='أسهم'?(Math.random()*.3-.09):inv.kind==='سندات'?(Math.random()*.08-.02):inv.kind==='مخاطرة عالية'?(Math.random()*.46-.18):(Math.random()*.24-.04);if(inv.strategy==='long')move=move*.62+.008;else if(inv.strategy==='short')move=move*1.2;if(state.investmentAdvisor&&state.investmentAdvisor.hired)move=move>=0?move*1.08:move*.72;inv.value=Math.max(0,Math.round(inv.value*(1+move)));totalGain+=inv.value-before;});if(totalGain)log('📈','تقرير الاستثمارات',(totalGain>=0?'استثماراتك زادت بقيمة ':'استثماراتك خسرت بقيمة ')+cash(Math.abs(totalGain))+'. السوق بيتحرك صعودًا وهبوطًا. ',totalGain>=0?'good':'bad');}
  if(state.business){
   const business=state.business,level=Math.max(1,business.level||1),openingValue=Math.max(1000,Number(business.value)||1000);
-  const supplier=BUSINESS_SUPPLIER_CATALOG.find(item=>business.supplier&&item.id===business.supplier.id);
+  const supplierBase=BUSINESS_SUPPLIER_CATALOG.find(item=>business.supplier&&item.id===business.supplier.id);
+  const supplier=supplierBase?{...supplierBase,
+   quality:clamp(business.supplier.quality!==null&&Number.isFinite(Number(business.supplier.quality))?Number(business.supplier.quality):supplierBase.quality,40,99),
+   costMultiplier:Math.round(Math.max(.7,Math.min(1.3,business.supplier.costMultiplier!==null&&Number.isFinite(Number(business.supplier.costMultiplier))?Number(business.supplier.costMultiplier):supplierBase.costMultiplier))*1000)/1000
+  }:null;
   const staff=Array.isArray(business.staff)?business.staff:[];
   let staffRevenueBonus=0,staffCostReduction=0,staffPayroll=0;
   staff.forEach(employee=>{
@@ -1021,7 +1035,7 @@ function advanceAge(){
    employee.morale=clamp((Number.isFinite(Number(employee.morale))?Number(employee.morale):65)+(profit>=0?2:-4));
    if(employee.morale>=70&&chance(.25))employee.skill=clamp((Number(employee.skill)||55)+1);
   });
-  recordBusinessFinancialReport(business,{year:state.age,openingValue,revenue,costs,profit,closingValue:business.value,level,supplier:supplier?supplier.title:'',payroll:staffPayroll,staffCount:staff.length});
+  recordBusinessFinancialReport(business,{year:state.age,openingValue,revenue,costs,profit,closingValue:business.value,level,supplier:supplier?supplier.title:'',supplierQuality:supplier?supplier.quality:0,supplierCostMultiplier:supplier?supplier.costMultiplier:0,payroll:staffPayroll,staffCount:staff.length});
   const supplierLabel=supplier?' · المورد '+supplier.title:'';
   const staffLabel=staff.length?' · الرواتب '+cash(staffPayroll)+' لعدد '+staff.length+' موظف':'';
   log('🏪','التقرير السنوي للمشروع','الإيرادات '+cash(revenue)+' · المصروفات '+cash(costs)+' · '+(profit>=0?'صافي الربح ':'صافي الخسارة ')+cash(Math.abs(profit))+' · مستوى الإدارة '+level+supplierLabel+staffLabel+'.','special');
@@ -1568,28 +1582,69 @@ function acquireCompany(title,sector,value,emoji){
  log('🏢','استحواذ على شركة','اشتريت '+title+' في قطاع '+sector+'. الأرباح تعتمد على الإدارة والتقلبات السنوية.','special');achievement('تنويع محفظة الشركات');save();render();companyPortfolioMenu();
 }
 
-function businessSupplierMenu(){
- if(!state.business){info('🏪','لا يوجد مشروع','امتلك مشروعًا أولًا حتى تختار مورّدًا.');return;}
- const business=state.business;
- const current=BUSINESS_SUPPLIER_CATALOG.find(item=>business.supplier&&item.id===business.supplier.id);
- const opts=BUSINESS_SUPPLIER_CATALOG.map(supplier=>{
-  const fee=Math.max(500,Math.round(Math.max(0,Number(business.value)||0)*supplier.feeRate));
-  const active=current&&current.id===supplier.id&&Number(business.supplier.yearsLeft)>0;
-  return choice(supplier.emoji,supplier.title+(active?' · المتعاقد الحالي':''),supplier.description+' الجودة '+supplier.quality+'% · معامل التكلفة '+Math.round(supplier.costMultiplier*100)+'% · مدة العقد 3 سنوات.',()=>contractBusinessSupplier(supplier.id),cash(fee));
+function businessSupplierMarketOffers(business){
+ const year=Math.max(0,Math.floor(Number(state.age)||0));
+ const saved=business&&business.supplierMarket;
+ if(saved&&Number(saved.year)===year&&Array.isArray(saved.offers)){
+  const offers=saved.offers.map(offer=>{
+   if(!offer||typeof offer!=='object')return null;
+   const supplier=BUSINESS_SUPPLIER_CATALOG.find(item=>item.id===offer.id);
+   if(!supplier)return null;
+   const quality=Number(offer.quality),costMultiplier=Number(offer.costMultiplier),feeRate=Number(offer.feeRate);
+   if(!Number.isFinite(quality)||!Number.isFinite(costMultiplier)||!Number.isFinite(feeRate))return null;
+   return {id:supplier.id,quality:clamp(quality,40,99),costMultiplier:Math.round(Math.max(.7,Math.min(1.3,costMultiplier))*1000)/1000,feeRate:Math.round(Math.max(.004,Math.min(.03,feeRate))*10000)/10000};
+  }).filter(Boolean);
+  if(offers.length===BUSINESS_SUPPLIER_CATALOG.length&&new Set(offers.map(offer=>offer.id)).size===BUSINESS_SUPPLIER_CATALOG.length)return offers;
+ }
+ const source=String(state.lifeId||state.name||'hayah')+'|'+year+'|'+String(business.assetId||business.title||'business');
+ let hash=2166136261;
+ for(let i=0;i<source.length;i++)hash=Math.imul(hash^source.charCodeAt(i),16777619);
+ const offers=BUSINESS_SUPPLIER_CATALOG.map((supplier,index)=>{
+  const mixed=(hash^Math.imul(index+1,0x9e3779b1))>>>0;
+  const quality=clamp(supplier.quality+(mixed%11)-5,40,99);
+  const costMultiplier=Math.round(Math.max(.7,Math.min(1.3,supplier.costMultiplier+(((mixed>>>8)%9)-4)*.015))*1000)/1000;
+  const feeRate=Math.round(Math.max(.004,Math.min(.03,supplier.feeRate+(((mixed>>>16)%5)-2)*.001))*10000)/10000;
+  return {id:supplier.id,quality,costMultiplier,feeRate};
  });
+ business.supplierMarket={year,offers};
+ return offers;
+}
+function businessSupplierMenu(){
+ if(!state.business){info('🏪','لا يوجد مشروع','امتلك مشروعًا أولًا حتى تراجع عروض الموردين.');return;}
+ const business=state.business,year=Math.max(0,Math.floor(Number(state.age)||0));
+ const offers=businessSupplierMarketOffers(business);
+ save();
+ const current=BUSINESS_SUPPLIER_CATALOG.find(item=>business.supplier&&item.id===business.supplier.id);
+ const currentYears=Math.max(0,Math.floor(Number(business.supplier&&business.supplier.yearsLeft)||0));
+ const earlyExitFee=current&&currentYears>0?Math.round(Math.max(0,Number(business.value)||0)*.004*currentYears):0;
+ const opts=offers.map(offer=>{
+  const supplier=BUSINESS_SUPPLIER_CATALOG.find(item=>item.id===offer.id);
+  if(!supplier)return null;
+  const active=current&&current.id===supplier.id&&currentYears>0;
+  const fee=Math.max(500,Math.round(Math.max(0,Number(business.value)||0)*offer.feeRate));
+  const exitFee=current&&currentYears>0&&!active?earlyExitFee:0;
+  const termLabel=active?'العقد الحالي · متبقي '+currentYears+' سنة':'عقد جديد لمدة سنة مالية واحدة';
+  const detail=supplier.description+' الجودة '+offer.quality+'% · معامل التكلفة '+Math.round(offer.costMultiplier*100)+'% · رسوم التعاقد '+cash(fee)+' · '+termLabel+(exitFee?' · إنهاء العقد الحالي '+cash(exitFee):'');
+  return choice(supplier.emoji,supplier.title+(active?' · المتعاقد الحالي':''),detail,()=>contractBusinessSupplier(supplier.id),active?'ساري':cash(fee+exitFee));
+ }).filter(Boolean);
  opts.push(choice('↩️','رجوع لإدارة المشروع','',businessMenu));
- modal('📦','اختيار المورد','قارن بين الجودة والتكلفة قبل توقيع عقد جديد. رسوم التعاقد تُدفع مرة واحدة، والعقد يستمر ثلاث سنوات.',opts);
+ modal('📦','سوق الموردين · السنة '+year,'العروض تتجدد سنويًا. قارن الجودة والتكلفة قبل التعاقد؛ التبديل المبكر من عقد قائم يضيف رسوم إنهاء معلنة.',opts);
 }
 function contractBusinessSupplier(id){
  closeModal();if(!state.business)return;
- const supplier=BUSINESS_SUPPLIER_CATALOG.find(item=>item.id===id);
- if(!supplier){info('⚠️','مورد غير متاح','اختار موردًا من القائمة الحالية.');return;}
- if(state.business.supplier&&state.business.supplier.id===id&&Number(state.business.supplier.yearsLeft)>0){info('📦','العقد ما زال ساريًا','أنت متعاقد بالفعل مع '+supplier.title+'.');return;}
- const fee=Math.max(500,Math.round(Math.max(0,Number(state.business.value)||0)*supplier.feeRate));
- if(state.bank<fee){info('💳','الرصيد غير كافٍ','رسوم التعاقد مع '+supplier.title+' هي '+cash(fee)+'.');return;}
- state.bank-=fee;
- state.business.supplier={id:supplier.id,yearsLeft:3,startedAtAge:state.age};
- log('📦','توقيع عقد توريد','تعاقدت مع '+supplier.title+' لمدة 3 سنوات. الجودة والتكلفة هتظهر آثارهم في التقارير السنوية.','good');
+ const business=state.business,supplier=BUSINESS_SUPPLIER_CATALOG.find(item=>item.id===id);
+ const offers=businessSupplierMarketOffers(business),offer=offers.find(item=>item.id===id);
+ if(!supplier||!offer){info('⚠️','عرض غير متاح','اختار موردًا من عروض السنة الحالية.');return;}
+ const currentYears=Math.max(0,Math.floor(Number(business.supplier&&business.supplier.yearsLeft)||0));
+ if(business.supplier&&business.supplier.id===id&&currentYears>0){info('📦','العقد ما زال ساريًا','أنت متعاقد بالفعل مع '+supplier.title+'.');return;}
+ const value=Math.max(0,Number(business.value)||0);
+ const fee=Math.max(500,Math.round(value*offer.feeRate));
+ const earlyExitFee=business.supplier&&currentYears>0?Math.round(value*.004*currentYears):0;
+ const totalFee=fee+earlyExitFee;
+ if(state.bank<totalFee){info('💳','الرصيد غير الكافي','رسوم التعاقد مع '+supplier.title+' ورسوم إنهاء العقد السابق '+cash(totalFee)+'؛ راجع السيولة قبل التبديل.');return;}
+ state.bank-=totalFee;
+ business.supplier={id:supplier.id,quality:offer.quality,costMultiplier:offer.costMultiplier,feeRate:offer.feeRate,yearsLeft:1,startedAtAge:state.age,marketYear:business.supplierMarket.year};
+ log('📦','توقيع عقد توريد','تعاقدت مع '+supplier.title+' لمدة سنة مالية واحدة بجودة '+offer.quality+'% ومعامل تكلفة '+Math.round(offer.costMultiplier*100)+'%'+(earlyExitFee?'، مع رسوم إنهاء مبكر '+cash(earlyExitFee):'')+'.','good');
  save();render();businessMenu();
 }
 function businessReportsMenu(entity,title,back){
@@ -1597,7 +1652,7 @@ function businessReportsMenu(entity,title,back){
  if(!reports.length){info('📊','لا توجد تقارير بعد','التقرير المالي الأول هيظهر بعد مرور سنة مالية كاملة.');return;}
  const opts=reports.map(report=>choice('📅','السنة '+report.year,'الإيرادات '+cash(report.revenue)+' · المصروفات '+cash(report.costs)+' · '+(report.profit>=0?'صافي ربح ':'صافي خسارة ')+cash(Math.abs(report.profit)),()=>{
   closeModal();
-  const detail='الإيرادات: '+cash(report.revenue)+'\nالمصروفات التشغيلية: '+cash(Math.max(0,report.costs-(report.payroll||0)))+'\nرواتب الموظفين: '+cash(report.payroll||0)+' ('+(report.staffCount||0)+' موظف)\nإجمالي المصروفات: '+cash(report.costs)+'\nصافي النتيجة: '+(report.profit>=0?'ربح ':'خسارة ')+cash(Math.abs(report.profit))+'\nهامش الربح: '+report.margin+'%\nتغير قيمة النشاط: '+(report.growthRate>=0?'+':'')+report.growthRate+'%\nالقيمة الختامية: '+cash(report.closingValue)+(report.supplier?'\nالمورد: '+report.supplier:'');
+  const detail='الإيرادات: '+cash(report.revenue)+'\nالمصروفات التشغيلية: '+cash(Math.max(0,report.costs-(report.payroll||0)))+'\nرواتب الموظفين: '+cash(report.payroll||0)+' ('+(report.staffCount||0)+' موظف)\nإجمالي المصروفات: '+cash(report.costs)+'\nصافي النتيجة: '+(report.profit>=0?'ربح ':'خسارة ')+cash(Math.abs(report.profit))+'\nهامش الربح: '+report.margin+'%\nتغير قيمة النشاط: '+(report.growthRate>=0?'+':'')+report.growthRate+'%\nالقيمة الختامية: '+cash(report.closingValue)+(report.supplier?'\nالمورد: '+report.supplier+(report.supplierQuality?'\nجودة المورد: '+report.supplierQuality+'%':'')+(report.supplierCostMultiplier?'\nمعامل تكلفة المورد: '+Math.round(report.supplierCostMultiplier*100)+'%':''):'');
   info('📊','التقرير المالي · '+title,detail,[choice('↩️','رجوع للتقارير','',()=>businessReportsMenu(entity,title,back))]);
  }));
  opts.push(choice('↩️','رجوع','',back));
