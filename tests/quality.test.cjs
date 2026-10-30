@@ -532,7 +532,7 @@ test('استثمار المنشأة رأسمالي منفصل عن صافي ال
   assert.match(annualSimulation, /const operatingCostsTotal=operatingCosts\+staffPayroll\+facilityUpkeep\+productResult\.costs/);
   assert.match(annualSimulation, /const costs=operatingCostsTotal\+productResult\.upfrontCosts\+businessLoanInterest/);
   assert.match(annualSimulation, /facilityInvestmentCosts/);
-  assert.match(annualSimulation, /adjustBusinessTreasury\(business,profit\+productResult\.upfrontCosts\+businessLoanInterestAccrued\)/);
+  assert.match(annualSimulation, /const cashDelta=revenue-operatingCostsTotal-businessLoanInterestPaid-corporateTaxPaidFromCash/);
 });
 
 test('نسب طاقة المنشآت العشرية لا تُقرّب إلى أعداد صحيحة', () => {
