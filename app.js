@@ -603,7 +603,7 @@ function normalizeCoreState(data){
    };
   }).filter(Boolean);
   const pendingFacilityCosts=Number(entity.pendingFacilityCosts);
-  entity.pendingFacilityCosts=Math.max(0,Math.min(1000000000,Number.isFinite(pendingFacilityCosts)?Math.round(pendingFacilityCosts):0));
+  entity.pendingFacilityCosts=Math.max(0,Math.min(8000000000,Number.isFinite(pendingFacilityCosts)?Math.round(pendingFacilityCosts):0));
   if(!Array.isArray(entity.products))entity.products=[];
   entity.products=entity.products.filter(product=>product&&typeof product==='object'&&!Array.isArray(product)).slice(-20).map((product,index)=>{
    const catalog=BUSINESS_PRODUCT_CATALOG.find(item=>item.id===product.catalogId);
@@ -1043,7 +1043,7 @@ function recordBusinessFinancialReport(entity,report){
  const productUnits=Math.max(0,Math.floor(Number(report.productUnits)||0));
  const productCount=Math.max(0,Math.min(BUSINESS_PRODUCT_CATALOG.length,Math.floor(Number(report.productCount)||0)));
  const facilityUpkeep=Math.max(0,Math.round(Number(report.facilityUpkeep)||0));
- const facilityInvestment=Math.max(0,Math.round(Number(report.facilityInvestment)||0));
+ const facilityInvestment=Math.max(0,Math.min(8000000000,Math.round(Number(report.facilityInvestment)||0)));
  const facilityCount=Math.max(0,Math.min(8,Math.floor(Number(report.facilityCount)||0)));
  const capacityMultiplier=Math.max(1,Math.min(4,Number.isFinite(Number(report.capacityMultiplier))?Number(report.capacityMultiplier):1));
  history.push({year:Math.max(0,Math.floor(Number(report.year)||0)),openingValue,revenue,costs,profit,margin,growthRate,closingValue,level:Math.max(1,Math.floor(Number(report.level)||1)),supplier:typeof report.supplier==='string'?report.supplier:'',supplierQuality,supplierCostMultiplier,payroll,staffCount,productRevenue,productCosts,productProfit,productUnits,productCount,facilityUpkeep,facilityInvestment,facilityCount,capacityMultiplier});
@@ -1137,12 +1137,13 @@ function simulateBusinessEntityYear(business,kind){
  const operatingCosts=Math.round(supplierCosts*(1-Math.min(.25,staffCostReduction)));
  const facilities=Array.isArray(business.facilities)?business.facilities:[];
  const facilityUpkeep=facilities.reduce((sum,facility)=>sum+Math.max(0,Math.round(Number(facility.annualUpkeep)||0)),0);
- const facilityInvestmentCosts=Math.max(0,Math.round(Number(business.pendingFacilityCosts)||0));
+ const facilityInvestmentCosts=Math.max(0,Math.min(8000000000,Math.round(Number(business.pendingFacilityCosts)||0)));
  business.pendingFacilityCosts=0;
- const costs=operatingCosts+staffPayroll+facilityUpkeep+facilityInvestmentCosts+productResult.costs+productResult.upfrontCosts;
+ // Facility construction is capital expenditure: it was paid at purchase time, so report it separately from annual operating profit.
+ const costs=operatingCosts+staffPayroll+facilityUpkeep+productResult.costs+productResult.upfrontCosts;
  const profit=revenue-costs;
- // Product and facility investments were paid at purchase time; include them once in the report without charging cash twice.
- state.bank+=profit+productResult.upfrontCosts+facilityInvestmentCosts;
+ // Product research and launch fees were already paid; include them in the report once without charging cash twice.
+ state.bank+=profit+productResult.upfrontCosts;
  business.value=Math.max(1000,Math.round(openingValue*(profit>=0?1.04:.97)));
  staff.forEach(employee=>{
   employee.years=Math.min(80,Math.max(0,Math.floor(Number(employee.years)||0))+1);
@@ -1955,7 +1956,7 @@ function businessFacilityCatalogMenu(){
  const business=currentManagedBusiness();
  if(!business)return;
  const opts=BUSINESS_FACILITY_CATALOG.map(facility=>{
-  const cost=Math.max(facility.minCost,Math.round(Math.max(0,Number(business.value)||0)*facility.costRate));
+  const cost=Math.min(1000000000,Math.max(facility.minCost,Math.round(Math.max(0,Number(business.value)||0)*facility.costRate)));
   const upkeep=Math.max(facility.minUpkeep,Math.round(cost*facility.upkeepRate));
   return choice(facility.emoji,facility.title,facility.description+' · استثمار '+cash(cost)+' · صيانة سنوية '+cash(upkeep)+' · زيادة الطاقة '+Math.round(facility.capacityBonus*100)+'%.',()=>buyBusinessFacility(facility.id),cash(cost));
  });
@@ -1968,13 +1969,13 @@ function buyBusinessFacility(type){
  if(!business||!facility)return;
  if(!Array.isArray(business.facilities))business.facilities=[];
  if(business.facilities.length>=8){info('🏗️','اكتمل حد المنشآت','يمكن امتلاك ثماني منشآت كحد أقصى لكل نشاط.');return;}
- const cost=Math.max(facility.minCost,Math.round(Math.max(0,Number(business.value)||0)*facility.costRate));
+ const cost=Math.min(1000000000,Math.max(facility.minCost,Math.round(Math.max(0,Number(business.value)||0)*facility.costRate)));
  const upkeep=Math.max(facility.minUpkeep,Math.round(cost*facility.upkeepRate));
  if(state.bank<cost){info('💳','الرصيد غير كافٍ','إنشاء '+facility.title+' يحتاج '+cash(cost)+'.');return;}
  const sameTypeCount=business.facilities.filter(item=>item&&item.type===facility.id).length+1;
  const record={id:'facility-'+String(state.lifeId||state.age)+'-'+String(business.assetId||business.id||business.title||'business')+'-'+String(state.age)+'-'+String(business.facilities.length+1),type:facility.id,title:facility.title+' '+sameTypeCount,capacityBonus:facility.capacityBonus,annualUpkeep:upkeep,investment:cost,builtAtAge:state.age};
  state.bank-=cost;
- business.pendingFacilityCosts=Math.max(0,Number(business.pendingFacilityCosts)||0)+cost;
+ business.pendingFacilityCosts=Math.min(8000000000,Math.max(0,Number(business.pendingFacilityCosts)||0)+cost);
  business.facilities.push(record);
  log(facility.emoji,'افتتاح '+record.title,'استثمرت '+cash(cost)+' · الطاقة الإنتاجية زادت '+Math.round(facility.capacityBonus*100)+'% · الصيانة السنوية '+cash(upkeep)+'.','good');
  save();render();businessFacilitiesMenu();
