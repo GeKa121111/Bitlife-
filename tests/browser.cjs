@@ -948,6 +948,84 @@ async function run() {
     assert.equal(portfolioAfterYear.company.supplier, null, 'the portfolio supplier contract should expire after its fiscal year');
     assert.equal(portfolioAfterYear.asset.value, portfolioAfterYear.company.value, 'the portfolio asset value should stay in sync with its operating company');
 
+    // Industry profiles must give each portfolio sector a distinct, deterministic market and annual cost/revenue structure.
+    const industryCases = [
+      { id: 'industry-tech-browser', title: 'شركة تقنية تجريبية', sector: 'تقنية', demand: [62, 100], competition: [30, 75], competitors: [2, 7], revenue: 1.12, operating: 1.06, unit: 0.92 },
+      { id: 'industry-logistics-browser', title: 'شركة لوجستية تجريبية', sector: 'لوجستيات', demand: [55, 91], competition: [24, 62], competitors: [2, 6], revenue: 1.04, operating: 1.17, unit: 1.12 },
+      { id: 'industry-restaurants-browser', title: 'سلسلة مطاعم تجريبية', sector: 'مطاعم', demand: [68, 106], competition: [55, 90], competitors: [5, 10], revenue: 1.08, operating: 1.20, unit: 1.16 },
+      { id: 'industry-retail-browser', title: 'شركة تجزئة تجريبية', sector: 'تجزئة', demand: [58, 96], competition: [60, 91], competitors: [6, 12], revenue: 1.03, operating: 1.13, unit: 1.10 },
+      { id: 'industry-food-browser', title: 'شركة أغذية تجريبية', sector: 'أغذية', demand: [65, 100], competition: [48, 82], competitors: [4, 9], revenue: 1.07, operating: 1.16, unit: 1.14 },
+      { id: 'industry-care-browser', title: 'شركة عناية تجريبية', sector: 'عناية', demand: [56, 93], competition: [35, 76], competitors: [3, 8], revenue: 1.09, operating: 1.08, unit: 1.03 }
+    ];
+    await page.evaluate(cases => {
+      const key = 'hekayat_hayah_save_v1';
+      const saved = JSON.parse(localStorage.getItem(key) || 'null');
+      const companies = cases.map((item, index) => ({
+        id: item.id, assetId: item.id, title: item.title, sector: item.sector,
+        value: 180000 + index * 1000, level: 1, upkeep: 4000, bought: 30, emoji: '🏢',
+        products: [{
+          id: 'product-' + item.id, catalogId: 'digital-service', title: 'خدمة تجريبية',
+          emoji: '💻', unitPrice: 850, unitCost: 280, demand: 75, competition: 50,
+          quality: 80, active: true, history: []
+        }]
+      }));
+      saved.companies = (Array.isArray(saved.companies) ? saved.companies : []).concat(companies);
+      saved.assets = (Array.isArray(saved.assets) ? saved.assets : []).concat(companies.map(company => ({
+        id: company.id, title: company.title, emoji: company.emoji, kind: 'business',
+        value: company.value, upkeep: 0, bought: company.bought, companyPortfolio: true
+      })));
+      localStorage.setItem(key, JSON.stringify(saved));
+    }, industryCases);
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await page.evaluate(() => { Math.random = () => 0.99; });
+    const industryMarkets = [];
+    for (const item of industryCases) {
+      await page.locator('[data-panel="assets"]').click();
+      await page.locator('.choice').filter({ hasText: item.title }).click();
+      await page.locator('.choice').filter({ hasText: 'إدارة التشغيل' }).click();
+      await page.locator('.choice').filter({ hasText: 'تحليل السوق والمنافسين' }).click();
+      const market = await page.evaluate(id => {
+        const saved = JSON.parse(localStorage.getItem('hekayat_hayah_save_v1') || 'null');
+        const company = saved && saved.companies && saved.companies.find(item => item.id === id);
+        return company && company.market;
+      }, item.id);
+      assert.equal(market.industry, item.sector);
+      assert.ok(market.demandIndex >= item.demand[0] && market.demandIndex <= item.demand[1],
+        item.sector + ' demand should use its own industry profile');
+      assert.ok(market.competitionIndex >= item.competition[0] && market.competitionIndex <= item.competition[1],
+        item.sector + ' competition should use its own industry profile');
+      assert.ok(market.competitorCount >= item.competitors[0] && market.competitorCount <= item.competitors[1],
+        item.sector + ' competitor count should use its own industry profile');
+      industryMarkets.push(market);
+      await page.locator('#closeModal').click();
+    }
+    assert.ok(new Set(industryMarkets.map(market => market.demandIndex + ':' + market.competitionIndex)).size >= 5,
+      'industry market snapshots should not collapse into one generic profile');
+    await page.locator('#ageUpBtn').click();
+    await page.waitForFunction(() => {
+      const saved = JSON.parse(localStorage.getItem('hekayat_hayah_save_v1') || 'null');
+      return saved && saved.age === 37 && saved.companies &&
+        saved.companies.filter(company => String(company.id).startsWith('industry-')).every(company =>
+          Array.isArray(company.financialHistory) && company.financialHistory.some(report => report.year === 37));
+    });
+    const industryReports = await page.evaluate(() => {
+      const saved = JSON.parse(localStorage.getItem('hekayat_hayah_save_v1') || 'null');
+      return saved.companies.filter(company => String(company.id).startsWith('industry-')).map(company => ({
+        id: company.id, report: company.financialHistory[company.financialHistory.length - 1],
+        product: company.products && company.products[0]
+      }));
+    });
+    for (const item of industryCases) {
+      const result = industryReports.find(company => company.id === item.id);
+      assert.ok(result && result.report, item.sector + ' should save a full annual report');
+      assert.equal(result.report.industryRevenueMultiplier, item.revenue);
+      assert.equal(result.report.industryOperatingCostMultiplier, item.operating);
+      assert.equal(result.report.industryUnitCostMultiplier, item.unit);
+      assert.ok(result.report.productUnits > 0, item.sector + ' should simulate product sales with its unit-cost profile');
+      assert.equal(result.report.profit, result.report.revenue - result.report.costs);
+      assert.ok(result.product.history.some(entry => entry.year === 37));
+    }
+
     assert.deepEqual(pageErrors, [], 'the browser run should complete without uncaught JavaScript errors');
 
     console.log('PASS: mobile layout, legacy v1 load, persistence, rewind, JSON import, inheritance, insolvent estate, career promotion migration, annual supplier market, persistent competitor market, facilities and production capacity, researched and instinct product launches, product pricing, annual product sales, business reports, and independent portfolio-company operations.');
