@@ -533,3 +533,8 @@ test('استثمار المنشأة رأسمالي منفصل عن صافي ال
   assert.match(annualSimulation, /facilityInvestmentCosts/);
   assert.match(annualSimulation, /state\.bank\+=profit\+productResult\.upfrontCosts/);
 });
+
+test('نسب طاقة المنشآت العشرية لا تُقرّب إلى أعداد صحيحة', () => {
+  assert.match(app, /Math\.max\(0,Math\.min\(1\.5,Number\.isFinite\(capacityBonus\)\?capacityBonus:catalog\.capacityBonus\)\)/);
+  assert.match(app, /facilityCapacityBonus=facilities\.reduce\(\(sum,facility\)=>sum\+Math\.max\(0,Math\.min\(1\.5,Number\(facility\.capacityBonus\)\|\|0\)\),0\)/);
+});
