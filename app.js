@@ -596,7 +596,7 @@ function normalizeCoreState(data){
     id:String(facility.id||('legacy-facility-'+catalog.id+'-'+index)),
     type:catalog.id,
     title:typeof facility.title==='string'&&facility.title.trim()?facility.title.slice(0,70):catalog.title,
-    capacityBonus:clamp(Number.isFinite(capacityBonus)?capacityBonus:catalog.capacityBonus,0,1.5),
+    capacityBonus:Math.max(0,Math.min(1.5,Number.isFinite(capacityBonus)?capacityBonus:catalog.capacityBonus)),
     annualUpkeep:Math.max(0,Math.min(1000000000,Number.isFinite(annualUpkeep)?Math.round(annualUpkeep):catalog.minUpkeep)),
     investment:Math.max(0,Math.min(1000000000,Number.isFinite(investment)?Math.round(investment):0)),
     builtAtAge:Math.max(0,Math.min(120,Math.floor(Number(facility.builtAtAge)||0)))
@@ -1067,7 +1067,7 @@ function businessProductMarketSnapshot(business,catalog){
 }
 function simulateBusinessProducts(business,openingValue,supplier,staffRevenueBonus){
  const facilities=Array.isArray(business.facilities)?business.facilities:[];
- const facilityCapacityBonus=facilities.reduce((sum,facility)=>sum+clamp(Number(facility.capacityBonus)||0,0,1.5),0);
+ const facilityCapacityBonus=facilities.reduce((sum,facility)=>sum+Math.max(0,Math.min(1.5,Number(facility.capacityBonus)||0)),0);
  const capacityMultiplier=Math.max(1,Math.min(4,1+facilityCapacityBonus));
  const result={revenue:0,costs:0,upfrontCosts:Math.max(0,Math.round(Number(business.pendingProductCosts)||0)),units:0,count:0,capacityMultiplier};
  business.pendingProductCosts=0;
@@ -1943,7 +1943,7 @@ function businessFacilitiesMenu(){
  if(!business){info('🏪','لا يوجد نشاط','اختار مشروعًا أو شركة من المحفظة أولًا.');return;}
  if(!Array.isArray(business.facilities))business.facilities=[];
  const facilities=business.facilities;
- const capacityBonus=facilities.reduce((sum,facility)=>sum+clamp(Number(facility.capacityBonus)||0,0,1.5),0);
+ const capacityBonus=facilities.reduce((sum,facility)=>sum+Math.max(0,Math.min(1.5,Number(facility.capacityBonus)||0)),0);
  const capacityMultiplier=Math.max(1,Math.min(4,1+capacityBonus));
  const annualUpkeep=facilities.reduce((sum,facility)=>sum+Math.max(0,Number(facility.annualUpkeep)||0),0);
  const opts=facilities.map((facility,index)=>choice(facility.type==='factory'?'🏭':'🏬',facility.title||'منشأة '+(index+1),'طاقة إضافية '+Math.round((Number(facility.capacityBonus)||0)*100)+'% · صيانة سنوية '+cash(facility.annualUpkeep||0)+' · استثمار '+cash(facility.investment||0)+' · سنة الإنشاء '+(facility.builtAtAge??state.age),()=>info('🏗️',facility.title||'منشأة تجارية','المنشأة ترفع طاقة بيع المنتجات وتظل تكلف صيانة سنوية. لا يمكن بيعها في الإصدار الحالي.')));
@@ -2110,7 +2110,7 @@ function businessMenu(){
  const staffPayroll=staff.reduce((sum,employee)=>sum+Math.max(0,Number(employee.salary)||0),0);
  const activeProducts=(Array.isArray(b.products)?b.products:[]).filter(product=>product&&product.active!==false).length;
  const facilities=Array.isArray(b.facilities)?b.facilities:[];
- const facilityCapacityBonus=facilities.reduce((sum,facility)=>sum+clamp(Number(facility.capacityBonus)||0,0,1.5),0);
+ const facilityCapacityBonus=facilities.reduce((sum,facility)=>sum+Math.max(0,Math.min(1.5,Number(facility.capacityBonus)||0)),0);
  const facilityStatus=' · المنشآت '+facilities.length+'/8 · طاقة إضافية '+Math.round(facilityCapacityBonus*100)+'%';
  const supplierStatus=supplier?' · المورد '+supplier.title+' ('+(Number(b.supplier.yearsLeft)||0)+' سنوات متبقية)':' · لم يتم التعاقد مع مورد';
  const staffStatus=' · فريق العمل '+staff.length+'/5 · الرواتب السنوية '+cash(staffPayroll);
