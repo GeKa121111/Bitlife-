@@ -1115,9 +1115,7 @@ function syncBusinessAsset(){
  });
 }
 function render(){
- syncBusinessAsset();renderHeader();renderStats();renderFeed();
- document.querySelectorAll('.navbtn').forEach(b=>b.setAttribute('aria-pressed',b.classList.contains('active')?'true':'false'));
- save();
+ syncBusinessAsset();renderHeader();renderStats();renderFeed();save();
 }
 function closeModal(){
  const root=$('modalRoot');
