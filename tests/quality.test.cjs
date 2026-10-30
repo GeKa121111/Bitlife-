@@ -590,7 +590,7 @@ test('سجل الحياة يضيف الأحداث الجديدة تدريجيً�
   assert.match(app, /let renderedLogSnapshot=null, renderedFeedElement=null/);
   assert.match(app, /function logEntrySignature\(entry\)/);
   assert.match(app, /function appendLogEntryNode\(feed,entry,lastAge\)/);
-  assert.match(app, /if\(renderedFeedElement===feed&&Array\.isArray\(previous\)\)/);
+  assert.match(app, /if\(renderedFeedElement===feed&&Array\.isArray\(previous\)&&supportsIncrementalDom\)/);
   assert.match(app, /for\(let candidate=359;candidate>0;candidate--\)/);
   assert.match(app, /renderedLogSnapshot=signatures;renderedFeedElement=feed/);
   assert.match(html, /id="lifeFeed"[^>]*aria-relevant="additions" aria-atomic="false"/);
