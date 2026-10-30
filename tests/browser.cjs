@@ -1496,6 +1496,7 @@ async function run() {
       const key = 'hekayat_hayah_save_v1';
       const saved = JSON.parse(localStorage.getItem(key) || 'null');
       saved.age = Math.max(18, Number(saved.age) || 18);
+      saved.status = 'حي';
       saved.education = saved.education && typeof saved.education === 'object' ? saved.education : {};
       saved.education.yearsLeft = 0;
       saved.retired = false;
@@ -1528,6 +1529,7 @@ async function run() {
     await page.waitForFunction(() => document.querySelector('#modalRoot')?.textContent.includes('الجولة 2 من 3'));
     await page.locator('#closeModal').click();
     await page.locator('#ageUpBtn').click();
+    await page.waitForFunction(() => document.querySelector('#modalRoot [role="dialog"]')?.textContent.includes('النزال لم ينتهِ'));
     const blockedCombatAge = await page.evaluate(() => JSON.parse(localStorage.getItem('hekayat_hayah_save_v1') || 'null').age);
     assert.equal(blockedCombatAge, combatSetup.age, 'the player must finish a pending bout before aging up');
     await page.locator('#closeModal').click();
