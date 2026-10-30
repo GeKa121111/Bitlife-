@@ -1580,6 +1580,12 @@ async function run() {
       saved.combatCareer.energy = 100;
       localStorage.setItem(key, JSON.stringify(saved));
     });
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await page.locator('[data-panel="career"]').click();
+    await page.locator('.choice').filter({ hasText: 'المهن الخاصة والشهرة' }).click();
+    await page.locator('.choice').filter({ hasText: 'إدارة مسيرة القتال' }).click();
+    await page.locator('.choice').filter({ hasText: 'مجتمع المقاتلين' }).click();
+    await page.locator('.choice').filter({ hasText: 'آدم منصور' }).click();
     await page.locator('.choice').filter({ hasText: 'تحدي على الحلبة' }).click();
     await page.locator('.choice').filter({ hasText: 'لكمة خاطفة' }).click();
     await page.waitForFunction(() => document.querySelector('#modalRoot')?.textContent.includes('الجولة 2 من 3'));
