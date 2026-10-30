@@ -18,6 +18,7 @@ assert.match(app, /navigator\.serviceWorker\.register\('\.\/sw\.js'\)/);
 assert.match(serviceWorker, /request\.mode === 'navigate'/);
 assert.match(serviceWorker, /caches\.match\(APP_SHELL\[0\]\)/);
 assert.match(index, /id="ageUpBtn"/);
+assert.match(index, /id="lifeFeed"[^>]*aria-relevant="additions" aria-atomic="false"/);
 assert.match(css, /max-width:500px/);
 assert.match(app, /const dailyChallengeDefs=\[/, 'daily challenge catalog should be available');
 assert.match(app, /function ensureDailyChallengeBoard\(\)/, 'daily challenges should rotate and persist by day');
