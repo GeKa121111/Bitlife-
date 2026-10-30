@@ -4222,7 +4222,7 @@ function seasonalEventBaseline(source=state){
  };
 }
 function normalizeSeasonalEvent(raw,source=state){
- if(!raw||typeof raw!=='object'||Array.isArray(raw)||!/^\\d{4}-W\\d{2}$/.test(String(raw.weekId||'')))return null;
+ if(!raw||typeof raw!=='object'||Array.isArray(raw)||!/^\d{4}-W\d{2}$/.test(String(raw.weekId||'')))return null;
  const baseline=raw.baseline&&typeof raw.baseline==='object'&&!Array.isArray(raw.baseline)?raw.baseline:{};
  const fallback=seasonalEventBaseline(source);
  const number=(value,defaultValue,min,max)=>{const parsed=Number(value);return Math.max(min,Math.min(max,Number.isFinite(parsed)?parsed:defaultValue));};
@@ -4231,8 +4231,8 @@ function normalizeSeasonalEvent(raw,source=state){
  return {
   weekId:String(raw.weekId),
   title:'مهرجان صُنّاع الحكاية',
-  startDate:/^\\d{4}-\\d{2}-\\d{2}$/.test(String(raw.startDate||''))?String(raw.startDate):'',
-  endDate:/^\\d{4}-\\d{2}-\\d{2}$/.test(String(raw.endDate||''))?String(raw.endDate):'',
+  startDate:/^\d{4}-\d{2}-\d{2}$/.test(String(raw.startDate||''))?String(raw.startDate):'',
+  endDate:/^\d{4}-\d{2}-\d{2}$/.test(String(raw.endDate||''))?String(raw.endDate):'',
   baseline:{
    age:number(baseline.age,0,0,120),
    friends:number(baseline.friends,0,0,1000000000),
@@ -4255,7 +4255,7 @@ function normalizeSeasonalEvent(raw,source=state){
 }
 function normalizeSeasonalEventArchive(raw,source=state){
  if(!Array.isArray(raw))return [];
- return raw.filter(item=>item&&typeof item==='object'&&!Array.isArray(item)&&/^\\d{4}-W\\d{2}$/.test(String(item.weekId||''))).slice(0,8).map(item=>{
+ return raw.filter(item=>item&&typeof item==='object'&&!Array.isArray(item)&&/^\d{4}-W\d{2}$/.test(String(item.weekId||''))).slice(0,8).map(item=>{
   const normalized=normalizeSeasonalEvent(item,source);
   return normalized?{weekId:normalized.weekId,title:normalized.title,startDate:normalized.startDate,endDate:normalized.endDate,claimed:normalized.claimed,bonusClaimed:normalized.bonusClaimed}:null;
  }).filter(Boolean);
@@ -4332,7 +4332,7 @@ function claimSeasonalEventBadge(id){
 }
 function seasonalEventArchiveMenu(){
  const archive=normalizeSeasonalEventArchive(state&&state.seasonalEventArchive);
- const badgeNames={chapter:'فصل جديد',friend:'صاحب جديد',hobby:'موهبة بتكبر',voice:'صوتك وصل',learning:'عقل بيتفتح',balance:'توازن جميل'};
+ const badgeNames={chapter:'فصل جديد',friend:'صاحب جديد',hobby:'موهبة بتكبر',voice:'صوتك وصل',learning:'عقل بيتفتح',balance:'توازن جميل',career:'خطوة لقدّام',asset:'أصل جديد',invest:'عقلية استثمار',pet:'رفيق جديد',travel:'اكتشاف جديد',family:'رابطة أقوى'};
  const opts=archive.map(item=>choice('📜','موسم '+item.weekId,'جمعت '+item.claimed.length+' شارات'+(item.bonusClaimed?' · أكملت المهرجان':' · لم تكتمل كل الشارات'),()=>{closeModal();info('📜','موسم '+item.weekId,'الشارات المحفوظة: '+(item.claimed.map(id=>badgeNames[id]||'شارة').join('، ')||'لا توجد')+'.');}));
  if(!opts.length)opts.push({icon:'📚',title:'لا توجد مواسم سابقة',desc:'سيظهر سجل الموسم بعد انتقال الأسبوع التالي.',disabled:true});
  opts.push(choice('↩️','العودة للمهرجان الحالي','',seasonalEventMenu));
