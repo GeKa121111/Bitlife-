@@ -1945,8 +1945,9 @@ function launchBusinessProduct(productId,useResearch){
  if(active.some(product=>product.catalogId===productId)){info('📦','المنتج موجود بالفعل','أوقف النسخة الحالية قبل إطلاق منتج جديد من الفئة نفسها.');return;}
  if(active.length>=BUSINESS_PRODUCT_CATALOG.length){info('📦','خط المنتجات مكتمل','أوقف منتجًا قائمًا قبل إضافة منتج جديد.');return;}
  const year=Math.max(0,Math.floor(Number(state.age)||0));
- const research=(Array.isArray(business.productResearch)?business.productResearch:[]).find(snapshot=>snapshot.productId===productId&&Number(snapshot.year)===year);
- if(useResearch&&!research){info('🔬','بحث السوق غير متاح','أعد البحث للسنة الحالية أو أطلق المنتج دون بحث.');return;}
+ const researchSnapshot=(Array.isArray(business.productResearch)?business.productResearch:[]).find(snapshot=>snapshot.productId===productId&&Number(snapshot.year)===year);
+ if(useResearch&&!researchSnapshot){info('🔬','بحث السوق غير متاح','أعد البحث للسنة الحالية أو أطلق المنتج دون بحث.');return;}
+ const research=useResearch?researchSnapshot:null;
  const fee=Math.max(1000,Math.round(Math.max(0,Number(business.value)||0)*.012));
  if(state.bank<fee){info('💳','الرصيد غير كافٍ','إطلاق المنتج يحتاج '+cash(fee)+'.');return;}
  const supplier=BUSINESS_SUPPLIER_CATALOG.find(item=>business.supplier&&item.id===business.supplier.id);
