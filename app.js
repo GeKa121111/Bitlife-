@@ -209,7 +209,13 @@ let state, dead=false, logBatchDepth=0, logBatchDirty=false, saveRecovered=false
 let renderedLogSnapshot=null, renderedFeedElement=null;
 let activeDialogKeyHandler=null, modalReturnFocus=null;
 let managedCompanyId = null;
-let uiSettings={theme:'light',textScale:'normal',sound:false,haptics:false};
+let uiSettings={theme:'light',textScale:'normal',sound:false,haptics:false,boosts:true};
+const STAT_BOOST_CATALOG={
+ happiness:{label:'السعادة',icon:'🌿',free:{title:'وقت مع شخص قريب',cost:0,gain:7,description:'خصص وقتًا لشخص ترتاح له، حتى لو بمكالمة قصيرة.'},paid:{title:'خروجة تغيّر الجو',cost:500,gain:12,description:'نشاط ترفيهي بسيط يساعدك تفصل عن الضغط.'}},
+ health:{label:'الصحة',icon:'🩺',free:{title:'راحة وتعافٍ',cost:0,gain:5,description:'خفف المجهود وخد وقتًا كافيًا للراحة.'},paid:{title:'فحص طبي',cost:1200,gain:13,description:'اطمئن على حالتك من خلال زيارة طبية داخل اللعبة.'}},
+ smart:{label:'الذكاء',icon:'📚',free:{title:'مراجعة مركزة',cost:0,gain:6,description:'راجع معلومة أو مهارة تحتاجها في المرحلة الحالية.'},paid:{title:'دورة قصيرة',cost:800,gain:12,description:'استثمر في تدريب قصير يضيف معرفة جديدة.'}},
+ looks:{label:'المظهر',icon:'✨',free:{title:'روتين عناية بسيط',cost:0,gain:5,description:'اهتم بالتفاصيل اليومية البسيطة لمظهرك.'},paid:{title:'جلسة عناية',cost:600,gain:11,description:'خصص ميزانية صغيرة للعناية الشخصية.'}}
+};
 let uiAudioContext=null;
 let permanentPerks={owned:{},enabled:{},streakSavers:0};
 const names = {
@@ -756,7 +762,7 @@ function newLife(){
  const father=makePerson('male','الأب','👨',28+Math.floor(Math.random()*12),68+Math.floor(Math.random()*28));
  const mother=makePerson('female','الأم','👩',25+Math.floor(Math.random()*12),72+Math.floor(Math.random()*26));
  const sibling=makePerson(gender,'الأخ/الأخت','🧒',Math.floor(Math.random()*8),55+Math.floor(Math.random()*35));
- return {version:1,lifeId:Date.now()+Math.random(),cemeterySaved:false,name:pick(names[gender])+' '+pick(names.family),gender,age:0,place,bank:(perkOwned('goldenPiggyBank')?Math.max(1000000,place.start):place.start),stats:{happiness:65+Math.floor(Math.random()*26),health:76+Math.floor(Math.random()*22),smart:35+Math.floor(Math.random()*41),looks:35+Math.floor(Math.random()*51)},education:{level:0,school:'لم تبدأ الدراسة',major:null,yearsLeft:0,tuition:0},job:null,jobHistory:[],specialCareer:null,specialCareerHistory:[],combatCareer:null,filmStudio:null,esportsCareer:null,talents:{gaming:15+Math.floor(Math.random()*71)},performance:50,assets:[],investments:[],business:null,companies:[],mafia:{joined:false,rank:0,rep:0,earnings:0},museum:{opened:false,displayed:[]},zoo:{opened:false,animals:[],rareDiscoveries:0},assassinBladeLastUsedAge:null,cult:{founded:false,name:'',doctrine:'',members:[],fund:0,ceremonies:0,discipline:50},casino:{opened:false,games:[],amenities:[],celebrityHires:0,accessories:[]},dealer:{joined:false,rank:0,rep:0,earnings:0,territory:1},royalty:{active:false,title:null,house:null},investmentAdvisor:{hired:false,yearsLeft:0,fee:4500},marketTip:null,family:[father,mother,sibling],friends:[],partner:null,married:false,children:[],coParentingPlans:[],pets:[],hobbies:[],fame:0,followers:0,socialMediaAccount:false,socialMediaPosts:0,socialPlatforms:{},socialFeed:[],reputation:50,sti:false,crimeRecord:0,prison:null,debt:0,willDistribution:'الأسرة بالتساوي',heirlooms:[],dailyRewardDate:null,dailyChallenges:null,seasonalEvent:null,seasonalEventArchive:[],challengeArchive:[],timeMachineSnapshots:[],legacy:{name:null,inheritance:0,heirloom:null},driversLicense:false,travelHistory:[],log:[],accomplishments:['بدأت رحلة الحياة'],status:'حي',cause:null,retired:false,yearCount:0,wealthPeak:place.start};
+ return {version:1,lifeId:Date.now()+Math.random(),cemeterySaved:false,name:pick(names[gender])+' '+pick(names.family),gender,age:0,place,bank:(perkOwned('goldenPiggyBank')?Math.max(1000000,place.start):place.start),stats:{happiness:65+Math.floor(Math.random()*26),health:76+Math.floor(Math.random()*22),smart:35+Math.floor(Math.random()*41),looks:35+Math.floor(Math.random()*51)},education:{level:0,school:'لم تبدأ الدراسة',major:null,yearsLeft:0,tuition:0},job:null,jobHistory:[],specialCareer:null,specialCareerHistory:[],combatCareer:null,filmStudio:null,esportsCareer:null,talents:{gaming:15+Math.floor(Math.random()*71)},performance:50,boostUsedAge:null,assets:[],investments:[],business:null,companies:[],mafia:{joined:false,rank:0,rep:0,earnings:0},museum:{opened:false,displayed:[]},zoo:{opened:false,animals:[],rareDiscoveries:0},assassinBladeLastUsedAge:null,cult:{founded:false,name:'',doctrine:'',members:[],fund:0,ceremonies:0,discipline:50},casino:{opened:false,games:[],amenities:[],celebrityHires:0,accessories:[]},dealer:{joined:false,rank:0,rep:0,earnings:0,territory:1},royalty:{active:false,title:null,house:null},investmentAdvisor:{hired:false,yearsLeft:0,fee:4500},marketTip:null,family:[father,mother,sibling],friends:[],partner:null,married:false,children:[],coParentingPlans:[],pets:[],hobbies:[],fame:0,followers:0,socialMediaAccount:false,socialMediaPosts:0,socialPlatforms:{},socialFeed:[],reputation:50,sti:false,crimeRecord:0,prison:null,debt:0,willDistribution:'الأسرة بالتساوي',heirlooms:[],dailyRewardDate:null,dailyChallenges:null,seasonalEvent:null,seasonalEventArchive:[],challengeArchive:[],timeMachineSnapshots:[],legacy:{name:null,inheritance:0,heirloom:null},driversLicense:false,travelHistory:[],log:[],accomplishments:['بدأت رحلة الحياة'],status:'حي',cause:null,retired:false,yearCount:0,wealthPeak:place.start};
 }
 
 function isValidSaveData(data){
@@ -818,6 +824,13 @@ function heirloomKindLabel(item){
  return 'إرث عائلي';
 }
 
+function normalizeStatBoostUsage(data){
+ if(!data||typeof data!=='object')return null;
+ const raw=data.boostUsedAge,used=Number(raw),age=Number(data.age);
+ data.boostUsedAge=raw!==null&&raw!==undefined&&String(raw).trim()!==''&&Number.isInteger(used)&&Number.isFinite(age)&&used>=0&&used<=age?used:null;
+ return data.boostUsedAge;
+}
+
 function normalizeCoreState(data){
  const rawPlace=data.place&&typeof data.place==='object'&&!Array.isArray(data.place)?data.place:{};
  const fallbackPlace=places.find(p=>p.country===rawPlace.country&&p.city===rawPlace.city)||places[0];
@@ -829,6 +842,7 @@ function normalizeCoreState(data){
  // Older v1 saves may not contain a performance score; keep job applications usable after migration.
  data.performance=clamp(Number.isFinite(Number(data.performance))?Number(data.performance):50);
  data.age=Number.isFinite(Number(data.age))?Math.max(0,Math.min(120,Math.floor(Number(data.age)))):0;
+  normalizeStatBoostUsage(data);
  if(data.job&&typeof data.job==='object'&&!Array.isArray(data.job))ensureJobProgress(data.job,data.age);
  data.bank=Number.isFinite(Number(data.bank))?Number(data.bank):Number(data.place.start)||0;
  data.sti=typeof data.sti==='boolean'?data.sti:false;
@@ -1038,7 +1052,7 @@ function load(){
   }
   if(isValidSaveData(x)){
   normalizeCoreState(x);
-  const defaults={lifeId:Date.now()+Math.random(),cemeterySaved:false,jobHistory:[],specialCareer:null,specialCareerHistory:[],combatCareer:null,filmStudio:null,investments:[],business:null,married:false,children:[],coParentingPlans:[],pets:[],hobbies:[],fame:0,followers:0,socialMediaAccount:false,socialMediaPosts:0,socialFeed:[],seasonalEvent:null,seasonalEventArchive:[],reputation:50,crimeRecord:0,prison:null,debt:0,willDistribution:'الأسرة بالتساوي',heirlooms:[],dailyRewardDate:null,dailyChallenges:null,timeMachineSnapshots:[],legacy:{name:null,inheritance:0,heirloom:null},driversLicense:false,travelHistory:[]};
+  const defaults={lifeId:Date.now()+Math.random(),cemeterySaved:false,jobHistory:[],specialCareer:null,specialCareerHistory:[],combatCareer:null,filmStudio:null,investments:[],business:null,married:false,children:[],coParentingPlans:[],pets:[],hobbies:[],fame:0,followers:0,socialMediaAccount:false,socialMediaPosts:0,socialFeed:[],seasonalEvent:null,seasonalEventArchive:[],reputation:50,crimeRecord:0,prison:null,debt:0,willDistribution:'الأسرة بالتساوي',heirlooms:[],dailyRewardDate:null,dailyChallenges:null,boostUsedAge:null,timeMachineSnapshots:[],legacy:{name:null,inheritance:0,heirloom:null},driversLicense:false,travelHistory:[]};
   Object.keys(defaults).forEach(k=>{if(x[k]===undefined||x[k]===null)x[k]=defaults[k];});
   if(!Array.isArray(x.family))x.family=[];if(!Array.isArray(x.friends))x.friends=[];if(!Array.isArray(x.assets))x.assets=[];if(!Array.isArray(x.timeMachineSnapshots))x.timeMachineSnapshots=[];if(!Array.isArray(x.coParentingPlans))x.coParentingPlans=[];x.coParentingPlans.forEach(p=>{if(p&&typeof p==='object'){if(!Array.isArray(p.childIds))p.childIds=[];if(!Array.isArray(p.history))p.history=[];if(!Number.isFinite(Number(p.supportPerChild)))p.supportPerChild=2200;if(!Number.isFinite(Number(p.arrears)))p.arrears=0;}});
   if(!x.education||typeof x.education!=='object')x.education={level:0,school:'لم تبدأ الدراسة',major:null,yearsLeft:0,tuition:0};
@@ -1131,13 +1145,46 @@ function renderHeader(){
   const label=$('stageNavLabel');if(label)label.textContent=stageTabLabel();
  }
 }
+function statBoostMenu(key){
+ const item=STAT_BOOST_CATALOG[key];
+ if(!state||!item||uiSettings.boosts===false)return;
+ const current=clamp(Number(state.stats[key])||0);
+ const alreadyUsed=state.boostUsedAge!==null&&state.boostUsedAge!==undefined&&Number(state.boostUsedAge)===Number(state.age);
+ if(current>35){info('✨','مفيش احتياج للتحسين','مستوى '+item.label+' بقى '+current+'%؛ الفرصة بتظهر وقت ما الإحصاء ينخفض.');return;}
+ if(alreadyUsed){info('⏳','فرصة السنة اتستخدمت','تقدر تستفيد من فرصة تحسين جديدة بعد التقدم لسنة تانية.');return;}
+ modal(item.icon,'فرصة تحسين '+item.label,'المستوى الحالي '+current+'%. اختار تحسينًا واحدًا فقط خلال السنة الحالية؛ الاختيار المدفوع يستهلك من رصيدك.',[
+  choice('🌱',item.free.title,item.free.description+' التحسن المتوقع '+item.free.gain+' نقاط.',()=>applyStatBoost(key,'free'),'مجانًا'),
+  choice('✨',item.paid.title,item.paid.description+' التحسن المتوقع '+item.paid.gain+' نقاط.',()=>applyStatBoost(key,'paid'),cash(item.paid.cost)),
+  choice('↩️','مش دلوقتي','احتفظ بالفرصة لوقت آخر من السنة.',closeModal)
+ ]);
+}
+function applyStatBoost(key,tier){
+ const item=STAT_BOOST_CATALOG[key],offer=item&&item[tier];
+ if(!state||!item||!offer){closeModal();return;}
+ if(uiSettings.boosts===false){closeModal();return;}
+ const alreadyUsed=state.boostUsedAge!==null&&state.boostUsedAge!==undefined&&Number(state.boostUsedAge)===Number(state.age);
+ if(alreadyUsed){closeModal();info('⏳','فرصة السنة اتستخدمت','تقدر تستفيد من فرصة تحسين جديدة بعد التقدم لسنة تانية.');return;}
+ const current=clamp(Number(state.stats[key])||0);
+ if(current>35){closeModal();info('✨','مفيش احتياج للتحسين','الإحصاء اتحسن بالفعل، فمش محتاج تستخدم الفرصة.');return;}
+ const cost=Math.max(0,Math.round(Number(offer.cost)||0));
+ if((Number(state.bank)||0)<cost){info('💳','الرصيد مش كفاية','الاختيار ده يحتاج '+cash(cost)+'. تقدر تختار التحسين المجاني بدلًا منه.');return;}
+ closeModal();
+ state.bank=Math.max(0,Number(state.bank)||0)-cost;
+ stat(key,offer.gain);
+ const gained=clamp(state.stats[key])-current;
+ state.boostUsedAge=Number(state.age);
+ log(item.icon,'فرصة تحسين '+item.label,offer.title+' رفعت المستوى بمقدار '+gained+' نقاط'+(cost?' بعد إنفاق '+cash(cost):' دون تكلفة')+'.','good');
+ render();
+}
 function renderStats(){
  const rows=[['happiness','😄','السعادة'],['health','❤️','الصحة'],['smart','🧠','الذكاء'],['looks','😎','المظهر']];
  $('statsPanel').innerHTML=rows.map(r=>{
   const v=clamp(r[0]==='fame'?(state.fame||0):state.stats[r[0]]);
   const color=r[0]==='fame'?'#FDD835':v>=31?'#43A047':v>=13?'#FB8C00':'#E53935';
   const warn=v<=12&&r[0]!=='fame'?' <span class="stat-warning" aria-label="تحذير">⚠️</span>':'';
-  return '<div class="statrow '+(r[0]==='fame'?'fame-row':'')+'"><div class="stathead"><span class="statlabel">'+r[2]+' '+r[1]+warn+'</span></div><div class="statbar"><div class="track"><div class="fill" style="width:'+v+'%;background:'+color+'"></div><span class="statvalue">'+v+'%</span></div></div></div>';
+  const boostUsed=state.boostUsedAge!==null&&state.boostUsedAge!==undefined&&Number(state.boostUsedAge)===Number(state.age);
+  const boostButton=uiSettings.boosts!==false&&v<=35&&!boostUsed?'<button class="statboost-btn" type="button" data-stat-boost="'+r[0]+'" aria-label="فرصة تحسين '+r[2]+'" title="فرصة تحسين '+r[2]+'">+</button>':'';
+  return '<div class="statrow '+(r[0]==='fame'?'fame-row':'')+'"><div class="stathead"><span class="statlabel">'+r[2]+' '+r[1]+warn+'</span>'+boostButton+'</div><div class="statbar"><div class="track"><div class="fill" style="width:'+v+'%;background:'+color+'"></div><span class="statvalue">'+v+'%</span></div></div></div>';
  }).join('');
 }
 function logEntrySignature(entry){
@@ -5013,6 +5060,7 @@ function loadUiSettings(){
    if(raw.textScale==='large'||raw.textScale==='normal')uiSettings.textScale=raw.textScale;
    if(typeof raw.sound==='boolean')uiSettings.sound=raw.sound;
    if(typeof raw.haptics==='boolean')uiSettings.haptics=raw.haptics;
+   if(typeof raw.boosts==='boolean')uiSettings.boosts=raw.boosts;
   }
  }catch(e){}
  applyUiSettings();
@@ -5054,7 +5102,8 @@ function settingsMenu(){
   choice('🔤',uiSettings.textScale==='large'?'حجم النص: كبير':'حجم النص: عادي','كبّر نص سجل الأحداث والقرارات لسهولة القراءة.',()=>{uiSettings.textScale=uiSettings.textScale==='large'?'normal':'large';persistUiSettings();settingsMenu();}),
   choice(uiSettings.sound?'🔊':'🔇',uiSettings.sound?'الأصوات: مفعّلة':'الأصوات: متوقفة','نغمة قصيرة أصلية عند اختيار قرار أو التقدم سنة. لا تعمل إلا بعد تفعيلها.',()=>{uiSettings.sound=!uiSettings.sound;persistUiSettings();settingsMenu();}),
   choice(uiSettings.haptics?'📳':'📴',uiSettings.haptics?'الاهتزاز: مفعّل':'الاهتزاز: متوقف','اهتزاز خفيف عند القرارات والتقدم سنة، إذا كان المتصفح والجهاز يدعمانه.',()=>{uiSettings.haptics=!uiSettings.haptics;persistUiSettings();settingsMenu();}),
-  choice('↩️','استعادة إعدادات العرض الافتراضية','العودة للوضع الفاتح وحجم النص العادي وإيقاف الصوت والاهتزاز.',()=>{uiSettings={theme:'light',textScale:'normal',sound:false,haptics:false};persistUiSettings();settingsMenu();})
+  choice(uiSettings.boosts?'✨':'▫️',uiSettings.boosts?'فرص تحسين الإحصاءات: مفعّلة':'فرص تحسين الإحصاءات: متوقفة','تظهر فرصة واحدة في السنة عند انخفاض أحد الإحصاءات الأساسية، مع اختيار مجاني أو مدفوع.',()=>{uiSettings.boosts=!uiSettings.boosts;persistUiSettings();renderStats();settingsMenu();}),
+  choice('↩️','استعادة إعدادات العرض الافتراضية','العودة للوضع الفاتح وحجم النص العادي وإيقاف الصوت والاهتزاز.',()=>{uiSettings={theme:'light',textScale:'normal',sound:false,haptics:false,boosts:true};persistUiSettings();renderStats();settingsMenu();})
  ];
  if(perkOwned('goldTheme'))opts.push(choice(uiSettings.theme==='gold'?'⭐':'🌟',uiSettings.theme==='gold'?'إيقاف الطابع الذهبي':'تفعيل الطابع الذهبي','هوية لونية ذهبية أصلية للعبة حياة.',()=>togglePremiumPerk('goldTheme')));
  else opts.push(choice('⭐','الطابع الذهبي','افتحه من متجر مزايا حياة لتفعيله من هنا.',premiumPerksMenu));
@@ -6304,7 +6353,7 @@ function importSave(){
     const data=JSON.parse(String(reader.result||''));
     if(!isValidSaveData(data)||!Array.isArray(data.family)||!data.place||typeof data.place!=='object'||Array.isArray(data.place))throw new Error('invalid');
     normalizeCoreState(data);
-    const defaults={lifeId:Date.now()+Math.random(),cemeterySaved:false,jobHistory:[],specialCareer:null,specialCareerHistory:[],combatCareer:null,filmStudio:null,investments:[],business:null,married:false,children:[],coParentingPlans:[],pets:[],hobbies:[],fame:0,followers:0,socialMediaAccount:false,socialMediaPosts:0,socialFeed:[],reputation:50,crimeRecord:0,prison:null,debt:0,willDistribution:'الأسرة بالتساوي',heirlooms:[],dailyRewardDate:null,dailyChallenges:null,timeMachineSnapshots:[],legacy:{name:null,inheritance:0,heirloom:null},driversLicense:false,travelHistory:[],retired:false,yearCount:data.age||0,assets:[],friends:[],accomplishments:[],status:'حي'};
+    const defaults={lifeId:Date.now()+Math.random(),cemeterySaved:false,jobHistory:[],specialCareer:null,specialCareerHistory:[],combatCareer:null,filmStudio:null,investments:[],business:null,married:false,children:[],coParentingPlans:[],pets:[],hobbies:[],fame:0,followers:0,socialMediaAccount:false,socialMediaPosts:0,socialFeed:[],reputation:50,crimeRecord:0,prison:null,debt:0,willDistribution:'الأسرة بالتساوي',heirlooms:[],dailyRewardDate:null,dailyChallenges:null,boostUsedAge:null,timeMachineSnapshots:[],legacy:{name:null,inheritance:0,heirloom:null},driversLicense:false,travelHistory:[],retired:false,yearCount:data.age||0,assets:[],friends:[],accomplishments:[],status:'حي'};
     Object.keys(defaults).forEach(k=>{if(data[k]===undefined||data[k]===null)data[k]=defaults[k];});
     if(!Array.isArray(data.assets))data.assets=[];if(!Array.isArray(data.timeMachineSnapshots))data.timeMachineSnapshots=[];if(!Array.isArray(data.coParentingPlans))data.coParentingPlans=[];data.coParentingPlans.forEach(p=>{if(p&&typeof p==='object'){if(!Array.isArray(p.childIds))p.childIds=[];if(!Array.isArray(p.history))p.history=[];if(!Number.isFinite(Number(p.supportPerChild)))p.supportPerChild=2200;if(!Number.isFinite(Number(p.arrears)))p.arrears=0;}});data.assets.forEach(a=>{if((a.kind==='car'||a.kind==='property')&&!Number.isFinite(Number(a.condition)))a.condition=100;});
     if(!data.education||typeof data.education!=='object')data.education={level:0,school:'لم تبدأ الدراسة',major:null,yearsLeft:0,tuition:0};data.education.clubs=Array.isArray(data.education.clubs)?data.education.clubs:[];
@@ -6343,6 +6392,10 @@ document.querySelectorAll('[data-panel]').forEach(btn=>btn.addEventListener('cli
  });
  const p=btn.dataset.panel;if(p==='career')showCareer();if(p==='assets')assets();if(p==='relations')relations();if(p==='activities')activities();
 }));
+$('statsPanel').addEventListener('click',event=>{
+ const target=event.target&&typeof event.target.closest==='function'?event.target.closest('[data-stat-boost]'):null;
+ if(target)statBoostMenu(target.getAttribute('data-stat-boost'));
+});
 $('ageUpBtn').addEventListener('click',()=>{playUiFeedback('year');ageUp();});
 if($('menuBtn'))$('menuBtn').addEventListener('click',()=>mainMenu());
 if($('profileBtn'))$('profileBtn').addEventListener('click',()=>achievementsMenu());
