@@ -148,11 +148,13 @@ async function run() {
     assert.ok(shownName.includes(seedSave.name), 'the legacy v1 save should render the seeded player');
     const legacyBusinessDefaults = await page.evaluate(() => {
       const saved = JSON.parse(localStorage.getItem('hekayat_hayah_save_v1') || 'null');
-      return { products: saved.business.products, research: saved.business.productResearch, pendingCosts: saved.business.pendingProductCosts };
+      return { products: saved.business.products, research: saved.business.productResearch, pendingCosts: saved.business.pendingProductCosts, facilities: saved.business.facilities, pendingFacilityCosts: saved.business.pendingFacilityCosts };
     });
     assert.deepEqual(legacyBusinessDefaults.products, [], 'legacy businesses should receive an empty product list');
     assert.deepEqual(legacyBusinessDefaults.research, [], 'legacy businesses should receive an empty research list');
     assert.equal(legacyBusinessDefaults.pendingCosts, 0, 'legacy businesses should receive a zero pending-cost balance');
+    assert.deepEqual(legacyBusinessDefaults.facilities, [], 'legacy businesses should receive an empty facility list');
+    assert.equal(legacyBusinessDefaults.pendingFacilityCosts, 0, 'legacy businesses should receive zero pending facility costs');
 
     // The career catalog should keep aspirational jobs visible and explain missing requirements.
     await page.locator('[data-panel="career"]').click();
@@ -264,6 +266,23 @@ async function run() {
     await page.locator('.choice').filter({ hasText: 'رجوع لإدارة المشروع' }).click();
     await page.locator('#closeModal').click();
 
+    // A store is a persistent facility: it raises product capacity and adds a separately reported annual upkeep.
+    await page.locator('[data-panel="assets"]').click();
+    await page.locator('.choice').filter({ hasText: 'إدارة مشروعي' }).click();
+    await page.locator('.choice').filter({ hasText: 'الفروع والمصانع' }).click();
+    await page.locator('.choice').filter({ hasText: 'إضافة فرع أو مصنع' }).click();
+    await page.locator('.choice').filter({ hasText: 'متجر إضافي' }).click();
+    const purchasedFacility = await page.evaluate(() => {
+      const saved = JSON.parse(localStorage.getItem('hekayat_hayah_save_v1') || 'null');
+      const business = saved && saved.business;
+      return { facility: business && business.facilities && business.facilities[0], pending: business && business.pendingFacilityCosts };
+    });
+    assert.equal(purchasedFacility.facility.type, 'store', 'the facility catalog should create a store record');
+    assert.ok(purchasedFacility.facility.capacityBonus > 0, 'a store should increase product capacity');
+    assert.ok(purchasedFacility.facility.annualUpkeep > 0, 'a store should have recurring upkeep');
+    assert.equal(purchasedFacility.pending, purchasedFacility.facility.investment, 'the one-time construction investment should be queued for the next report');
+    await page.locator('#closeModal').click();
+
     const mobileGeometry = await page.evaluate(() => {
       const viewportWidth = window.innerWidth;
       const app = document.querySelector('#app').getBoundingClientRect();
@@ -314,6 +333,9 @@ async function run() {
         supplierMarket: saved && saved.business && saved.business.supplierMarket,
         products: saved && saved.business && saved.business.products,
         pendingProductCosts: saved && saved.business && saved.business.pendingProductCosts,
+        facility: saved && saved.business && saved.business.facilities && saved.business.facilities[0],
+        pendingFacilityCosts: saved && saved.business && saved.business.pendingFacilityCosts,
+        asset: saved && saved.assets && saved.assets.find(item => item.kind === 'business' && !item.companyPortfolio && String(item.id) === String(saved.business.assetId)),
         report: history[history.length - 1]
       };
     });
@@ -333,6 +355,12 @@ async function run() {
     assert.ok(businessYear.report.productRevenue > 0 && businessYear.report.productUnits > 0, 'the product should generate sales after one fiscal year');
     assert.ok(businessYear.report.productCosts >= 4650, 'both research fees and both launch fees should be included in product costs');
     assert.equal(businessYear.pendingProductCosts, 0, 'upfront product costs should clear after the fiscal report');
+    assert.equal(businessYear.pendingFacilityCosts, 0, 'facility construction costs should clear after the fiscal report');
+    assert.equal(businessYear.report.facilityCount, 1, 'the annual report should count the active store');
+    assert.equal(businessYear.report.facilityInvestment, businessYear.facility.investment, 'construction investment should be reported once');
+    assert.equal(businessYear.report.facilityUpkeep, businessYear.facility.annualUpkeep, 'annual facility upkeep should be reported');
+    assert.ok(businessYear.report.capacityMultiplier > 1, 'a facility should increase annual product capacity');
+    assert.equal(businessYear.asset.value, JSON.parse(await page.evaluate(() => localStorage.getItem('hekayat_hayah_save_v1'))).business.value, 'the primary business asset should remain synchronized after its annual report');
     assert.equal(businessYear.report.productProfit, businessYear.report.productRevenue - businessYear.report.productCosts);
     assert.equal(businessYear.products.filter(item => item.active).length, 2);
     assert.equal(businessYear.products[0].history.length, 1, 'the product should retain its first annual performance record');
@@ -743,6 +771,10 @@ async function run() {
     await page.locator('.choice').filter({ hasText: 'إدارة التشغيل' }).click();
     await page.locator('.choice').filter({ hasText: 'التعاقد مع مورد' }).click();
     await page.locator('.choice').filter({ hasText: 'مورد اقتصادي' }).click();
+    await page.locator('.choice').filter({ hasText: 'الفروع والمصانع' }).click();
+    await page.locator('.choice').filter({ hasText: 'إضافة فرع أو مصنع' }).click();
+    await page.locator('.choice').filter({ hasText: 'مصنع صغير' }).click();
+    await page.locator('.choice').filter({ hasText: 'رجوع لإدارة المشروع' }).click();
     await page.locator('.choice').filter({ hasText: 'إدارة الموظفين' }).click();
     await page.locator('.choice').filter({ hasText: 'توظيف موظف' }).click();
     await page.locator('.choice').filter({ hasText: 'مندوب مبيعات' }).click();
@@ -764,6 +796,8 @@ async function run() {
     assert.equal(portfolioBeforeYear.company.products[0].catalogId, 'digital-service');
     assert.equal(portfolioBeforeYear.company.products[0].id.includes('portfolio-company-browser'), true,
       'product identifiers should be unique to their owning portfolio company');
+    assert.equal(portfolioBeforeYear.company.facilities.length, 1, 'the portfolio company should own its factory independently');
+    assert.equal(portfolioBeforeYear.company.facilities[0].type, 'factory');
     await page.locator('#closeModal').click();
     await page.locator('#ageUpBtn').click();
     await page.waitForFunction(() => {
@@ -783,6 +817,9 @@ async function run() {
     assert.equal(portfolioAfterYear.report.staffCount, 1);
     assert.equal(portfolioAfterYear.report.payroll, portfolioAfterYear.company.staff[0].salary);
     assert.equal(portfolioAfterYear.report.productCount, 1);
+    assert.equal(portfolioAfterYear.report.facilityCount, 1);
+    assert.ok(portfolioAfterYear.report.facilityUpkeep > 0);
+    assert.ok(portfolioAfterYear.report.capacityMultiplier > 1);
     assert.ok(portfolioAfterYear.report.productRevenue > 0 && portfolioAfterYear.report.productUnits > 0);
     assert.equal(portfolioAfterYear.report.profit, portfolioAfterYear.report.revenue - portfolioAfterYear.report.costs);
     assert.equal(portfolioAfterYear.company.staff[0].years, 1);
@@ -793,7 +830,7 @@ async function run() {
 
     assert.deepEqual(pageErrors, [], 'the browser run should complete without uncaught JavaScript errors');
 
-    console.log('PASS: mobile layout, legacy v1 load, persistence, rewind, JSON import, inheritance, insolvent estate, career promotion migration, annual supplier market, researched and instinct product launches, product pricing, annual product sales, business reports, and independent portfolio-company operations.');
+    console.log('PASS: mobile layout, legacy v1 load, persistence, rewind, JSON import, inheritance, insolvent estate, career promotion migration, annual supplier market, facilities and production capacity, researched and instinct product launches, product pricing, annual product sales, business reports, and independent portfolio-company operations.');
     await context.close();
   } finally {
     if (browser) await browser.close();
