@@ -335,7 +335,7 @@ const combatMoveCatalog=[
  {id:'pivot-counter',title:'هجمة الدوران المضاد',style:'تقنية',strongAgainst:'سرعة',power:47,rank:1,cost:3600,desc:'غيّر زاوية المواجهة واستغل اندفاع الخصم.'},
  {id:'shell-defense',title:'الصد المتحرك',style:'دفاع',strongAgainst:'تقنية',power:46,rank:2,cost:6900,desc:'حافظ على التوازن وامتص اندفاع المنافس الفني.'},
  {id:'burst-combo',title:'تركيبة الاندفاع',style:'قوة',strongAgainst:'دفاع',power:55,rank:3,cost:10800,desc:'مجموعة هجومية قوية تحتاج توقيتًا وطاقة مناسبين.'},
- {id:'last-round-read',title:'قراءة الجولة الأخيرة',style:'تقنية',strongAgainst:'دفاع',power:61,rank:4,cost:17500,desc:'خطة متقدمة تستغل ثغرات الدفاع في اللحظات الحاسمة.'}
+ {id:'last-round-read',title:'قراءة الجولة الأخيرة',style:'تقنية',strongAgainst:'دفاع',power:61,rank:4,cost:17500,desc:'خطة متقدمة تستغل ثغرات الدفاع في اللحظات الحاسمة.'},
  {id:'angle-pivot',title:'ارتكاز الزاوية',style:'تقنية',strongAgainst:'سرعة',power:44,rank:1,cost:3900,desc:'غيّر اتجاه المواجهة بدل الدخول في سباق سرعة مباشر.'},
  {id:'low-line-kick',title:'ركلة خط منخفض',style:'سرعة',strongAgainst:'قوة',power:43,rank:1,cost:4100,desc:'استهدف المساحة المفتوحة بحركة سريعة محسوبة.'},
  {id:'shoulder-shell',title:'درع الكتف',style:'دفاع',strongAgainst:'تقنية',power:49,rank:2,cost:7400,desc:'امتص الضغط الفني وحافظ على وضعية آمنة.'},
