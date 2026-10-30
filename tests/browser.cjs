@@ -214,6 +214,38 @@ async function run() {
     assert.equal(initialLayout.feedScrollWidth, initialLayout.feedWidth,
       'the life feed should not introduce horizontal scrolling');
 
+    const measureDock = () => page.evaluate(() => {
+      const rect = element => {
+        const box = document.querySelector(element).getBoundingClientRect();
+        return { left: box.left, right: box.right, top: box.top, bottom: box.bottom, width: box.width };
+      };
+      const app = rect('#app'), dock = rect('.bottom-dock'), stats = rect('#statsPanel');
+      const nav = rect('.nav'), feed = rect('#lifeFeed');
+      return { app, dock, stats, nav, feed,
+        transform: getComputedStyle(document.querySelector('.bottom-dock')).transform };
+    });
+    const assertDockAligned = (layout, label) => {
+      assert.equal(layout.transform, 'none', label + ': the dock must not retain a legacy horizontal transform');
+      assert.ok(Math.abs(layout.dock.left - layout.app.left) <= 1.5,
+        label + ': the dock should start at the app left edge');
+      assert.ok(Math.abs(layout.dock.right - layout.app.right) <= 1.5,
+        label + ': the dock should use the full app width');
+      assert.ok(Math.abs(layout.stats.width - layout.dock.width) <= 1.5,
+        label + ': the stat panel should use the full dock width');
+      assert.ok(Math.abs(layout.nav.width - layout.dock.width) <= 1.5,
+        label + ': the navigation should use the full dock width');
+      assert.ok(layout.feed.bottom <= layout.dock.top + 1.5,
+        label + ': the story feed must stop above the dock rather than sliding underneath it');
+    };
+    assertDockAligned(await measureDock(), '390px mobile viewport');
+
+    await page.setViewportSize({ width: 710, height: 1100 });
+    await page.waitForTimeout(40);
+    assertDockAligned(await measureDock(), '710px portrait/tablet viewport');
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.waitForTimeout(40);
+
+
     await page.locator('[data-panel="activities"]').click();
     await page.getByText('اختيارات سريعة').waitFor();
     await page.getByText('إدارة الشخصية').waitFor();
