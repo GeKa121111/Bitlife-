@@ -483,15 +483,15 @@ test('سوق الموردين يتجدد سنويًا ويحفظ عروض الأ
 
 
 test('إدارة المنتجات تدعم بحث السوق والمبيعات السنوية مع حفظ متوافق', () => {
-  assert.match(app, /const BUSINESS_PRODUCT_CATALOG = \\[/);
-  assert.match(app, /function businessProductMarketSnapshot\\(business,catalog\\)/);
-  assert.match(app, /function researchBusinessProduct\\(productId\\)/);
-  assert.match(app, /function launchBusinessProduct\\(productId,useResearch\\)/);
-  assert.match(app, /function simulateBusinessProducts\\(business,openingValue,supplier,staffRevenueBonus\\)/);
-  assert.match(app, /business\\.pendingProductCosts/);
+  assert.match(app, /const BUSINESS_PRODUCT_CATALOG = \[/);
+  assert.match(app, /function businessProductMarketSnapshot\(business,catalog\)/);
+  assert.match(app, /function researchBusinessProduct\(productId\)/);
+  assert.match(app, /function launchBusinessProduct\(productId,useResearch\)/);
+  assert.match(app, /function simulateBusinessProducts\(business,openingValue,supplier,staffRevenueBonus\)/);
+  assert.match(app, /business\.pendingProductCosts/);
   assert.match(app, /productRevenue/);
   assert.match(app, /competition/);
-  assert.match(app, /choice\\('🧪','إدارة المنتجات'/);
-  assert.match(app, /entity\\.productResearch=entity\\.productResearch\\.filter/);
+  assert.match(app, /choice\('🧪','إدارة المنتجات'/);
+  assert.match(app, /entity\.productResearch=entity\.productResearch\.filter/);
   assert.match(read('sw.js'), /hayah-shell-v25/);
 });
