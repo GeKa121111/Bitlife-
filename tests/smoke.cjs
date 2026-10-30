@@ -508,7 +508,7 @@ assert.match(app, /function buyBusinessFacility\(type\)/);
 assert.match(app, /facilityCapacityBonus/);
 console.log('Smoke tests passed: RTL/PWA shell, autosave recovery, legacy migration, annual company portfolio operations, facility expansion, and persisted life systems.');
 
-assert.match(app, /function playUiFeedback\\(kind='tap'\\)/, 'optional sound and haptic feedback should be available');
-assert.match(app, /uiSettings\\.sound/);
-assert.match(app, /uiSettings\\.haptics/);
+assert.ok(app.includes("function playUiFeedback(kind='tap')"), 'optional sound and haptic feedback should be available');
+assert.ok(app.includes('uiSettings.sound'));
+assert.ok(app.includes('uiSettings.haptics'));
 assert.match(serviceWorker, /hayah-shell-v30/);
