@@ -2909,21 +2909,21 @@ function maintainAsset(index){
 }
 function person(gender,relation,emoji,age,level){return {id:relation+'-'+Math.random().toString(36).slice(2,8),name:pick(names[gender])+' '+pick(names.family),relation,emoji,age,job:pick(['طالب','محاسب','مصمم','مدرس','موظف','مطور']),generosity:25+Math.floor(Math.random()*76),craziness:Math.floor(Math.random()*101),money:Math.floor(Math.random()*101),petulance:Math.floor(Math.random()*101),loyalty:25+Math.floor(Math.random()*76),jealousy:Math.floor(Math.random()*101),reliability:25+Math.floor(Math.random()*76),interactions:[],relationshipLevel:level,personality:pick(['حنون','عملي','مرح','جاد','طموح','فضولي'])};}
 function relations(){
- const opts=[section('Special')];
- opts.push(choice('💍','Aura Ring','Generate swag without trying!',()=>routePack('auraRing',auraRingMenu),'',null,!perkOwned('auraRing')));
- opts.push(choice('🕯️','Commune','Start a cult',()=>routePack('cultPack',cultMenu),'',null,!perkOwned('cultPack')));
- opts.push(section('Parents'));
+ const opts=[section('مزايا إضافية')];
+ opts.push(choice('💍','خاتم الهالة','ميزة دائمة تضيف لمسة مميزة إلى حضور الشخصية.',()=>routePack('auraRing',auraRingMenu),'',null,!perkOwned('auraRing')));
+ opts.push(choice('🕯️','مجتمع خيالي','أنشئ مجتمعًا خاصًا وأدر أعضاءه وموارده.',()=>routePack('cultPack',cultMenu),'',null,!perkOwned('cultPack')));
+ opts.push(section('الوالدان'));
  const parents=(state.family||[]).filter(n=>/(الأب|الأم|والد|والدة|father|mother|parent)/i.test(n.relation||''));
  const others=(state.family||[]).filter(n=>!parents.includes(n));
  parents.forEach(n=>{
   if(n.deceased)opts.push(choice('🕯️',n.name+' · '+n.relation,'ذكرى عائلية · توفي عن عمر '+(n.age||'?')+' سنة.',()=>{closeModal();info('🕯️',n.name,'هذا الفرد من العائلة جزء من تاريخ حياتك، وسجّلت اللعبة وفاته في دفتر الأحداث.');}));
   else opts.push(choice(n.emoji,n.name+' · '+n.relation,'مستوى العلاقة '+n.relationshipLevel+'%',()=>{closeModal();personModal(n);},n.relationshipLevel+'%',n.relationshipLevel));
  });
- if(others.length){opts.push(section('Family'));others.forEach(n=>opts.push(choice(n.deceased?'🕯️':n.emoji,n.name+' · '+n.relation,n.deceased?'ذكرى عائلية':'مستوى العلاقة '+n.relationshipLevel+'%',()=>{closeModal();if(n.deceased)info('🕯️',n.name,'سجل عائلي');else personModal(n);},n.relationshipLevel+'%',n.relationshipLevel)));}
- if((state.friends||[]).length){opts.push(section('Friends'));state.friends.forEach(n=>opts.push(choice(n.emoji,n.name+' · صديق','مستوى العلاقة '+n.relationshipLevel+'%',()=>{closeModal();personModal(n);},n.relationshipLevel+'%',n.relationshipLevel)));}
- if(state.partner){opts.push(section('Partner'));opts.push(choice(state.married?'💍':'💞',state.partner.name+(state.married?' · زوج/زوجة':' · شريك عاطفي'),'مستوى العلاقة '+state.partner.relationshipLevel+'%',()=>{closeModal();personModal(state.partner);},state.partner.relationshipLevel+'%',state.partner.relationshipLevel));}
- if((state.children||[]).length){opts.push(section('Children'));(state.children||[]).forEach((n,i)=>opts.push(choice(n.emoji||'🧒',n.name+' · '+(n.age<18?'ابن/ابنة':'ابن/ابنة بالغ'),'العمر '+n.age+' سنة · العلاقة '+n.relationshipLevel+'%',()=>{closeModal();childMenu(i);},n.relationshipLevel+'%',n.relationshipLevel)));}
- opts.push(section('Relationships'));
+ if(others.length){opts.push(section('باقي أفراد العائلة'));others.forEach(n=>opts.push(choice(n.deceased?'🕯️':n.emoji,n.name+' · '+n.relation,n.deceased?'ذكرى عائلية':'مستوى العلاقة '+n.relationshipLevel+'%',()=>{closeModal();if(n.deceased)info('🕯️',n.name,'سجل عائلي');else personModal(n);},n.relationshipLevel+'%',n.relationshipLevel)));}
+ if((state.friends||[]).length){opts.push(section('الأصدقاء'));state.friends.forEach(n=>opts.push(choice(n.emoji,n.name+' · صديق','مستوى العلاقة '+n.relationshipLevel+'%',()=>{closeModal();personModal(n);},n.relationshipLevel+'%',n.relationshipLevel)));}
+ if(state.partner){opts.push(section('الشريك'));opts.push(choice(state.married?'💍':'💞',state.partner.name+(state.married?' · زوج/زوجة':' · شريك عاطفي'),'مستوى العلاقة '+state.partner.relationshipLevel+'%',()=>{closeModal();personModal(state.partner);},state.partner.relationshipLevel+'%',state.partner.relationshipLevel));}
+ if((state.children||[]).length){opts.push(section('الأبناء'));(state.children||[]).forEach((n,i)=>opts.push(choice(n.emoji||'🧒',n.name+' · '+(n.age<18?'ابن/ابنة':'ابن/ابنة بالغ'),'العمر '+n.age+' سنة · العلاقة '+n.relationshipLevel+'%',()=>{closeModal();childMenu(i);},n.relationshipLevel+'%',n.relationshipLevel)));}
+ opts.push(section('توسيع شبكة العلاقات'));
  opts.push(choice('🤝','تكوين صداقة جديدة','تتعرف على شخص جديد وتبدأ علاقة.',()=>{closeModal();addFriend();}));
  opts.push(choice('👤','إضافة شخص مخصص','أدخل اسم شخص تعرفه ليظهر في شبكة علاقاتك.',()=>{closeModal();addCustomFriend();}));
  if(state.age>=16&&!state.partner)opts.push(choice('💞','التعرف على شريك','تبدأ علاقة بالتعارف والاحترام المتبادل.',()=>{closeModal();meetPartner();}));
@@ -5487,50 +5487,50 @@ function buyLuxuryItem(){
 function activities(){
  const netWorth=netWorthForLuxury();
  const opts=[
-  section('Favorites'),
-  choice('❤️','Love','Find someone to love',()=>{closeModal();if(state.partner)relations();else meetPartner();}),
-  choice('🧘','Mind & Body','Work on self-improvement',healthMenu),
-  (()=>{const row=choice('🐕','Pets','Get a pet',petsMenu);row.menuDots=true;return row;})(),
-  choice('💆','Salon & Spa','Take time for yourself',salonMenu),
-  section('Premium Activities'),
-  (()=>{const row=choice('🎬','Movie Director','Become a famous movie director!',()=>routePack('movieDirectorPack',movieDirectorMenu));row.cardClass='activity-movie-row';row.stamp='MOVIE DIRECTOR';return row;})(),
-  (()=>{const row=choice('🧛','Vampire Mode','Become a vampire',()=>routePack('vampireMode',vampireModeMenu));row.cardClass='activity-vampire-row';row.stamp='VAMPIRE MODE';return row;})(),
-  (()=>{const row=choice('🌲','Outdoor Lifestyle','Spend time with Mother Nature',()=>routePack('outdoorsPack',outdoorLifestyleMenu));row.cardClass='activity-outdoors-row';row.stamp='OUTDOORS';return row;})(),
-  (()=>{const row=choice('💎','Luxury Lifestyle','Wealth',()=>routePack('gatedCommunityPack',gatedCommunityMenu),'',clamp(netWorth/20000000*100));row.cardClass='activity-luxury-row';row.menuDots=true;return row;})(),
-  choice('🎰','Casino','Start your own casino',()=>routePack('casinoPack',casinoMenu),'',null,!perkOwned('casinoPack')),
-  choice('🕶️','Black Market','Shop for contraband and manage a museum',()=>routePack('blackMarketPack',blackMarketMenu),'',null,!perkOwned('blackMarketPack')),
-  choice('🕯️','Commune','Start a cult',()=>routePack('cultPack',cultMenu),'',null,!perkOwned('cultPack')),
-  choice('🏁','Racing','Participate in races',()=>{closeModal();specialCareers();},'',null,true),
-  choice('🕵️','Secret Agent','Start your own spy agency',()=>{closeModal();premiumPerksMenu();},'',null,true),
-  choice('🦁','Zoo','Purchase a zoo',()=>routePack('zooExpansionPack',zooMenu),'',null,!perkOwned('zooExpansionPack')),
-  section('All'),
-  choice('🩺','Health & Wellness','Doctor, gym, rest and physical activity',healthMenu),
-  choice('🎨','Hobbies & Skills','Start a hobby or practise your skills',hobbiesMenu),
-  choice('🐾','Pets & Animals','Adopt a pet or care for your current pets',petsMenu),
-  choice('🌟','Special Careers','Acting, music, content, sports and other career paths',specialCareers),
-  choice('⚖️','Crime & Legal Record','Risky fictional decisions with consequences',crimeMenu),
-  choice('🌍','Travel & Immigration','Take a holiday or move to another country',travelMenu),
-  choice('👪','Family & Children','Manage your relationship, marriage and children',familyMenu),
-  choice('💈','Salon & Appearance','Change your style and appearance',salonMenu),
-  choice('🎬','Cinema','Choose a film for a short entertainment break',cinemaMenu),
-  choice('🩺','Visit a Doctor','Cost '+cash(1200)+' · recover some health',()=>activity('doctor'),cash(1200)),
-  choice('🏋️','Gym','Cost '+cash(300)+' · improve health and appearance',()=>activity('gym'),cash(300)),
-  choice('📚','Library','Free activity to improve smarts',()=>activity('library'),'Free'),
-  choice('🏖️','Vacation','Cost '+cash(1800)+' · improve happiness',()=>activity('vacation'),cash(1800)),
-  choice('🤝','Volunteer','Free activity to improve happiness and reputation',()=>activity('volunteer'),'Free'),
-  choice('🎟️','Lottery','A '+cash(100)+' ticket with a small chance of a prize',()=>activity('lottery'),cash(100)),
-  choice('🌃','Nightlife','Available from 18 · cost '+cash(1200),()=>activity('nightlife'),cash(1200)),
-  choice('❤️','Charity','Donate '+cash(1000)+' to improve reputation',()=>activity('donate'),cash(1000)),
-  section('More'),
-  choice('📊','Bank & Investments','Loans, debt payments and investment portfolios',financeMenu),
-  choice('🏆','Achievements & Collectibles','Achievements, life ribbons and daily rewards',achievementsMenu),
-  choice('✨','Life Perks Store','Permanent perks and additional career paths',premiumPerksMenu),
-  choice('🪪','Character Profile','Edit your name, driver license and export a save',customizeMenu),
-  choice('📱','Social Media','Accounts, posts, followers and collaborations',socialMediaMenu),
-  choice('💾','Export Save','Download a JSON file backup',exportSave),
-  choice('🌱','New Life','Start a new life with random or custom birthplace and gender',()=>{closeModal();info('🌱','New Life','Starting a new life replaces the current save.',[choice('↻','Continue','',()=>{closeModal();if(confirm('Start a new life and replace the current save?'))newLifeSetup();}),choice('↩️','Keep Current Life','',closeModal)]);})
+  section('اختيارات سريعة'),
+  choice('❤️','الحب والعلاقات','تعرّف على شريك أو تابع علاقتك الحالية',()=>{closeModal();if(state.partner)relations();else meetPartner();}),
+  choice('🧘','الصحة والعافية','اهتم بصحتك ولياقتك وراحتك النفسية',healthMenu),
+  (()=>{const row=choice('🐕','الحيوانات الأليفة','تبنَّ حيوانًا أو تابع رعايته',petsMenu);row.menuDots=true;return row;})(),
+  choice('💆','العناية بالمظهر','غيّر إطلالتك وخد وقتًا لنفسك',salonMenu),
+  section('مسارات وتوسعات'),
+  (()=>{const row=choice('🎬','إخراج الأفلام','أخرج أعمالًا سينمائية وابنِ مسيرتك الفنية',()=>routePack('movieDirectorPack',movieDirectorMenu));row.cardClass='activity-movie-row';row.stamp='إخراج الأفلام';return row;})(),
+  (()=>{const row=choice('🧛','نمط مصاص الدماء','ابدأ حياة خارقة وابنِ سلالة خاصة',()=>routePack('vampireMode',vampireModeMenu));row.cardClass='activity-vampire-row';row.stamp='نمط خارق';return row;})(),
+  (()=>{const row=choice('🌲','الحياة في الطبيعة','استكشف الأنشطة الخارجية والرحلات',()=>routePack('outdoorsPack',outdoorLifestyleMenu));row.cardClass='activity-outdoors-row';row.stamp='الطبيعة';return row;})(),
+  (()=>{const row=choice('💎','نمط الحياة الفاخر','طوّر مستوى معيشتك واستثمر في الرفاهية',()=>routePack('gatedCommunityPack',gatedCommunityMenu),'',clamp(netWorth/20000000*100));row.cardClass='activity-luxury-row';row.menuDots=true;return row;})(),
+  choice('🎰','الكازينو','أنشئ كازينو وأدر ألعابه ومرافقه',()=>routePack('casinoPack',casinoMenu),'',null,!perkOwned('casinoPack')),
+  choice('🕶️','السوق الخفي','استكشف المقتنيات النادرة وأدر متحفك',()=>routePack('blackMarketPack',blackMarketMenu),'',null,!perkOwned('blackMarketPack')),
+  choice('🕯️','مجتمع خيالي','أنشئ مجتمعًا خاصًا وأدر أعضاءه وموارده',()=>routePack('cultPack',cultMenu),'',null,!perkOwned('cultPack')),
+  choice('🏁','سباقات السيارات','شارك في منافسات السرعة والتحديات',()=>{closeModal();specialCareers();},'',null,true),
+  choice('🕵️','العميل السري','افتح مسار المهمات والعمليات الخاصة',()=>{closeModal();premiumPerksMenu();},'',null,true),
+  choice('🦁','حديقة الحيوانات','امتلك حديقة حيوان واعتنِ بالحيوانات',()=>routePack('zooExpansionPack',zooMenu),'',null,!perkOwned('zooExpansionPack')),
+  section('أنشطة الحياة اليومية'),
+  choice('🩺','الصحة والعلاج','زيارة الطبيب والتمرين والراحة',healthMenu),
+  choice('🎨','الهوايات والمهارات','ابدأ هواية أو طوّر مهاراتك',hobbiesMenu),
+  choice('🐾','رعاية الحيوانات','تبنَّ حيوانًا أو اهتم بحيواناتك الحالية',petsMenu),
+  choice('🌟','المهن الخاصة','التمثيل والموسيقى وصناعة المحتوى والرياضة',specialCareers),
+  choice('⚖️','الجريمة والقانون','قرارات محفوفة بالمخاطر ولها عواقب',crimeMenu),
+  choice('🌍','السفر والهجرة','سافر في عطلة أو انتقل إلى بلد آخر',travelMenu),
+  choice('👪','الأسرة والأبناء','أدر الزواج والعلاقات ورعاية الأبناء',familyMenu),
+  choice('💈','المظهر والأناقة','غيّر أسلوبك واهتم بمظهرك',salonMenu),
+  choice('🎬','السينما','اختر فيلمًا لقضاء وقت ممتع',cinemaMenu),
+  choice('🩺','زيارة الطبيب','التكلفة '+cash(1200)+' · استعادة جزء من الصحة',()=>activity('doctor'),cash(1200)),
+  choice('🏋️','النادي الرياضي','التكلفة '+cash(300)+' · تحسين الصحة والمظهر',()=>activity('gym'),cash(300)),
+  choice('📚','المكتبة','نشاط مجاني لزيادة الذكاء',()=>activity('library'),'مجانًا'),
+  choice('🏖️','إجازة','التكلفة '+cash(1800)+' · تحسين السعادة',()=>activity('vacation'),cash(1800)),
+  choice('🤝','التطوع','نشاط مجاني لتحسين السعادة والسمعة',()=>activity('volunteer'),'مجانًا'),
+  choice('🎟️','اليانصيب','تذكرة بقيمة '+cash(100)+' مع فرصة محدودة للفوز',()=>activity('lottery'),cash(100)),
+  choice('🌃','الحياة الليلية','متاحة من سن 18 · التكلفة '+cash(1200),()=>activity('nightlife'),cash(1200)),
+  choice('❤️','التبرع','تبرع بقيمة '+cash(1000)+' لتحسين السمعة',()=>activity('donate'),cash(1000)),
+  section('إدارة الشخصية'),
+  choice('📊','البنك والاستثمارات','القروض وسداد الديون وإدارة المحافظ الاستثمارية',financeMenu),
+  choice('🏆','الإنجازات والأوسمة','إنجازاتك وأوسمة الحيوات والمكافآت اليومية',achievementsMenu),
+  choice('✨','متجر مزايا حياة','المزايا الدائمة والمسارات المهنية الإضافية',premiumPerksMenu),
+  choice('🪪','ملف الشخصية','تعديل الاسم ورخصة القيادة وتصدير الحفظ',customizeMenu),
+  choice('📱','السوشيال ميديا','الحسابات والمنشورات والمتابعون والتعاونات',socialMediaMenu),
+  choice('💾','تصدير الحفظ','تنزيل نسخة احتياطية من بيانات اللعبة',exportSave),
+  choice('🌱','حياة جديدة','ابدأ شخصية جديدة بمكان ميلاد ونوع تختارهما',()=>{closeModal();info('🌱','حياة جديدة','بدء حياة جديدة سيستبدل الحفظ الحالي.',[choice('↻','متابعة','',()=>{closeModal();if(confirm('تبدأ حياة جديدة وتستبدل الحفظ الحالي؟'))newLifeSetup();}),choice('↩️','الاحتفاظ بالحياة الحالية','',closeModal)]);})
  ];
- modal('☰','Activities','',opts);
+ modal('☰','الأنشطة والحياة اليومية','اختار القسم المناسب، وكل اختياراتك محفوظة في نفس حكايتك.',opts);
 }
 function healthMenu(){
  const healthDesc='حالتك الصحية بتتأثر بالعمر والعادات والعلاقات والمخاطر. دي أنشطة داخل اللعبة وليست نصيحة طبية. '+(state.sti?'فيه حالة صحية محاكية مسجلة؛ زيارة الطبيب داخل اللعبة تقدر تعالجها.':'لا توجد حالة صحية محاكية مسجلة حاليًا.');
