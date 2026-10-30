@@ -857,8 +857,9 @@ function renderFeed(){
  const signatures=entries.map(logEntrySignature);
  const shouldFollowLatest=feed.scrollHeight-feed.scrollTop-feed.clientHeight<=80;
  const previous=renderedLogSnapshot;
+ const supportsIncrementalDom=typeof document!=='undefined'&&typeof document.createElement==='function'&&typeof feed.appendChild==='function'&&'firstElementChild' in feed;
  let appendFrom=-1,shiftCount=0;
- if(renderedFeedElement===feed&&Array.isArray(previous)){
+ if(renderedFeedElement===feed&&Array.isArray(previous)&&supportsIncrementalDom){
   let samePrefix=signatures.length>=previous.length;
   if(samePrefix){
    for(let i=0;i<previous.length;i++){if(previous[i]!==signatures[i]){samePrefix=false;break;}}
