@@ -224,7 +224,8 @@ async function run() {
       const thursday=new Date(start);thursday.setDate(thursday.getDate()+3);
       const isoYear=thursday.getFullYear(),jan4=new Date(isoYear,0,4);
       const firstMonday=new Date(jan4);firstMonday.setDate(firstMonday.getDate()-((firstMonday.getDay()+6)%7));
-      const weekNumber=Math.floor((start.getTime()-firstMonday.getTime())/604800000)+1;
+      const startUtc=Date.UTC(start.getFullYear(),start.getMonth(),start.getDate()),firstMondayUtc=Date.UTC(firstMonday.getFullYear(),firstMonday.getMonth(),firstMonday.getDate());
+      const weekNumber=Math.floor((startUtc-firstMondayUtc)/604800000)+1;
       const dateKey=value=>value.getFullYear()+'-'+String(value.getMonth()+1).padStart(2,'0')+'-'+String(value.getDate()).padStart(2,'0');
       const week={id:isoYear+'-W'+String(weekNumber).padStart(2,'0'),startDate:dateKey(start),endDate:dateKey(end)};
       saved.seasonalEvent={weekId:week.id,startDate:week.startDate,endDate:week.endDate,baseline:{age:29,friends:0,hobbies:0,posts:0,smart:0,health:0,happiness:0},claimed:[],bonusClaimed:false};
