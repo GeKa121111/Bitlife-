@@ -1911,7 +1911,6 @@ function businessProductLaunchMenu(productId){
  const opts=[];
  if(research){
   opts.push(choice('🚀','إطلاق بنتائج البحث','الطلب '+research.demand+'% · المنافسة '+research.competition+'% · السعر المقترح '+cash(research.suggestedPrice)+' · ثقة البحث '+research.confidence+'%. رسوم الإطلاق '+cash(launchFee)+'.',()=>launchBusinessProduct(productId,true),cash(launchFee)));
-  opts.push(choice('🔄','تحديث بحث السوق','إعادة تقييم الطلب والمنافسة للسنة الحالية مقابل '+cash(researchFee)+'.',()=>researchBusinessProduct(productId),cash(researchFee)));
  }else{
   opts.push(choice('🔬','إجراء بحث السوق','تقرير عن الطلب والمنافسة والسعر المقترح مقابل '+cash(researchFee)+'.',()=>researchBusinessProduct(productId),cash(researchFee)));
  }
