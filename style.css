@@ -2500,3 +2500,39 @@ body.text-large .logtitle{font-size:13px!important}
 body.text-large .logtext{font-size:13px!important;line-height:1.75!important}
 body.text-large .statlabel{font-size:10px!important}
 body.text-large .navbtn{font-size:10px!important}
+
+
+/* v49 hotfix: keep the bottom dock in normal flow and cancel legacy centering transforms. */
+#app > .bottom-dock{
+  position:relative!important;
+  inset:auto!important;
+  top:auto!important;right:auto!important;bottom:auto!important;left:auto!important;
+  transform:none!important;
+  width:100%!important;max-width:none!important;
+  margin:0!important;
+  flex:0 0 auto!important;
+  align-self:stretch!important;
+  box-sizing:border-box!important;
+  overflow:visible!important;
+}
+#app > .bottom-dock > .stats{
+  position:relative!important;left:auto!important;right:auto!important;
+  transform:none!important;width:100%!important;max-width:none!important;
+  box-sizing:border-box!important;
+  display:grid!important;
+  grid-template-columns:repeat(2,minmax(0,1fr))!important;
+  align-self:stretch!important;min-width:0!important;
+}
+#app > .bottom-dock > .stats > .statrow{
+  width:100%!important;min-width:0!important;box-sizing:border-box!important;
+}
+#app > .bottom-dock > .nav{
+  position:relative!important;left:auto!important;right:auto!important;bottom:auto!important;
+  transform:none!important;width:100%!important;max-width:none!important;
+  box-sizing:border-box!important;align-self:stretch!important;
+  display:grid!important;grid-template-columns:minmax(0,1fr) minmax(0,1fr) 1.15fr minmax(0,1fr) minmax(0,1fr)!important;
+}
+#app > .feed{
+  flex:1 1 0%!important;min-width:0!important;min-height:0!important;
+  max-height:none!important;overflow-x:hidden!important;overflow-y:auto!important;
+}
