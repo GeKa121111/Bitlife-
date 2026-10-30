@@ -336,6 +336,16 @@ const combatMoveCatalog=[
  {id:'shell-defense',title:'الصد المتحرك',style:'دفاع',strongAgainst:'تقنية',power:46,rank:2,cost:6900,desc:'حافظ على التوازن وامتص اندفاع المنافس الفني.'},
  {id:'burst-combo',title:'تركيبة الاندفاع',style:'قوة',strongAgainst:'دفاع',power:55,rank:3,cost:10800,desc:'مجموعة هجومية قوية تحتاج توقيتًا وطاقة مناسبين.'},
  {id:'last-round-read',title:'قراءة الجولة الأخيرة',style:'تقنية',strongAgainst:'دفاع',power:61,rank:4,cost:17500,desc:'خطة متقدمة تستغل ثغرات الدفاع في اللحظات الحاسمة.'}
+ {id:'angle-pivot',title:'ارتكاز الزاوية',style:'تقنية',strongAgainst:'سرعة',power:44,rank:1,cost:3900,desc:'غيّر اتجاه المواجهة بدل الدخول في سباق سرعة مباشر.'},
+ {id:'low-line-kick',title:'ركلة خط منخفض',style:'سرعة',strongAgainst:'قوة',power:43,rank:1,cost:4100,desc:'استهدف المساحة المفتوحة بحركة سريعة محسوبة.'},
+ {id:'shoulder-shell',title:'درع الكتف',style:'دفاع',strongAgainst:'تقنية',power:49,rank:2,cost:7400,desc:'امتص الضغط الفني وحافظ على وضعية آمنة.'},
+ {id:'rhythm-barrage',title:'سلسلة الإيقاع',style:'قوة',strongAgainst:'دفاع',power:57,rank:3,cost:11800,desc:'ضغط هجومي متتابع يحتاج إدارة جيدة للطاقة.'},
+ {id:'champion-plan',title:'خطة الحسم',style:'تقنية',strongAgainst:'دفاع',power:64,rank:4,cost:19000,desc:'خطة متقدمة تجمع قراءة المسافة واختيار اللحظة المناسبة.'}
+];
+const combatTacticCatalog=[
+ {id:'tactic-guard',title:'حراسة متحركة',style:'دفاع',strongAgainst:'قوة',power:31,energyCost:5,desc:'خفّف الاندفاع وحافظ على توازنك في الجولة.'},
+ {id:'tactic-feint',title:'خداع بالزاوية',style:'سرعة',strongAgainst:'تقنية',power:34,energyCost:7,desc:'غيّر زاوية الحركة واربح أفضلية على الخصم المتحفّظ.'},
+ {id:'tactic-read',title:'قراءة الإيقاع',style:'تقنية',strongAgainst:'سرعة',power:33,energyCost:6,desc:'راقب نمط المنافس واختار توقيتًا أذكى.'}
 ];
 const combatCoachCatalog=[
  {id:'local',name:'كابتن كريم',title:'مدرب البداية',level:1,price:4500,annualCost:700,bonus:3,desc:'أساسيات التدريب والمتابعة.'},
@@ -349,6 +359,60 @@ const combatOpponentTypes=[
  {id:'technique',title:'الفني المتمرس',style:'تقنية',weakTo:'دفاع',emoji:'🧠'}
 ];
 const combatOpponentNames=['آدم منصور','مالك شريف','ياسين حمدي','عمر لطفي','كريم فوزي','سيف كمال','علي ناصر','زياد حسن','حمزة فريد','نوح عادل'];
+function combatOpponentStyleForRound(opponent,round,lastPlayerStyle){
+ const baseStyles=['قوة','سرعة','دفاع','تقنية'];
+ const base=opponent&&baseStyles.includes(opponent.style)?opponent.style:'قوة';
+ if(Number(round)<=1)return base;
+ const adaptive={'سرعة':'تقنية','تقنية':'قوة','قوة':'دفاع','دفاع':'سرعة'};
+ const next=adaptive[lastPlayerStyle];
+ if(!next)return base;
+ if(Number(round)===2)return next;
+ return baseStyles[(baseStyles.indexOf(next)+1)%baseStyles.length];
+}
+function normalizePendingCombatBout(raw){
+ if(!raw||typeof raw!=='object'||Array.isArray(raw))return null;
+ const mode=raw.mode==='league'?'league':raw.mode==='street'?'street':null;
+ const source=raw.opponent&&typeof raw.opponent==='object'&&!Array.isArray(raw.opponent)?raw.opponent:{};
+ const styles=['قوة','سرعة','دفاع','تقنية'];
+ const name=typeof source.name==='string'?source.name.trim().slice(0,48):'';
+ if(!mode||!name||!styles.includes(source.style)||(mode==='league'&&raw.feePaid!==true))return null;
+ const finite=(value,fallback,min,max)=>{
+  const parsed=Number(value);
+  return Math.max(min,Math.min(max,Number.isFinite(parsed)?parsed:fallback));
+ };
+ const history=(Array.isArray(raw.roundHistory)?raw.roundHistory:[]).slice(0,2).map((item,index)=>{
+  if(!item||typeof item!=='object'||Array.isArray(item))return null;
+  return {
+   round:index+1,
+   actionId:typeof item.actionId==='string'?item.actionId.slice(0,48):'',
+   actionTitle:typeof item.actionTitle==='string'?item.actionTitle.slice(0,48):'حركة قتالية',
+   style:styles.includes(item.style)?item.style:'تقنية',
+   opponentStyle:styles.includes(item.opponentStyle)?item.opponentStyle:source.style,
+   playerScore:finite(item.playerScore,0,-200,200),
+   opponentScore:finite(item.opponentScore,0,-200,200)
+  };
+ }).filter(Boolean);
+ const last=history.length?history[history.length-1]:null;
+ return {
+  mode,
+  opponent:{
+   name,
+   style:source.style,
+   weakTo:styles.includes(source.weakTo)?source.weakTo:'سرعة',
+   emoji:typeof source.emoji==='string'?source.emoji.slice(0,8):'🥊',
+   rating:finite(source.rating,35,0,100),
+   fee:mode==='league'?1500:0
+  },
+  round:Math.max(1,Math.min(3,history.length+1)),
+  playerScore:finite(raw.playerScore,0,-600,600),
+  opponentScore:finite(raw.opponentScore,0,-600,600),
+  roundHistory:history,
+  lastStyle:styles.includes(raw.lastStyle)?raw.lastStyle:(last?last.style:''),
+  lastMoveId:typeof raw.lastMoveId==='string'?raw.lastMoveId.slice(0,48):(last?last.actionId:''),
+  startedAge:finite(raw.startedAge,18,0,120),
+  feePaid:mode==='league'?true:true
+ };
+}
 function combatDifficultyLabel(rating){
  const score=clamp(Number(rating)||0);
  if(score<35)return 'سهل';
@@ -359,17 +423,18 @@ function combatDifficultyLabel(rating){
 function createCombatCareer(){
  return {rank:0,leaguePoints:0,streetCred:0,streetWins:0,leagueWins:0,wins:0,losses:0,knockouts:0,draws:0,
   technique:32+Math.floor(Math.random()*8),power:28+Math.floor(Math.random()*8),speed:31+Math.floor(Math.random()*8),defense:28+Math.floor(Math.random()*8),stamina:34+Math.floor(Math.random()*8),energy:100,
-  injury:0,injuryYears:0,restUsedYear:-1,coach:null,movesKnown:['quick-jab','high-guard'],selectedMove:'quick-jab',champion:false,bouts:[],startedAge:state?state.age:18};
+  injury:0,injuryYears:0,restUsedYear:-1,coach:null,movesKnown:['quick-jab','high-guard'],selectedMove:'quick-jab',champion:false,bouts:[],pendingBout:null,startedAge:state?state.age:18};
 }
 function ensureCombatCareer(){
  if(!state)return null;
  let c=state.combatCareer;
  if(!c||typeof c!=='object')c=state.combatCareer=createCombatCareer();
- const defaults={rank:0,leaguePoints:0,streetCred:0,streetWins:0,leagueWins:0,wins:0,losses:0,knockouts:0,draws:0,technique:25,power:25,speed:25,defense:25,stamina:30,energy:100,injury:0,injuryYears:0,restUsedYear:-1,coach:null,movesKnown:['quick-jab','high-guard'],selectedMove:'quick-jab',champion:false,bouts:[]};
+ const defaults={rank:0,leaguePoints:0,streetCred:0,streetWins:0,leagueWins:0,wins:0,losses:0,knockouts:0,draws:0,technique:25,power:25,speed:25,defense:25,stamina:30,energy:100,injury:0,injuryYears:0,restUsedYear:-1,coach:null,movesKnown:['quick-jab','high-guard'],selectedMove:'quick-jab',champion:false,bouts:[],pendingBout:null};
  Object.keys(defaults).forEach(k=>{if(c[k]===undefined||c[k]===null)c[k]=defaults[k];});
  if(!Array.isArray(c.movesKnown))c.movesKnown=['quick-jab','high-guard'];
  if(!c.movesKnown.length)c.movesKnown=['quick-jab','high-guard'];
  if(!Array.isArray(c.bouts))c.bouts=[];
+ c.pendingBout=normalizePendingCombatBout(c.pendingBout);
  c.rank=clamp(c.rank,0,4);c.streetCred=Math.max(0,Number(c.streetCred)||0);c.leaguePoints=Math.max(0,Number(c.leaguePoints)||0);
  c.energy=clamp(c.energy);c.injury=clamp(c.injury);c.injuryYears=Math.max(0,Number(c.injuryYears)||0);
  return c;
@@ -1696,6 +1761,10 @@ function advanceAge(){
 
 function ageUp(){
  if(!validState())return;
+ if(state.combatCareer&&state.combatCareer.pendingBout){
+  const activeCombat=ensureCombatCareer();
+  if(activeCombat&&activeCombat.pendingBout){info('🥊','النزال لم ينتهِ','كمّل الجولات الثلاث أو افتح مسيرة القتال لاستكمال الجولة المحفوظة قبل التقدم لسنة جديدة.');return;}
+ }
  const snapshot=JSON.parse(JSON.stringify(state)),logLength=Array.isArray(snapshot.log)?snapshot.log.length:0;delete snapshot.timeMachineSnapshots;delete snapshot.log;
  // Near the rolling-log limit, keep an exact checkpoint so rewind cannot include future events.
  const logSnapshot=logLength>=280&&Array.isArray(state.log)?JSON.parse(JSON.stringify(state.log)):null;
@@ -3549,7 +3618,8 @@ function sellInvestment(i){
 
 function combatCareerMenu(){
  if(!validState()||!state.specialCareer||state.specialCareer.id!=='fighter'){info('🥊','مسيرة القتال','ابدأ مسار المقاتل المحترف من قائمة المهن الخاصة أولًا.');return;}
- const c=ensureCombatCareer(),r=state.specialCareer.record||{},rank=combatRankName(c),moves=c.movesKnown.length;
+ const c=ensureCombatCareer();if(c.pendingBout){combatBoutRoundMenu();return;}
+ const r=state.specialCareer.record||{},rank=combatRankName(c),moves=c.movesKnown.length;
  const injury=c.injury>0?' · إصابة '+c.injury+'%':'';
  const coach=c.coach?' · المدرب '+c.coach.name+' ('+fmt(c.coach.yearsLeft||0)+' سنوات متبقية)':' · من غير مدرب';
  const summary='الرتبة: '+rank+' · نقاط الدوري '+fmt(c.leaguePoints)+' · رصيد الشارع '+fmt(c.streetCred)+injury+coach;
@@ -3634,6 +3704,7 @@ function assignCombatCoach(id){
 function startCombatBout(mode){
  if(!validState()||!state.specialCareer||state.specialCareer.id!=='fighter'){specialCareers();return;}
  const c=ensureCombatCareer();
+ if(c.pendingBout){combatBoutRoundMenu();return;}
  if(c.injuryYears>0||c.injury>=65){closeModal();info('🩹','محتاج تتعافى','عندك إصابة '+c.injury+'% ولسه '+c.injuryYears+' سنوات متوقعة للتعافي. اختار العلاج أو انتظر قبل النزال.');return;}
  if(c.energy<25){closeModal();info('🫁','الطاقة منخفضة','استرح سنة أو تدرب بخفة قبل النزال التالي.');return;}
  if(mode==='league'&&(c.streetWins<2||c.streetCred<20)){closeModal();info('🔒','الدوري لسه مقفول','محتاج فوزين في نزالات الشوارع ورصيد شارع 20 على الأقل. الحالي: '+c.streetWins+' فوز و'+c.streetCred+' رصيد.');return;}
@@ -3641,27 +3712,74 @@ function startCombatBout(mode){
  const type=pick(combatOpponentTypes),opponent={name:pick(combatOpponentNames),style:type.style,weakTo:type.weakTo,emoji:type.emoji,
   rating:mode==='league'?34+c.rank*8+Math.floor(Math.random()*13):18+Math.floor(Math.random()*31),
   mode,fee:mode==='league'?1500:0};
- const opts=c.movesKnown.map(id=>{
-  const m=combatMoveCatalog.find(x=>x.id===id);if(!m)return null;
-  return choice(m.id===c.selectedMove?'🎯':'🥋',m.title,'أسلوبك '+m.style+' · قوي أمام '+m.strongAgainst+' · القوة '+m.power+'.'+(m.strongAgainst===opponent.style?' ميزة تكتيكية أمام أسلوب المنافس الحالي.':''),()=>resolveCombatBout(mode,opponent,m.id),'',m.power);
- }).filter(Boolean);
- opts.unshift({icon:'📊',title:'صعوبة المنافس',desc:combatDifficultyLabel(opponent.rating)+' · '+opponent.rating+'/100',progress:opponent.rating,disabled:true});
- opts.push(choice('↩️','انسحب من الاختيار','ارجع من غير دفع رسوم أو لعب النزال.',combatCareerMenu));
- modal(mode==='league'?'🏆':'🥊',mode==='league'?'نزال الدوري':'نزال الشوارع',opponent.emoji+' '+opponent.name+' · أسلوبه '+opponent.style+' · مستوى التحدي '+opponent.rating+'. اختار حركتك. '+(mode==='league'?'رسوم النزال '+cash(opponent.fee)+'.':'لا توجد رسوم دخول.'),opts);
+ if(mode==='league')state.bank-=1500;
+ c.pendingBout=normalizePendingCombatBout({mode,opponent,round:1,playerScore:0,opponentScore:0,roundHistory:[],lastStyle:'',lastMoveId:'',startedAge:state.age,feePaid:mode==='league'});
+ log('🥊','بدأ النزال','دخلت مواجهة من ثلاث جولات أمام '+opponent.name+'. راقب أسلوب المنافس ووازن بين الهجوم والطاقة.','special');
+ save();render();combatBoutRoundMenu();
 }
-function resolveCombatBout(mode,opponent,moveId){
+function combatBoutRoundMenu(){
+ const c=ensureCombatCareer(),session=c&&c.pendingBout;
+ if(!session){combatCareerMenu();return;}
+ const opponent=session.opponent,round=session.round;
+ const opponentStyle=combatOpponentStyleForRound(opponent,round,session.lastStyle);
+ const opts=c.movesKnown.map(id=>{
+  const move=combatMoveCatalog.find(item=>item.id===id);if(!move)return null;
+  const advantage=move.strongAgainst===opponentStyle?' ميزة مباشرة ضد أسلوب الجولة.':move.style===opponent.weakTo?' أسلوبك يستغل نقطة ضعف المنافس.':'';
+  return choice('🥋',move.title,'أسلوب '+move.style+' · قوي أمام '+move.strongAgainst+' · القوة '+move.power+'.'+advantage,()=>resolveCombatRound(move.id),'',move.power);
+ }).filter(Boolean);
+ combatTacticCatalog.forEach(tactic=>{
+  const advantage=tactic.strongAgainst===opponentStyle?' ميزة مباشرة ضد أسلوب الجولة.':tactic.style===opponent.weakTo?' يستغل نقطة ضعف المنافس.':'';
+  opts.push(choice('🎯',tactic.title,tactic.desc+' · الأسلوب '+tactic.style+' · القوة '+tactic.power+'.'+advantage,()=>resolveCombatRound(tactic.id),'',tactic.power));
+ });
+ opts.unshift({icon:'📊',title:'الجولة '+round+' من 3',desc:'المنافس: '+opponent.name+' · أسلوبه الآن: '+opponentStyle+' · '+combatDifficultyLabel(opponent.rating)+' · الطاقة '+c.energy+'%.',progress:opponent.rating,disabled:true});
+ modal(session.mode==='league'?'🏆':'🥊','نزال '+(session.mode==='league'?'الدوري':'الشوارع')+' · الجولة '+round, 'اختار حركة أو تكتيك. المنافس يغيّر أسلوبه بعد الجولة الأولى، والطاقة المتبقية تؤثر على أدائك. '+(session.mode==='league'?'رسوم الدوري مدفوعة بالفعل.':'لا توجد رسوم دخول.'),opts);
+}
+function resolveCombatRound(actionId){
  if(!validState()||!state.specialCareer||state.specialCareer.id!=='fighter')return;
- const c=ensureCombatCareer(),move=combatMoveCatalog.find(m=>m.id===moveId&&c.movesKnown.includes(m.id));
+ const c=ensureCombatCareer(),session=c.pendingBout;
+ if(!session){combatCareerMenu();return;}
+ const learnedMove=combatMoveCatalog.find(item=>item.id===actionId&&c.movesKnown.includes(item.id));
+ const tactic=combatTacticCatalog.find(item=>item.id===actionId);
+ const move=learnedMove||tactic;
+ if(!move){closeModal();info('🥋','الحركة غير متاحة','اختار حركة تعلمتها أو تكتيكًا متاحًا في الجولة.');combatBoutRoundMenu();return;}
+ const round=session.round,opponent=session.opponent;
+ const opponentStyle=combatOpponentStyleForRound(opponent,round,session.lastStyle);
+ const coachBonus=c.coach?c.coach.bonus:0;
+ const counterBonus=move.strongAgainst===opponentStyle?12:(move.style===opponent.weakTo?7:(move.style===opponentStyle?-4:0));
+ const agePenalty=state.age>38?(state.age-38)*.8:0;
+ const energyFactor=.62+c.energy/263;
+ const repeatedPenalty=session.lastStyle===move.style?3:0;
+ const playerScore=(c.technique*.19+c.power*.18+c.speed*.16+c.defense*.13+c.stamina*.10+state.stats.health*.10+(state.specialCareer.level||1)*.8+move.power*.12+coachBonus-c.injury*.16-agePenalty)*energyFactor+counterBonus-repeatedPenalty;
+ const opponentScore=opponent.rating+(Math.random()*12-6)+(round-1)*1.2;
+ const energyCost=(move.energyCost||Math.max(6,Math.round(move.power/8)))+(session.mode==='league'?2:0);
+ c.energy=clamp(c.energy-energyCost);
+ session.playerScore+=playerScore;session.opponentScore+=opponentScore;
+ session.roundHistory.push({round,actionId:move.id,actionTitle:move.title,style:move.style,opponentStyle,playerScore,opponentScore});
+ session.lastStyle=move.style;session.lastMoveId=move.id;
+ log('🥊','انتهت الجولة '+round,move.title+' · أسلوب المنافس '+opponentStyle+' · نقاط الجولة '+Math.round(playerScore)+' مقابل '+Math.round(opponentScore)+' · الطاقة المتبقية '+c.energy+'%.','');
+ if(session.roundHistory.length>=3){
+  const completed={...session,roundHistory:session.roundHistory.slice(0,3)};
+  const probability=clamp(50+((completed.playerScore-completed.opponentScore)/3)*1.65,12,88);
+  c.pendingBout=null;
+  resolveCombatBout(completed.mode,completed.opponent,move.id,probability,completed);
+  return;
+ }
+ session.round=session.roundHistory.length+1;
+ save();render();combatBoutRoundMenu();
+}
+function resolveCombatBout(mode,opponent,moveId,probabilityOverride=null,session=null){
+ if(!validState()||!state.specialCareer||state.specialCareer.id!=='fighter')return;
+ const c=ensureCombatCareer(),move=combatMoveCatalog.find(m=>m.id===moveId&&c.movesKnown.includes(m.id))||combatTacticCatalog.find(m=>m.id===moveId);
  if(!move){closeModal();info('🥋','الحركة غير متاحة','اختار واحدة من الحركات التي تعلمتها.');return;}
- if(mode==='league'&&state.bank<1500){closeModal();info('💳','الرصيد مش كفاية','رسوم الدوري تحتاج '+cash(1500)+'.');return;}
- closeModal();if(mode==='league')state.bank-=1500;
+ if(mode==='league'&&!session&&state.bank<1500){closeModal();info('💳','الرصيد مش كفاية','رسوم الدوري تحتاج '+cash(1500)+'.');return;}
+ closeModal();if(mode==='league'&&!session)state.bank-=1500;
  const coachBonus=c.coach?c.coach.bonus:0,counterBonus=move.strongAgainst===opponent.style?12:(move.style===opponent.weakTo?7:(move.style===opponent.style?-4:0));
  const agePenalty=state.age>38?(state.age-38)*.8:0;
  const playerScore=c.technique*.19+c.power*.18+c.speed*.16+c.defense*.13+c.stamina*.10+state.stats.health*.10+(state.specialCareer.level||1)*.8+move.power*.12+coachBonus-c.injury*.16-agePenalty;
  const opponentScore=opponent.rating+(Math.random()*12-6);
- const probability=clamp(50+(playerScore-opponentScore)*1.65+counterBonus,12,88);
+ const probability=probabilityOverride!==null&&probabilityOverride!==undefined&&Number.isFinite(Number(probabilityOverride))?clamp(Number(probabilityOverride),12,88):clamp(50+(playerScore-opponentScore)*1.65+counterBonus,12,88);
  const won=chance(probability/100);
- c.energy=clamp(c.energy-(mode==='league'?30:20));
+ if(!session)c.energy=clamp(c.energy-(mode==='league'?30:20));
  let earnings=0,title,detail,tone='bad';
  if(won){
   c.wins++;c.knockouts+=chance(.23)?1:0;
@@ -3674,7 +3792,6 @@ function resolveCombatBout(mode,opponent,moveId){
   tone='good';
  }else{
   c.losses++;
-  // Losing a street fight does not remove street credibility; the current official game explicitly changed that rule.
   const injuryGain=12+Math.floor(Math.random()*19)+(state.age>38?5:0);c.injury=clamp(c.injury+injuryGain);c.injuryYears=Math.max(c.injuryYears,c.injury>=65?2:1);
   state.stats.health=clamp(state.stats.health-(5+Math.floor(Math.random()*7)));state.stats.happiness=clamp(state.stats.happiness-3);
   if(mode==='league'){c.leaguePoints=Math.max(0,c.leaguePoints-4);title='خسارة في الدوري';detail='خسرت أمام '+opponent.name+'. لم ينقص رصيدك في الشوارع، لكن ترتيب الدوري تراجع قليلًا.';}
@@ -3682,14 +3799,16 @@ function resolveCombatBout(mode,opponent,moveId){
   state.reputation=clamp((state.reputation||50)-1);
  }
  c.rank=c.leaguePoints>=150?4:c.leaguePoints>=100?3:c.leaguePoints>=60?2:c.leaguePoints>=25?1:0;
- c.bouts.push({age:state.age,mode,opponent:opponent.name,opponentStyle:opponent.style,move:move.title,won,probability,earnings,injury:c.injury,rank:c.rank});
+ const roundSummary=session?session.roundHistory.map(item=>({round:item.round,move:item.actionTitle,style:item.style,opponentStyle:item.opponentStyle,playerScore:Math.round(item.playerScore),opponentScore:Math.round(item.opponentScore)})):[];
+ c.bouts.push({age:state.age,mode,opponent:opponent.name,opponentStyle:opponent.style,move:move.title,moves:roundSummary.map(item=>item.move),rounds:roundSummary,scoreline:session?{player:Math.round(session.playerScore),opponent:Math.round(session.opponentScore)}:null,won,probability,earnings,injury:c.injury,rank:c.rank});
  if(c.bouts.length>30)c.bouts.shift();
  const record=state.specialCareer.record||(state.specialCareer.record={attempts:0,wins:0,losses:0,projects:0,totalEarnings:0,bestLevel:1});
  record.attempts=(record.attempts||0)+1;record.wins=(record.wins||0)+(won?1:0);record.losses=(record.losses||0)+(won?0:1);record.totalEarnings=(record.totalEarnings||0)+earnings;record.bestLevel=Math.max(record.bestLevel||1,state.specialCareer.level||1);
  if(won){state.specialCareer.level=clamp((state.specialCareer.level||1)+1,1,100);stat('happiness',2);}else stat('happiness',-1);
+ if(session)detail+=' نتيجة الجولات: '+Math.round(session.playerScore)+' مقابل '+Math.round(session.opponentScore)+'.';
  log(won?'🏆':'🥊',title,detail+(won?' المكافأة '+cash(earnings)+'.':' الإصابة الحالية '+c.injury+'%.') ,tone);
  save();render();info(won?'🏆':'🩹',title,detail+' احتمال الفوز قبل النزال كان '+probability+'%.',[
-  choice('📊','تفاصيل النزال','حركتك: '+move.title+' · أسلوب المنافس: '+opponent.style+' · مدرب: '+(c.coach?c.coach.name:'لا يوجد')+'.',()=>{closeModal();combatCareerMenu();}),
+  choice('📊','تفاصيل النزال','حركتك الأخيرة: '+move.title+' · الجولات المكتملة '+(session?session.roundHistory.length:1)+' · أسلوب المنافس: '+opponent.style+' · مدرب: '+(c.coach?c.coach.name:'لا يوجد')+'.',()=>{closeModal();combatCareerMenu();}),
   choice('🥊','إدارة مسيرة القتال','',()=>{closeModal();combatCareerMenu();})
  ]);
 }
@@ -3710,7 +3829,7 @@ function treatCombatInjury(){
  log('🩹','جلسة تأهيل','قللت الإصابة إلى '+c.injury+'% وتحسنت صحتك مع العلاج.','good');save();render();combatCareerMenu();
 }
 function combatBoutHistory(){
- const c=ensureCombatCareer(),opts=c.bouts.slice().reverse().map(b=>choice(b.won?'🏆':'🥊',(b.mode==='league'?'الدوري':'الشوارع')+' · '+b.opponent+' · '+(b.won?'فوز':'خسارة'),'العمر '+b.age+' · الحركة '+b.move+' · الاحتمال المقدر '+b.probability+'% · إصابة بعد النزال '+b.injury+'%'+(b.earnings?' · المكافأة '+cash(b.earnings):''),()=>{closeModal();info(b.won?'🏆':'🥊',b.opponent,(b.won?'فزت':'خسرت')+' باستخدام '+b.move+'. الاحتمال المقدر قبل النزال '+b.probability+'%.');}));
+ const c=ensureCombatCareer(),opts=c.bouts.slice().reverse().map(b=>choice(b.won?'🏆':'🥊',(b.mode==='league'?'الدوري':'الشوارع')+' · '+b.opponent+' · '+(b.won?'فوز':'خسارة'),'العمر '+b.age+' · الحركة '+b.move+' · الجولات '+(Array.isArray(b.rounds)?b.rounds.length:1)+' · الاحتمال المقدر '+b.probability+'% · إصابة بعد النزال '+b.injury+'%'+(b.earnings?' · المكافأة '+cash(b.earnings):''),()=>{closeModal();info(b.won?'🏆':'🥊',b.opponent,(b.won?'فزت':'خسرت')+' باستخدام '+b.move+'. الاحتمال المقدر قبل النزال '+b.probability+'%.');}));
  if(!opts.length)opts.push(choice('🥊','لسه مفيش نزالات','ابدأ بنزال شوارع لبناء الخبرة وفتح الدوري.',closeModal));
  opts.push(choice('↩️','رجوع لمسيرة القتال','',combatCareerMenu));
  modal('📜','سجل النزالات','آخر 30 نزالًا محفوظة في الحياة الحالية.',opts);
@@ -3977,6 +4096,10 @@ function specialCareers(){
 }
 
 function startSpecialCareer(c){
+ if(state.combatCareer&&state.combatCareer.pendingBout){
+  const activeCombat=ensureCombatCareer();
+  if(activeCombat&&activeCombat.pendingBout){closeModal();info('🥊','النزال لسه مستمر','كمّل المواجهة الحالية قبل بدء مسار مهني آخر.');return;}
+ }
  const requiredPack=({actor:'actorPack',model:'modelPack',musician:'musicianPack',musicProducer:'musicProducerPack',athlete:'proAthletePack',fighter:'fighterPack',director:'movieDirectorPack',politician:'politicianPack',astronaut:'astronautPack',crimeboss:'mafiaPack',dealer:'dealerPack'})[c.id]||c.packId;
  if(requiredPack&&!perkOwned(requiredPack)){closeModal();showJobPackOffer(requiredPack,c);return;}
  closeModal();if(state.age<c.min){info('🔒','لسه بدري','المسار ده متاح من سن '+c.min+'.');return;}
