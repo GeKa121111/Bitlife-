@@ -26,6 +26,10 @@ const BUSINESS_PRODUCT_CATALOG = [
  {id:'care-products',title:'منتجات عناية',emoji:'🧴',category:'عناية',unitPrice:560,unitCost:230,description:'منتجات متكررة الشراء ومنافسة متوسطة.'},
  {id:'daily-essentials',title:'مستلزمات يومية',emoji:'🛍️',category:'تجزئة',unitPrice:650,unitCost:310,description:'مستلزمات أساسية بهوامش تحتاج متابعة.'}
 ];
+const BUSINESS_FACILITY_CATALOG = [
+ {id:'store',title:'متجر إضافي',emoji:'🏬',costRate:.08,minCost:12000,capacityBonus:.3,upkeepRate:.06,minUpkeep:900,description:'نقطة بيع إضافية توسّع الوصول للعملاء والطاقة البيعية.'},
+ {id:'factory',title:'مصنع صغير',emoji:'🏭',costRate:.16,minCost:22000,capacityBonus:.7,upkeepRate:.085,minUpkeep:1800,description:'منشأة إنتاج ترفع القدرة على تلبية الطلب، مع صيانة أعلى.'}
+];
 const JOB_PACK_PROMOS = {
  actorPack:{title:'Actor Job Pack',emoji:'🎭',cost:25000,description:'Are you the center of attention? Do you live for drama? Hire an agent, book an acting gig, and rise to fame with this job pack!',features:['Hire a professional agent!','Book auditions and acting gigs!','Film commercials and rise to fame!']},
  fighterPack:{title:'Ultimate Fighter Mode',emoji:'🥊',cost:45000,description:'Step into the cage and fight your way to the top!',features:['Become a WORLD CHAMPION!','Brawl in STREET FIGHTS!','LEARN and level up 200+ moves!','FIGHT in an epic MMA mini game!','Hire a PROFESSIONAL coach!','ENGAGE with other fighters!']},
@@ -583,6 +587,23 @@ function normalizeCoreState(data){
     years:Math.max(0,Math.floor(Number(employee.years)||0))
    };
   }).filter(Boolean);
+  if(!Array.isArray(entity.facilities))entity.facilities=[];
+  entity.facilities=entity.facilities.filter(facility=>facility&&typeof facility==='object'&&!Array.isArray(facility)).slice(0,8).map((facility,index)=>{
+   const catalog=BUSINESS_FACILITY_CATALOG.find(item=>item.id===facility.type);
+   if(!catalog)return null;
+   const capacityBonus=Number(facility.capacityBonus),annualUpkeep=Number(facility.annualUpkeep),investment=Number(facility.investment);
+   return {
+    id:String(facility.id||('legacy-facility-'+catalog.id+'-'+index)),
+    type:catalog.id,
+    title:typeof facility.title==='string'&&facility.title.trim()?facility.title.slice(0,70):catalog.title,
+    capacityBonus:Math.max(0,Math.min(1.5,Number.isFinite(capacityBonus)?capacityBonus:catalog.capacityBonus)),
+    annualUpkeep:Math.max(0,Math.min(1000000000,Number.isFinite(annualUpkeep)?Math.round(annualUpkeep):catalog.minUpkeep)),
+    investment:Math.max(0,Math.min(1000000000,Number.isFinite(investment)?Math.round(investment):0)),
+    builtAtAge:Math.max(0,Math.min(120,Math.floor(Number(facility.builtAtAge)||0)))
+   };
+  }).filter(Boolean);
+  const pendingFacilityCosts=Number(entity.pendingFacilityCosts);
+  entity.pendingFacilityCosts=Math.max(0,Math.min(8000000000,Number.isFinite(pendingFacilityCosts)?Math.round(pendingFacilityCosts):0));
   if(!Array.isArray(entity.products))entity.products=[];
   entity.products=entity.products.filter(product=>product&&typeof product==='object'&&!Array.isArray(product)).slice(-20).map((product,index)=>{
    const catalog=BUSINESS_PRODUCT_CATALOG.find(item=>item.id===product.catalogId);
@@ -1021,7 +1042,11 @@ function recordBusinessFinancialReport(entity,report){
  const productProfit=Number.isFinite(Number(report.productProfit))?Math.round(Number(report.productProfit)):productRevenue-productCosts;
  const productUnits=Math.max(0,Math.floor(Number(report.productUnits)||0));
  const productCount=Math.max(0,Math.min(BUSINESS_PRODUCT_CATALOG.length,Math.floor(Number(report.productCount)||0)));
- history.push({year:Math.max(0,Math.floor(Number(report.year)||0)),openingValue,revenue,costs,profit,margin,growthRate,closingValue,level:Math.max(1,Math.floor(Number(report.level)||1)),supplier:typeof report.supplier==='string'?report.supplier:'',supplierQuality,supplierCostMultiplier,payroll,staffCount,productRevenue,productCosts,productProfit,productUnits,productCount});
+ const facilityUpkeep=Math.max(0,Math.round(Number(report.facilityUpkeep)||0));
+ const facilityInvestment=Math.max(0,Math.min(8000000000,Math.round(Number(report.facilityInvestment)||0)));
+ const facilityCount=Math.max(0,Math.min(8,Math.floor(Number(report.facilityCount)||0)));
+ const capacityMultiplier=Math.max(1,Math.min(4,Number.isFinite(Number(report.capacityMultiplier))?Number(report.capacityMultiplier):1));
+ history.push({year:Math.max(0,Math.floor(Number(report.year)||0)),openingValue,revenue,costs,profit,margin,growthRate,closingValue,level:Math.max(1,Math.floor(Number(report.level)||1)),supplier:typeof report.supplier==='string'?report.supplier:'',supplierQuality,supplierCostMultiplier,payroll,staffCount,productRevenue,productCosts,productProfit,productUnits,productCount,facilityUpkeep,facilityInvestment,facilityCount,capacityMultiplier});
  entity.financialHistory=history.slice(-10);
 }
 
@@ -1041,7 +1066,10 @@ function businessProductMarketSnapshot(business,catalog){
  };
 }
 function simulateBusinessProducts(business,openingValue,supplier,staffRevenueBonus){
- const result={revenue:0,costs:0,upfrontCosts:Math.max(0,Math.round(Number(business.pendingProductCosts)||0)),units:0,count:0};
+ const facilities=Array.isArray(business.facilities)?business.facilities:[];
+ const facilityCapacityBonus=facilities.reduce((sum,facility)=>sum+Math.max(0,Math.min(1.5,Number(facility.capacityBonus)||0)),0);
+ const capacityMultiplier=Math.max(1,Math.min(4,1+facilityCapacityBonus));
+ const result={revenue:0,costs:0,upfrontCosts:Math.max(0,Math.round(Number(business.pendingProductCosts)||0)),units:0,count:0,capacityMultiplier};
  business.pendingProductCosts=0;
  const products=Array.isArray(business.products)?business.products:[];
  products.filter(product=>product&&product.active!==false).forEach(product=>{
@@ -1051,7 +1079,7 @@ function simulateBusinessProducts(business,openingValue,supplier,staffRevenueBon
   const price=Math.max(50,Math.round(Number(product.unitPrice)||catalog.unitPrice));
   const supplierFactor=supplier?Math.max(.7,Math.min(1.3,Number(supplier.costMultiplier)||1)):1;
   const unitCost=Math.max(1,Math.round((Number(product.unitCost)||catalog.unitCost)*supplierFactor));
-  const capacity=Math.max(1,Math.floor(Math.max(1000,openingValue)/Math.max(1500,unitCost*10)));
+  const capacity=Math.max(1,Math.floor(Math.max(1000,openingValue)/Math.max(1500,unitCost*10)*capacityMultiplier));
   const priceRatio=price/Math.max(1,catalog.unitPrice);
   const priceFactor=Math.max(.55,Math.min(1.2,1.12-Math.max(0,priceRatio-1)*.45+Math.max(0,1-priceRatio)*.18));
   const marketFactor=(demand/100)*Math.max(.25,1.02-competition/150);
@@ -1107,9 +1135,14 @@ function simulateBusinessEntityYear(business,kind){
  const revenue=Math.round(baseRevenue*supplierRevenueFactor*(1+Math.min(.25,staffRevenueBonus)))+productResult.revenue;
  const supplierCosts=supplier?Math.round(baseCosts*supplier.costMultiplier):baseCosts;
  const operatingCosts=Math.round(supplierCosts*(1-Math.min(.25,staffCostReduction)));
- const costs=operatingCosts+staffPayroll+productResult.costs+productResult.upfrontCosts;
+ const facilities=Array.isArray(business.facilities)?business.facilities:[];
+ const facilityUpkeep=facilities.reduce((sum,facility)=>sum+Math.max(0,Math.round(Number(facility.annualUpkeep)||0)),0);
+ const facilityInvestmentCosts=Math.max(0,Math.min(8000000000,Math.round(Number(business.pendingFacilityCosts)||0)));
+ business.pendingFacilityCosts=0;
+ // Facility construction is capital expenditure: it was paid at purchase time, so report it separately from annual operating profit.
+ const costs=operatingCosts+staffPayroll+facilityUpkeep+productResult.costs+productResult.upfrontCosts;
  const profit=revenue-costs;
- // Research and launch fees were already paid; include them in the report once without charging cash twice.
+ // Product research and launch fees were already paid; include them in the report once without charging cash twice.
  state.bank+=profit+productResult.upfrontCosts;
  business.value=Math.max(1000,Math.round(openingValue*(profit>=0?1.04:.97)));
  staff.forEach(employee=>{
@@ -1117,11 +1150,12 @@ function simulateBusinessEntityYear(business,kind){
   employee.morale=clamp((Number.isFinite(Number(employee.morale))?Number(employee.morale):65)+(profit>=0?2:-4));
   if(employee.morale>=70&&chance(.25))employee.skill=clamp((Number(employee.skill)||55)+1);
  });
- recordBusinessFinancialReport(business,{year:state.age,openingValue,revenue,costs,profit,closingValue:business.value,level,supplier:supplier?supplier.title:'',supplierQuality:supplier?supplier.quality:0,supplierCostMultiplier:supplier?supplier.costMultiplier:0,payroll:staffPayroll,staffCount:staff.length,productRevenue:productResult.revenue,productCosts:productResult.costs+productResult.upfrontCosts,productProfit:productResult.productProfit,productUnits:productResult.units,productCount:productResult.count});
+ recordBusinessFinancialReport(business,{year:state.age,openingValue,revenue,costs,profit,closingValue:business.value,level,supplier:supplier?supplier.title:'',supplierQuality:supplier?supplier.quality:0,supplierCostMultiplier:supplier?supplier.costMultiplier:0,payroll:staffPayroll,staffCount:staff.length,productRevenue:productResult.revenue,productCosts:productResult.costs+productResult.upfrontCosts,productProfit:productResult.productProfit,productUnits:productResult.units,productCount:productResult.count,facilityUpkeep,facilityInvestment:facilityInvestmentCosts,facilityCount:facilities.length,capacityMultiplier:productResult.capacityMultiplier});
  const supplierLabel=supplier?' · المورد '+supplier.title:'';
  const staffLabel=staff.length?' · الرواتب '+cash(staffPayroll)+' لعدد '+staff.length+' موظف':'';
  const productLabel=productResult.count?' · المنتجات '+productResult.count+' · مبيعاتها '+cash(productResult.revenue)+' · الوحدات المباعة '+fmt(productResult.units):productResult.upfrontCosts?' · مصروفات تطوير المنتجات '+cash(productResult.upfrontCosts):'';
- log(portfolio?'🏢':'🏪',portfolio?'التقرير السنوي: '+(business.title||'شركة من المحفظة'):'التقرير السنوي للمشروع','الإيرادات '+cash(revenue)+' · المصروفات '+cash(costs)+' · '+(profit>=0?'صافي الربح ':'صافي الخسارة ')+cash(Math.abs(profit))+' · مستوى الإدارة '+level+supplierLabel+staffLabel+productLabel+'.','special');
+ const facilityLabel=facilities.length?' · المنشآت '+facilities.length+' · صيانتها '+cash(facilityUpkeep)+' سنويًا · طاقة المنتجات ×'+productResult.capacityMultiplier.toFixed(2):facilityInvestmentCosts?' · استثمار منشآت '+cash(facilityInvestmentCosts):'';
+ log(portfolio?'🏢':'🏪',portfolio?'التقرير السنوي: '+(business.title||'شركة من المحفظة'):'التقرير السنوي للمشروع','الإيرادات '+cash(revenue)+' · المصروفات '+cash(costs)+' · '+(profit>=0?'صافي الربح ':'صافي الخسارة ')+cash(Math.abs(profit))+' · مستوى الإدارة '+level+supplierLabel+staffLabel+productLabel+facilityLabel+'.','special');
  if(supplier){
   business.supplier.yearsLeft=Math.max(0,(Number(business.supplier.yearsLeft)||3)-1);
   if(business.supplier.yearsLeft===0){business.supplier=null;log('📦','انتهاء عقد المورد · '+(business.title||'النشاط'),'انتهى عقد المورد. راجع عروض السوق قبل السنة المالية القادمة.','bad');}
@@ -1770,7 +1804,7 @@ function businessReportsMenu(entity,title,back){
  if(!reports.length){info('📊','لا توجد تقارير بعد','التقرير المالي الأول هيظهر بعد مرور سنة مالية كاملة.');return;}
  const opts=reports.map(report=>choice('📅','السنة '+report.year,'الإيرادات '+cash(report.revenue)+' · المصروفات '+cash(report.costs)+' · '+(report.profit>=0?'صافي ربح ':'صافي خسارة ')+cash(Math.abs(report.profit)),()=>{
   closeModal();
-  const detail='الإيرادات: '+cash(report.revenue)+'\nالمصروفات التشغيلية: '+cash(Math.max(0,report.costs-(report.payroll||0)))+'\nرواتب الموظفين: '+cash(report.payroll||0)+' ('+(report.staffCount||0)+' موظف)\nإجمالي المصروفات: '+cash(report.costs)+'\nصافي النتيجة: '+(report.profit>=0?'ربح ':'خسارة ')+cash(Math.abs(report.profit))+'\nهامش الربح: '+report.margin+'%\nتغير قيمة النشاط: '+(report.growthRate>=0?'+':'')+report.growthRate+'%\nالقيمة الختامية: '+cash(report.closingValue)+(report.supplier?'\nالمورد: '+report.supplier+(report.supplierQuality?'\nجودة المورد: '+report.supplierQuality+'%':'')+(report.supplierCostMultiplier?'\nمعامل تكلفة المورد: '+Math.round(report.supplierCostMultiplier*100)+'%':''):'')+(report.productCount?'\nمبيعات المنتجات: '+cash(report.productRevenue||0)+' · تكاليفها: '+cash(report.productCosts||0)+' · صافيها: '+cash(report.productProfit||0)+' · الوحدات المباعة: '+fmt(report.productUnits||0):'');
+  const detail='الإيرادات: '+cash(report.revenue)+'\nالمصروفات التشغيلية: '+cash(Math.max(0,report.costs-(report.payroll||0)-(report.facilityUpkeep||0)))+'\nرواتب الموظفين: '+cash(report.payroll||0)+' ('+(report.staffCount||0)+' موظف)\nصيانة الفروع والمصانع: '+cash(report.facilityUpkeep||0)+' ('+(report.facilityCount||0)+' منشأة)'+(report.facilityInvestment?'\nاستثمارات إنشاء منشآت: '+cash(report.facilityInvestment):'')+'\nإجمالي المصروفات: '+cash(report.costs)+'\nصافي النتيجة: '+(report.profit>=0?'ربح ':'خسارة ')+cash(Math.abs(report.profit))+'\nهامش الربح: '+report.margin+'%\nتغير قيمة النشاط: '+(report.growthRate>=0?'+':'')+report.growthRate+'%\nالقيمة الختامية: '+cash(report.closingValue)+(report.supplier?'\nالمورد: '+report.supplier+(report.supplierQuality?'\nجودة المورد: '+report.supplierQuality+'%':'')+(report.supplierCostMultiplier?'\nمعامل تكلفة المورد: '+Math.round(report.supplierCostMultiplier*100)+'%':''):'')+(report.productCount?'\nمبيعات المنتجات: '+cash(report.productRevenue||0)+' · تكاليفها: '+cash(report.productCosts||0)+' · صافيها: '+cash(report.productProfit||0)+' · الوحدات المباعة: '+fmt(report.productUnits||0):'');
   info('📊','التقرير المالي · '+title,detail,[choice('↩️','رجوع للتقارير','',()=>businessReportsMenu(entity,title,back))]);
  }));
  opts.push(choice('↩️','رجوع','',back));
@@ -1904,6 +1938,49 @@ function fireBusinessStaff(id){
  save();render();businessStaffMenu();
 }
 
+function businessFacilitiesMenu(){
+ const business=currentManagedBusiness();
+ if(!business){info('🏪','لا يوجد نشاط','اختار مشروعًا أو شركة من المحفظة أولًا.');return;}
+ if(!Array.isArray(business.facilities))business.facilities=[];
+ const facilities=business.facilities;
+ const capacityBonus=facilities.reduce((sum,facility)=>sum+Math.max(0,Math.min(1.5,Number(facility.capacityBonus)||0)),0);
+ const capacityMultiplier=Math.max(1,Math.min(4,1+capacityBonus));
+ const annualUpkeep=facilities.reduce((sum,facility)=>sum+Math.max(0,Number(facility.annualUpkeep)||0),0);
+ const opts=facilities.map((facility,index)=>choice(facility.type==='factory'?'🏭':'🏬',facility.title||'منشأة '+(index+1),'طاقة إضافية '+Math.round((Number(facility.capacityBonus)||0)*100)+'% · صيانة سنوية '+cash(facility.annualUpkeep||0)+' · استثمار '+cash(facility.investment||0)+' · سنة الإنشاء '+(facility.builtAtAge??state.age),()=>info('🏗️',facility.title||'منشأة تجارية','المنشأة ترفع طاقة بيع المنتجات وتظل تكلف صيانة سنوية. لا يمكن بيعها في الإصدار الحالي.')));
+ if(facilities.length<8)opts.push(choice('➕','إضافة فرع أو مصنع','اختر متجرًا لزيادة الوصول أو مصنعًا لرفع الطاقة الإنتاجية.',businessFacilityCatalogMenu));
+ else opts.push(choice('🏗️','اكتمل حد المنشآت','يمكن إدارة ثماني منشآت كحد أقصى لكل نشاط.',()=>info('🏗️','لا توجد سعة إضافية','أغلق أو طوّر المنشآت في إصدار لاحق قبل إضافة منشأة جديدة.')));
+ opts.push(choice('↩️','رجوع لإدارة المشروع','',businessMenu));
+ modal('🏗️','الفروع والمصانع','المنشآت الحالية '+facilities.length+'/8 · الطاقة الإنتاجية ×'+capacityMultiplier.toFixed(2)+' · الصيانة السنوية '+cash(annualUpkeep)+'. رسوم الإنشاء تُسجل مرة واحدة في التقرير المالي التالي.',opts);
+}
+function businessFacilityCatalogMenu(){
+ const business=currentManagedBusiness();
+ if(!business)return;
+ const opts=BUSINESS_FACILITY_CATALOG.map(facility=>{
+  const cost=Math.min(1000000000,Math.max(facility.minCost,Math.round(Math.max(0,Number(business.value)||0)*facility.costRate)));
+  const upkeep=Math.max(facility.minUpkeep,Math.round(cost*facility.upkeepRate));
+  return choice(facility.emoji,facility.title,facility.description+' · استثمار '+cash(cost)+' · صيانة سنوية '+cash(upkeep)+' · زيادة الطاقة '+Math.round(facility.capacityBonus*100)+'%.',()=>buyBusinessFacility(facility.id),cash(cost));
+ });
+ opts.push(choice('↩️','رجوع للفروع والمصانع','',businessFacilitiesMenu));
+ modal('🏗️','اختيار منشأة','الاستثمار يُخصم عند الإنشاء، والصيانة تُحتسب في كل سنة مالية لاحقة.',opts);
+}
+function buyBusinessFacility(type){
+ closeModal();
+ const business=currentManagedBusiness(),facility=BUSINESS_FACILITY_CATALOG.find(item=>item.id===type);
+ if(!business||!facility)return;
+ if(!Array.isArray(business.facilities))business.facilities=[];
+ if(business.facilities.length>=8){info('🏗️','اكتمل حد المنشآت','يمكن امتلاك ثماني منشآت كحد أقصى لكل نشاط.');return;}
+ const cost=Math.min(1000000000,Math.max(facility.minCost,Math.round(Math.max(0,Number(business.value)||0)*facility.costRate)));
+ const upkeep=Math.max(facility.minUpkeep,Math.round(cost*facility.upkeepRate));
+ if(state.bank<cost){info('💳','الرصيد غير كافٍ','إنشاء '+facility.title+' يحتاج '+cash(cost)+'.');return;}
+ const sameTypeCount=business.facilities.filter(item=>item&&item.type===facility.id).length+1;
+ const record={id:'facility-'+String(state.lifeId||state.age)+'-'+String(business.assetId||business.id||business.title||'business')+'-'+String(state.age)+'-'+String(business.facilities.length+1),type:facility.id,title:facility.title+' '+sameTypeCount,capacityBonus:facility.capacityBonus,annualUpkeep:upkeep,investment:cost,builtAtAge:state.age};
+ state.bank-=cost;
+ business.pendingFacilityCosts=Math.min(8000000000,Math.max(0,Number(business.pendingFacilityCosts)||0)+cost);
+ business.facilities.push(record);
+ log(facility.emoji,'افتتاح '+record.title,'استثمرت '+cash(cost)+' · الطاقة الإنتاجية زادت '+Math.round(facility.capacityBonus*100)+'% · الصيانة السنوية '+cash(upkeep)+'.','good');
+ save();render();businessFacilitiesMenu();
+}
+
 function businessProductsMenu(){
  const business=currentManagedBusiness();
  if(!business){info('🏪','لا يوجد مشروع','امتلك مشروعًا أولًا حتى تطلق منتجات.');return;}
@@ -2032,6 +2109,9 @@ function businessMenu(){
  const staff=Array.isArray(b.staff)?b.staff:[];
  const staffPayroll=staff.reduce((sum,employee)=>sum+Math.max(0,Number(employee.salary)||0),0);
  const activeProducts=(Array.isArray(b.products)?b.products:[]).filter(product=>product&&product.active!==false).length;
+ const facilities=Array.isArray(b.facilities)?b.facilities:[];
+ const facilityCapacityBonus=facilities.reduce((sum,facility)=>sum+Math.max(0,Math.min(1.5,Number(facility.capacityBonus)||0)),0);
+ const facilityStatus=' · المنشآت '+facilities.length+'/8 · طاقة إضافية '+Math.round(facilityCapacityBonus*100)+'%';
  const supplierStatus=supplier?' · المورد '+supplier.title+' ('+(Number(b.supplier.yearsLeft)||0)+' سنوات متبقية)':' · لم يتم التعاقد مع مورد';
  const staffStatus=' · فريق العمل '+staff.length+'/5 · الرواتب السنوية '+cash(staffPayroll);
  const productStatus=' · المنتجات النشطة '+activeProducts+'/'+BUSINESS_PRODUCT_CATALOG.length;
@@ -2042,14 +2122,14 @@ function businessMenu(){
   choice('🧪','إدارة المنتجات','أطلق منتجات جديدة وابحث عن الطلب والمنافسة قبل الاستثمار.',businessProductsMenu),
   choice('📣','حملة تسويق','حملة تكلف 2,500 '+state.place.unit+' قد ترفع المبيعات والسمعة.',()=>businessAction('marketing'),'2,500 '+state.place.unit),
   choice('👔','تعيين مدير','تحسين الإدارة مقابل 5,000 '+state.place.unit+'؛ يزيد الكفاءة السنوية.',()=>businessAction('manager'),'5,000 '+state.place.unit),
-  choice('🏗️','توسيع النشاط','استثمار 10,000 '+state.place.unit+' لزيادة قيمة النشاط.',()=>businessAction('expand'),'10,000 '+state.place.unit),
+  choice('🏗️','الفروع والمصانع','افتح متجرًا أو مصنعًا لزيادة الطاقة الإنتاجية مقابل استثمار وصيانة سنوية.',businessFacilitiesMenu),
   ...(perkOwned('businessPack')?[choice('🏢','محفظة الشركات','شراء شركات إضافية وإدارة كل نشاط بصورة مستقلة.',companyPortfolioMenu)]:[]),
   choice('🧾','تقليل النفقات','مراجعة العمليات لتقليل المصاريف السنوية.',()=>businessAction('costs')),
   isPortfolioCompany&&portfolioIndex>=0
    ?choice('↩️','رجوع لملف الشركة','العودة إلى ملخص الشركة في المحفظة.',()=>companyDetailMenu(portfolioIndex))
    :choice('↩️','رجوع للأصول','',()=>{closeModal();assets();})
  ];
- modal('🏪','إدارة '+(b.title||'مشروعك'),'قيمة النشاط '+cash(b.value)+' · مستوى الإدارة '+level+' · الشهرة '+(state.fame||0)+'%'+supplierStatus+staffStatus+productStatus+'. اختيارات الإدارة تؤثر على دخل السنوات القادمة.',opts);
+ modal('🏪','إدارة '+(b.title||'مشروعك'),'قيمة النشاط '+cash(b.value)+' · مستوى الإدارة '+level+' · الشهرة '+(state.fame||0)+'%'+supplierStatus+staffStatus+productStatus+facilityStatus+'. اختيارات الإدارة تؤثر على دخل السنوات القادمة.',opts);
 }
 
 function businessAction(action){
