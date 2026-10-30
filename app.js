@@ -1552,7 +1552,7 @@ function businessReportsMenu(entity,title,back){
  if(!reports.length){info('📊','لا توجد تقارير بعد','التقرير المالي الأول هيظهر بعد مرور سنة مالية كاملة.');return;}
  const opts=reports.map(report=>choice('📅','السنة '+report.year,'الإيرادات '+cash(report.revenue)+' · المصروفات '+cash(report.costs)+' · '+(report.profit>=0?'صافي ربح ':'صافي خسارة ')+cash(Math.abs(report.profit)),()=>{
   closeModal();
-  const detail='الإيرادات: '+cash(report.revenue)+'\\nالمصروفات التشغيلية: '+cash(report.costs)+'\\nصافي النتيجة: '+(report.profit>=0?'ربح ':'خسارة ')+cash(Math.abs(report.profit))+'\\nهامش الربح: '+report.margin+'%\\nتغير قيمة النشاط: '+(report.growthRate>=0?'+':'')+report.growthRate+'%\\nالقيمة الختامية: '+cash(report.closingValue)+(report.supplier?'\\nالمورد: '+report.supplier:'');
+  const detail='الإيرادات: '+cash(report.revenue)+'\nالمصروفات التشغيلية: '+cash(report.costs)+'\nصافي النتيجة: '+(report.profit>=0?'ربح ':'خسارة ')+cash(Math.abs(report.profit))+'\nهامش الربح: '+report.margin+'%\nتغير قيمة النشاط: '+(report.growthRate>=0?'+':'')+report.growthRate+'%\nالقيمة الختامية: '+cash(report.closingValue)+(report.supplier?'\nالمورد: '+report.supplier:'');
   info('📊','التقرير المالي · '+title,detail,[choice('↩️','رجوع للتقارير','',()=>businessReportsMenu(entity,title,back))]);
  }));
  opts.push(choice('↩️','رجوع','',back));
