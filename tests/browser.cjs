@@ -1551,9 +1551,63 @@ async function run() {
     assert.equal(completedCombat.bout.rounds.length, 3, 'the fight record should preserve all three rounds');
     assert.equal(completedCombat.bout.moves.length, 3, 'the fight record should preserve the selected action in every round');
 
+    await page.locator('.choice').filter({ hasText: 'إدارة مسيرة القتال' }).click();
+    await page.locator('.choice').filter({ hasText: 'مجتمع المقاتلين' }).click();
+    await page.locator('.choice').filter({ hasText: 'آدم منصور' }).click();
+    const communityBeforeChat = await page.evaluate(() => {
+      const saved = JSON.parse(localStorage.getItem('hekayat_hayah_save_v1') || 'null');
+      const fighter = saved.combatCareer.community.find(item => item.id === 'adam-mansour');
+      return { age: saved.age, respect: fighter.respect, tension: fighter.tension };
+    });
+    await page.locator('.choice').filter({ hasText: 'حديث ودي' }).click();
+    const communityAfterChat = await page.evaluate(() => {
+      const saved = JSON.parse(localStorage.getItem('hekayat_hayah_save_v1') || 'null');
+      const fighter = saved.combatCareer.community.find(item => item.id === 'adam-mansour');
+      return { age: saved.age, respect: fighter.respect, tension: fighter.tension, lastInteractionAge: fighter.lastInteractionAge };
+    });
+    assert.equal(communityAfterChat.respect, Math.min(100, communityBeforeChat.respect + 12));
+    assert.equal(communityAfterChat.tension, Math.max(0, communityBeforeChat.tension - 5));
+    assert.equal(communityAfterChat.lastInteractionAge, communityAfterChat.age,
+      'a social interaction should be recorded against the current life year');
+
+    // Normalize test health and energy after the prior random fight so this E2E
+    // reliably exercises the named-rival challenge rather than injury gating.
+    await page.evaluate(() => {
+      const key = 'hekayat_hayah_save_v1';
+      const saved = JSON.parse(localStorage.getItem(key) || 'null');
+      saved.combatCareer.injury = 0;
+      saved.combatCareer.injuryYears = 0;
+      saved.combatCareer.energy = 100;
+      localStorage.setItem(key, JSON.stringify(saved));
+    });
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await page.locator('[data-panel="career"]').click();
+    await page.locator('.choice').filter({ hasText: 'المهن الخاصة والشهرة' }).click();
+    await page.locator('.choice').filter({ hasText: 'إدارة مسيرة القتال' }).click();
+    await page.locator('.choice').filter({ hasText: 'مجتمع المقاتلين' }).click();
+    await page.locator('.choice').filter({ hasText: 'آدم منصور' }).click();
+    await page.locator('.choice').filter({ hasText: 'تحدي على الحلبة' }).click();
+    await page.locator('.choice').filter({ hasText: 'لكمة خاطفة' }).click();
+    await page.waitForFunction(() => document.querySelector('#modalRoot')?.textContent.includes('الجولة 2 من 3'));
+    await page.locator('.choice').filter({ hasText: 'لكمة خاطفة' }).click();
+    await page.waitForFunction(() => document.querySelector('#modalRoot')?.textContent.includes('الجولة 3 من 3'));
+    await page.locator('.choice').filter({ hasText: 'لكمة خاطفة' }).click();
+    const communityBout = await page.evaluate(() => {
+      const saved = JSON.parse(localStorage.getItem('hekayat_hayah_save_v1') || 'null');
+      const career = saved.combatCareer;
+      const fighter = career.community.find(item => item.id === 'adam-mansour');
+      return { pending: career.pendingBout, bout: career.bouts[career.bouts.length - 1],
+        respect: fighter.respect, tension: fighter.tension };
+    });
+    assert.equal(communityBout.pending, null, 'a community challenge should complete and clear its pending bout');
+    assert.equal(communityBout.bout.communityFighterId, 'adam-mansour',
+      'the fight history should retain the exact community rival');
+    assert.ok(communityBout.respect > communityAfterChat.respect,
+      'a completed rivalry match should update community respect even after a loss');
+
     assert.deepEqual(pageErrors, [], 'the browser run should complete without uncaught JavaScript errors');
 
-    console.log('PASS: mobile layout, legacy v1 load, persistence, rewind, JSON import, inheritance, insolvent estate, career promotion migration, annual supplier market, persistent competitor market, facilities and production capacity, researched and instinct product launches, product pricing, annual product sales, business reports, independent portfolio-company operations, and business credit accrual, repayment, persistence, sale settlement, unpaid-interest capitalization, underwater-sale protection, industry tax assessment, tax arrears, loss exemption, treasury-only tax payment, and annual tax reconciliation.');
+    console.log('PASS: mobile layout, legacy v1 load, persistence, rewind, JSON import, inheritance, insolvent estate, career promotion migration, annual supplier market, persistent competitor market, facilities and production capacity, researched and instinct product launches, product pricing, annual product sales, business reports, independent portfolio-company operations, and business credit accrual, repayment, persistence, sale settlement, unpaid-interest capitalization, underwater-sale protection, industry tax assessment, tax arrears, loss exemption, treasury-only tax payment, and annual tax reconciliation, fighter community relationships, friendly interactions, and named rival bouts.');
     await context.close();
   } finally {
     if (browser) await browser.close();
