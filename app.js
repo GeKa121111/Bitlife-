@@ -1147,7 +1147,7 @@ function renderHeader(){
 }
 function statBoostMenu(key){
  const item=STAT_BOOST_CATALOG[key];
- if(!state||!item||uiSettings.boosts===false)return;
+ if(!state||state.status!=='حي'||!item||uiSettings.boosts===false)return;
  const current=clamp(Number(state.stats[key])||0);
  const alreadyUsed=state.boostUsedAge!==null&&state.boostUsedAge!==undefined&&Number(state.boostUsedAge)===Number(state.age);
  if(current>35){info('✨','مفيش احتياج للتحسين','مستوى '+item.label+' بقى '+current+'%؛ الفرصة بتظهر وقت ما الإحصاء ينخفض.');return;}
@@ -1160,7 +1160,7 @@ function statBoostMenu(key){
 }
 function applyStatBoost(key,tier){
  const item=STAT_BOOST_CATALOG[key],offer=item&&item[tier];
- if(!state||!item||!offer){closeModal();return;}
+ if(!state||state.status!=='حي'||!item||!offer){closeModal();return;}
  if(uiSettings.boosts===false){closeModal();return;}
  const alreadyUsed=state.boostUsedAge!==null&&state.boostUsedAge!==undefined&&Number(state.boostUsedAge)===Number(state.age);
  if(alreadyUsed){closeModal();info('⏳','فرصة السنة اتستخدمت','تقدر تستفيد من فرصة تحسين جديدة بعد التقدم لسنة تانية.');return;}
@@ -1183,7 +1183,7 @@ function renderStats(){
   const color=r[0]==='fame'?'#FDD835':v>=31?'#43A047':v>=13?'#FB8C00':'#E53935';
   const warn=v<=12&&r[0]!=='fame'?' <span class="stat-warning" aria-label="تحذير">⚠️</span>':'';
   const boostUsed=state.boostUsedAge!==null&&state.boostUsedAge!==undefined&&Number(state.boostUsedAge)===Number(state.age);
-  const boostButton=uiSettings.boosts!==false&&v<=35&&!boostUsed?'<button class="statboost-btn" type="button" data-stat-boost="'+r[0]+'" aria-label="فرصة تحسين '+r[2]+'" title="فرصة تحسين '+r[2]+'">+</button>':'';
+  const boostButton=state.status==='حي'&&uiSettings.boosts!==false&&v<=35&&!boostUsed?'<button class="statboost-btn" type="button" data-stat-boost="'+r[0]+'" aria-label="فرصة تحسين '+r[2]+'" title="فرصة تحسين '+r[2]+'">+</button>':'';
   return '<div class="statrow '+(r[0]==='fame'?'fame-row':'')+'"><div class="stathead"><span class="statlabel">'+r[2]+' '+r[1]+warn+'</span>'+boostButton+'</div><div class="statbar"><div class="track"><div class="fill" style="width:'+v+'%;background:'+color+'"></div><span class="statvalue">'+v+'%</span></div></div></div>';
  }).join('');
 }
