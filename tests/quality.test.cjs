@@ -82,6 +82,22 @@ test('كتالوج الوظائف يعرض المسارات المقفولة و�
   assert.match(css, /\.locked-choice/);
 });
 
+test('المسار المهني يدعم درجات متعددة ويهيئ الحفظ القديم دون تغيير الإصدار', () => {
+  assert.match(app, /function jobRankLabel\(level\)/);
+  assert.match(app, /function ensureJobProgress\(job,currentAge\)/);
+  assert.match(app, /function jobPromotionRequirements\(job\)/);
+  assert.match(app, /function jobPromotionChance\(job,manual\)/);
+  assert.match(app, /function grantJobPromotion\(source\)/);
+  assert.match(app, /function requestJobPromotion\(\)/);
+  assert.match(app, /ensureJobProgress\(data\.job,data\.age\)/);
+  assert.match(app, /job\.promotions\.push/);
+  assert.match(app, /roleStartAge/);
+  assert.match(app, /choice\('🏅','طلب ترقية'/);
+  assert.match(app, /state\.job=\{id:job\.id,title:job\.title,baseTitle:job\.title[\s\S]*?promotions:\[\]\}/);
+  assert.match(app, /promotionChance>0&&chance\(promotionChance\)\)grantJobPromotion\('annual'\)/);
+  assert.match(app, /return \{version:1,lifeId:/);
+});
+
 test('الرسائل المالية تستخدم عملة بلد الشخصية بدل افتراض الجنيه المصري', () => {
   const relationship = functionSource('relationshipAction', 'addFriend');
   const activity = functionSource('activity', 'importSave');
