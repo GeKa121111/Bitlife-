@@ -1580,6 +1580,7 @@ function assets(){
   choice('🎒','ممتلكاتي','إدارة الممتلكات والأصول التي تملكها بالفعل.',manageAssets),
   choice('🐾','الحيوانات الأليفة','عرض الحيوانات الأليفة ورعايتها.',petsMenu),
   ...(state.business?[choice('🏪','إدارة مشروعي','قيمة المشروع '+cash(state.business.value)+' · المستوى '+(state.business.level||1)+'.',openPrimaryBusinessMenu)]:[]),
+  ...((state.companies||[]).length?[section('الشركات المملوكة'),...(state.companies||[]).map((company,i)=>choice(company.emoji||'🏢',company.title,'القطاع '+company.sector+' · القيمة '+cash(company.value)+' · الفريق '+(Array.isArray(company.staff)?company.staff.length:0)+' · المنتجات '+(Array.isArray(company.products)?company.products.filter(product=>product&&product.active!==false).length:0),()=>companyDetailMenu(i),cash(company.value)))]:[]),
   section('متفرقات'),
   choice('📱','السوشيال ميديا','أنشئ حسابات على منصات مختلفة وتابع جمهورك.',()=>{closeModal();socialMediaMenu();}),
   choice('🏢','محفظة الشركات','اشترِ شركات إضافية وراجع تقاريرها.',()=>routePack('businessPack',companyPortfolioMenu),'',null,!perkOwned('businessPack'))
