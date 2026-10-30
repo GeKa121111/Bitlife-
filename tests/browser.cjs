@@ -1492,6 +1492,58 @@ async function run() {
     assert.equal(settledTax.taxLiability, 0);
     assert.equal(settledTax.pendingTaxPayments, 0);
 
+    const combatSetup = await page.evaluate(() => {
+      const key = 'hekayat_hayah_save_v1';
+      const saved = JSON.parse(localStorage.getItem(key) || 'null');
+      saved.specialCareer = {
+        id: 'fighter', title: 'مقاتل', level: 1,
+        record: { attempts: 0, wins: 0, losses: 0, projects: 0, totalEarnings: 0, bestLevel: 1 }
+      };
+      saved.combatCareer = {
+        rank: 0, leaguePoints: 0, streetCred: 0, streetWins: 0, leagueWins: 0,
+        wins: 0, losses: 0, knockouts: 0, draws: 0,
+        technique: 72, power: 70, speed: 74, defense: 68, stamina: 76, energy: 100,
+        injury: 0, injuryYears: 0, restUsedYear: -1, coach: null,
+        movesKnown: ['quick-jab', 'high-guard'], selectedMove: 'quick-jab',
+        champion: false, bouts: []
+      };
+      localStorage.setItem(key, JSON.stringify(saved));
+      return { age: saved.age };
+    });
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await page.locator('[data-panel="career"]').click();
+    await page.locator('.choice').filter({ hasText: 'المهن الخاصة والشهرة' }).click();
+    await page.locator('.choice').filter({ hasText: 'إدارة مسيرة القتال' }).click();
+    await page.locator('.choice').filter({ hasText: 'نزال شوارع' }).click();
+    await page.locator('.choice').filter({ hasText: 'لكمة خاطفة' }).click();
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await page.locator('[data-panel="career"]').click();
+    await page.locator('.choice').filter({ hasText: 'المهن الخاصة والشهرة' }).click();
+    await page.locator('.choice').filter({ hasText: 'إدارة مسيرة القتال' }).click();
+    await page.waitForFunction(() => document.querySelector('#modalRoot')?.textContent.includes('الجولة 2 من 3'));
+    await page.locator('#closeModal').click();
+    await page.locator('#ageUpBtn').click();
+    const blockedCombatAge = await page.evaluate(() => JSON.parse(localStorage.getItem('hekayat_hayah_save_v1') || 'null').age);
+    assert.equal(blockedCombatAge, combatSetup.age, 'the player must finish a pending bout before aging up');
+    await page.locator('#closeModal').click();
+    await page.locator('[data-panel="career"]').click();
+    await page.locator('.choice').filter({ hasText: 'المهن الخاصة والشهرة' }).click();
+    await page.locator('.choice').filter({ hasText: 'إدارة مسيرة القتال' }).click();
+    await page.waitForFunction(() => document.querySelector('#modalRoot')?.textContent.includes('الجولة 2 من 3'));
+    await page.locator('.choice').filter({ hasText: 'حراسة متحركة' }).click();
+    await page.waitForFunction(() => document.querySelector('#modalRoot')?.textContent.includes('الجولة 3 من 3'));
+    await page.locator('.choice').filter({ hasText: 'لكمة خاطفة' }).click();
+    const completedCombat = await page.evaluate(() => {
+      const saved = JSON.parse(localStorage.getItem('hekayat_hayah_save_v1') || 'null');
+      const career = saved && saved.combatCareer;
+      const bout = career && career.bouts && career.bouts[career.bouts.length - 1];
+      return { pending: career && career.pendingBout, bout };
+    });
+    assert.equal(completedCombat.pending, null, 'completed bouts should clear the pending session');
+    assert.ok(completedCombat.bout, 'the completed bout should be recorded');
+    assert.equal(completedCombat.bout.rounds.length, 3, 'the fight record should preserve all three rounds');
+    assert.equal(completedCombat.bout.moves.length, 3, 'the fight record should preserve the selected action in every round');
+
     assert.deepEqual(pageErrors, [], 'the browser run should complete without uncaught JavaScript errors');
 
     console.log('PASS: mobile layout, legacy v1 load, persistence, rewind, JSON import, inheritance, insolvent estate, career promotion migration, annual supplier market, persistent competitor market, facilities and production capacity, researched and instinct product launches, product pricing, annual product sales, business reports, independent portfolio-company operations, and business credit accrual, repayment, persistence, sale settlement, unpaid-interest capitalization, underwater-sale protection, industry tax assessment, tax arrears, loss exemption, treasury-only tax payment, and annual tax reconciliation.');
