@@ -1532,7 +1532,7 @@ async function run() {
     await page.waitForFunction(() => document.querySelector('#modalRoot [role="dialog"]')?.textContent.includes('النزال لم ينتهِ'));
     const blockedCombatAge = await page.evaluate(() => JSON.parse(localStorage.getItem('hekayat_hayah_save_v1') || 'null').age);
     assert.equal(blockedCombatAge, combatSetup.age, 'the player must finish a pending bout before aging up');
-    await page.locator('#closeModal').click();
+    await page.locator('#modalRoot .choice').filter({ hasText: 'تمام' }).click();
     await page.locator('[data-panel="career"]').click();
     await page.locator('.choice').filter({ hasText: 'المهن الخاصة والشهرة' }).click();
     await page.locator('.choice').filter({ hasText: 'إدارة مسيرة القتال' }).click();
