@@ -139,7 +139,7 @@ test('تطبيق الويب قابل للتثبيت ويحتفظ بملفات ا
   assert.ok(manifest.icons.some(item => item.src === './icon.svg'));
   assert.match(html, /rel="manifest" href="manifest\.webmanifest"/);
   assert.match(app, /navigator\.serviceWorker\.register\('\.\/sw\.js'\)/);
-  assert.match(worker, /const CACHE_NAME = 'hayah-shell-v33'/);
+  assert.match(worker, /const CACHE_NAME = 'hayah-shell-v34'/);
   assert.match(worker, /cache\.addAll\(APP_SHELL\)/);
   assert.match(worker, /caches\.match\(APP_SHELL\[0\]\)/);
   assert.match(icon, /حياة/);
@@ -227,7 +227,7 @@ test('مسيرة الرياضات الإلكترونية أصلية وتحافظ
   assert.match(app, /function upgradeEsportsSetup\(\)/);
   assert.match(app, /موهبة الألعاب الإلكترونية/);
   assert.match(app, /data\.talents\.gaming=clamp\(Number\(data\.talents\.gaming\),0,100\)/);
-  assert.match(read('sw.js'), /hayah-shell-v33/);
+  assert.match(read('sw.js'), /hayah-shell-v34/);
   assert.match(functionSource('rewindToSnapshot', 'customizeMenu'), /ensureGamingTalent\(\)/, 'rewinding a pre-feature snapshot should restore a valid talent default');
 });
 
@@ -450,7 +450,7 @@ test('إدارة المشروع تدعم عقود الموردين وتقاري�
   assert.match(app, /choice\('📦','التعاقد مع مورد'/);
   assert.match(app, /choice\('📊','سجل التقارير'/);
   assert.match(app, /const normalizeBusinessEntity=entity=>/);
-  assert.match(read('sw.js'), /hayah-shell-v33/);
+  assert.match(read('sw.js'), /hayah-shell-v34/);
 });
 
 
@@ -465,7 +465,7 @@ test('إدارة فريق المشروع تحفظ الموظفين وتؤثر ف
   assert.match(app, /staffPayroll/);
   assert.match(app, /staffCount/);
   assert.match(app, /choice\('👥','إدارة الموظفين'/);
-  assert.match(read('sw.js'), /hayah-shell-v33/);
+  assert.match(read('sw.js'), /hayah-shell-v34/);
 });
 
 
@@ -478,7 +478,7 @@ test('سوق الموردين يتجدد سنويًا ويحفظ عروض الأ
   assert.match(app, /supplierCostMultiplier/);
   assert.match(app, /entity\.supplier\.yearsLeft\)\|\|3,1,3/);
   assert.match(app, /entity\.supplier\.quality/);
-  assert.match(read('sw.js'), /hayah-shell-v33/);
+  assert.match(read('sw.js'), /hayah-shell-v34/);
 });
 
 
@@ -493,7 +493,7 @@ test('إدارة المنتجات تدعم بحث السوق والمبيعات 
   assert.match(app, /competition/);
   assert.match(app, /choice\('🧪','إدارة المنتجات'/);
   assert.match(app, /entity\.productResearch=entity\.productResearch\.filter/);
-  assert.match(read('sw.js'), /hayah-shell-v33/);
+  assert.match(read('sw.js'), /hayah-shell-v34/);
 });
 
 
@@ -508,7 +508,7 @@ test('شركات المحفظة تدير الموردين والموظفين و�
   assert.match(app, /simulateBusinessEntityYear\(state\.business,'business'\)/);
   assert.match(app, /simulateBusinessEntityYear\(company,'portfolio'\)/);
   assert.match(app, /business\.assetId\|\|business\.id\|\|business\.title/);
-  assert.match(read('sw.js'), /hayah-shell-v33/);
+  assert.match(read('sw.js'), /hayah-shell-v34/);
 });
 
 
@@ -524,7 +524,7 @@ test('الفروع والمصانع محفوظة لكل نشاط وتزيد طا
   assert.match(app, /facilityInvestment/);
   assert.match(app, /choice\('🏗️','الفروع والمصانع'/);
   assert.match(app, /return \{version:1,lifeId:/);
-  assert.match(read('sw.js'), /hayah-shell-v33/);
+  assert.match(read('sw.js'), /hayah-shell-v34/);
 });
 
 test('استثمار المنشأة رأسمالي منفصل عن صافي الربح والصيانة السنوية', () => {
@@ -532,7 +532,7 @@ test('استثمار المنشأة رأسمالي منفصل عن صافي ال
   assert.match(annualSimulation, /const operatingCostsTotal=operatingCosts\+staffPayroll\+facilityUpkeep\+productResult\.costs/);
   assert.match(annualSimulation, /const costs=operatingCostsTotal\+productResult\.upfrontCosts\+businessLoanInterest/);
   assert.match(annualSimulation, /facilityInvestmentCosts/);
-  assert.match(annualSimulation, /state\.bank\+=profit\+productResult\.upfrontCosts\+businessLoanInterestAccrued/);
+  assert.match(annualSimulation, /adjustBusinessTreasury\(business,profit\+productResult\.upfrontCosts\+businessLoanInterestAccrued\)/);
 });
 
 test('نسب طاقة المنشآت العشرية لا تُقرّب إلى أعداد صحيحة', () => {
@@ -552,7 +552,7 @@ test('سوق المنافسة مستقل لكل شركة وثابت خلال ا�
   assert.ok(app.includes("choice('📈','تحليل السوق والمنافسين'"));
   assert.ok(app.includes("if(entity.market&&typeof entity.market==='object'&&!Array.isArray(entity.market))"));
   assert.ok(app.includes("return {version:1,lifeId:"));
-  assert.ok(read('sw.js').includes("hayah-shell-v33"));
+  assert.ok(read('sw.js').includes("hayah-shell-v34"));
 });
 
 
@@ -565,7 +565,7 @@ test('النوافذ الحوارية تدير التركيز بلوحة الم�
   assert.match(app, /returnFocus&&returnFocus\.isConnected/);
   assert.match(app, /const initialFocus=\$\('closeModal'\)\|\|getFocusable\(\)\[0\]\|\|dialog/);
   assert.match(read('style.css'), /\.modal button:focus-visible/);
-  assert.match(read('sw.js'), /hayah-shell-v33/);
+  assert.match(read('sw.js'), /hayah-shell-v34/);
 });
 
 test('اختبارات Node دون DOM كامل لا تتطلب querySelector من عنصر الجذر', () => {
@@ -583,7 +583,7 @@ test('إعدادات الصوت والاهتزاز اختيارية ومستقل
   assert.ok(app.includes("choice(uiSettings.sound?'🔊':'🔇'"));
   assert.ok(app.includes("choice(uiSettings.haptics?'📳':'📴'"));
   assert.ok(app.includes("localStorage.setItem(SETTINGS_KEY,JSON.stringify(uiSettings))"));
-  assert.match(read('sw.js'), /hayah-shell-v33/);
+  assert.match(read('sw.js'), /hayah-shell-v34/);
 });
 
 
@@ -595,7 +595,7 @@ test('سجل الحياة يضيف الأحداث الجديدة تدريجيً�
   assert.match(app, /for\(let candidate=359;candidate>0;candidate--\)/);
   assert.match(app, /renderedLogSnapshot=signatures;renderedFeedElement=feed/);
   assert.match(html, /id="lifeFeed"[^>]*aria-relevant="additions" aria-atomic="false"/);
-  assert.match(read('sw.js'), /hayah-shell-v33/);
+  assert.match(read('sw.js'), /hayah-shell-v34/);
 });
 
 
@@ -609,7 +609,7 @@ test('اقتصاد الشركات يختلف حسب الصناعة ويظهر أ
   assert.ok(app.includes("industryOperatingCostMultiplier"));
   assert.ok(app.includes("industryUnitCostMultiplier"));
   assert.ok(app.includes("معاملات القطاع: الإيرادات"));
-  assert.match(read('sw.js'), /hayah-shell-v33/);
+  assert.match(read('sw.js'), /hayah-shell-v34/);
 });
 
 
@@ -626,12 +626,39 @@ test('تمويل النشاط مستقل لكل شركة ويُحتسب مرة �
     "businessLoanInterestAccrued",
     "businessLoanBalance",
     "Number(credit.lastInterestAge)!==Number(state.age)",
-    "grossProceeds-creditBalance",
+    "grossProceeds+companyCash-creditBalance",
     "سداد كامل الرصيد",
     "return {version:1,lifeId:"
   ].forEach(fragment => assert.ok(app.includes(fragment), 'missing business credit behavior: ' + fragment));
   const annualSimulation = functionSource('simulateBusinessEntityYear', 'advanceAge');
   assert.ok(annualSimulation.includes("const costs=operatingCostsTotal+productResult.upfrontCosts+businessLoanInterest"));
-  assert.ok(annualSimulation.includes("state.bank+=profit+productResult.upfrontCosts+businessLoanInterestAccrued"));
-  assert.ok(read('sw.js').includes("hayah-shell-v33"));
+  assert.ok(annualSimulation.includes("adjustBusinessTreasury(business,profit+productResult.upfrontCosts+businessLoanInterestAccrued)"));
+  assert.ok(read('sw.js').includes("hayah-shell-v34"));
+});
+
+
+test('الخزينة المستقلة تفصل نقدية كل شركة عن رصيد المالك وتحافظ على الحفظ القديم', () => {
+  [
+    "function businessUsesSeparateTreasury(business)",
+    "function businessTreasuryBalance(business)",
+    "function adjustBusinessTreasury(business,amount)",
+    "function spendBusinessTreasury(business,amount)",
+    "function activateBusinessTreasury(amount)",
+    "function transferBusinessCapital(direction,amount)",
+    "function businessTreasuryMenu()",
+    "entity.treasuryMode='shared'",
+    "entity.treasuryMode='separate'",
+    "pendingOwnerContributions",
+    "pendingOwnerWithdrawals",
+    "openingCashBalance",
+    "closingCashBalance",
+    "treasuryMode:'separate',cashBalance:0",
+    "grossProceeds+companyCash-creditBalance",
+    "خزينة النشاط ورأس المال"
+  ].forEach(fragment => assert.ok(app.includes(fragment), 'missing separate treasury behavior: ' + fragment));
+  const annualSimulation = functionSource('simulateBusinessEntityYear', 'advanceAge');
+  assert.ok(annualSimulation.includes("businessTreasuryBalance(business)+revenue-operatingCostsTotal"));
+  assert.ok(annualSimulation.includes("adjustBusinessTreasury(business,profit+productResult.upfrontCosts+businessLoanInterestAccrued)"));
+  assert.ok(annualSimulation.includes("treasuryMode:separateTreasury?'separate':'shared'"));
+  assert.match(read('sw.js'), /hayah-shell-v34/);
 });
