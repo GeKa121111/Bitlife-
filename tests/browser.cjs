@@ -798,6 +798,32 @@ async function run() {
       'product identifiers should be unique to their owning portfolio company');
     assert.equal(portfolioBeforeYear.company.facilities.length, 1, 'the portfolio company should own its factory independently');
     assert.equal(portfolioBeforeYear.company.facilities[0].type, 'factory');
+    await page.locator('.choice').filter({ hasText: 'رجوع للمنتجات' }).click();
+    await page.locator('.choice').filter({ hasText: 'رجوع لإدارة المشروع' }).click();
+    await page.locator('.choice').filter({ hasText: 'تحليل السوق والمنافسين' }).click();
+    const marketBeforeReload = await page.evaluate(() => {
+      const saved = JSON.parse(localStorage.getItem('hekayat_hayah_save_v1') || 'null');
+      return saved && saved.companies && saved.companies[0] && saved.companies[0].market;
+    });
+    assert.ok(marketBeforeReload, 'opening the market panel should persist a market snapshot');
+    assert.equal(marketBeforeReload.year, 35);
+    assert.ok(marketBeforeReload.competitorCount >= 2 && marketBeforeReload.competitorCount <= 8);
+    assert.ok(marketBeforeReload.marketShare >= 3 && marketBeforeReload.marketShare <= 45);
+    const marketDialog = await page.locator('#modalRoot').innerText();
+    assert.match(marketDialog, /المنافسين الافتراضيين/);
+    await page.locator('#closeModal').click();
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await page.evaluate(() => { Math.random = () => 0.99; });
+    await page.locator('[data-panel="assets"]').click();
+    await page.locator('.choice').filter({ hasText: 'شركة محفظة اختبار' }).click();
+    await page.locator('.choice').filter({ hasText: 'إدارة التشغيل' }).click();
+    await page.locator('.choice').filter({ hasText: 'تحليل السوق والمنافسين' }).click();
+    const marketAfterReload = await page.evaluate(() => {
+      const saved = JSON.parse(localStorage.getItem('hekayat_hayah_save_v1') || 'null');
+      return saved && saved.companies && saved.companies[0] && saved.companies[0].market;
+    });
+    assert.deepEqual(marketAfterReload, marketBeforeReload,
+      'the current-year competitor market should remain stable after reload');
     await page.locator('#closeModal').click();
     await page.locator('#ageUpBtn').click();
     await page.waitForFunction(() => {
@@ -818,6 +844,13 @@ async function run() {
     assert.equal(portfolioAfterYear.report.payroll, portfolioAfterYear.company.staff[0].salary);
     assert.equal(portfolioAfterYear.report.productCount, 1);
     assert.equal(portfolioAfterYear.report.facilityCount, 1);
+    assert.equal(portfolioAfterYear.company.market.year, 36, 'the market snapshot should roll forward with the fiscal year');
+    assert.equal(portfolioAfterYear.report.marketIndustry, 'تقنية');
+    assert.equal(portfolioAfterYear.report.marketCompetitorCount, portfolioAfterYear.company.market.competitorCount);
+    assert.equal(portfolioAfterYear.report.marketShare, portfolioAfterYear.company.market.marketShare);
+    assert.ok(Number.isFinite(portfolioAfterYear.report.marketShareChange));
+    assert.ok(portfolioAfterYear.report.marketDemandIndex >= 55 && portfolioAfterYear.report.marketDemandIndex <= 105);
+    assert.ok(portfolioAfterYear.report.marketCompetitionIndex >= 20 && portfolioAfterYear.report.marketCompetitionIndex <= 85);
     assert.ok(portfolioAfterYear.report.facilityUpkeep > 0);
     assert.ok(portfolioAfterYear.report.capacityMultiplier > 1);
     assert.ok(portfolioAfterYear.report.productRevenue > 0 && portfolioAfterYear.report.productUnits > 0);
@@ -830,7 +863,7 @@ async function run() {
 
     assert.deepEqual(pageErrors, [], 'the browser run should complete without uncaught JavaScript errors');
 
-    console.log('PASS: mobile layout, legacy v1 load, persistence, rewind, JSON import, inheritance, insolvent estate, career promotion migration, annual supplier market, facilities and production capacity, researched and instinct product launches, product pricing, annual product sales, business reports, and independent portfolio-company operations.');
+    console.log('PASS: mobile layout, legacy v1 load, persistence, rewind, JSON import, inheritance, insolvent estate, career promotion migration, annual supplier market, persistent competitor market, facilities and production capacity, researched and instinct product launches, product pricing, annual product sales, business reports, and independent portfolio-company operations.');
     await context.close();
   } finally {
     if (browser) await browser.close();
