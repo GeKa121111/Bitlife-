@@ -662,7 +662,7 @@ function newLife(){
  const father=makePerson('male','الأب','👨',28+Math.floor(Math.random()*12),68+Math.floor(Math.random()*28));
  const mother=makePerson('female','الأم','👩',25+Math.floor(Math.random()*12),72+Math.floor(Math.random()*26));
  const sibling=makePerson(gender,'الأخ/الأخت','🧒',Math.floor(Math.random()*8),55+Math.floor(Math.random()*35));
- return {version:1,lifeId:Date.now()+Math.random(),cemeterySaved:false,name:pick(names[gender])+' '+pick(names.family),gender,age:0,place,bank:(perkOwned('goldenPiggyBank')?Math.max(1000000,place.start):place.start),stats:{happiness:65+Math.floor(Math.random()*26),health:76+Math.floor(Math.random()*22),smart:35+Math.floor(Math.random()*41),looks:35+Math.floor(Math.random()*51)},education:{level:0,school:'لم تبدأ الدراسة',major:null,yearsLeft:0,tuition:0},job:null,jobHistory:[],specialCareer:null,specialCareerHistory:[],combatCareer:null,filmStudio:null,esportsCareer:null,talents:{gaming:15+Math.floor(Math.random()*71)},performance:50,assets:[],investments:[],business:null,companies:[],mafia:{joined:false,rank:0,rep:0,earnings:0},museum:{opened:false,displayed:[]},zoo:{opened:false,animals:[],rareDiscoveries:0},assassinBladeLastUsedAge:null,cult:{founded:false,name:'',doctrine:'',members:[],fund:0,ceremonies:0,discipline:50},casino:{opened:false,games:[],amenities:[],celebrityHires:0,accessories:[]},dealer:{joined:false,rank:0,rep:0,earnings:0,territory:1},royalty:{active:false,title:null,house:null},investmentAdvisor:{hired:false,yearsLeft:0,fee:4500},marketTip:null,family:[father,mother,sibling],friends:[],partner:null,married:false,children:[],coParentingPlans:[],pets:[],hobbies:[],fame:0,followers:0,socialMediaAccount:false,socialMediaPosts:0,socialPlatforms:{},reputation:50,sti:false,crimeRecord:0,prison:null,debt:0,willDistribution:'الأسرة بالتساوي',heirlooms:[],dailyRewardDate:null,dailyChallenges:null,challengeArchive:[],timeMachineSnapshots:[],legacy:{name:null,inheritance:0,heirloom:null},driversLicense:false,travelHistory:[],log:[],accomplishments:['بدأت رحلة الحياة'],status:'حي',cause:null,retired:false,yearCount:0,wealthPeak:place.start};
+ return {version:1,lifeId:Date.now()+Math.random(),cemeterySaved:false,name:pick(names[gender])+' '+pick(names.family),gender,age:0,place,bank:(perkOwned('goldenPiggyBank')?Math.max(1000000,place.start):place.start),stats:{happiness:65+Math.floor(Math.random()*26),health:76+Math.floor(Math.random()*22),smart:35+Math.floor(Math.random()*41),looks:35+Math.floor(Math.random()*51)},education:{level:0,school:'لم تبدأ الدراسة',major:null,yearsLeft:0,tuition:0},job:null,jobHistory:[],specialCareer:null,specialCareerHistory:[],combatCareer:null,filmStudio:null,esportsCareer:null,talents:{gaming:15+Math.floor(Math.random()*71)},performance:50,assets:[],investments:[],business:null,companies:[],mafia:{joined:false,rank:0,rep:0,earnings:0},museum:{opened:false,displayed:[]},zoo:{opened:false,animals:[],rareDiscoveries:0},assassinBladeLastUsedAge:null,cult:{founded:false,name:'',doctrine:'',members:[],fund:0,ceremonies:0,discipline:50},casino:{opened:false,games:[],amenities:[],celebrityHires:0,accessories:[]},dealer:{joined:false,rank:0,rep:0,earnings:0,territory:1},royalty:{active:false,title:null,house:null},investmentAdvisor:{hired:false,yearsLeft:0,fee:4500},marketTip:null,family:[father,mother,sibling],friends:[],partner:null,married:false,children:[],coParentingPlans:[],pets:[],hobbies:[],fame:0,followers:0,socialMediaAccount:false,socialMediaPosts:0,socialPlatforms:{},socialFeed:[],reputation:50,sti:false,crimeRecord:0,prison:null,debt:0,willDistribution:'الأسرة بالتساوي',heirlooms:[],dailyRewardDate:null,dailyChallenges:null,challengeArchive:[],timeMachineSnapshots:[],legacy:{name:null,inheritance:0,heirloom:null},driversLicense:false,travelHistory:[],log:[],accomplishments:['بدأت رحلة الحياة'],status:'حي',cause:null,retired:false,yearCount:0,wealthPeak:place.start};
 }
 
 function isValidSaveData(data){
@@ -713,6 +713,7 @@ function normalizeCoreState(data){
  data.socialPlatforms=normalizedSocialPlatforms;
  data.followers=Math.max(0,Number(data.followers)||0);data.socialMediaPosts=Math.max(0,Number(data.socialMediaPosts)||0);
  data.socialMediaAccount=SOCIAL_PLATFORM_CATALOG.some(platform=>data.socialPlatforms[platform.id].active);
+ data.socialFeed=normalizeSocialFeed(data.socialFeed);
  if(!Array.isArray(data.companies))data.companies=[];
  const normalizeBusinessEntity=entity=>{
   if(!entity||typeof entity!=='object'||Array.isArray(entity))return;
@@ -906,7 +907,7 @@ function load(){
   }
   if(isValidSaveData(x)){
   normalizeCoreState(x);
-  const defaults={lifeId:Date.now()+Math.random(),cemeterySaved:false,jobHistory:[],specialCareer:null,specialCareerHistory:[],combatCareer:null,filmStudio:null,investments:[],business:null,married:false,children:[],coParentingPlans:[],pets:[],hobbies:[],fame:0,followers:0,socialMediaAccount:false,socialMediaPosts:0,reputation:50,crimeRecord:0,prison:null,debt:0,willDistribution:'الأسرة بالتساوي',heirlooms:[],dailyRewardDate:null,dailyChallenges:null,timeMachineSnapshots:[],legacy:{name:null,inheritance:0,heirloom:null},driversLicense:false,travelHistory:[]};
+  const defaults={lifeId:Date.now()+Math.random(),cemeterySaved:false,jobHistory:[],specialCareer:null,specialCareerHistory:[],combatCareer:null,filmStudio:null,investments:[],business:null,married:false,children:[],coParentingPlans:[],pets:[],hobbies:[],fame:0,followers:0,socialMediaAccount:false,socialMediaPosts:0,socialFeed:[],reputation:50,crimeRecord:0,prison:null,debt:0,willDistribution:'الأسرة بالتساوي',heirlooms:[],dailyRewardDate:null,dailyChallenges:null,timeMachineSnapshots:[],legacy:{name:null,inheritance:0,heirloom:null},driversLicense:false,travelHistory:[]};
   Object.keys(defaults).forEach(k=>{if(x[k]===undefined||x[k]===null)x[k]=defaults[k];});
   if(!Array.isArray(x.family))x.family=[];if(!Array.isArray(x.friends))x.friends=[];if(!Array.isArray(x.assets))x.assets=[];if(!Array.isArray(x.timeMachineSnapshots))x.timeMachineSnapshots=[];if(!Array.isArray(x.coParentingPlans))x.coParentingPlans=[];x.coParentingPlans.forEach(p=>{if(p&&typeof p==='object'){if(!Array.isArray(p.childIds))p.childIds=[];if(!Array.isArray(p.history))p.history=[];if(!Number.isFinite(Number(p.supportPerChild)))p.supportPerChild=2200;if(!Number.isFinite(Number(p.arrears)))p.arrears=0;}});
   if(!x.education||typeof x.education!=='object')x.education={level:0,school:'لم تبدأ الدراسة',major:null,yearsLeft:0,tuition:0};
@@ -5535,6 +5536,58 @@ function healthMenu(){
  ]);
 }
 
+
+const SOCIAL_REACTION_NAMES=['مريم','عمر','ليلى','آدم','نور','يوسف','سلمى','زياد','ملك','ياسين','جنى','كريم'];
+const SOCIAL_REACTION_BANK={
+ positive:['المحتوى ده خلاني أبتسم.','استمر، عندك أسلوب مميز.','مستنيين الجديد منك.','فكرة جميلة وتنفيذ أحسن.','واضح إنك تعبت في الشغل ده.'],
+ neutral:['ممكن توضح الفكرة أكتر؟','محتوى لطيف، بس محتاج تفاصيل.','زاوية مختلفة ممكن تخلي الفكرة أقوى.','شفت الفكرة دي قبل كده، جرّب لمستك الخاصة.'],
+ critical:['مش متفق معاك في النقطة دي.','التقديم محتاج شوية شغل.','المحتوى مش مناسب لذوقي، بس بالتوفيق.','كان ممكن تختار توقيت أوضح للنشر.']
+};
+function normalizeSocialFeed(raw){
+ if(!Array.isArray(raw))return [];
+ return raw.filter(item=>item&&typeof item==='object'&&!Array.isArray(item)).slice(-30).map((item,index)=>{
+  const platformId=String(item.platformId||'instagram').slice(0,30);
+  const platform=SOCIAL_PLATFORM_CATALOG.find(entry=>entry.id===platformId);
+  const reactions=Array.isArray(item.reactions)?item.reactions.slice(0,3).map(reaction=>{
+   if(!reaction||typeof reaction!=='object')return null;
+   const tone=['positive','neutral','critical'].includes(reaction.tone)?reaction.tone:'neutral';
+   return {name:String(reaction.name||'متابع').slice(0,40),tone,emoji:String(reaction.emoji||'💬').slice(0,8),text:String(reaction.text||'').slice(0,180)};
+  }).filter(reaction=>reaction&&reaction.text):[];
+  const age=Number(item.age),likes=Number(item.likes),followersGained=Number(item.followersGained);
+  return {
+   id:String(item.id||'social-legacy-'+index).slice(0,80),
+   platformId,
+   platformTitle:String(item.platformTitle||(platform&&platform.title)||'منصة اجتماعية').slice(0,50),
+   kind:['story','video','sponsor','track','collab'].includes(item.kind)?item.kind:'story',
+   title:String(item.title||'').slice(0,80),
+   age:Number.isFinite(age)?Math.max(0,Math.min(150,Math.floor(age))):0,
+   likes:Number.isFinite(likes)?Math.max(0,Math.min(1000000000,Math.round(likes))):0,
+   followersGained:Number.isFinite(followersGained)?Math.max(0,Math.min(1000000000,Math.round(followersGained))):0,
+   outcome:item.outcome==='انتشار واسع'?'انتشار واسع':'تفاعل محدود',
+   reactions
+  };
+ }).filter(post=>post.title);
+}
+function buildSocialReactions(viral){
+ const tones=viral?['positive','positive','neutral']:['positive','neutral','critical'];
+ return tones.map(tone=>({name:pick(SOCIAL_REACTION_NAMES),tone,emoji:tone==='positive'?'❤️':tone==='critical'?'🗣️':'💬',text:pick(SOCIAL_REACTION_BANK[tone])}));
+}
+function createSocialAudiencePost(platform,kind,viral,likes,followersGained){
+ const titles={story:'صورة أو قصة جديدة',video:'فيديو جديد',sponsor:'تعاون تجاري',track:'مقطع صوتي جديد',collab:'تعاون فني جديد'};
+ return {
+  id:'social-'+Date.now()+'-'+Math.floor(Math.random()*1000000),
+  platformId:platform.id,
+  platformTitle:platform.title,
+  kind,
+  title:titles[kind]||'منشور جديد',
+  age:state.age,
+  likes:Math.max(0,Math.round(Number(likes)||0)),
+  followersGained:Math.max(0,Math.round(Number(followersGained)||0)),
+  outcome:viral?'انتشار واسع':'تفاعل محدود',
+  reactions:buildSocialReactions(viral)
+ };
+}
+
 function ensureSocialPlatforms(){
  if(!state.socialPlatforms||typeof state.socialPlatforms!=='object'||Array.isArray(state.socialPlatforms))state.socialPlatforms={};
  const raw=state.socialPlatforms,normalized={};
@@ -5572,6 +5625,7 @@ function socialMediaMenu(){
  if(active.length){
   opts.push(section('إحصاءات عامة'));
   opts.push(choice('📊','إحصاءات كل الحسابات','إجمالي المتابعين '+fmt(state.followers||0)+' · المنشورات '+fmt(state.socialMediaPosts||0)+'.',()=>{closeModal();info('📊','إحصاءات السوشيال ميديا','إجمالي المتابعين '+fmt(state.followers||0)+'. إجمالي المنشورات '+fmt(state.socialMediaPosts||0)+'. الشهرة '+clamp(state.fame||0)+'%. السمعة '+clamp(state.reputation||50)+'%.');}));
+  opts.push(choice('💬','صدى الجمهور','راجع آخر ردود المتابعين على منشوراتك.',()=>socialAudienceFeedMenu()));
  }
  modal('📱','السوشيال ميديا','أنشئ حسابات على منصات مختلفة، وانشر محتوى، وراقب نمو الجمهور.',opts);
 }
@@ -5590,39 +5644,87 @@ function createSocialAccount(){signUpSocialPlatform('instagram');}
 function socialPlatformMenu(id){
  const platforms=ensureSocialPlatforms(),platform=SOCIAL_PLATFORM_CATALOG.find(item=>item.id===id),account=platforms[id];
  if(!platform||!account||!account.active){socialMediaMenu();return;}
- const opts=[
+ const opts=platform.id==='soundcloud'?[
+  choice('🎧','نشر مقطع صوتي','سجّل عملًا جديدًا واختبر تفاعل الجمهور.',()=>publishSocialContent('track',id)),
+  choice('🤝','التعاون مع فنان','اعمل على مقطع مشترك لزيادة فرص الوصول.',()=>publishSocialContent('collab',id)),
+  choice('🏷️','عرض مقطع على شركة إنتاج','قد تحصل على عرض شراء إذا كان لديك عمل منشور.',()=>offerSoundCloudTrackToLabel(id))
+ ]:[
   choice('📸','نشر صورة أو قصة','محتوى بسيط قد يزيد التفاعل والمتابعين.',()=>publishSocialContent('story',id)),
   choice('🎥','نشر فيديو','جهد أكبر وفرصة انتشار أوسع.',()=>publishSocialContent('video',id)),
-  choice('🤝','تعاون مدفوع','حملة برعاية شركة، تحتاج سمعة وجمهورًا.',()=>publishSocialContent('sponsor',id),'2,000 '+state.place.unit),
-  section('إحصاءات القناة'),
-  choice('📊','أداء '+platform.title,'المتابعون '+fmt(account.followers)+' · المنشورات '+fmt(account.posts)+'.',()=>{closeModal();info('📊',platform.title,'المتابعون: '+fmt(account.followers)+'. المنشورات: '+fmt(account.posts)+'. الشهرة '+clamp(state.fame||0)+'%.');}),
-  choice('⏸️','إيقاف القناة','إخفاء القناة من قائمة النشطة مع الاحتفاظ بسجلها.',()=>{closeModal();account.active=false;state.socialMediaAccount=SOCIAL_PLATFORM_CATALOG.some(item=>platforms[item.id].active);log('📱','إيقاف قناة '+platform.title,'أوقفت النشر على '+platform.title+'. بيانات القناة محفوظة.','');save();render();socialMediaMenu();}),
-  choice('↩️','رجوع للقنوات','',socialMediaMenu)
+  choice('🤝','تعاون مدفوع','حملة برعاية شركة، تحتاج سمعة وجمهورًا.',()=>publishSocialContent('sponsor',id),'2,000 '+state.place.unit)
  ];
+ opts.push(section('إحصاءات القناة'));
+ opts.push(choice('💬','ردود الجمهور','افتح آخر التفاعلات والتعليقات على منشورات القناة.',()=>socialAudienceFeedMenu(id)));
+ opts.push(choice('📊','أداء '+platform.title,'المتابعون '+fmt(account.followers)+' · المنشورات '+fmt(account.posts)+'.',()=>{closeModal();info('📊',platform.title,'المتابعون: '+fmt(account.followers)+'. المنشورات: '+fmt(account.posts)+'. الشهرة '+clamp(state.fame||0)+'%.');}));
+ opts.push(choice('⏸️','إيقاف القناة','إخفاء القناة من قائمة النشطة مع الاحتفاظ بسجلها.',()=>{closeModal();account.active=false;state.socialMediaAccount=SOCIAL_PLATFORM_CATALOG.some(item=>platforms[item.id].active);log('📱','إيقاف قناة '+platform.title,'أوقفت النشر على '+platform.title+'. بيانات القناة محفوظة.','');save();render();socialMediaMenu();}));
+ opts.push(choice('↩️','رجوع للقنوات','',socialMediaMenu));
  modal(platform.emoji,platform.title,'إدارة القناة ومحتواها. الانتشار غير مضمون ومرتبط بالاختيارات.',opts);
 }
+function socialAudienceFeedMenu(platformId){
+ const posts=normalizeSocialFeed(state.socialFeed).filter(post=>!platformId||post.platformId===platformId).slice().reverse();
+ const opts=posts.map(post=>choice('💬',post.title,post.platformTitle+' · '+post.age+' سنة · '+fmt(post.likes)+' إعجاب · '+post.outcome,()=>socialPostDetailMenu(post.id)));
+ if(!posts.length)opts.push({icon:'🫧',title:'لسه مفيش تفاعلات',desc:'انشر محتوى من إحدى القنوات عشان يبدأ الجمهور يرد عليك.',disabled:true});
+ opts.push(choice('↩️',platformId?'رجوع للقناة':'رجوع للمنصات','',()=>platformId?socialPlatformMenu(platformId):socialMediaMenu()));
+ modal('💬','صدى الجمهور',posts.length?'آخر '+posts.length+' منشورًا وردود الجمهور عليها.':'هنا هتظهر ردود المتابعين بعد نشر المحتوى.',opts);
+}
+function socialPostDetailMenu(postId){
+ const post=normalizeSocialFeed(state.socialFeed).find(item=>item.id===postId);
+ if(!post){socialAudienceFeedMenu();return;}
+ const opts=[section('ردود المتابعين'),...post.reactions.map(reaction=>({icon:reaction.emoji,title:reaction.name,desc:reaction.text,disabled:true}))];
+ if(!post.reactions.length)opts.push({icon:'💬',title:'لا توجد ردود محفوظة',desc:'التفاعل اتسجل من غير تعليقات نصية.',disabled:true});
+ opts.push(choice('↩️','رجوع لصدى الجمهور','',()=>socialAudienceFeedMenu(post.platformId)));
+ modal('💬',post.title,post.platformTitle+' · '+post.age+' سنة · '+fmt(post.likes)+' إعجاب · '+fmt(post.followersGained)+' متابع جديد · '+post.outcome,opts);
+}
+function offerSoundCloudTrackToLabel(platformId='soundcloud'){
+ closeModal();
+ const platforms=ensureSocialPlatforms(),platform=SOCIAL_PLATFORM_CATALOG.find(item=>item.id===platformId),account=platforms[platformId];
+ if(!platform||!account||!account.active){socialMediaMenu();return;}
+ const hasTrack=normalizeSocialFeed(state.socialFeed).some(post=>post.platformId==='soundcloud'&&post.kind==='track');
+ if(!hasTrack){info('🎧','انشر مقطعًا أولًا','لازم يكون عندك مقطع صوتي منشور قبل ما تعرضه على شركة إنتاج.');return;}
+ const offerChance=clamp(22+(Number(state.fame)||0)*.45+Math.min(24,(Number(account.followers)||0)/500),8,82);
+ if(chance(offerChance/100)){
+  const payment=Math.round(5000+(Number(account.followers)||0)*.06+Math.random()*7000);
+  state.bank+=payment;state.fame=clamp((state.fame||0)+3);state.reputation=clamp((state.reputation||50)+2);
+  log('🏷️','عرض من شركة إنتاج','شركة إنتاج أعجبت بمقطعك وعرضت شراء حقوق استخدامه مقابل '+cash(payment)+'.','good');
+  save();render();info('⭐','وصل عرض إنتاج','وافقت شركة إنتاج على شراء حقوق استخدام المقطع مقابل '+cash(payment)+'.');
+ }else{
+  state.stats.happiness=clamp(state.stats.happiness-1);
+  log('🎧','لم يصل عرض هذه المرة','راجعت شركة إنتاج المقطع، لكنها لم تقدم عرضًا الآن. تقدر تطور أعمالك وتحاول لاحقًا.','');
+  save();render();info('🎧','لا يوجد عرض حاليًا','الرفض مش نهاية الطريق؛ انشر أعمالًا جديدة وطوّر جمهورك.');
+ }
+}
 function publishSocialContent(kind,platformId){
- closeModal();const platforms=ensureSocialPlatforms(),activeId=platformId||(SOCIAL_PLATFORM_CATALOG.find(platform=>platforms[platform.id].active)||{}).id,platform=SOCIAL_PLATFORM_CATALOG.find(item=>item.id===activeId),account=platforms[activeId];
+ closeModal();
+ const platforms=ensureSocialPlatforms(),activeId=platformId||(SOCIAL_PLATFORM_CATALOG.find(platform=>platforms[platform.id].active)||{}).id,platform=SOCIAL_PLATFORM_CATALOG.find(item=>item.id===activeId),account=platforms[activeId];
  if(!state.socialMediaAccount||!platform||!account||!account.active){socialMediaMenu();return;}
- const costs={story:0,video:250,sponsor:2000},cost=costs[kind]||0;
+ const costs={story:0,video:250,sponsor:2000,track:350,collab:700},cost=costs[kind]||0;
  if(state.bank<cost){info('💳','الرصيد مش كفاية','النشاط محتاج '+cash(cost)+'.');return;}
  if(kind==='sponsor'&&state.age<18){info('🔒','التعاون التجاري متاح للبالغين','التعاونات التجارية متاحة من سن 18 داخل اللعبة.');return;}
+ if(kind==='collab'&&state.age<13){info('🔒','التعاون الفني متاح لاحقًا','التعاونات الفنية متاحة من سن 13 سنة داخل اللعبة.');return;}
+ if((kind==='track'||kind==='collab')&&platform.id!=='soundcloud'){info('🔒','النشاط مرتبط بمنصة صوتية','المقاطع الصوتية والتعاون الفني متاحان من قناة SoundCloud داخل اللعبة.');return;}
  if(platform.id==='onlyfans'&&state.age<18){info('🔒','القناة متاحة للبالغين','النشر على هذه المنصة متاح من سن 18 داخل اللعبة.');return;}
  state.bank-=cost;state.socialMediaPosts=(state.socialMediaPosts||0)+1;account.posts=(account.posts||0)+1;
  const strength=(state.stats.smart/200)+(state.stats.looks/250)+(state.fame/180)+(state.reputation/220);
- const viral=chance(Math.min(.78,.12+strength));let gain=0;
+ const formatBonus=kind==='collab'?.12:kind==='track'?.08:0;
+ const viral=chance(Math.min(.82,.12+strength+formatBonus));let gain=0;
  if(viral){
-  gain=kind==='sponsor'?Math.round(1500+state.followers*.05+Math.random()*5000):kind==='video'?Math.round(40+Math.random()*400+state.fame*6):Math.round(8+Math.random()*100);
+  gain=kind==='sponsor'?Math.round(1500+state.followers*.05+Math.random()*5000):kind==='video'?Math.round(40+Math.random()*400+state.fame*6):kind==='track'?Math.round(20+Math.random()*180+state.fame*3):kind==='collab'?Math.round(60+Math.random()*360+state.fame*5):Math.round(8+Math.random()*100);
   state.followers=Math.max(0,(state.followers||0)+gain);account.followers=Math.max(0,(account.followers||0)+gain);
-  state.fame=clamp(state.fame+(kind==='video'?4:2));state.reputation=clamp(state.reputation+2);
+  state.fame=clamp(state.fame+(kind==='video'?4:kind==='collab'?3:2));state.reputation=clamp(state.reputation+2);
   if(kind==='sponsor')state.bank+=gain;
-  log('📱',kind==='sponsor'?'تعاون تجاري ناجح':kind==='video'?'فيديو انتشر':'تفاعل مع منشور','زاد جمهور '+platform.title+' بمقدار '+fmt(gain)+' متابع.'+(kind==='sponsor'?' وكسبت '+cash(gain)+'.':''),'good');
+  const eventTitle=kind==='sponsor'?'تعاون تجاري ناجح':kind==='video'?'فيديو انتشر':kind==='track'?'مقطع صوتي انتشر':kind==='collab'?'تعاون فني ناجح':'تفاعل مع منشور';
+  log('📱',eventTitle,'زاد جمهور '+platform.title+' بمقدار '+fmt(gain)+' متابع.'+(kind==='sponsor'?' وكسبت '+cash(gain)+'.':''),'good');
  }else{
   state.stats.happiness=clamp(state.stats.happiness-1);if(chance(.25))state.reputation=clamp(state.reputation-3);
   log('📱','تفاعل محدود','المحتوى على '+platform.title+' ماوصلش لجمهور كبير المرة دي. راجع التوقيت والأسلوب وجرب تاني.','');
  }
- if(state.followers>=1000)achievement('بناء جمهور على السوشيال ميديا');if(state.followers>=100000)achievement('وصلت إلى مئة ألف متابع');render();
- info(viral?'⭐':'📱',viral?'المحتوى انتشر':'المحتوى لم ينتشر',viral?'متابعو '+platform.title+': '+fmt(account.followers)+'. إجمالي المتابعين '+fmt(state.followers)+'. الشهرة '+state.fame+'%.':'متابعو '+platform.title+': '+fmt(account.followers)+'. الانتشار مش مضمون وكل منشور تجربة جديدة.');
+ const likes=Math.max(0,Math.round((Number(account.followers)||0)*(viral?.18:.035)+Math.random()*12));
+ const post=createSocialAudiencePost(platform,kind,viral,likes,gain);
+ state.socialFeed=normalizeSocialFeed([...(Array.isArray(state.socialFeed)?state.socialFeed:[]),post]);
+ if(state.followers>=1000)achievement('بناء جمهور على السوشيال ميديا');if(state.followers>=100000)achievement('وصلت إلى مئة ألف متابع');
+ save();render();
+ const firstReaction=post.reactions[0];
+ info(viral?'⭐':'💬',viral?'المحتوى انتشر':'المحتوى لم ينتشر',(viral?'متابعو '+platform.title+': '+fmt(account.followers)+'. إجمالي المتابعين '+fmt(state.followers)+'. الشهرة '+state.fame+'%. ':'متابعو '+platform.title+': '+fmt(account.followers)+'. الانتشار مش مضمون. ')+'أول رد من '+firstReaction.name+': «'+firstReaction.text+'». افتح صدى الجمهور لقراءة باقي الردود.');
 }
 
 
@@ -5713,7 +5815,7 @@ function importSave(){
     const data=JSON.parse(String(reader.result||''));
     if(!isValidSaveData(data)||!Array.isArray(data.family)||!data.place||typeof data.place!=='object'||Array.isArray(data.place))throw new Error('invalid');
     normalizeCoreState(data);
-    const defaults={lifeId:Date.now()+Math.random(),cemeterySaved:false,jobHistory:[],specialCareer:null,specialCareerHistory:[],combatCareer:null,filmStudio:null,investments:[],business:null,married:false,children:[],coParentingPlans:[],pets:[],hobbies:[],fame:0,followers:0,socialMediaAccount:false,socialMediaPosts:0,reputation:50,crimeRecord:0,prison:null,debt:0,willDistribution:'الأسرة بالتساوي',heirlooms:[],dailyRewardDate:null,dailyChallenges:null,timeMachineSnapshots:[],legacy:{name:null,inheritance:0,heirloom:null},driversLicense:false,travelHistory:[],retired:false,yearCount:data.age||0,assets:[],friends:[],accomplishments:[],status:'حي'};
+    const defaults={lifeId:Date.now()+Math.random(),cemeterySaved:false,jobHistory:[],specialCareer:null,specialCareerHistory:[],combatCareer:null,filmStudio:null,investments:[],business:null,married:false,children:[],coParentingPlans:[],pets:[],hobbies:[],fame:0,followers:0,socialMediaAccount:false,socialMediaPosts:0,socialFeed:[],reputation:50,crimeRecord:0,prison:null,debt:0,willDistribution:'الأسرة بالتساوي',heirlooms:[],dailyRewardDate:null,dailyChallenges:null,timeMachineSnapshots:[],legacy:{name:null,inheritance:0,heirloom:null},driversLicense:false,travelHistory:[],retired:false,yearCount:data.age||0,assets:[],friends:[],accomplishments:[],status:'حي'};
     Object.keys(defaults).forEach(k=>{if(data[k]===undefined||data[k]===null)data[k]=defaults[k];});
     if(!Array.isArray(data.assets))data.assets=[];if(!Array.isArray(data.timeMachineSnapshots))data.timeMachineSnapshots=[];if(!Array.isArray(data.coParentingPlans))data.coParentingPlans=[];data.coParentingPlans.forEach(p=>{if(p&&typeof p==='object'){if(!Array.isArray(p.childIds))p.childIds=[];if(!Array.isArray(p.history))p.history=[];if(!Number.isFinite(Number(p.supportPerChild)))p.supportPerChild=2200;if(!Number.isFinite(Number(p.arrears)))p.arrears=0;}});data.assets.forEach(a=>{if((a.kind==='car'||a.kind==='property')&&!Number.isFinite(Number(a.condition)))a.condition=100;});
     if(!data.education||typeof data.education!=='object')data.education={level:0,school:'لم تبدأ الدراسة',major:null,yearsLeft:0,tuition:0};data.education.clubs=Array.isArray(data.education.clubs)?data.education.clubs:[];
