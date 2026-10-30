@@ -936,8 +936,14 @@ async function run() {
     assert.equal(marketBeforeReload.year, 35);
     assert.ok(marketBeforeReload.competitorCount >= 2 && marketBeforeReload.competitorCount <= 8);
     assert.ok(marketBeforeReload.marketShare >= 3 && marketBeforeReload.marketShare <= 45);
+    assert.ok(Array.isArray(marketBeforeReload.rivals));
+    assert.equal(marketBeforeReload.rivals.length, marketBeforeReload.competitorCount);
+    assert.equal(new Set(marketBeforeReload.rivals.map(rival => rival.id)).size, marketBeforeReload.rivals.length);
+    assert.ok(marketBeforeReload.rivals.every(rival => rival.name && rival.product && rival.lastDecision && rival.decisionYear === 35));
+    const rivalIdsBeforeReload = marketBeforeReload.rivals.map(rival => rival.id);
     const marketDialog = await page.locator('#modalRoot').innerText();
-    assert.match(marketDialog, /المنافسين الافتراضيين/);
+    assert.match(marketDialog, /الشركات المنافسة داخل المحاكاة/);
+    assert.ok(marketBeforeReload.rivals.some(rival => marketDialog.includes(rival.name)));
     await page.locator('#closeModal').click();
     await page.reload({ waitUntil: 'domcontentloaded' });
     await page.evaluate(() => { Math.random = () => 0.99; });
@@ -972,6 +978,23 @@ async function run() {
     assert.equal(portfolioAfterYear.report.productCount, 1);
     assert.equal(portfolioAfterYear.report.facilityCount, 1);
     assert.equal(portfolioAfterYear.company.market.year, 36, 'the market snapshot should roll forward with the fiscal year');
+    assert.deepEqual(portfolioAfterYear.company.market.rivals.map(rival => rival.id), rivalIdsBeforeReload,
+      'rival company identities should persist from one fiscal year to the next');
+    assert.ok(portfolioAfterYear.company.market.rivals.every(rival => rival.decisionYear === 36),
+      'each rival should store its decision for the new fiscal year');
+    const previousRivals = new Map(marketBeforeReload.rivals.map(rival => [rival.id, rival]));
+    assert.ok(portfolioAfterYear.company.market.rivals.some(rival => {
+      const before = previousRivals.get(rival.id);
+      return before && (rival.priceIndex !== before.priceIndex || rival.qualityIndex !== before.qualityIndex ||
+        rival.capacityIndex !== before.capacityIndex || rival.marketingIndex !== before.marketingIndex);
+    }), 'at least one rival should change its commercial strategy next year');
+    assert.ok(portfolioAfterYear.company.market.rivalQualityIndex >= 35 && portfolioAfterYear.company.market.rivalQualityIndex <= 100);
+    assert.ok(portfolioAfterYear.company.market.rivalMarketingIndex >= 35 && portfolioAfterYear.company.market.rivalMarketingIndex <= 170);
+    assert.ok(portfolioAfterYear.report.marketRivalPlans && portfolioAfterYear.report.marketRivalPlans.length > 0,
+      'the annual report should include rival company decisions');
+    const rivalShareTotal = portfolioAfterYear.company.market.rivals.reduce((sum, rival) => sum + rival.marketShare, 0);
+    assert.ok(Math.abs(rivalShareTotal - (100 - portfolioAfterYear.company.market.marketShare)) <= 1.5,
+      'player and rival market shares should reconcile to approximately 100 percent');
     assert.equal(portfolioAfterYear.report.marketIndustry, 'تقنية');
     assert.equal(portfolioAfterYear.report.marketCompetitorCount, portfolioAfterYear.company.market.competitorCount);
     assert.equal(portfolioAfterYear.report.marketShare, portfolioAfterYear.company.market.marketShare);
