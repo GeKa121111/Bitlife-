@@ -3684,7 +3684,7 @@ function combatCommunityFighterMenu(fighterId){
 function interactCombatFighter(fighterId,action){
  const c=ensureCombatCareer(),fighter=c.community.find(item=>item.id===fighterId);
  if(!fighter){combatCommunityMenu();return;}
- if(action!=='spar'&&fighter.lastInteractionAge===state.age){
+ if(fighter.lastInteractionAge===state.age){
   closeModal();info('⏳','خد الأمور بهدوء','تقدر تعمل تفاعل اجتماعي واحد مع نفس المقاتل في كل سنة من عمر الشخصية.');return;
  }
  if(action==='alliance'&&!fighter.allied&&(fighter.respect<55||fighter.tension>45)){
@@ -3921,7 +3921,7 @@ function resolveCombatBout(mode,opponent,moveId,probabilityOverride=null,session
  }
  c.rank=c.leaguePoints>=150?4:c.leaguePoints>=100?3:c.leaguePoints>=60?2:c.leaguePoints>=25?1:0;
  const roundSummary=session?session.roundHistory.map(item=>({round:item.round,move:item.actionTitle,style:item.style,opponentStyle:item.opponentStyle,playerScore:Math.round(item.playerScore),opponentScore:Math.round(item.opponentScore)})):[];
- c.bouts.push({age:state.age,mode,opponent:opponent.name,opponentStyle:opponent.style,move:move.title,moves:roundSummary.map(item=>item.move),rounds:roundSummary,scoreline:session?{player:Math.round(session.playerScore),opponent:Math.round(session.opponentScore)}:null,won,probability,earnings,injury:c.injury,rank:c.rank});
+ c.bouts.push({age:state.age,mode,opponent:opponent.name,opponentStyle:opponent.style,communityFighterId:session&&session.communityFighterId?session.communityFighterId:null,move:move.title,moves:roundSummary.map(item=>item.move),rounds:roundSummary,scoreline:session?{player:Math.round(session.playerScore),opponent:Math.round(session.opponentScore)}:null,won,probability,earnings,injury:c.injury,rank:c.rank});
  if(c.bouts.length>30)c.bouts.shift();
  const record=state.specialCareer.record||(state.specialCareer.record={attempts:0,wins:0,losses:0,projects:0,totalEarnings:0,bestLevel:1});
  record.attempts=(record.attempts||0)+1;record.wins=(record.wins||0)+(won?1:0);record.losses=(record.losses||0)+(won?0:1);record.totalEarnings=(record.totalEarnings||0)+earnings;record.bestLevel=Math.max(record.bestLevel||1,state.specialCareer.level||1);
