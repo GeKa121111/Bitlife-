@@ -566,3 +566,7 @@ test('النوافذ الحوارية تدير التركيز بلوحة الم�
   assert.match(read('style.css'), /\.modal button:focus-visible/);
   assert.match(read('sw.js'), /hayah-shell-v29/);
 });
+
+test('اختبارات Node دون DOM كامل لا تتطلب querySelector من عنصر الجذر', () => {
+  assert.match(app, /const dialog=typeof root\.querySelector==='function'\?root\.querySelector\('\[role="dialog"\]'\):null/);
+});

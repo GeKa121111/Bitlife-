@@ -942,7 +942,7 @@ function modal(icon,title,desc,choices,closable=true,extra=''){
   }
   if(actualChoices.length)pick(actualChoices).action();
  });
- const dialog=root.querySelector('[role="dialog"]');
+ const dialog=typeof root.querySelector==='function'?root.querySelector('[role="dialog"]'):null;
  if(dialog){
   dialog.setAttribute('tabindex','-1');
   const getFocusable=()=>Array.from(dialog.querySelectorAll('button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),a[href],[tabindex]:not([tabindex="-1"])')).filter(element=>element.getClientRects().length>0&&element.getAttribute('aria-hidden')!=='true');
