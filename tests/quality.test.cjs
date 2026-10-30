@@ -261,6 +261,7 @@ test('فرص تحسين الإحصاءات اختيارية ومحدودة بس�
   assert.match(app, /if\(typeof raw\.boosts==='boolean'\)uiSettings\.boosts=raw\.boosts/);
   assert.match(app, /function statBoostMenu\(key\)/);
   assert.match(app, /function applyStatBoost\(key,tier\)/);
+  assert.match(app, /state\.status!=='حي'/, 'recovery actions must not remain available after the life ends');
   assert.match(app, /data-stat-boost=/);
   assert.match(app, /state\.boostUsedAge=Number\(state\.age\)/);
   assert.match(app, /function normalizeStatBoostUsage\(data\)/);
