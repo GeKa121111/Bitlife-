@@ -139,7 +139,7 @@ test('تطبيق الويب قابل للتثبيت ويحتفظ بملفات ا
   assert.ok(manifest.icons.some(item => item.src === './icon.svg'));
   assert.match(html, /rel="manifest" href="manifest\.webmanifest"/);
   assert.match(app, /navigator\.serviceWorker\.register\('\.\/sw\.js'\)/);
-  assert.match(worker, /const CACHE_NAME = 'hayah-shell-v22'/);
+  assert.match(worker, /const CACHE_NAME = 'hayah-shell-v23'/);
   assert.match(worker, /cache\.addAll\(APP_SHELL\)/);
   assert.match(worker, /caches\.match\(APP_SHELL\[0\]\)/);
   assert.match(icon, /حياة/);
@@ -227,7 +227,7 @@ test('مسيرة الرياضات الإلكترونية أصلية وتحافظ
   assert.match(app, /function upgradeEsportsSetup\(\)/);
   assert.match(app, /موهبة الألعاب الإلكترونية/);
   assert.match(app, /data\.talents\.gaming=clamp\(Number\(data\.talents\.gaming\),0,100\)/);
-  assert.match(read('sw.js'), /hayah-shell-v22/);
+  assert.match(read('sw.js'), /hayah-shell-v23/);
   assert.match(functionSource('rewindToSnapshot', 'customizeMenu'), /ensureGamingTalent\(\)/, 'rewinding a pre-feature snapshot should restore a valid talent default');
 });
 
@@ -450,5 +450,20 @@ test('إدارة المشروع تدعم عقود الموردين وتقاري�
   assert.match(app, /choice\('📦','التعاقد مع مورد'/);
   assert.match(app, /choice\('📊','سجل التقارير'/);
   assert.match(app, /const normalizeBusinessEntity=entity=>/);
-  assert.match(read('sw.js'), /hayah-shell-v22/);
+  assert.match(read('sw.js'), /hayah-shell-v23/);
+});
+
+
+test('إدارة فريق المشروع تحفظ الموظفين وتؤثر في التقرير السنوي', () => {
+  assert.match(app, /const BUSINESS_STAFF_ROLES = \[/);
+  assert.match(app, /function businessStaffMenu\(\)/);
+  assert.match(app, /function businessStaffHiringMenu\(\)/);
+  assert.match(app, /function hireBusinessStaff\(roleId\)/);
+  assert.match(app, /function trainBusinessStaff\(id\)/);
+  assert.match(app, /function fireBusinessStaff\(id\)/);
+  assert.match(app, /entity\.staff=entity\.staff\.filter/);
+  assert.match(app, /staffPayroll/);
+  assert.match(app, /staffCount/);
+  assert.match(app, /choice\('👥','إدارة الموظفين'/);
+  assert.match(read('sw.js'), /hayah-shell-v23/);
 });
