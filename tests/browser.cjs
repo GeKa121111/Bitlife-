@@ -332,6 +332,35 @@ async function run() {
     // The rewind action intentionally opens a confirmation dialog; close it before opening the main menu again.
     await page.locator('.choice').filter({ hasText: 'تمام' }).last().click();
 
+    // A legacy multi-year supplier contract keeps its remaining term and receives safe quote defaults.
+    await page.evaluate(() => {
+      const key = 'hekayat_hayah_save_v1';
+      const saved = JSON.parse(localStorage.getItem(key) || 'null');
+      saved.business.supplier = { id: 'economy', yearsLeft: 2, startedAtAge: 29 };
+      localStorage.setItem(key, JSON.stringify(saved));
+    });
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await page.waitForFunction(() => {
+      const saved = JSON.parse(localStorage.getItem('hekayat_hayah_save_v1') || 'null');
+      return saved && saved.age === 30 && saved.business && saved.business.supplier;
+    });
+    await page.locator('[data-panel="assets"]').click();
+    await page.locator('.choice').filter({ hasText: 'إدارة مشروعي' }).click();
+    await page.locator('.choice').filter({ hasText: 'التعاقد مع مورد' }).click();
+    await page.waitForFunction(() => {
+      const saved = JSON.parse(localStorage.getItem('hekayat_hayah_save_v1') || 'null');
+      const supplier = saved && saved.business && saved.business.supplier;
+      return supplier && supplier.yearsLeft === 2 && supplier.quality === 58 && supplier.costMultiplier === 0.84;
+    });
+    const legacySupplier = await page.evaluate(() => {
+      const saved = JSON.parse(localStorage.getItem('hekayat_hayah_save_v1') || 'null');
+      return saved.business.supplier;
+    });
+    assert.equal(legacySupplier.yearsLeft, 2, 'legacy supplier duration should not be shortened');
+    assert.equal(legacySupplier.quality, 58, 'legacy supplier quality should default from the original catalog');
+    assert.equal(legacySupplier.costMultiplier, 0.84, 'legacy supplier cost should default from the original catalog');
+    await page.locator('#closeModal').click();
+
     const downloadPromise = page.waitForEvent('download');
     await page.locator('#menuBtn').click();
     await page.locator('.choice').filter({ hasText: 'تصدير الحفظ' }).click();
