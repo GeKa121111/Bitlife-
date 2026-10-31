@@ -479,6 +479,16 @@ function normalizeCombatInjuryYears(value){
  if(!Number.isFinite(parsed)||parsed<=0)return 0;
  return Math.min(2,Math.ceil(parsed));
 }
+function advanceCombatRecovery(career){
+ if(!career||typeof career!=='object'||Array.isArray(career))return false;
+ const injury=clamp(career.injury),years=normalizeCombatInjuryYears(career.injuryYears);
+ career.injury=injury;career.injuryYears=years;
+ if(injury<=0||years<=0){if(injury<=0)career.injuryYears=0;return false;}
+ career.injuryYears=Math.max(0,years-1);
+ career.injury=clamp(injury-28);
+ if(career.injuryYears===0||career.injury===0){career.injury=0;career.injuryYears=0;return true;}
+ return false;
+}
 const combatMoveMasteryThresholds=[0,3,8,15,25];
 const combatMoveMasteryLabels=['جديدة','ناشئة','متمرّسة','متقنة','خبيرة'];
 function normalizeCombatMoveMastery(raw,knownMoves){
@@ -1933,7 +1943,8 @@ function simulateBusinessEntityYear(business,kind){
 function advanceAge(){
  if(!validState())return;
  state.age++;state.yearCount++;if(perkEnabled('hollywoodStar')&&(state.job||state.specialCareer))state.fame=100;
- if(state.specialCareer&&state.specialCareer.id==='fighter'&&state.combatCareer){const cc=ensureCombatCareer();cc.energy=100;if(cc.injuryYears>0){cc.injuryYears--;cc.injury=clamp(cc.injury-28);if(cc.injuryYears===0||cc.injury===0){cc.injury=0;cc.injuryYears=0;log('🩹','التعافي من الإصابة','تعافيت من إصابة القتال وعدت جاهزًا للتدريب.','good');}}if(cc.coach&&cc.coach.yearsLeft>0){const annualCost=cc.coach.annualCost||0;if(state.bank<annualCost){log('💳','تعذر دفع مصاريف المدرب','الرصيد لا يكفي مصاريف المدرب السنوية؛ انتهى التعاقد دون خصم المصروف.','bad');cc.coach=null;}else{state.bank-=annualCost;cc.coach.yearsLeft--;if(cc.coach.yearsLeft<=0){log('🧑‍🏫','انتهاء عقد المدرب','انتهى عقد المدرب. يمكنك تجديده من مسيرة القتال.');cc.coach=null;}}}}
+ if(state.combatCareer&&advanceCombatRecovery(state.combatCareer))log('🩹','التعافي من الإصابة','تعافيت من إصابة القتال وعدت جاهزًا للتدريب.','good');
+ if(state.specialCareer&&state.specialCareer.id==='fighter'&&state.combatCareer){const cc=ensureCombatCareer();cc.energy=100;if(cc.coach&&cc.coach.yearsLeft>0){const annualCost=cc.coach.annualCost||0;if(state.bank<annualCost){log('💳','تعذر دفع مصاريف المدرب','الرصيد لا يكفي مصاريف المدرب السنوية؛ انتهى التعاقد دون خصم المصروف.','bad');cc.coach=null;}else{state.bank-=annualCost;cc.coach.yearsLeft--;if(cc.coach.yearsLeft<=0){log('🧑‍🏫','انتهاء عقد المدرب','انتهى عقد المدرب. يمكنك تجديده من مسيرة القتال.');cc.coach=null;}}}}
  advanceChildren();
  (state.family||[]).forEach(relative=>{if(relative.deceased)return;relative.age=(relative.age||0)+1;const oldest=relative.age>=100;const parent=/(الأب|الأم|والد|والدة)/.test(relative.relation||'');const risk=relative.age>75?Math.min(.45,.012+(relative.age-75)*.012):0;if(oldest||(risk&&chance(risk))){relative.deceased=true;const close=(relative.relationshipLevel||50)>=70;state.stats.happiness=clamp(state.stats.happiness-(close?12:5));log('🕯️','وفاة أحد أفراد العائلة','توفي '+relative.name+' بعد رحلة من العمر. الخبر أثر عليك وعلى علاقتك بالعائلة.','bad');achievement('وداع '+relative.name);}});
  if(state.partner&&typeof state.partner.age==='number'){
