@@ -467,10 +467,10 @@ function normalizePendingCombatBout(raw){
    masteryLevel:Math.round(finite(item.masteryLevel,0,0,4)),
    masteryBonus:Math.round(finite(item.masteryBonus,0,0,8)),
    masteryUses:Math.round(finite(item.masteryUses,0,0,100)),
-   energyBefore:item.energyBefore===undefined?null:Math.round(finite(item.energyBefore,0,0,100)),
-   energyCost:item.energyCost===undefined?null:Math.round(finite(item.energyCost,0,0,32)),
-   energyRecovery:item.energyRecovery===undefined?null:Math.round(finite(item.energyRecovery,0,0,20)),
-   energyAfter:item.energyAfter===undefined?null:Math.round(finite(item.energyAfter,0,0,100))
+   energyBefore:item.energyBefore==null?null:Math.round(finite(item.energyBefore,0,0,100)),
+   energyCost:item.energyCost==null?null:Math.round(finite(item.energyCost,0,0,32)),
+   energyRecovery:item.energyRecovery==null?null:Math.round(finite(item.energyRecovery,0,0,20)),
+   energyAfter:item.energyAfter==null?null:Math.round(finite(item.energyAfter,0,0,100))
   };
  }).filter(Boolean);
  const last=history.length?history[history.length-1]:null;
