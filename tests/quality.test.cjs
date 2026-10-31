@@ -867,7 +867,8 @@ test('سجل الحياة يضيف الأحداث الجديدة تدريجيً�
   assert.match(app, /if\(renderedFeedElement===feed&&Array\.isArray\(previous\)&&supportsIncrementalDom\)/);
   assert.match(app, /for\(let candidate=359;candidate>0;candidate--\)/);
   assert.match(app, /renderedLogSnapshot=signatures;renderedFeedElement=feed/);
-  assert.match(html, /id="lifeFeed"[^>]*aria-relevant="additions" aria-atomic="false"/);
+  assert.doesNotMatch(html, /id="lifeFeed"[^>]*aria-live=/);
+  assert.match(app, /announceLifeEvents\(entries,appendFrom\)/);
   assert.match(read('sw.js'), /hayah-shell-v60/);
 });
 
