@@ -1486,6 +1486,7 @@ test('نافذة توقيت رد الفعل تمنح مكافأة اختياري
   assert.match(app, /session\.reactionWindowStartedAt=Date\.now\(\)/);
   assert.match(app, /session\.reactionTimeMs=timing\.elapsedMs/);
   assert.match(app, /reactionTimeMs:reactionTiming\.elapsedMs,reactionTimingBonus:reactionTiming\.bonus/);
+  assert.match(app, /reactionTimeMs:item\.reactionTimeMs===undefined\?null:item\.reactionTimeMs,reactionTimingBonus:item\.reactionTimingBonus\|\|0/);
   assert.match(app, /استجابة سريعة خلال 1\.8 ثانية تمنحك 4 نقاط إضافية/);
   assert.match(css, /\.combat-reaction-clock/);
   assert.match(css, /hayah-reaction-window/);
