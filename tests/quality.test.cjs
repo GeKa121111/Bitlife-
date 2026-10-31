@@ -345,7 +345,7 @@ test('إعدادات العرض منفصلة عن حفظ الحياة ويمكن
 
 test('فرص تحسين الإحصاءات اختيارية ومحدودة بسنة العمر وتحافظ على حفظ v1', () => {
   assert.match(app, /let uiSettings=\{[^}]*boosts:true/);
-  assert.match(app, /if\(typeof raw\.boosts==='boolean'\)uiSettings\.boosts=raw\.boosts/);
+  assert.match(app, /boosts:typeof raw\.boosts==='boolean'\?raw\.boosts:defaults\.boosts/);
   assert.match(app, /function statBoostMenu\(key\)/);
   assert.match(app, /function applyStatBoost\(key,tier\)/);
   assert.match(app, /state\.status!=='حي'/, 'recovery actions must not remain available after the life ends');
@@ -429,7 +429,7 @@ test('متجر مزايا حياة يحفظ المزايا بشكل مستقل �
 });
 
 test('الطابع الذهبي يتخزن ويعاد تحميله ويغيّر مظهر حياة فقط', () => {
-  assert.match(app, /raw\.theme==='dark'\|\|raw\.theme==='light'\|\|raw\.theme==='gold'/);
+  assert.match(app, /theme:\['dark','light','gold'\]\.includes\(raw\.theme\)\?raw\.theme:defaults\.theme/);
   assert.match(app, /body\.classList\.toggle\('theme-gold',uiSettings\.theme==='gold'\)/);
   assert.match(css, /body\.theme-gold\{/);
   assert.match(css, /--brand:#b8861b/);
@@ -760,8 +760,8 @@ test('إعدادات الصوت والاهتزاز اختيارية ومستقل
   assert.ok(app.includes("function playUiFeedback(kind='tap')"));
   assert.ok(app.includes("typeof navigator.vibrate==='function'"));
   assert.ok(app.includes("window.AudioContext||window.webkitAudioContext"));
-  assert.ok(app.includes("if(typeof raw.sound==='boolean')"));
-  assert.ok(app.includes("if(typeof raw.haptics==='boolean')"));
+  assert.ok(app.includes("sound:typeof raw.sound==='boolean'?raw.sound:defaults.sound"));
+  assert.ok(app.includes("haptics:typeof raw.haptics==='boolean'?raw.haptics:defaults.haptics"));
   assert.ok(app.includes("choice(uiSettings.sound?'🔊':'🔇'"));
   assert.ok(app.includes("choice(uiSettings.haptics?'📳':'📴'"));
   assert.ok(app.includes("localStorage.setItem(SETTINGS_KEY,JSON.stringify(uiSettings))"));
