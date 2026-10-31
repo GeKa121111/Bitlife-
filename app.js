@@ -4320,7 +4320,7 @@ function treatCombatInjury(){
 }
 function combatBoutHistory(){
  const c=ensureCombatCareer(),opts=c.bouts.slice().reverse().map(b=>{
-  const rounds=Array.isArray(b.rounds)?b.rounds:[],hasImpact=rounds.some(item=>item&&item.healthDamage!==undefined);
+  const rounds=Array.isArray(b.rounds)?b.rounds:[],hasImpact=rounds.some(item=>item&&item.healthBefore!==null&&item.healthBefore!==undefined);
   const damage=rounds.reduce((sum,item)=>sum+Math.max(0,Number(item&&item.healthDamage)||0),0);
   const roundInjury=rounds.reduce((sum,item)=>sum+Math.max(0,Number(item&&item.injuryGain)||0),0);
   const impactLabel=hasImpact?' · ضرر الصحة أثناء الجولات '+damage+'% · إصابات الجولات '+roundInjury+'%':' · تفاصيل الضرر غير متاحة لهذا النزال القديم';
