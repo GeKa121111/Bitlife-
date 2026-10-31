@@ -1159,7 +1159,7 @@ test('ضرر كل جولة يؤثر على الصحة والإصابة تدري�
   assert.deepEqual(JSON.parse(JSON.stringify(context.exposed)), {baseDamage:5,healthDamage:7,injuryGain:2});
   assert.ok(context.strongDefense.healthDamage < context.weakDefense.healthDamage,
     'defense should reduce incoming damage for the same opponent and response');
-  assert.match(app, /state\\.stats\\.health=clamp\\(healthBefore-impact\\.healthDamage\\)/);
+  assert.ok(app.includes('state.stats.health=clamp(healthBefore-impact.healthDamage)'));
   assert.match(app, /c\\.injury=clamp\\(injuryBefore\\+impact\\.injuryGain\\)/);
   assert.match(app, /healthDamage:roundHealthDamage,roundInjuryGain/);
 
