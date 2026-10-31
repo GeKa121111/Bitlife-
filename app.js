@@ -1908,13 +1908,28 @@ function age18Choice(){
 }
 function death(cause){
  dead=true;state.status='متوفى';state.cause=cause;archiveLife();save();render();
+ if(activeDialogKeyHandler){document.removeEventListener('keydown',activeDialogKeyHandler);activeDialogKeyHandler=null;}
  const assetValue=state.assets.reduce((sum,a)=>sum+a.value,0),investmentValue=(state.investments||[]).reduce((sum,a)=>sum+(a.value||0),0),net=state.bank+assetValue+investmentValue-(state.debt||0);
  const achievements=state.accomplishments.length?state.accomplishments.map(a=>'• '+esc(a)).join('<br>'):'لسه مفيش إنجازات مسجلة، بس كل حياة ليها حكايتها.';
- $('modalRoot').innerHTML='<div class="overlay"><section class="modal"><div class="death"><div class="tomb">🪦</div><div class="deathtitle">انتهت حكاية '+esc(state.name)+'</div><div class="deathsub">عشت '+fmt(state.age)+' سنة.<br>سبب الوفاة: '+esc(cause)+'.<br>شريط حياتك: '+esc(lifeRibbon())+'.<br>كل قرار ساب أثر، وكل سنة كانت فصل من قصتك.</div><div class="summarygrid"><div class="summarycell"><div class="summarylabel">الثروة النهائية</div><div class="summaryvalue">'+cash(net)+'</div></div><div class="summarycell"><div class="summarylabel">العمر</div><div class="summaryvalue">'+fmt(state.age)+' سنة</div></div><div class="summarycell"><div class="summarylabel">إنجازات</div><div class="summaryvalue">'+fmt(state.accomplishments.length)+'</div></div><div class="summarycell"><div class="summarylabel">الأصول</div><div class="summaryvalue">'+fmt(state.assets.length)+'</div></div></div><div class="listitem" style="text-align:right"><div class="listtitle">محطات من حياتك</div><div class="muted" style="margin-top:8px;line-height:2">'+achievements+'</div></div><button class="primarybtn" id="newLifeBtn">🌱 حياة جديدة</button>'+((state.timeMachineSnapshots||[]).length?'<button class="smallbtn" id="timeMachineDeathBtn" style="width:100%;margin-top:8px">⏳ تراجع عن سنة قاتلة</button>':'')+(state.children.length?'<div class="muted" style="margin:8px 0">كمّل إرث العائلة:</div>'+state.children.map((c,i)=>'<button class="smallbtn" data-heir="'+i+'" style="width:100%;margin:4px 0">🌳 استكمل كـ '+esc(c.name)+'</button>').join(''):'')+'<button class="smallbtn" id="reviewBtn" style="width:100%;margin-top:9px">راجع دفتر حياتك</button></div></section></div>';
+ $('modalRoot').innerHTML='<div class="overlay death-overlay"><section class="modal" id="deathDialog" role="dialog" aria-modal="true" aria-labelledby="deathDialogTitle" aria-describedby="deathDialogDescription" tabindex="-1"><div class="death"><div class="tomb" aria-hidden="true">🪦</div><div class="deathtitle" id="deathDialogTitle" role="heading" aria-level="1">انتهت حكاية '+esc(state.name)+'</div><div class="deathsub" id="deathDialogDescription">عشت '+fmt(state.age)+' سنة.<br>سبب الوفاة: '+esc(cause)+'.<br>شريط حياتك: '+esc(lifeRibbon())+'.<br>كل قرار ساب أثر، وكل سنة كانت فصل من قصتك.</div><div class="summarygrid"><div class="summarycell"><div class="summarylabel">الثروة النهائية</div><div class="summaryvalue">'+cash(net)+'</div></div><div class="summarycell"><div class="summarylabel">العمر</div><div class="summaryvalue">'+fmt(state.age)+' سنة</div></div><div class="summarycell"><div class="summarylabel">إنجازات</div><div class="summaryvalue">'+fmt(state.accomplishments.length)+'</div></div><div class="summarycell"><div class="summarylabel">الأصول</div><div class="summaryvalue">'+fmt(state.assets.length)+'</div></div></div><div class="listitem" style="text-align:right"><div class="listtitle">محطات من حياتك</div><div class="muted" style="margin-top:8px;line-height:2">'+achievements+'</div></div><button class="primarybtn" id="newLifeBtn">🌱 حياة جديدة</button>'+((state.timeMachineSnapshots||[]).length?'<button class="smallbtn" id="timeMachineDeathBtn" style="width:100%;margin-top:8px">⏳ تراجع عن سنة قاتلة</button>':'')+(state.children.length?'<div class="muted" style="margin:8px 0">كمّل إرث العائلة:</div>'+state.children.map((c,i)=>'<button class="smallbtn" data-heir="'+i+'" style="width:100%;margin:4px 0">🌳 استكمل كـ '+esc(c.name)+'</button>').join(''):'')+'<button class="smallbtn" id="reviewBtn" style="width:100%;margin-top:9px">راجع دفتر حياتك</button></div></section></div>';
  $('newLifeBtn').addEventListener('click',()=>{closeModal();if(confirm('تبدأ حياة جديدة وتستبدل الحفظ الحالي؟'))newLifeSetup();});
  $('reviewBtn').addEventListener('click',closeModal);
  const rewindDeathBtn=$('timeMachineDeathBtn');if(rewindDeathBtn)rewindDeathBtn.addEventListener('click',timeMachineMenu);
  $('modalRoot').querySelectorAll('[data-heir]').forEach(btn=>btn.addEventListener('click',()=>startAsChild(Number(btn.dataset.heir))));
+ const dialog=$('deathDialog');
+ if(dialog){
+  const getFocusable=()=>Array.from(dialog.querySelectorAll('button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),a[href],[tabindex]:not([tabindex="-1"])')).filter(element=>element.getClientRects().length>0&&element.getAttribute('aria-hidden')!=='true');
+  activeDialogKeyHandler=event=>{
+   if(event.key!=='Tab')return;
+   const focusable=getFocusable();
+   if(!focusable.length){event.preventDefault();dialog.focus();return;}
+   const first=focusable[0],last=focusable[focusable.length-1];
+   if(event.shiftKey&&(document.activeElement===first||document.activeElement===dialog||!dialog.contains(document.activeElement))){event.preventDefault();last.focus();}
+   else if(!event.shiftKey&&(document.activeElement===last||document.activeElement===dialog||!dialog.contains(document.activeElement))){event.preventDefault();first.focus();}
+  };
+  document.addEventListener('keydown',activeDialogKeyHandler);
+  try{dialog.focus({preventScroll:true});}catch(e){dialog.focus();}
+ }
 }
 function startNew(){
  if(state&&state.status==='حي'&&state.age>0)archiveLife('بدأ حياة جديدة');
