@@ -243,6 +243,27 @@ async function run() {
     assert.equal(initialLayout.feedScrollWidth, initialLayout.feedWidth,
       'the life feed should not introduce horizontal scrolling');
 
+    assert.equal(await page.locator('#lifeFeed').getAttribute('aria-live'), null,
+      'the full diary should remain navigable without replaying every saved entry');
+    assert.equal((await page.locator('#lifeAnnouncement').textContent()).trim(), '',
+      'loading an existing life should not announce its entire saved history');
+    await page.locator('#ageUpBtn').click();
+    await page.waitForFunction(() => {
+      const saved = JSON.parse(localStorage.getItem('hekayat_hayah_save_v1') || 'null');
+      const announcement = document.querySelector('#lifeAnnouncement')?.textContent || '';
+      return saved?.age === 31 && announcement.includes('في عمر') && announcement.includes('سنة');
+    });
+    const newEventAnnouncement = (await page.locator('#lifeAnnouncement').textContent()).trim();
+    assert.ok(newEventAnnouncement.length > 0,
+      'new diary entries should be announced through the dedicated status region');
+    assert.ok(!newEventAnnouncement.includes('بداية اختبار المتصفح'),
+      'new-event announcements must not repeat an older saved diary entry');
+    await page.evaluate(seed => {
+      localStorage.setItem('hekayat_hayah_save_v1', JSON.stringify(seed));
+      localStorage.removeItem('hekayat_hayah_save_backup_v1');
+    }, seedSave);
+    await page.reload({ waitUntil: 'domcontentloaded' });
+
     const measureDock = () => page.evaluate(() => {
       const rect = element => {
         const box = document.querySelector(element).getBoundingClientRect();

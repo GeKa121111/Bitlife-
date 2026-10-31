@@ -18,7 +18,11 @@ assert.match(app, /navigator\.serviceWorker\.register\('\.\/sw\.js'\)/);
 assert.match(serviceWorker, /request\.mode === 'navigate'/);
 assert.match(serviceWorker, /caches\.match\(APP_SHELL\[0\]\)/);
 assert.match(index, /id="ageUpBtn"/);
-assert.match(index, /id="lifeFeed"[^>]*aria-relevant="additions" aria-atomic="false"/);
+assert.match(index, /id="lifeFeed"[^>]*aria-label="سجل الحياة والأحداث"/);
+assert.doesNotMatch(index, /id="lifeFeed"[^>]*aria-live=/,
+  'the full diary should not be a live region that re-announces the entire history');
+assert.match(index, /id="lifeAnnouncement"[^>]*role="status" aria-live="polite" aria-atomic="true"/);
+assert.match(app, /function announceLifeEvents\(entries,startIndex\)/);
 assert.match(css, /max-width:500px/);
 assert.match(app, /const dailyChallengeDefs=\[/, 'daily challenge catalog should be available');
 assert.match(app, /function ensureDailyChallengeBoard\(\)/, 'daily challenges should rotate and persist by day');
