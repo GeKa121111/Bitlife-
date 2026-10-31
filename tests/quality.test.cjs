@@ -1262,6 +1262,7 @@ test('التعافي يستمر بعد إيقاف مسيرة القتال ولا
     }
   };
   vm.runInNewContext(helperSource + '\nglobalThis.advanceRecovery=advanceCombatRecovery;', context);
+  assert.equal(context.advanceRecovery(null), false, 'missing legacy fighter records should be ignored safely');
 
   const singleYear = { injury: 40, injuryYears: 1 };
   assert.equal(context.advanceRecovery(singleYear), true);
