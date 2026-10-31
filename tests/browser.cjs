@@ -846,7 +846,6 @@ async function run() {
     await page.locator('.choice').filter({ hasText: 'تمام' }).last().click();
 
     // A complete backup must restore the separate local-only data stores as well as the life.
-    await page.locator('.choice').filter({ hasText: 'تمام' }).last().click();
     await page.evaluate(() => {
       localStorage.setItem('hekayat_hayah_cemetery_v1', '[]');
       localStorage.setItem('hayah_ui_settings_v1', JSON.stringify({theme:'dark',textScale:'large',sound:true,haptics:true,boosts:false}));
