@@ -1952,11 +1952,12 @@ function age18Choice(){
  ],false);
 }
 function death(cause){
- dead=true;state.status='متوفى';state.cause=cause;archiveLife();save();render();
+ dead=true;state.status='متوفى';state.cause=cause;const archived=archiveLife();save();render();
  if(activeDialogKeyHandler){document.removeEventListener('keydown',activeDialogKeyHandler);activeDialogKeyHandler=null;}
  const assetValue=state.assets.reduce((sum,a)=>sum+a.value,0),investmentValue=(state.investments||[]).reduce((sum,a)=>sum+(a.value||0),0),net=state.bank+assetValue+investmentValue-(state.debt||0);
  const achievements=state.accomplishments.length?state.accomplishments.map(a=>'• '+esc(a)).join('<br>'):'لسه مفيش إنجازات مسجلة، بس كل حياة ليها حكايتها.';
- $('modalRoot').innerHTML='<div class="overlay death-overlay"><section class="modal" id="deathDialog" role="dialog" aria-modal="true" aria-labelledby="deathDialogTitle" aria-describedby="deathDialogDescription" tabindex="-1"><div class="death"><div class="tomb" aria-hidden="true">🪦</div><div class="deathtitle" id="deathDialogTitle" role="heading" aria-level="1">انتهت حكاية '+esc(state.name)+'</div><div class="deathsub" id="deathDialogDescription">عشت '+fmt(state.age)+' سنة.<br>سبب الوفاة: '+esc(cause)+'.<br>شريط حياتك: '+esc(lifeRibbon())+'.<br>كل قرار ساب أثر، وكل سنة كانت فصل من قصتك.</div><div class="summarygrid"><div class="summarycell"><div class="summarylabel">الثروة النهائية</div><div class="summaryvalue">'+cash(net)+'</div></div><div class="summarycell"><div class="summarylabel">العمر</div><div class="summaryvalue">'+fmt(state.age)+' سنة</div></div><div class="summarycell"><div class="summarylabel">إنجازات</div><div class="summaryvalue">'+fmt(state.accomplishments.length)+'</div></div><div class="summarycell"><div class="summarylabel">الأصول</div><div class="summaryvalue">'+fmt(state.assets.length)+'</div></div></div><div class="listitem" style="text-align:right"><div class="listtitle">محطات من حياتك</div><div class="muted" style="margin-top:8px;line-height:2">'+achievements+'</div></div><button class="primarybtn" id="newLifeBtn">🌱 حياة جديدة</button>'+((state.timeMachineSnapshots||[]).length?'<button class="smallbtn" id="timeMachineDeathBtn" style="width:100%;margin-top:8px">⏳ تراجع عن سنة قاتلة</button>':'')+(state.children.length?'<div class="muted" style="margin:8px 0">كمّل إرث العائلة:</div>'+state.children.map((c,i)=>'<button class="smallbtn" data-heir="'+i+'" style="width:100%;margin:4px 0">🌳 استكمل كـ '+esc(c.name)+'</button>').join(''):'')+'<button class="smallbtn" id="reviewBtn" style="width:100%;margin-top:9px">راجع دفتر حياتك</button></div></section></div>';
+ const archiveWarning=archived?'':'<div class="listitem" role="alert" style="text-align:right;border:1px solid #b45309;background:rgba(180,83,9,.08)">تعذر حفظ ملخص الحياة في المقبرة بسبب مشكلة في التخزين. لن نبدأ حياة جديدة أو ننقل الإرث قبل نجاح الحفظ؛ صدّر نسخة احتياطية كاملة، وفّر مساحة ثم أعد المحاولة.</div>';
+ $('modalRoot').innerHTML='<div class="overlay death-overlay"><section class="modal" id="deathDialog" role="dialog" aria-modal="true" aria-labelledby="deathDialogTitle" aria-describedby="deathDialogDescription" tabindex="-1"><div class="death"><div class="tomb" aria-hidden="true">🪦</div><div class="deathtitle" id="deathDialogTitle" role="heading" aria-level="1">انتهت حكاية '+esc(state.name)+'</div><div class="deathsub" id="deathDialogDescription">عشت '+fmt(state.age)+' سنة.<br>سبب الوفاة: '+esc(cause)+'.<br>شريط حياتك: '+esc(lifeRibbon())+'.<br>كل قرار ساب أثر، وكل سنة كانت فصل من قصتك.</div><div class="summarygrid"><div class="summarycell"><div class="summarylabel">الثروة النهائية</div><div class="summaryvalue">'+cash(net)+'</div></div><div class="summarycell"><div class="summarylabel">العمر</div><div class="summaryvalue">'+fmt(state.age)+' سنة</div></div><div class="summarycell"><div class="summarylabel">إنجازات</div><div class="summaryvalue">'+fmt(state.accomplishments.length)+'</div></div><div class="summarycell"><div class="summarylabel">الأصول</div><div class="summaryvalue">'+fmt(state.assets.length)+'</div></div></div>'+archiveWarning+'<div class="listitem" style="text-align:right"><div class="listtitle">محطات من حياتك</div><div class="muted" style="margin-top:8px;line-height:2">'+achievements+'</div></div><button class="primarybtn" id="newLifeBtn">🌱 حياة جديدة</button>'+((state.timeMachineSnapshots||[]).length?'<button class="smallbtn" id="timeMachineDeathBtn" style="width:100%;margin-top:8px">⏳ تراجع عن سنة قاتلة</button>':'')+(state.children.length?'<div class="muted" style="margin:8px 0">كمّل إرث العائلة:</div>'+state.children.map((c,i)=>'<button class="smallbtn" data-heir="'+i+'" style="width:100%;margin:4px 0">🌳 استكمل كـ '+esc(c.name)+'</button>').join(''):'')+'<button class="smallbtn" id="reviewBtn" style="width:100%;margin-top:9px">راجع دفتر حياتك</button></div></section></div>';
  $('newLifeBtn').addEventListener('click',()=>{closeModal();if(confirm('تبدأ حياة جديدة وتستبدل الحفظ الحالي؟'))newLifeSetup();});
  $('reviewBtn').addEventListener('click',closeModal);
  const rewindDeathBtn=$('timeMachineDeathBtn');if(rewindDeathBtn)rewindDeathBtn.addEventListener('click',timeMachineMenu);
@@ -1977,7 +1978,10 @@ function death(cause){
  }
 }
 function startNew(){
- if(state&&state.status==='حي'&&state.age>0)archiveLife('بدأ حياة جديدة');
+ if(state&&(Number(state.age)>0||state.status==='متوفى')&&!archiveLife('بدأ حياة جديدة')){
+  info('⚠️','الحياة السابقة لم تُحفظ','لم نبدأ حياة جديدة حتى لا نفقد ملخص حياتك الحالية. صدّر نسخة احتياطية كاملة، وفّر مساحة تخزين ثم حاول مرة أخرى.');
+  return;
+ }
  state=newLife();dead=false;
  log('👶','أول يوم في الدنيا','اتولدت في '+state.place.city+'، '+state.place.country+'. أهلك '+state.family[0].name+' و'+state.family[1].name+' بيبدأوا معاك أول فصل في الحكاية.','special');
  log('🏡','البيت والعيلة','أبوك شغال '+state.family[0].personality+'، وأمك '+state.family[1].personality+'. العيلة هي أول شبكة أمان ليك.');
@@ -4945,7 +4949,7 @@ function chooseBirthCountry(gender){
  modal('🌍','بلد الميلاد','البلد هتحدد المدينة والعملة ورصيد البداية.',opts);
 }
 function createLifeConfigured(gender,place){
- closeModal();if(state&&state.status==='حي'&&state.age>0)archiveLife('اختيار حياة جديدة');state=newLife();dead=false;state.gender=gender;state.name=pick(names[gender])+' '+pick(names.family);state.place={...place};state.bank=place.start;
+ closeModal();if(state&&(Number(state.age)>0||state.status==='متوفى')&&!archiveLife('اختيار حياة جديدة')){info('⚠️','الحياة السابقة لم تُحفظ','لم نبدأ حياة جديدة حتى لا نفقد ملخص حياتك الحالية. صدّر نسخة احتياطية كاملة، وفّر مساحة تخزين ثم حاول مرة أخرى.');return;}state=newLife();dead=false;state.gender=gender;state.name=pick(names[gender])+' '+pick(names.family);state.place={...place};state.bank=place.start;
  if(typeof prompt==='function'){const name=prompt('اكتب اسم الشخصية (اختياري)',state.name);if(name&&name.trim())state.name=name.trim().slice(0,50);}
  log('👶','أول يوم في الدنيا','اتولدت في '+state.place.city+'، '+state.place.country+'. بدأت حكايتك بعائلة وظروف مختلفة، وكل سنة هتفتح قدامك اختيارات جديدة.','special');
  log('🏡','البيت والعيلة','أبوك '+state.family[0].name+' وأمك '+state.family[1].name+' هما أول شبكة أمان ليك.');achievement('بدأت رحلة الحياة');render();
@@ -4975,15 +4979,31 @@ function normalizeCemetery(raw){
  }).filter(Boolean);
 }
 function archiveLife(reason){
- if(!state||state.cemeterySaved)return;
+ if(!state)return false;
  try{
-  const list=normalizeCemetery(JSON.parse(localStorage.getItem(CEMETERY_KEY)||'[]'));const id=state.lifeId||('life-'+Date.now());
-  if(!list.some(x=>x.id===id)){const assets=(state.assets||[]).reduce((n,a)=>n+(a.value||0),0),invest=(state.investments||[]).reduce((n,a)=>n+(a.value||0),0);
-   list.unshift({id,name:state.name,age:state.age,cause:state.cause||reason||'نهاية الرحلة',netWorth:(state.bank||0)+assets+invest-(state.debt||0),ribbon:reason&&state.status==='حي'?'حياة متروكة · '+lifeRibbon():lifeRibbon(),country:state.place?.country||'',accomplishments:(state.accomplishments||[]).slice(0,40),children:(state.children||[]).length,createdAt:new Date().toISOString()});
-   localStorage.setItem(CEMETERY_KEY,JSON.stringify(list.slice(0,100)));
+  // Do not trust the old cemeterySaved flag by itself: earlier storage failures
+  // could set it even when the archive entry was never written.
+  const raw=localStorage.getItem(CEMETERY_KEY);
+  const parsed=raw===null?[]:JSON.parse(raw);
+  if(!Array.isArray(parsed))throw new Error('invalid-cemetery');
+  const list=normalizeCemetery(parsed),id=state.lifeId||('life-'+Date.now());
+  if(list.some(item=>String(item.id)===String(id))){
+   state.cemeterySaved=true;
+   return true;
   }
+  const assets=(state.assets||[]).reduce((n,a)=>n+(a.value||0),0),invest=(state.investments||[]).reduce((n,a)=>n+(a.value||0),0);
+  const entry={id,name:state.name,age:state.age,cause:state.cause||reason||'نهاية الرحلة',netWorth:(state.bank||0)+assets+invest-(state.debt||0),ribbon:reason&&state.status==='حي'?'حياة متروكة · '+lifeRibbon():lifeRibbon(),country:state.place?.country||'',accomplishments:(state.accomplishments||[]).slice(0,40),children:(state.children||[]).length,createdAt:new Date().toISOString()};
+  const nextList=[entry,...list].slice(0,100);
+  localStorage.setItem(CEMETERY_KEY,JSON.stringify(nextList));
+  const persistedRaw=localStorage.getItem(CEMETERY_KEY);
+  const persisted=persistedRaw?JSON.parse(persistedRaw):null;
+  if(!Array.isArray(persisted)||!persisted.some(item=>item&&String(item.id)===String(id)))throw new Error('cemetery-write-unverified');
   state.cemeterySaved=true;
- }catch(e){state.cemeterySaved=true;}
+  return true;
+ }catch(e){
+  state.cemeterySaved=false;
+  return false;
+ }
 }
 function cemeteryMenu(){
  let list=[];try{list=JSON.parse(localStorage.getItem(CEMETERY_KEY)||'[]');}catch(e){}
@@ -5205,7 +5225,11 @@ function calculateInheritance(previous,share){
  return {value:inheritedValue,bank:inheritedBank,assets:inheritedAssets,investments:inheritedInvestments};
 }
 function startAsChild(index){
- if(!state.children[index])return;
+ if(!state||!Array.isArray(state.children)||!state.children[index])return;
+ if(!archiveLife()){
+  info('⚠️','الإرث لم يُحفظ بعد','تعذر حفظ ملخص حياة الوالد في المقبرة. لم ننقل الإرث حتى لا نفقد سجل الجيل السابق؛ صدّر نسخة احتياطية كاملة، وفّر مساحة ثم أعد المحاولة.');
+  return;
+ }
  const previous=state,child=previous.children[index],oldPartner=previous.partner;
  const share=previous.willDistribution==='الأبناء أولًا'?.9:previous.willDistribution==='الشريك أولًا'?.55:previous.willDistribution==='التبرع بجزء'?.65:.8;
  const inheritance=calculateInheritance(previous,share);
