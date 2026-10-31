@@ -390,6 +390,25 @@ async function run() {
     await page.locator('.choice').filter({ hasText: 'مساعدة توقيت القتال: متوقفة' }).click();
     const enabledCombatAssist = await page.evaluate(() => JSON.parse(localStorage.getItem('hayah_ui_settings_v1') || '{}'));
     assert.equal(enabledCombatAssist.combatTimingAssist, true, 'combat timing assistance should persist independently of the life save');
+    const saveBeforeStorageCheck = await page.evaluate(() => localStorage.getItem('hekayat_hayah_save_v1'));
+    await page.evaluate(() => Object.defineProperty(navigator, 'storage', {
+      configurable: true,
+      value: {
+        estimate: async () => ({ usage: 86 * 1024 * 1024, quota: 100 * 1024 * 1024 }),
+        persisted: async () => true
+      }
+    }));
+    await page.locator('.choice').filter({ hasText: 'فحص مساحة التخزين' }).click();
+    await page.locator('#modalRoot [role="dialog"]').waitFor();
+    const storageReport = await page.locator('#modalRoot').innerText();
+    assert.match(storageReport, /86%/, 'storage diagnostics should show the estimated usage percentage');
+    assert.ok(storageReport.includes('86 م.ب'), 'storage diagnostics should format the used space');
+    assert.ok(storageReport.includes('100 م.ب'), 'storage diagnostics should format the quota');
+    assert.match(storageReport, /التخزين المستديم مفعّل/, 'storage diagnostics should report persistent status');
+    const saveAfterStorageCheck = await page.evaluate(() => localStorage.getItem('hekayat_hayah_save_v1'));
+    assert.equal(saveAfterStorageCheck, saveBeforeStorageCheck, 'storage diagnostics must not mutate the life save');
+    await page.keyboard.press('Escape');
+    await page.waitForFunction(() => !document.querySelector('#modalRoot [role="dialog"]'));
     await page.keyboard.press('Escape');
     await page.waitForFunction(() => !document.querySelector('#modalRoot [role="dialog"]'));
 

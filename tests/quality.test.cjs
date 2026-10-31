@@ -501,7 +501,7 @@ test('تطبيق الويب قابل للتثبيت ويحتفظ بملفات ا
   assert.ok(manifest.icons.some(item => item.src === './icon.svg'));
   assert.match(html, /rel="manifest" href="manifest\.webmanifest"/);
   assert.match(app, /navigator\.serviceWorker\.register\('\.\/sw\.js'\)/);
-  assert.match(worker, /const CACHE_NAME = 'hayah-shell-v71'/);
+  assert.match(worker, /const CACHE_NAME = 'hayah-shell-v72'/);
   assert.match(worker, /cache\.addAll\(APP_SHELL\)/);
   assert.match(worker, /caches\.match\(APP_SHELL\[0\]\)/);
   assert.match(icon, /حياة/);
@@ -568,7 +568,7 @@ test('مساعدة توقيت القتال إعداد وصول مستقل ومت
   assert.ok(app.includes("reactionTimingAssist:session.reactionTimingAssist===true"));
   assert.match(app, /مساعدة التوقيت مفعّلة/);
   assert.match(app, /مساعدة توقيت القتال/);
-  assert.match(read('sw.js'), /hayah-shell-v71/);
+  assert.match(read('sw.js'), /hayah-shell-v72/);
 });
 
 test('فرص تحسين الإحصاءات اختيارية ومحدودة بسنة العمر وتحافظ على حفظ v1', () => {
@@ -589,7 +589,7 @@ test('فرص تحسين الإحصاءات اختيارية ومحدودة بس�
   assert.equal(context.normalize({age: 24, boostUsedAge: -1}), null);
   assert.match(app, /const KEY = 'hekayat_hayah_save_v1';/);
   assert.match(app, /return \{version:1,lifeId:/);
-  assert.match(read('sw.js'), /hayah-shell-v71/);
+  assert.match(read('sw.js'), /hayah-shell-v72/);
 });
 
 test('واجهة الهاتف تحافظ على تخطيط حياة العربي وهويته البصرية المستقلة', () => {
@@ -630,7 +630,7 @@ test('مسيرة الرياضات الإلكترونية أصلية وتحافظ
   assert.match(app, /function upgradeEsportsSetup\(\)/);
   assert.match(app, /موهبة الألعاب الإلكترونية/);
   assert.match(app, /data\.talents\.gaming=clamp\(Number\(data\.talents\.gaming\),0,100\)/);
-  assert.match(read('sw.js'), /hayah-shell-v71/);
+  assert.match(read('sw.js'), /hayah-shell-v72/);
   assert.match(functionSource('rewindToSnapshot', 'customizeMenu'), /ensureGamingTalent\(\)/, 'rewinding a pre-feature snapshot should restore a valid talent default');
 });
 
@@ -900,7 +900,7 @@ test('إدارة المشروع تدعم عقود الموردين وتقاري�
   assert.match(app, /choice\('📦','التعاقد مع مورد'/);
   assert.match(app, /choice\('📊','سجل التقارير'/);
   assert.match(app, /const normalizeBusinessEntity=entity=>/);
-  assert.match(read('sw.js'), /hayah-shell-v71/);
+  assert.match(read('sw.js'), /hayah-shell-v72/);
 });
 
 
@@ -915,7 +915,7 @@ test('إدارة فريق المشروع تحفظ الموظفين وتؤثر ف
   assert.match(app, /staffPayroll/);
   assert.match(app, /staffCount/);
   assert.match(app, /choice\('👥','إدارة الموظفين'/);
-  assert.match(read('sw.js'), /hayah-shell-v71/);
+  assert.match(read('sw.js'), /hayah-shell-v72/);
 });
 
 
@@ -928,7 +928,7 @@ test('سوق الموردين يتجدد سنويًا ويحفظ عروض الأ
   assert.match(app, /supplierCostMultiplier/);
   assert.match(app, /entity\.supplier\.yearsLeft\)\|\|3,1,3/);
   assert.match(app, /entity\.supplier\.quality/);
-  assert.match(read('sw.js'), /hayah-shell-v71/);
+  assert.match(read('sw.js'), /hayah-shell-v72/);
 });
 
 
@@ -943,7 +943,7 @@ test('إدارة المنتجات تدعم بحث السوق والمبيعات 
   assert.match(app, /competition/);
   assert.match(app, /choice\('🧪','إدارة المنتجات'/);
   assert.match(app, /entity\.productResearch=entity\.productResearch\.filter/);
-  assert.match(read('sw.js'), /hayah-shell-v71/);
+  assert.match(read('sw.js'), /hayah-shell-v72/);
 });
 
 
@@ -958,7 +958,7 @@ test('شركات المحفظة تدير الموردين والموظفين و�
   assert.match(app, /simulateBusinessEntityYear\(state\.business,'business'\)/);
   assert.match(app, /simulateBusinessEntityYear\(company,'portfolio'\)/);
   assert.match(app, /business\.assetId\|\|business\.id\|\|business\.title/);
-  assert.match(read('sw.js'), /hayah-shell-v71/);
+  assert.match(read('sw.js'), /hayah-shell-v72/);
 });
 
 
@@ -974,7 +974,7 @@ test('الفروع والمصانع محفوظة لكل نشاط وتزيد طا
   assert.match(app, /facilityInvestment/);
   assert.match(app, /choice\('🏗️','الفروع والمصانع'/);
   assert.match(app, /return \{version:1,lifeId:/);
-  assert.match(read('sw.js'), /hayah-shell-v71/);
+  assert.match(read('sw.js'), /hayah-shell-v72/);
 });
 
 test('استثمار المنشأة رأسمالي منفصل عن صافي الربح والصيانة السنوية', () => {
@@ -1008,7 +1008,7 @@ test('سوق المنافسة يحفظ شركات مستقلة وقرارات س
     "choice('📈','تحليل السوق والمنافسين'",
     "return {version:1,lifeId:"
   ].forEach(fragment => assert.ok(app.includes(fragment), 'missing independent rival behavior: '+fragment));
-  assert.match(read('sw.js'), /hayah-shell-v71/);
+  assert.match(read('sw.js'), /hayah-shell-v72/);
 });
 
 
@@ -1021,7 +1021,7 @@ test('النوافذ الحوارية تدير التركيز بلوحة الم�
   assert.match(app, /returnFocus&&returnFocus\.isConnected/);
   assert.match(app, /const initialFocus=\$\('closeModal'\)\|\|getFocusable\(\)\[0\]\|\|dialog/);
   assert.match(read('style.css'), /\.modal button:focus-visible/);
-  assert.match(read('sw.js'), /hayah-shell-v71/);
+  assert.match(read('sw.js'), /hayah-shell-v72/);
 });
 
 test('اختبارات Node دون DOM كامل لا تتطلب querySelector من عنصر الجذر', () => {
@@ -1039,7 +1039,7 @@ test('إعدادات الصوت والاهتزاز ومساعدة القتال �
   assert.ok(app.includes("choice(uiSettings.sound?'🔊':'🔇'"));
   assert.ok(app.includes("choice(uiSettings.haptics?'📳':'📴'"));
   assert.ok(app.includes("localStorage.setItem(SETTINGS_KEY,JSON.stringify(uiSettings))"));
-  assert.match(read('sw.js'), /hayah-shell-v71/);
+  assert.match(read('sw.js'), /hayah-shell-v72/);
 });
 
 
@@ -1052,7 +1052,7 @@ test('سجل الحياة يضيف الأحداث الجديدة تدريجيً�
   assert.match(app, /renderedLogSnapshot=signatures;renderedFeedElement=feed/);
   assert.doesNotMatch(html, /id="lifeFeed"[^>]*aria-live=/);
   assert.match(app, /announceLifeEvents\(entries,appendFrom\)/);
-  assert.match(read('sw.js'), /hayah-shell-v71/);
+  assert.match(read('sw.js'), /hayah-shell-v72/);
 });
 
 
@@ -1066,7 +1066,7 @@ test('اقتصاد الشركات يختلف حسب الصناعة ويظهر أ
   assert.ok(app.includes("industryOperatingCostMultiplier"));
   assert.ok(app.includes("industryUnitCostMultiplier"));
   assert.ok(app.includes("معاملات القطاع: الإيرادات"));
-  assert.match(read('sw.js'), /hayah-shell-v71/);
+  assert.match(read('sw.js'), /hayah-shell-v72/);
 });
 
 
@@ -1090,7 +1090,7 @@ test('تمويل النشاط مستقل لكل شركة ويُحتسب مرة �
   const annualSimulation = functionSource('simulateBusinessEntityYear', 'advanceAge');
   assert.ok(annualSimulation.includes("const costs=operatingCostsTotal+productResult.upfrontCosts+businessLoanInterest"));
   assert.ok(annualSimulation.includes("const cashDelta=revenue-operatingCostsTotal-businessLoanInterestPaid-corporateTaxPaidFromCash"));
-  assert.ok(read('sw.js').includes("hayah-shell-v71"));
+  assert.ok(read('sw.js').includes("hayah-shell-v72"));
 });
 
 
@@ -1117,7 +1117,7 @@ test('الخزينة المستقلة تفصل نقدية كل شركة عن ر�
   assert.ok(annualSimulation.includes("businessTreasuryBalance(business)+revenue-operatingCostsTotal"));
   assert.ok(annualSimulation.includes("const cashDelta=revenue-operatingCostsTotal-businessLoanInterestPaid-corporateTaxPaidFromCash"));
   assert.ok(annualSimulation.includes("treasuryMode:separateTreasury?'separate':'shared'"));
-  assert.match(read('sw.js'), /hayah-shell-v71/);
+  assert.match(read('sw.js'), /hayah-shell-v72/);
 });
 
 
@@ -1138,7 +1138,7 @@ test('ضرائب الشركات تُحسب على الربح الموجب وتُ
   assert.ok(annualSimulation.includes('const taxableProfit=Math.max(0,Math.round(preTaxProfit))'));
   assert.ok(annualSimulation.includes('const cashDelta=revenue-operatingCostsTotal-businessLoanInterestPaid-corporateTaxPaidFromCash'));
   assert.ok(annualSimulation.includes('const costs=operatingCostsTotal+productResult.upfrontCosts+businessLoanInterest+corporateTax'));
-  assert.match(read('sw.js'), /hayah-shell-v71/);
+  assert.match(read('sw.js'), /hayah-shell-v72/);
 });
 
 test('مسيرة القتال تدير ثلاث جولات وتستعيد النزال المحفوظ مع الحفظ القديم', () => {
@@ -1432,7 +1432,7 @@ test('مجتمع المقاتلين يحفظ العلاقات والتحالفا
   assert.ok(app.includes('communityFighterId:session&&session.communityFighterId?session.communityFighterId:null'));
   assert.ok(app.includes("const KEY = 'hekayat_hayah_save_v1';"));
   assert.ok(app.includes('return {version:1,lifeId:'));
-  assert.match(read('sw.js'), /hayah-shell-v71/);
+  assert.match(read('sw.js'), /hayah-shell-v72/);
 });
 test('المهرجان الأسبوعي يدعم 11 شارة ويطبع بيانات المواسم القديمة دون مكافآت مجانية', () => {
   [
@@ -1526,7 +1526,7 @@ test('المهرجان الأسبوعي يدعم 11 شارة ويطبع بيان
   vm.runInNewContext(helpers+'globalThis.normalizedArchive=normalizeSeasonalEventArchive(archive,state);',archiveContext);
   assert.equal(archiveContext.normalizedArchive.length,8);
   assert.ok(archiveContext.normalizedArchive[0].claimed.includes('family'));
-  assert.match(read('sw.js'), /hayah-shell-v71/);
+  assert.match(read('sw.js'), /hayah-shell-v72/);
 });
 
 
@@ -1558,7 +1558,7 @@ test('السوشيال ميديا تحفظ صدى الجمهور وتدعم مس
   vm.runInNewContext(normalizer + "\nglobalThis.limited=normalizeSocialFeed(input);", limitedContext);
   assert.equal(limitedContext.limited.length, 30);
   assert.equal(limitedContext.limited[0].id, 'p10');
-  assert.match(read('sw.js'), /hayah-shell-v71/);
+  assert.match(read('sw.js'), /hayah-shell-v72/);
 });
 
 
@@ -1567,7 +1567,7 @@ test('الشريط السفلي والإحصائيات بعرض التطبيق �
   assert.match(css, /#app > \.bottom-dock > \.stats\{[\s\S]*?width:100%!important/);
   assert.match(css, /#app > \.bottom-dock > \.nav\{[\s\S]*?width:100%!important/);
   assert.match(css, /#app > \.feed\{[\s\S]*?min-height:0!important/);
-  assert.match(read('sw.js'), /hayah-shell-v71/);
+  assert.match(read('sw.js'), /hayah-shell-v72/);
 });
 
 test('الواجهة الرئيسية منظمة وتعرض عناوين أحداث الحياة مع الحفاظ على الهوية العربية', () => {
@@ -1678,7 +1678,7 @@ test('إتقان الحركات يتدرج بالاستخدام ويُطبع ب�
     'round history should retain the mastery level used during each saved round');
   assert.ok(app.includes("achievement('إتقان حركة قتالية:"),
     'mastery milestones should become part of the character story');
-  assert.match(read('sw.js'), /hayah-shell-v71/);
+  assert.match(read('sw.js'), /hayah-shell-v72/);
 });
 
 test('مهرجان السينما يسجل كل فيلم مرة واحدة ويكافئ النتائج المؤهلة ويحافظ على الحفظ القديم', () => {
@@ -1783,5 +1783,52 @@ test('نافذة توقيت رد الفعل تدعم اللعب الموقّت �
   assert.match(app, /استجابة سريعة خلال 1\.8 ثانية تمنحك 4 نقاط إضافية/);
   assert.match(css, /\.combat-reaction-clock/);
   assert.match(css, /hayah-reaction-window/);
-  assert.match(read('sw.js'), /hayah-shell-v71/);
+  assert.match(read('sw.js'), /hayah-shell-v72/);
+});
+
+
+test('تقدير مساحة التخزين يعرض قيمًا آمنة ولا يغيّر بيانات الحفظ', async () => {
+  const formatSource = functionSource('formatStorageBytes', 'inspectStorageCapacity');
+  const estimateSource = functionSource('inspectStorageCapacity', 'inspectStorageCapacityFromSettings');
+  async function run(storage) {
+    const context = {};
+    if (storage) context.navigator = { storage };
+    vm.runInNewContext(
+      formatSource + String.fromCharCode(10) + estimateSource +
+      String.fromCharCode(10) + 'globalThis.formatted=[formatStorageBytes(0),formatStorageBytes(1024),formatStorageBytes(86*1024*1024),formatStorageBytes(-1),formatStorageBytes(NaN)];' +
+      String.fromCharCode(10) + 'globalThis.result=inspectStorageCapacity();',
+      context
+    );
+    return { formatted: Array.from(context.formatted), result: await context.result };
+  }
+  const unsupported = await run(null);
+  assert.equal(unsupported.result.status, 'unsupported');
+  assert.deepEqual(unsupported.formatted, ['0 بايت','1 ك.ب','86 م.ب','0 بايت','0 بايت']);
+
+  const measured = await run({
+    estimate: () => Promise.resolve({ usage: 86 * 1024 * 1024, quota: 100 * 1024 * 1024 }),
+    persisted: () => Promise.resolve(true)
+  });
+  assert.deepEqual(JSON.parse(JSON.stringify(measured.result)), {
+    status: 'ok', usage: 86 * 1024 * 1024, quota: 100 * 1024 * 1024,
+    remaining: 14 * 1024 * 1024, percent: 86, persistent: true
+  });
+
+  const noPersistenceApi = await run({
+    estimate: () => Promise.resolve({ usage: 5, quota: 10 })
+  });
+  assert.equal(noPersistenceApi.result.persistent, null);
+  assert.equal(noPersistenceApi.result.percent, 50);
+
+  const malformed = await run({ estimate: () => Promise.resolve({ usage: 'bad', quota: 0 }) });
+  assert.equal(malformed.result.status, 'unavailable');
+
+  const rejected = await run({ estimate: () => Promise.reject(new Error('quota-api-failed')) });
+  assert.equal(rejected.result.status, 'error');
+
+  const settingsSource = functionSource('settingsMenu', 'cultMenu');
+  assert.ok(settingsSource.includes('فحص مساحة التخزين'));
+  assert.ok(settingsSource.includes('inspectStorageCapacityFromSettings'));
+  assert.ok(app.includes('const highUsage=result.percent>=85;'));
+  assert.match(app, /ليس حجم ملف الحفظ وحده/);
 });
