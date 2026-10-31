@@ -474,6 +474,11 @@ function combatRoundImpact(opponentRating,defense,reactionQuality,timingBonus=0)
  const injuryGain=healthDamage>=7?2:healthDamage>=5?1:0;
  return {baseDamage,healthDamage,injuryGain};
 }
+function normalizeCombatInjuryYears(value){
+ const parsed=Number(value);
+ if(!Number.isFinite(parsed)||parsed<=0)return 0;
+ return Math.min(2,Math.ceil(parsed));
+}
 const combatMoveMasteryThresholds=[0,3,8,15,25];
 const combatMoveMasteryLabels=['جديدة','ناشئة','متمرّسة','متقنة','خبيرة'];
 function normalizeCombatMoveMastery(raw,knownMoves){
@@ -593,7 +598,7 @@ function ensureCombatCareer(){
  c.community=normalizeCombatCommunity(c.community);
  c.pendingBout=normalizePendingCombatBout(c.pendingBout);
  c.rank=clamp(c.rank,0,4);c.streetCred=Math.max(0,Number(c.streetCred)||0);c.leaguePoints=Math.max(0,Number(c.leaguePoints)||0);
- c.energy=clamp(c.energy);c.injury=clamp(c.injury);c.injuryYears=Math.max(0,Number(c.injuryYears)||0);
+ c.energy=clamp(c.energy);c.injury=clamp(c.injury);c.injuryYears=normalizeCombatInjuryYears(c.injuryYears);if(c.injury===0)c.injuryYears=0;
  return c;
 }
 function combatRankName(c){
