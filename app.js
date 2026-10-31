@@ -2233,7 +2233,7 @@ function showCareer(){
  opts.push(choice('🎓','التعليم والجامعة','اختار تخصصًا يفتح فرصًا جديدة.',()=>{closeModal();university(false);}));
  if(perkOwned('goldenDiploma')&&state.age>=18)opts.push(choice('📜','الدراسة والشهادة الذهبية','افتح قائمة التعليم واستخدم الشهادة الفورية.',()=>{closeModal();schoolHub();}));
  opts.push(choice('🌟','المهن الخاصة والشهرة','التمثيل والموسيقى والمحتوى والرياضة والكتابة والإخراج.',specialCareers));
- if((state.jobHistory||[]).length)opts.push(choice('📚','سجل الوظائف السابقة','عدد الوظائف السابقة '+state.jobHistory.length+'.',()=>{closeModal();const records=state.jobHistory.map(j=>choice('💼',j.title,'الراتب '+cash(j.salary)+' · بداية '+j.startAge+' سنة'+(j.exitReason?' · '+j.exitReason:'')',()=>{closeModal();info('💼',j.title,'وظيفة سابقة في سجل حياتك.');}));modal('📚','التاريخ الوظيفي','كل وظيفة تركت أثرًا في المسار المهني.',records);}));
+ if((state.jobHistory||[]).length)opts.push(choice('📚','سجل الوظائف السابقة','عدد الوظائف السابقة '+state.jobHistory.length+'.',()=>{closeModal();const records=state.jobHistory.map(j=>choice('💼',j.title,'الراتب '+cash(j.salary)+' · بداية '+j.startAge+' سنة'+(j.exitReason?' · '+j.exitReason:''),()=>{closeModal();info('💼',j.title,'وظيفة سابقة في سجل حياتك.');}));modal('📚','التاريخ الوظيفي','كل وظيفة تركت أثرًا في المسار المهني.',records);}));
  modal('💼','الدراسة والشغل',intro,opts);
 }
 
