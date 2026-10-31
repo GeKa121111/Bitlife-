@@ -826,10 +826,10 @@ test('مسيرة القتال تدير ثلاث جولات وتستعيد الن
     globalThis.recovered=combatRoundEnergy(94,{power:20,energyCost:0,energyRecovery:14},'street');
     globalThis.capped=combatRoundEnergy(98,{power:20,energyCost:0,energyRecovery:14},'street');
   `, energyContext);
-  assert.deepEqual(energyContext.normal,{before:70,energyCost:6,energyRecovery:0,after:64});
-  assert.deepEqual(energyContext.league,{before:70,energyCost:2,energyRecovery:14,after:82});
-  assert.deepEqual(energyContext.recovered,{before:94,energyCost:0,energyRecovery:14,after:100});
-  assert.deepEqual(energyContext.capped,{before:98,energyCost:0,energyRecovery:14,after:100});
+  assert.equal(JSON.stringify(energyContext.normal),JSON.stringify({before:70,energyCost:6,energyRecovery:0,after:64}));
+  assert.equal(JSON.stringify(energyContext.league),JSON.stringify({before:70,energyCost:2,energyRecovery:14,after:82}));
+  assert.equal(JSON.stringify(energyContext.recovered),JSON.stringify({before:94,energyCost:0,energyRecovery:14,after:100}));
+  assert.equal(JSON.stringify(energyContext.capped),JSON.stringify({before:98,energyCost:0,energyRecovery:14,after:100}));
   assert.match(app,/session\.roundHistory\.some\(item=>item\.actionId===move\.id\)/,
     'a once-per-bout recovery tactic must be rejected if already used');
 
