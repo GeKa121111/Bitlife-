@@ -931,9 +931,30 @@ async function run() {
       localStorage.setItem(key, JSON.stringify(saved));
     });
     await page.reload({ waitUntil: 'domcontentloaded' });
+    await page.evaluate(() => {
+      const originalSetItem = Storage.prototype.setItem;
+      let failCemeteryOnce = true;
+      Storage.prototype.setItem = function(key, value) {
+        if (key === 'hekayat_hayah_cemetery_v1' && failCemeteryOnce) {
+          failCemeteryOnce = false;
+          throw new DOMException('quota exceeded', 'QuotaExceededError');
+        }
+        return originalSetItem.call(this, key, value);
+      };
+    });
     await page.locator('#ageUpBtn').click();
     await page.locator('[data-heir="0"]').waitFor({ state: 'visible' });
     const deathDialog = page.locator('#modalRoot #deathDialog');
+    assert.equal(await deathDialog.locator('[role="alert"]').count(), 1,
+      'a failed cemetery write should be clearly announced instead of silently marked as saved');
+    const pendingArchive = await page.evaluate(() => {
+      const saved = JSON.parse(localStorage.getItem('hekayat_hayah_save_v1') || 'null');
+      const cemetery = JSON.parse(localStorage.getItem('hekayat_hayah_cemetery_v1') || '[]');
+      return { cemeterySaved: saved.cemeterySaved, cemeteryCount: cemetery.length, lifeId: saved.lifeId };
+    });
+    assert.equal(pendingArchive.cemeterySaved, false);
+    assert.equal(pendingArchive.cemeteryCount, 0);
+    const archivedParentId = pendingArchive.lifeId;
     assert.equal(await deathDialog.getAttribute('role'), 'dialog', 'the end-of-life screen should be announced as a dialog');
     assert.equal(await deathDialog.getAttribute('aria-modal'), 'true', 'the end-of-life screen should be modal to assistive technology');
     assert.equal(await deathDialog.getAttribute('aria-labelledby'), 'deathDialogTitle');
@@ -952,11 +973,13 @@ async function run() {
       return saved && saved.name === 'وارث اختبار' && saved.legacy &&
         saved.legacy.name === 'الوالد الاختباري' && saved.status === 'حي';
     });
-    const inherited = await page.evaluate(() => {
+    const inherited = await page.evaluate(parentId => {
       const saved = JSON.parse(localStorage.getItem('hekayat_hayah_save_v1') || 'null');
+      const cemetery = JSON.parse(localStorage.getItem('hekayat_hayah_cemetery_v1') || '[]');
       const assets = Array.isArray(saved.assets) ? saved.assets : [];
       const investments = Array.isArray(saved.investments) ? saved.investments : [];
       return {
+        archivedParent: cemetery.some(item => String(item.id) === String(parentId)),
         name: saved.name,
         sourceName: saved.legacy.name,
         legacyValue: saved.legacy.inheritance,
@@ -968,7 +991,9 @@ async function run() {
         investmentCount: investments.length,
         debt: saved.debt
       };
-    });
+    }, archivedParentId);
+    assert.equal(inherited.archivedParent, true,
+      'the previous generation must be archived successfully before inheritance replaces it');
     assert.equal(inherited.name, 'وارث اختبار');
     assert.equal(inherited.sourceName, 'الوالد الاختباري');
     assert.equal(inherited.legacyValue, inherited.componentValue, 'recorded inheritance should reconcile with all transferred assets');
