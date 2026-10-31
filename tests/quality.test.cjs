@@ -268,8 +268,7 @@ test('النسخة الاحتياطية الكاملة تجمع الحياة و�
   assert.throws(() => integrityContext.readCemeteryForBackup(), /cemetery-invalid/);
   assert.equal(cemeteryStore.get('hekayat_hayah_cemetery_v1'), malformedRecordArchive);
 
-  assert.match(app, /!validateCemeteryBackup\\(parsed\\.cemetery\\)/,
-  assert.ok(app.includes('!validateCemeteryBackup(parsed.cemetery)'),
+  assert.ok(app.includes('!validateCemeteryBackup(parsed.cemetery)'), 'backup imports must reject malformed cemetery records before writing local stores');
   assert.match(app, /سجل الحيوات السابقة غير قابل للقراءة/);
 });
 
