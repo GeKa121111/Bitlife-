@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#123e3a">
+<meta name="application-name" content="حياة">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<meta name="description" content="حياة — محاكي حياة عربي متكامل بالنص والقرارات والعلاقات والمهن والأجيال.">
+<title>حياة | محاكي الحياة</title>
+
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="app" id="app">
+  <header class="topbar">
+    <button class="menu-trigger" id="menuBtn" type="button" aria-label="القائمة الرئيسية">☰</button>
+    <div class="brandlogo" aria-label="حياة">
+      <span class="brand-symbol" aria-hidden="true">ح</span>
+      <strong>حياة</strong>
+    </div>
+    <div class="top-actions">
+      <button class="header-action reward-action" id="profileBtn" type="button" aria-label="الإنجازات والأشرطة"><span>⭐</span><span class="reward-count" id="rewardCount">0</span></button>
+      <button class="member-btn" id="marketBtn" type="button" aria-label="عضوية ومزايا اللعبة"><span>عضوية مميزة</span><b>حياة</b></button>
+      <button class="sr-only" id="heirloomBtn" type="button" aria-label="المكافأة اليومية" tabindex="-1" aria-hidden="true">🎁</button>
+      <span id="saveStatus" class="sr-only" aria-live="polite">● محفوظة</span>
+    </div>
+  </header>
+  <section class="hero" aria-label="معلومات الشخصية والرصيد">
+    <div class="profile">
+      <div class="avatar" id="avatar" aria-hidden="true">👶<span class="flag" id="flag">🇪🇬</span></div>
+      <div class="identity">
+        <div class="identity-line">
+          <span class="identity-flag" id="identityFlag" aria-hidden="true">🇪🇬</span>
+          <div class="name" id="characterName">جارٍ إنشاء الشخصية...</div>
+          <button class="identity-info" id="characterInfoBtn" type="button" aria-label="معلومات الشخصية">i</button>
+        </div>
+        <div class="subline identity-role"><span class="role-tag" id="titleTag">رضيع</span></div>
+        <div class="subline identity-meta"><span id="ageTag">العمر 0</span><span id="cityTag">القاهرة، مصر</span><span id="familyTag" class="sr-only">الأبناء 0</span><span id="fameTag" class="sr-only">الشهرة 0%</span></div>
+      </div>
+    </div>
+    <div class="wealth">
+      <div class="wealthnum" id="bankBalance">0 ج.م</div>
+      <div class="wealthlabel">الرصيد البنكي</div>
+      <div class="wealthsmall" id="wealthNote">بداية حكايتك</div>
+    </div>
+  </section>
+  <div class="story-heading" aria-label="يوميات الشخصية">
+    <div class="story-heading-copy">
+      <span class="story-eyebrow">رحلة الشخصية</span>
+      <h1>حكايتك سنة ورا سنة</h1>
+    </div>
+    <span id="lifeMeta" class="story-year" aria-live="polite">السنة الأولى</span>
+  </div>
+  <main class="feed" id="lifeFeed" aria-label="سجل الحياة والأحداث"></main>
+  <div id="lifeAnnouncement" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></div>
+  <div class="bottom-dock">
+    <nav class="nav" aria-label="القائمة الرئيسية">
+      <button class="navbtn" data-panel="career" type="button" aria-label="مرحلة الحياة والدراسة والعمل" aria-pressed="false"><span class="navico">👶🏻</span><span id="stageNavLabel">رضيع</span></button>
+      <button class="navbtn" data-panel="assets" type="button" aria-pressed="false"><span class="navico">🏠</span><span>الأصول</span></button>
+      <button class="agebtn" id="ageUpBtn" aria-label="التقدم سنة" type="button"><span>+</span><span>سنة</span></button>
+      <button class="navbtn" data-panel="relations" type="button" aria-pressed="false"><span class="navico">❤️</span><span>العلاقات</span></button>
+      <button class="navbtn" data-panel="activities" type="button" aria-pressed="false"><span class="navico">⋯</span><span>الأنشطة</span></button>
+    </nav>
+    <div class="stats" id="statsPanel" aria-label="إحصائيات الشخصية"></div>
+  </div>
+</div>
+<div id="modalRoot"></div><div id="feedbackRoot"></div>
+<script src="app.js"></script>
+</body>
+</html>

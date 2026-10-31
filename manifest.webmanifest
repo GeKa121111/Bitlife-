@@ -1,0 +1,21 @@
+{
+  "name": "حياة | محاكي الحياة",
+  "short_name": "حياة",
+  "description": "محاكي حياة عربي أصلي بالاختيارات والأحداث والأنظمة المتعددة.",
+  "lang": "ar",
+  "dir": "rtl",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f2f5f7",
+  "theme_color": "#E53935",
+  "icons": [
+    {
+      "src": "./icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
