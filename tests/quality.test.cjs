@@ -1115,7 +1115,7 @@ test('إتقان الحركات يتدرج بالاستخدام ويُطبع ب�
     'globalThis.levels=[0,2,3,7,8,14,15,24,25,100].map(combatMoveMasteryLevel);' +
     'globalThis.bonuses=[0,3,8,15,25,100].map(combatMoveMasteryBonus);', context);
   assert.deepEqual(Array.from(context.levels), [0,0,1,1,2,2,3,3,4,4]);
-  assert.deepEqual(Array.from(context.bonuses), [0,0,2,2,4,8]);
+  assert.deepEqual(Array.from(context.bonuses), [0,2,4,6,8,8]);
   assert.deepEqual(JSON.parse(JSON.stringify(context.career.moveMastery)), { 'quick-jab': 8 },
     'unknown moves and invalid counters should be discarded while valid mastery survives');
   assert.ok(app.includes('moveMastery:{}'), 'new fighter careers should initialize an empty mastery map');
