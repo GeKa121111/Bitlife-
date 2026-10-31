@@ -32,7 +32,7 @@ test('واجهة حياة عربية RTL وتحافظ على اسمها المس
 });
 
 test('سجل الحياة لا يعيد قراءة التاريخ كاملًا ويعلن الأحداث الجديدة فقط لقارئ الشاشة', () => {
-  assert.match(html, /<main class="feed" id="lifeFeed" aria-label="سجل الحياة والأحداث"><\\/main>/);
+  assert.ok(html.includes('<main class="feed" id="lifeFeed" aria-label="سجل الحياة والأحداث"></main>'));
   assert.doesNotMatch(html, /id="lifeFeed"[^>]*aria-live=/);
   assert.match(html, /id="lifeAnnouncement" class="sr-only" role="status" aria-live="polite" aria-atomic="true"/);
 
@@ -42,14 +42,14 @@ test('سجل الحياة لا يعيد قراءة التاريخ كاملًا �
     $(id) { return id === 'lifeAnnouncement' ? live : null; },
     fmt(value) { return String(value); }
   };
-  vm.runInNewContext(source + '\\nglobalThis.announceLifeEvents(['
+  vm.runInNewContext(source + '\nglobalThis.announceLifeEvents(['
     + '{age:31,title:"تقدم مهني"},{age:31,title:"مصاريف المعيشة"},{age:31,title:"تقرير سنوي"}'
     + '],0);', context);
   assert.equal(live.textContent,
     'تم تسجيل 3 أحداث جديدة في عمر 31 سنة. أحدثها: مصاريف المعيشة، تقرير سنوي.');
 
   const previousMessage = live.textContent;
-  vm.runInNewContext(source + '\\nglobalThis.announceLifeEvents([{age:31,title:"قديم"}],1);', context);
+  vm.runInNewContext(source + '\nglobalThis.announceLifeEvents([{age:31,title:"قديم"}],1);', context);
   assert.equal(live.textContent, previousMessage,
     'a history refresh with no appended entries must not announce anything');
 });
