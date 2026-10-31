@@ -576,8 +576,8 @@ assert.match(app, /const KEY = 'hekayat_hayah_save_v1';/);
 assert.match(serviceWorker, /hayah-shell-v66/);
 
 assert.match(app, /function combatRoundEnergy\(currentEnergy,move,mode='street',reactionCost=0\)/);
-assert.match(app, /function combatRoundImpact\\(opponentRating,defense,reactionQuality,timingBonus=0\\)/);
-assert.match(app, /state\\.stats\\.health=clamp\\(healthBefore-impact\\.healthDamage\\)/);
+assert.ok(app.includes('function combatRoundImpact(opponentRating,defense,reactionQuality,timingBonus=0)'));
+assert.ok(app.includes('state.stats.health=clamp(healthBefore-impact.healthDamage)'));
 assert.match(app, /healthDamage:roundHealthDamage,roundInjuryGain/);
 assert.match(app, /const combatReactionCatalog=\[/);
 assert.match(app, /function combatReactionTiming\(elapsedMs,assisted=false\)/);
