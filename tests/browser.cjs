@@ -177,6 +177,25 @@ async function run() {
     const shownName = (await page.locator('#characterName').innerText()).trim();
     assert.ok(shownName.includes(seedSave.name), 'the legacy v1 save should render the seeded player');
 
+    const accessibleStats = await page.locator('#statsPanel [role="progressbar"]').evaluateAll(elements => elements.map(element => ({
+      label: element.getAttribute('aria-label'),
+      min: element.getAttribute('aria-valuemin'),
+      max: element.getAttribute('aria-valuemax'),
+      value: Number(element.getAttribute('aria-valuenow')),
+      text: element.getAttribute('aria-valuetext')
+    })));
+    const expectedStatValues = await page.evaluate(() => {
+      const saved = JSON.parse(localStorage.getItem('hekayat_hayah_save_v1') || 'null');
+      return [saved.stats.happiness, saved.stats.health, saved.stats.smart, saved.stats.looks]
+        .map(value => Math.max(0, Math.min(100, Math.round(Number(value) || 0))));
+    });
+    assert.deepEqual(accessibleStats.map(item => item.label), ['السعادة', 'الصحة', 'الذكاء', 'المظهر'],
+      'each core stat should have a localized accessible name');
+    assert.deepEqual(accessibleStats.map(item => item.value), expectedStatValues,
+      'screen-reader values should match the saved life stats');
+    assert.ok(accessibleStats.every(item => item.min === '0' && item.max === '100' && item.text === item.value + ' من 100'),
+      'each stat should expose its full numeric range and spoken value');
+
     const legacyCollection = await page.evaluate(() => {
       const saved = JSON.parse(localStorage.getItem('hekayat_hayah_save_v1') || 'null');
       return { count: saved.heirlooms.length, bank: saved.bank };
@@ -1703,6 +1722,8 @@ async function run() {
     assert.equal(boostedLife.stats.happiness, 27, 'the free recovery choice should improve the selected stat by seven points');
     assert.equal(boostedLife.boostUsedAge, boostedLife.age, 'only one recovery opportunity should be available in the current life year');
     assert.equal(await page.locator('[data-stat-boost="happiness"]').count(), 0, 'the used recovery button should disappear until the next year');
+    assert.equal(await page.locator('#statsPanel [role="progressbar"][aria-label="السعادة"]').getAttribute('aria-valuenow'), '27',
+      'the accessible stat value should update immediately after a recovery choice');
     await page.evaluate(original => localStorage.setItem('hekayat_hayah_save_v1', original), originalBoostSave);
     await page.reload({ waitUntil: 'domcontentloaded' });
 

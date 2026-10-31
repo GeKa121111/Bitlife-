@@ -1194,7 +1194,7 @@ function renderStats(){
   const warn=v<=12&&r[0]!=='fame'?' <span class="stat-warning" aria-label="تحذير">⚠️</span>':'';
   const boostUsed=state.boostUsedAge!==null&&state.boostUsedAge!==undefined&&Number(state.boostUsedAge)===Number(state.age);
   const boostButton=state.status==='حي'&&uiSettings.boosts!==false&&v<=35&&!boostUsed?'<button class="statboost-btn" type="button" data-stat-boost="'+r[0]+'" aria-label="فرصة تحسين '+r[2]+'" title="فرصة تحسين '+r[2]+'">+</button>':'';
-  return '<div class="statrow '+(r[0]==='fame'?'fame-row':'')+'"><div class="stathead"><span class="statlabel">'+r[2]+' '+r[1]+warn+'</span>'+boostButton+'</div><div class="statbar"><div class="track"><div class="fill" style="width:'+v+'%;background:'+color+'"></div><span class="statvalue">'+v+'%</span></div></div></div>';
+  return '<div class="statrow '+(r[0]==='fame'?'fame-row':'')+'"><div class="stathead"><span class="statlabel">'+r[2]+' '+r[1]+warn+'</span>'+boostButton+'</div><div class="statbar"><div class="track" role="progressbar" aria-label="'+r[2]+'" aria-valuemin="0" aria-valuemax="100" aria-valuenow="'+v+'" aria-valuetext="'+v+' من 100"><div class="fill" aria-hidden="true" style="width:'+v+'%;background:'+color+'"></div><span class="statvalue" aria-hidden="true">'+v+'%</span></div></div></div>';
  }).join('');
 }
 function logEntrySignature(entry){
