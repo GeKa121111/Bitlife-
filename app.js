@@ -4098,7 +4098,7 @@ function combatBoutRoundMenu(){
   const reactionOptions=combatReactionCatalog.map(item=>{
    const effect=combatReactionEffect(intent.style,item.id);
    const qualityText=effect.quality==='ممتاز'?'أفضل رد متوقع':effect.quality==='مقبول'?'رد مقبول':'رد محفوف بالمخاطرة';
-   return choice('🛡️',item.title,item.description+' · '+qualityText+' أمام '+intent.style+' · استهلاك '+item.energyCost+' طاقة.',()=>chooseCombatReaction(item.id),'',item.energyCost);
+   return choice('🛡️',item.title,item.description+' · '+qualityText+' أمام '+intent.style+' · استهلاك '+item.energyCost+' طاقة.',()=>chooseCombatReaction(item.id));
   });
   reactionOptions.unshift({icon:'⚠️',title:'إشارة المنافس: '+intent.title,desc:intent.description+' · الأسلوب المتوقع '+intent.style+' · '+combatDifficultyLabel(opponent.rating)+' · طاقتك '+c.energy+'%.',progress:opponent.rating,disabled:true});
   modal(session.mode==='league'?'🏆':'🥊','الجولة '+round+' · اقرأ نية المنافس','قبل اختيار حركتك، حدّد رد فعلك على الهجمة التي يستعد لها المنافس. اختيارك يؤثر على نقاط الجولة واستهلاك الطاقة.',reactionOptions);
