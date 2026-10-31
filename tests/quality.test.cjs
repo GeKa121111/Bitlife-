@@ -1498,6 +1498,9 @@ test('إتقان الحركات يتدرج بالاستخدام ويُطبع ب�
   const helpersEnd = app.indexOf('function normalizePendingCombatBout(', helpersStart);
   assert.ok(helpersStart >= 0 && helpersEnd > helpersStart, 'move mastery helpers should remain grouped');
   const helperSource = app.slice(helpersStart, helpersEnd);
+  const injuryYearsStart = app.indexOf('function normalizeCombatInjuryYears(');
+  const injuryYearsEnd = app.indexOf('const combatMoveMasteryThresholds=', injuryYearsStart);
+  const injuryYearsSource = app.slice(injuryYearsStart, injuryYearsEnd);
   const careerSource = functionSource('ensureCombatCareer', 'combatRankName');
   const context = {
     state: { combatCareer: { movesKnown: ['quick-jab', 'high-guard'],
@@ -1506,7 +1509,7 @@ test('إتقان الحركات يتدرج بالاستخدام ويُطبع ب�
     normalizeCombatCommunity: () => [],
     normalizePendingCombatBout: value => value
   };
-  vm.runInNewContext('const combatMoveCatalog=[' + catalogSource + '];' + String.fromCharCode(10) + helperSource + String.fromCharCode(10) +
+  vm.runInNewContext(injuryYearsSource + String.fromCharCode(10) + 'const combatMoveCatalog=[' + catalogSource + '];' + String.fromCharCode(10) + helperSource + String.fromCharCode(10) +
     careerSource + String.fromCharCode(10) + 'globalThis.career=ensureCombatCareer();' +
     'globalThis.levels=[0,2,3,7,8,14,15,24,25,100].map(combatMoveMasteryLevel);' +
     'globalThis.bonuses=[0,3,8,15,25,100].map(combatMoveMasteryBonus);', context);
