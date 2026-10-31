@@ -107,6 +107,7 @@ test('الانتقال الوظيفي يحفظ المسار السابق ولا 
   assert.ok(app.includes("archiveCurrentJob('انتقال مهني')"));
   assert.ok(app.includes("archiveCurrentJob('استقالة')"));
   assert.ok(app.includes("archiveCurrentJob('تفرغ للاستثمار')"));
+  assert.ok(app.includes("archiveCurrentJob('تقاعد')"));
   assert.ok(app.includes("exitReason:reason"));
   assert.ok(app.includes("وظيفتك الحالية لم تتأثر"));
   assert.ok(app.includes("const KEY = 'hekayat_hayah_save_v1'"));
