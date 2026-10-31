@@ -859,6 +859,19 @@ async function run() {
     await page.reload({ waitUntil: 'domcontentloaded' });
     await page.locator('#ageUpBtn').click();
     await page.locator('[data-heir="0"]').waitFor({ state: 'visible' });
+    const deathDialog = page.locator('#modalRoot #deathDialog');
+    assert.equal(await deathDialog.getAttribute('role'), 'dialog', 'the end-of-life screen should be announced as a dialog');
+    assert.equal(await deathDialog.getAttribute('aria-modal'), 'true', 'the end-of-life screen should be modal to assistive technology');
+    assert.equal(await deathDialog.getAttribute('aria-labelledby'), 'deathDialogTitle');
+    assert.equal(await deathDialog.getAttribute('aria-describedby'), 'deathDialogDescription');
+    assert.equal(await page.evaluate(() => document.activeElement && document.activeElement.id), 'deathDialog',
+      'focus should move into the end-of-life dialog when it opens');
+    await page.keyboard.press('Shift+Tab');
+    assert.equal(await page.evaluate(() => document.activeElement && document.activeElement.id), 'reviewBtn',
+      'Shift+Tab from the dialog entry point should wrap to the final action');
+    await page.keyboard.press('Tab');
+    assert.equal(await page.evaluate(() => document.activeElement && document.activeElement.id), 'newLifeBtn',
+      'Tab from the dialog entry point should wrap to the first action');
     await page.locator('[data-heir="0"]').click();
     await page.waitForFunction(() => {
       const saved = JSON.parse(localStorage.getItem('hekayat_hayah_save_v1') || 'null');
