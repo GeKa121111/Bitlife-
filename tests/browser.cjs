@@ -1929,6 +1929,34 @@ async function run() {
     assert.ok(communityBout.respect > communityAfterChat.respect,
       'a completed rivalry match should update community respect even after a loss');
 
+    const inactiveFighterRecoverySetup = await page.evaluate(() => {
+      const key = 'hekayat_hayah_save_v1';
+      const saved = JSON.parse(localStorage.getItem(key) || 'null');
+      saved.specialCareer = null;
+      saved.combatCareer.injury = 40;
+      saved.combatCareer.injuryYears = 1;
+      localStorage.setItem(key, JSON.stringify(saved));
+      return { age: saved.age };
+    });
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await page.locator('#ageUpBtn').click();
+    await page.waitForFunction(previousAge => {
+      const saved = JSON.parse(localStorage.getItem('hekayat_hayah_save_v1') || 'null');
+      return saved && saved.age === previousAge + 1 && saved.combatCareer &&
+        saved.combatCareer.injury === 0 && saved.combatCareer.injuryYears === 0;
+    }, inactiveFighterRecoverySetup.age);
+    const inactiveFighterRecovery = await page.evaluate(() => {
+      const saved = JSON.parse(localStorage.getItem('hekayat_hayah_save_v1') || 'null');
+      return { activeCareer: saved.specialCareer, injury: saved.combatCareer.injury,
+        injuryYears: saved.combatCareer.injuryYears };
+    });
+    assert.equal(inactiveFighterRecovery.activeCareer, null,
+      'the fixture should no longer have an active fighter career');
+    assert.equal(inactiveFighterRecovery.injury, 0,
+      'a stored fighter injury should heal during age progression after leaving the fighter career');
+    assert.equal(inactiveFighterRecovery.injuryYears, 0,
+      'the recovery counter should clear even when the fighter career is inactive');
+
     const originalFilmPerks = await page.evaluate(() => localStorage.getItem('hayah_permanent_perks_v1'));
     const originalFilmSave = await page.evaluate(() => localStorage.getItem('hekayat_hayah_save_v1'));
     await page.evaluate(() => {
