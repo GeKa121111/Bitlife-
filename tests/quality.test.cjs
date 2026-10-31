@@ -1484,6 +1484,11 @@ test('نافذة توقيت رد الفعل تمنح مكافأة اختياري
   assert.deepEqual(JSON.parse(JSON.stringify(context.invalid)), { elapsedMs: null, bonus: 0, label: 'غير محسوبة' });
   assert.deepEqual(JSON.parse(JSON.stringify(context.backwards)), { elapsedMs: null, bonus: 0, label: 'غير محسوبة' });
   assert.match(app, /session\.reactionWindowStartedAt=Date\.now\(\)/);
+  const normalizerSource = functionSource('normalizePendingCombatBout', 'combatDifficultyLabel');
+  const normalizerContext = {};
+  vm.runInNewContext(normalizerSource + `\n    globalThis.invalidPending=normalizePendingCombatBout({mode:'street',opponent:{name:'منافس',style:'قوة'},reactionId:'guard',reactionTimeMs:'not-a-number',reactionWindowStartedAt:'not-a-date'});\n  `, normalizerContext);
+  assert.equal(normalizerContext.invalidPending.reactionTimeMs, null, 'invalid imported timing must not receive the quick-response bonus');
+  assert.equal(normalizerContext.invalidPending.reactionWindowStartedAt, null, 'invalid imported timestamps should be discarded safely');
   assert.match(app, /session\.reactionTimeMs=timing\.elapsedMs/);
   assert.match(app, /reactionTimeMs:reactionTiming\.elapsedMs,reactionTimingBonus:reactionTiming\.bonus/);
   assert.match(app, /reactionTimeMs:item\.reactionTimeMs===undefined\?null:item\.reactionTimeMs,reactionTimingBonus:item\.reactionTimingBonus\|\|0/);
