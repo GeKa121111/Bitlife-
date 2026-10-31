@@ -821,8 +821,31 @@ async function run() {
     });
     assert.ok((await page.locator('#characterName').innerText()).includes('حياة مستوردة للاختبار'), 'the imported life should render without a reload');
 
-    // A complete backup must restore the separate local-only data stores as well as the life.
+    // Importing a modified copy of the same life at the same age must still checkpoint
+    // the active save; the usual age/lifeId checkpoint condition would otherwise skip it.
+    const sameLifeCurrent = await page.evaluate(() => JSON.parse(localStorage.getItem('hekayat_hayah_save_v1') || 'null'));
+    const sameLifeModified = { ...sameLifeCurrent, bank: (Number(sameLifeCurrent.bank) || 0) + 1234 };
+    const sameLifeChooserPromise = page.waitForEvent('filechooser');
     await page.locator('.choice').filter({ hasText: 'تمام' }).last().click();
+    await page.locator('#menuBtn').click();
+    await page.locator('.choice').filter({ hasText: 'تحميل حفظ' }).click();
+    const sameLifeChooser = await sameLifeChooserPromise;
+    await sameLifeChooser.setFiles({
+      name: 'same-life-same-age.json',
+      mimeType: 'application/json',
+      buffer: Buffer.from(JSON.stringify(sameLifeModified))
+    });
+    await page.waitForFunction(expectedBank => {
+      const saved = JSON.parse(localStorage.getItem('hekayat_hayah_save_v1') || 'null');
+      return saved && saved.bank === expectedBank;
+    }, sameLifeModified.bank);
+    const preservedCheckpoint = await page.evaluate(() => JSON.parse(localStorage.getItem('hekayat_hayah_save_backup_v1') || 'null'));
+    assert.equal(preservedCheckpoint.lifeId, sameLifeCurrent.lifeId, 'same-life imports should preserve the active life id in the checkpoint');
+    assert.equal(preservedCheckpoint.age, sameLifeCurrent.age, 'same-age imports should preserve the active age in the checkpoint');
+    assert.equal(preservedCheckpoint.bank, sameLifeCurrent.bank, 'same-age imports should keep the pre-import balance recoverable');
+    await page.locator('.choice').filter({ hasText: 'تمام' }).last().click();
+
+    // A complete backup must restore the separate local-only data stores as well as the life.
     await page.evaluate(() => {
       localStorage.setItem('hekayat_hayah_cemetery_v1', '[]');
       localStorage.setItem('hayah_ui_settings_v1', JSON.stringify({theme:'dark',textScale:'large',sound:true,haptics:true,boosts:false}));
