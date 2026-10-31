@@ -384,7 +384,7 @@ test('تطبيق الويب قابل للتثبيت ويحتفظ بملفات ا
   assert.ok(manifest.icons.some(item => item.src === './icon.svg'));
   assert.match(html, /rel="manifest" href="manifest\.webmanifest"/);
   assert.match(app, /navigator\.serviceWorker\.register\('\.\/sw\.js'\)/);
-  assert.match(worker, /const CACHE_NAME = 'hayah-shell-v66'/);
+  assert.match(worker, /const CACHE_NAME = 'hayah-shell-v67'/);
   assert.match(worker, /cache\.addAll\(APP_SHELL\)/);
   assert.match(worker, /caches\.match\(APP_SHELL\[0\]\)/);
   assert.match(icon, /حياة/);
@@ -451,7 +451,7 @@ test('مساعدة توقيت القتال إعداد وصول مستقل ومت
   assert.ok(app.includes("reactionTimingAssist:session.reactionTimingAssist===true"));
   assert.match(app, /مساعدة التوقيت مفعّلة/);
   assert.match(app, /مساعدة توقيت القتال/);
-  assert.match(read('sw.js'), /hayah-shell-v66/);
+  assert.match(read('sw.js'), /hayah-shell-v67/);
 });
 
 test('فرص تحسين الإحصاءات اختيارية ومحدودة بسنة العمر وتحافظ على حفظ v1', () => {
@@ -472,7 +472,7 @@ test('فرص تحسين الإحصاءات اختيارية ومحدودة بس�
   assert.equal(context.normalize({age: 24, boostUsedAge: -1}), null);
   assert.match(app, /const KEY = 'hekayat_hayah_save_v1';/);
   assert.match(app, /return \{version:1,lifeId:/);
-  assert.match(read('sw.js'), /hayah-shell-v66/);
+  assert.match(read('sw.js'), /hayah-shell-v67/);
 });
 
 test('واجهة الهاتف تحافظ على تخطيط حياة العربي وهويته البصرية المستقلة', () => {
@@ -513,7 +513,7 @@ test('مسيرة الرياضات الإلكترونية أصلية وتحافظ
   assert.match(app, /function upgradeEsportsSetup\(\)/);
   assert.match(app, /موهبة الألعاب الإلكترونية/);
   assert.match(app, /data\.talents\.gaming=clamp\(Number\(data\.talents\.gaming\),0,100\)/);
-  assert.match(read('sw.js'), /hayah-shell-v66/);
+  assert.match(read('sw.js'), /hayah-shell-v67/);
   assert.match(functionSource('rewindToSnapshot', 'customizeMenu'), /ensureGamingTalent\(\)/, 'rewinding a pre-feature snapshot should restore a valid talent default');
 });
 
@@ -783,7 +783,7 @@ test('إدارة المشروع تدعم عقود الموردين وتقاري�
   assert.match(app, /choice\('📦','التعاقد مع مورد'/);
   assert.match(app, /choice\('📊','سجل التقارير'/);
   assert.match(app, /const normalizeBusinessEntity=entity=>/);
-  assert.match(read('sw.js'), /hayah-shell-v66/);
+  assert.match(read('sw.js'), /hayah-shell-v67/);
 });
 
 
@@ -798,7 +798,7 @@ test('إدارة فريق المشروع تحفظ الموظفين وتؤثر ف
   assert.match(app, /staffPayroll/);
   assert.match(app, /staffCount/);
   assert.match(app, /choice\('👥','إدارة الموظفين'/);
-  assert.match(read('sw.js'), /hayah-shell-v66/);
+  assert.match(read('sw.js'), /hayah-shell-v67/);
 });
 
 
@@ -811,7 +811,7 @@ test('سوق الموردين يتجدد سنويًا ويحفظ عروض الأ
   assert.match(app, /supplierCostMultiplier/);
   assert.match(app, /entity\.supplier\.yearsLeft\)\|\|3,1,3/);
   assert.match(app, /entity\.supplier\.quality/);
-  assert.match(read('sw.js'), /hayah-shell-v66/);
+  assert.match(read('sw.js'), /hayah-shell-v67/);
 });
 
 
@@ -826,7 +826,7 @@ test('إدارة المنتجات تدعم بحث السوق والمبيعات 
   assert.match(app, /competition/);
   assert.match(app, /choice\('🧪','إدارة المنتجات'/);
   assert.match(app, /entity\.productResearch=entity\.productResearch\.filter/);
-  assert.match(read('sw.js'), /hayah-shell-v66/);
+  assert.match(read('sw.js'), /hayah-shell-v67/);
 });
 
 
@@ -841,7 +841,7 @@ test('شركات المحفظة تدير الموردين والموظفين و�
   assert.match(app, /simulateBusinessEntityYear\(state\.business,'business'\)/);
   assert.match(app, /simulateBusinessEntityYear\(company,'portfolio'\)/);
   assert.match(app, /business\.assetId\|\|business\.id\|\|business\.title/);
-  assert.match(read('sw.js'), /hayah-shell-v66/);
+  assert.match(read('sw.js'), /hayah-shell-v67/);
 });
 
 
@@ -857,7 +857,7 @@ test('الفروع والمصانع محفوظة لكل نشاط وتزيد طا
   assert.match(app, /facilityInvestment/);
   assert.match(app, /choice\('🏗️','الفروع والمصانع'/);
   assert.match(app, /return \{version:1,lifeId:/);
-  assert.match(read('sw.js'), /hayah-shell-v66/);
+  assert.match(read('sw.js'), /hayah-shell-v67/);
 });
 
 test('استثمار المنشأة رأسمالي منفصل عن صافي الربح والصيانة السنوية', () => {
@@ -891,7 +891,7 @@ test('سوق المنافسة يحفظ شركات مستقلة وقرارات س
     "choice('📈','تحليل السوق والمنافسين'",
     "return {version:1,lifeId:"
   ].forEach(fragment => assert.ok(app.includes(fragment), 'missing independent rival behavior: '+fragment));
-  assert.match(read('sw.js'), /hayah-shell-v66/);
+  assert.match(read('sw.js'), /hayah-shell-v67/);
 });
 
 
@@ -904,7 +904,7 @@ test('النوافذ الحوارية تدير التركيز بلوحة الم�
   assert.match(app, /returnFocus&&returnFocus\.isConnected/);
   assert.match(app, /const initialFocus=\$\('closeModal'\)\|\|getFocusable\(\)\[0\]\|\|dialog/);
   assert.match(read('style.css'), /\.modal button:focus-visible/);
-  assert.match(read('sw.js'), /hayah-shell-v66/);
+  assert.match(read('sw.js'), /hayah-shell-v67/);
 });
 
 test('اختبارات Node دون DOM كامل لا تتطلب querySelector من عنصر الجذر', () => {
@@ -922,7 +922,7 @@ test('إعدادات الصوت والاهتزاز ومساعدة القتال �
   assert.ok(app.includes("choice(uiSettings.sound?'🔊':'🔇'"));
   assert.ok(app.includes("choice(uiSettings.haptics?'📳':'📴'"));
   assert.ok(app.includes("localStorage.setItem(SETTINGS_KEY,JSON.stringify(uiSettings))"));
-  assert.match(read('sw.js'), /hayah-shell-v66/);
+  assert.match(read('sw.js'), /hayah-shell-v67/);
 });
 
 
@@ -935,7 +935,7 @@ test('سجل الحياة يضيف الأحداث الجديدة تدريجيً�
   assert.match(app, /renderedLogSnapshot=signatures;renderedFeedElement=feed/);
   assert.doesNotMatch(html, /id="lifeFeed"[^>]*aria-live=/);
   assert.match(app, /announceLifeEvents\(entries,appendFrom\)/);
-  assert.match(read('sw.js'), /hayah-shell-v66/);
+  assert.match(read('sw.js'), /hayah-shell-v67/);
 });
 
 
@@ -949,7 +949,7 @@ test('اقتصاد الشركات يختلف حسب الصناعة ويظهر أ
   assert.ok(app.includes("industryOperatingCostMultiplier"));
   assert.ok(app.includes("industryUnitCostMultiplier"));
   assert.ok(app.includes("معاملات القطاع: الإيرادات"));
-  assert.match(read('sw.js'), /hayah-shell-v66/);
+  assert.match(read('sw.js'), /hayah-shell-v67/);
 });
 
 
@@ -973,7 +973,7 @@ test('تمويل النشاط مستقل لكل شركة ويُحتسب مرة �
   const annualSimulation = functionSource('simulateBusinessEntityYear', 'advanceAge');
   assert.ok(annualSimulation.includes("const costs=operatingCostsTotal+productResult.upfrontCosts+businessLoanInterest"));
   assert.ok(annualSimulation.includes("const cashDelta=revenue-operatingCostsTotal-businessLoanInterestPaid-corporateTaxPaidFromCash"));
-  assert.ok(read('sw.js').includes("hayah-shell-v66"));
+  assert.ok(read('sw.js').includes("hayah-shell-v67"));
 });
 
 
@@ -1000,7 +1000,7 @@ test('الخزينة المستقلة تفصل نقدية كل شركة عن ر�
   assert.ok(annualSimulation.includes("businessTreasuryBalance(business)+revenue-operatingCostsTotal"));
   assert.ok(annualSimulation.includes("const cashDelta=revenue-operatingCostsTotal-businessLoanInterestPaid-corporateTaxPaidFromCash"));
   assert.ok(annualSimulation.includes("treasuryMode:separateTreasury?'separate':'shared'"));
-  assert.match(read('sw.js'), /hayah-shell-v66/);
+  assert.match(read('sw.js'), /hayah-shell-v67/);
 });
 
 
@@ -1021,7 +1021,7 @@ test('ضرائب الشركات تُحسب على الربح الموجب وتُ
   assert.ok(annualSimulation.includes('const taxableProfit=Math.max(0,Math.round(preTaxProfit))'));
   assert.ok(annualSimulation.includes('const cashDelta=revenue-operatingCostsTotal-businessLoanInterestPaid-corporateTaxPaidFromCash'));
   assert.ok(annualSimulation.includes('const costs=operatingCostsTotal+productResult.upfrontCosts+businessLoanInterest+corporateTax'));
-  assert.match(read('sw.js'), /hayah-shell-v66/);
+  assert.match(read('sw.js'), /hayah-shell-v67/);
 });
 
 test('مسيرة القتال تدير ثلاث جولات وتستعيد النزال المحفوظ مع الحفظ القديم', () => {
@@ -1176,6 +1176,81 @@ test('ضرر كل جولة يؤثر على الصحة والإصابة تدري�
   assert.equal(pendingContext.legacy.roundHistory[0].injuryAfter, null);
 });
 
+
+test('محرك ضرر القتال يظل محدودًا ومتوازنًا عبر 61,206 حالة', () => {
+  const impactSource = functionSource('combatRoundImpact', 'normalizeCombatInjuryYears');
+  const context = {
+    clamp(value, min = 0, max = 100) {
+      return Math.max(min, Math.min(max, Math.round(Number(value) || 0)));
+    }
+  };
+  vm.runInNewContext(impactSource + '\nglobalThis.impact = combatRoundImpact;', context);
+  const qualities = ['ممتاز', 'مقبول', 'مكشوف'];
+  let cases = 0;
+
+  for (let rating = 0; rating <= 100; rating++) {
+    for (const quality of qualities) {
+      for (const timing of [0, 4]) {
+        let previousDamage = Infinity;
+        for (let defense = 0; defense <= 100; defense++) {
+          const result = context.impact(rating, defense, quality, timing);
+          assert.ok(result.baseDamage >= 1 && result.baseDamage <= 7);
+          assert.ok(result.healthDamage >= 0 && result.healthDamage <= 9);
+          assert.ok(result.injuryGain >= 0 && result.injuryGain <= 2);
+          assert.ok(result.healthDamage <= previousDamage,
+            'raising defense must never increase damage for the same matchup');
+          previousDamage = result.healthDamage;
+          cases++;
+        }
+      }
+    }
+  }
+
+  for (let rating = 0; rating <= 100; rating++) {
+    for (let defense = 0; defense <= 100; defense++) {
+      for (const timing of [0, 4]) {
+        const excellent = context.impact(rating, defense, 'ممتاز', timing);
+        const acceptable = context.impact(rating, defense, 'مقبول', timing);
+        const exposed = context.impact(rating, defense, 'مكشوف', timing);
+        assert.ok(excellent.healthDamage <= acceptable.healthDamage);
+        assert.ok(acceptable.healthDamage <= exposed.healthDamage);
+      }
+    }
+  }
+  assert.equal(cases, 61206);
+});
+
+test('سنوات التعافي تُطبّع بأمان ولا تظل إصابات الحفظ القديم عالقة', () => {
+  const helperStart = app.indexOf('function normalizeCombatInjuryYears(');
+  const helperEnd = app.indexOf('const combatMoveMasteryThresholds=', helperStart);
+  assert.ok(helperStart >= 0 && helperEnd > helperStart, 'injury recovery normalizer should exist');
+  const helperSource = app.slice(helperStart, helperEnd);
+  const ensureSource = functionSource('ensureCombatCareer', 'combatRankName');
+  const context = {
+    state: { combatCareer: null },
+    createCombatCareer() { return { injury: 0, injuryYears: 0 }; },
+    normalizeCombatMoveMastery() { return {}; },
+    normalizeCombatCommunity() { return []; },
+    normalizePendingCombatBout() { return null; },
+    clamp(value, min = 0, max = 100) {
+      return Math.max(min, Math.min(max, Math.round(Number(value) || 0)));
+    }
+  };
+  vm.runInNewContext(helperSource + ensureSource +
+    '\nglobalThis.normalizeYears = raw => { state.combatCareer = raw; return ensureCombatCareer().injuryYears; };', context);
+
+  assert.equal(context.normalizeYears({ injury: 30, injuryYears: 1.9 }), 2,
+    'fractional legacy duration should round up rather than shorten recovery');
+  assert.equal(context.normalizeYears({ injury: 30, injuryYears: 0.4 }), 1);
+  assert.equal(context.normalizeYears({ injury: 30, injuryYears: 99 }), 2,
+    'corrupt or unbounded durations must not lock a fighter out for many years');
+  assert.equal(context.normalizeYears({ injury: 30, injuryYears: -4 }), 0);
+  assert.equal(context.normalizeYears({ injury: 30, injuryYears: 'invalid' }), 0);
+  assert.equal(context.normalizeYears({ injury: 0, injuryYears: 2 }), 0,
+    'a fully healed fighter must not remain blocked by a stale recovery counter');
+  assert.ok(app.includes('c.injuryYears=normalizeCombatInjuryYears(c.injuryYears)'));
+});
+
 test('مجتمع المقاتلين يحفظ العلاقات والتحالفات ويؤثر على النزالات دون كسر الحفظ القديم', () => {
   const profilesStart = app.indexOf('const combatCommunityProfiles=[');
   const helpersEnd = app.indexOf('function combatDifficultyLabel', profilesStart);
@@ -1203,7 +1278,7 @@ test('مجتمع المقاتلين يحفظ العلاقات والتحالفا
   assert.ok(app.includes('communityFighterId:session&&session.communityFighterId?session.communityFighterId:null'));
   assert.ok(app.includes("const KEY = 'hekayat_hayah_save_v1';"));
   assert.ok(app.includes('return {version:1,lifeId:'));
-  assert.match(read('sw.js'), /hayah-shell-v66/);
+  assert.match(read('sw.js'), /hayah-shell-v67/);
 });
 test('المهرجان الأسبوعي يدعم 11 شارة ويطبع بيانات المواسم القديمة دون مكافآت مجانية', () => {
   [
@@ -1297,7 +1372,7 @@ test('المهرجان الأسبوعي يدعم 11 شارة ويطبع بيان
   vm.runInNewContext(helpers+'globalThis.normalizedArchive=normalizeSeasonalEventArchive(archive,state);',archiveContext);
   assert.equal(archiveContext.normalizedArchive.length,8);
   assert.ok(archiveContext.normalizedArchive[0].claimed.includes('family'));
-  assert.match(read('sw.js'), /hayah-shell-v66/);
+  assert.match(read('sw.js'), /hayah-shell-v67/);
 });
 
 
@@ -1329,7 +1404,7 @@ test('السوشيال ميديا تحفظ صدى الجمهور وتدعم مس
   vm.runInNewContext(normalizer + "\nglobalThis.limited=normalizeSocialFeed(input);", limitedContext);
   assert.equal(limitedContext.limited.length, 30);
   assert.equal(limitedContext.limited[0].id, 'p10');
-  assert.match(read('sw.js'), /hayah-shell-v66/);
+  assert.match(read('sw.js'), /hayah-shell-v67/);
 });
 
 
@@ -1338,7 +1413,7 @@ test('الشريط السفلي والإحصائيات بعرض التطبيق �
   assert.match(css, /#app > \.bottom-dock > \.stats\{[\s\S]*?width:100%!important/);
   assert.match(css, /#app > \.bottom-dock > \.nav\{[\s\S]*?width:100%!important/);
   assert.match(css, /#app > \.feed\{[\s\S]*?min-height:0!important/);
-  assert.match(read('sw.js'), /hayah-shell-v66/);
+  assert.match(read('sw.js'), /hayah-shell-v67/);
 });
 
 test('الواجهة الرئيسية منظمة وتعرض عناوين أحداث الحياة مع الحفاظ على الهوية العربية', () => {
@@ -1423,6 +1498,9 @@ test('إتقان الحركات يتدرج بالاستخدام ويُطبع ب�
   const helpersEnd = app.indexOf('function normalizePendingCombatBout(', helpersStart);
   assert.ok(helpersStart >= 0 && helpersEnd > helpersStart, 'move mastery helpers should remain grouped');
   const helperSource = app.slice(helpersStart, helpersEnd);
+  const injuryYearsStart = app.indexOf('function normalizeCombatInjuryYears(');
+  const injuryYearsEnd = app.indexOf('const combatMoveMasteryThresholds=', injuryYearsStart);
+  const injuryYearsSource = app.slice(injuryYearsStart, injuryYearsEnd);
   const careerSource = functionSource('ensureCombatCareer', 'combatRankName');
   const context = {
     state: { combatCareer: { movesKnown: ['quick-jab', 'high-guard'],
@@ -1431,7 +1509,7 @@ test('إتقان الحركات يتدرج بالاستخدام ويُطبع ب�
     normalizeCombatCommunity: () => [],
     normalizePendingCombatBout: value => value
   };
-  vm.runInNewContext('const combatMoveCatalog=[' + catalogSource + '];' + String.fromCharCode(10) + helperSource + String.fromCharCode(10) +
+  vm.runInNewContext(injuryYearsSource + String.fromCharCode(10) + 'const combatMoveCatalog=[' + catalogSource + '];' + String.fromCharCode(10) + helperSource + String.fromCharCode(10) +
     careerSource + String.fromCharCode(10) + 'globalThis.career=ensureCombatCareer();' +
     'globalThis.levels=[0,2,3,7,8,14,15,24,25,100].map(combatMoveMasteryLevel);' +
     'globalThis.bonuses=[0,3,8,15,25,100].map(combatMoveMasteryBonus);', context);
@@ -1446,7 +1524,7 @@ test('إتقان الحركات يتدرج بالاستخدام ويُطبع ب�
     'round history should retain the mastery level used during each saved round');
   assert.ok(app.includes("achievement('إتقان حركة قتالية:"),
     'mastery milestones should become part of the character story');
-  assert.match(read('sw.js'), /hayah-shell-v66/);
+  assert.match(read('sw.js'), /hayah-shell-v67/);
 });
 
 test('مهرجان السينما يسجل كل فيلم مرة واحدة ويكافئ النتائج المؤهلة ويحافظ على الحفظ القديم', () => {
@@ -1551,5 +1629,5 @@ test('نافذة توقيت رد الفعل تدعم اللعب الموقّت �
   assert.match(app, /استجابة سريعة خلال 1\.8 ثانية تمنحك 4 نقاط إضافية/);
   assert.match(css, /\.combat-reaction-clock/);
   assert.match(css, /hayah-reaction-window/);
-  assert.match(read('sw.js'), /hayah-shell-v66/);
+  assert.match(read('sw.js'), /hayah-shell-v67/);
 });
