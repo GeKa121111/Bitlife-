@@ -521,7 +521,7 @@ function normalizePendingCombatBout(raw){
    reactionPlayerBonus:Math.round(finite(item.reactionPlayerBonus,0,-10,10)),
    reactionOpponentBonus:Math.round(finite(item.reactionOpponentBonus,0,-10,10)),
    reactionCost:item.reactionCost==null?null:Math.round(finite(item.reactionCost,0,0,8)),
-   reactionTimeMs:item.reactionTimeMs==null?null:Math.round(finite(item.reactionTimeMs,0,0,60000)),
+   reactionTimeMs:item.reactionTimeMs==null||!Number.isFinite(Number(item.reactionTimeMs))?null:Math.round(finite(item.reactionTimeMs,0,0,60000)),
    reactionTimingBonus:Math.round(finite(item.reactionTimingBonus,0,0,4))
   };
  }).filter(Boolean);
@@ -546,8 +546,8 @@ function normalizePendingCombatBout(raw){
   feePaid:mode==='league',
   communityFighterId:typeof raw.communityFighterId==='string'&&/^[a-z0-9-]{1,40}$/.test(raw.communityFighterId)?raw.communityFighterId:null,
   reactionId:['guard','dodge','counter'].includes(raw.reactionId)?raw.reactionId:'',
-  reactionWindowStartedAt:raw.reactionWindowStartedAt==null?null:Math.round(finite(raw.reactionWindowStartedAt,0,0,9007199254740991)),
-  reactionTimeMs:raw.reactionTimeMs==null?null:Math.round(finite(raw.reactionTimeMs,0,0,60000))
+  reactionWindowStartedAt:raw.reactionWindowStartedAt==null||!Number.isFinite(Number(raw.reactionWindowStartedAt))?null:Math.round(finite(raw.reactionWindowStartedAt,0,0,9007199254740991)),
+  reactionTimeMs:raw.reactionTimeMs==null||!Number.isFinite(Number(raw.reactionTimeMs))?null:Math.round(finite(raw.reactionTimeMs,0,0,60000))
  };
 }
 function combatDifficultyLabel(rating){
