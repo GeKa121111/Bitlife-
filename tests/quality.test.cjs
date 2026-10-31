@@ -642,10 +642,10 @@ test('حديقة الحيوان تدعم أكثر من 100 نوع، وحزمة �
   assert.notEqual(filmEnd, -1);
   const genres = (app.slice(filmStart, filmEnd).match(/\{id:'/g) || []).length;
   assert.equal(genres, 11, 'director expansion should expose 11 film genres');
-  assert.match(app, /function filmAuditionResultsMenu\\(genreId,budgetId,creativeId,refresh=false\\)/);
-  assert.match(app, /function filmActorRosterMenu\\(\\)/);
-  assert.match(app, /actorDrama,actorImpact:/);
-  assert.match(app, /studio\\.actorRoster/);
+  assert.ok(app.includes('function filmAuditionResultsMenu(genreId,budgetId,creativeId,refresh=false)'));
+  assert.ok(app.includes('function filmActorRosterMenu()'));
+  assert.ok(app.includes('actorDrama,actorImpact:'));
+  assert.ok(app.includes('studio.actorRoster'));
   assert.match(app, /genres=filmGenreCatalog\.filter\(g=>!g\.packOnly\|\|perkOwned\('movieDirectorPack'\)\)/);
 });
 

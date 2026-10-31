@@ -4336,8 +4336,8 @@ function filmStudioMenu(){
  ];
  if(studio.pendingProject){
   const pendingGenre=filmGenreCatalog.find(genre=>genre.id===studio.pendingProject.genreId);
-  opts.unshift(choice('▶️','استكمال المشروع الجاري','مشروع '+(pendingGenre?pendingGenre.title:'سينمائي')+' محفوظ ويمكنك متابعة اختيار الممثل.',()=>filmActorMenu(studio.pendingProject.genreId,studio.pendingProject.budgetId,studio.pendingProject.creativeId)));
   opts.unshift(choice('🗑️','إلغاء المشروع الجاري','إلغاء التجهيز دون خصم ميزانية أو تغيير سجل الأفلام.',()=>{studio.pendingProject=null;studio.pendingAuditions=[];studio.pendingAuditionGenre=null;save();filmStudioMenu();}));
+  opts.unshift(choice('▶️','استكمال المشروع الجاري','مشروع '+(pendingGenre?pendingGenre.title:'سينمائي')+' محفوظ ويمكنك متابعة اختيار الممثل.',()=>filmActorMenu(studio.pendingProject.genreId,studio.pendingProject.budgetId,studio.pendingProject.creativeId)));
  }
  modal('🎥','استوديو الأفلام',summary,opts);
 }
