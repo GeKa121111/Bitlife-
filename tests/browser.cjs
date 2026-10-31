@@ -1670,6 +1670,10 @@ async function run() {
     assert.equal(completedCombat.bout.moves.length, 3, 'the fight record should preserve the selected action in every round');
     assert.ok(completedCombat.moveMastery && completedCombat.moveMastery['quick-jab'] >= 2,
       'reusing a learned move should advance its persistent mastery after the third round');
+    assert.equal(completedCombat.bout.rounds[0].masteryUses, 1,
+      'the permanent bout record should preserve the first round mastery count');
+    assert.equal(completedCombat.bout.rounds[2].masteryUses, 2,
+      'the permanent bout record should preserve mastery progression in later rounds');
 
     await page.locator('.choice').filter({ hasText: 'إدارة مسيرة القتال' }).click();
     await page.locator('.choice').filter({ hasText: 'مجتمع المقاتلين' }).click();
