@@ -1768,6 +1768,12 @@ async function run() {
     await page.locator('.choice').filter({ hasText: 'المهن الخاصة والشهرة' }).click();
     await page.locator('.choice').filter({ hasText: 'إدارة مسيرة القتال' }).click();
     await page.locator('.choice').filter({ hasText: 'نزال شوارع' }).click();
+    await page.locator('.choice').filter({ hasText: 'صد محكم' }).click();
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await page.locator('[data-panel="career"]').click();
+    await page.locator('.choice').filter({ hasText: 'المهن الخاصة والشهرة' }).click();
+    await page.locator('.choice').filter({ hasText: 'إدارة مسيرة القتال' }).click();
+    await page.waitForFunction(() => document.querySelector('#modalRoot')?.textContent.includes('رد فعلك: صد محكم'));
     await page.locator('.choice').filter({ hasText: 'لكمة خاطفة' }).click();
     await page.reload({ waitUntil: 'domcontentloaded' });
     const firstMoveMastery = await page.evaluate(() => {
@@ -1789,8 +1795,10 @@ async function run() {
     await page.locator('.choice').filter({ hasText: 'المهن الخاصة والشهرة' }).click();
     await page.locator('.choice').filter({ hasText: 'إدارة مسيرة القتال' }).click();
     await page.waitForFunction(() => document.querySelector('#modalRoot')?.textContent.includes('الجولة 2 من 3'));
+    await page.locator('.choice').filter({ hasText: 'صد محكم' }).click();
     await page.locator('.choice').filter({ hasText: 'التقاط الأنفاس' }).click();
     await page.waitForFunction(() => document.querySelector('#modalRoot')?.textContent.includes('الجولة 3 من 3'));
+    await page.locator('.choice').filter({ hasText: 'صد محكم' }).click();
     assert.equal(await page.locator('.choice').filter({ hasText: 'التقاط الأنفاس' }).count(), 0,
       'the recovery tactic should disappear after its single use in the bout');
     await page.locator('.choice').filter({ hasText: 'لكمة خاطفة' }).click();
@@ -1800,7 +1808,11 @@ async function run() {
       const bout = career && career.bouts && career.bouts[career.bouts.length - 1];
       return { pending: career && career.pendingBout, bout, moveMastery: career && career.moveMastery,
         energyRounds: bout && bout.rounds && bout.rounds.map(round => ({
-          before: round.energyBefore, cost: round.energyCost, recovery: round.energyRecovery, after: round.energyAfter
+          before: round.energyBefore, cost: round.energyCost, reactionCost: round.reactionCost,
+          recovery: round.energyRecovery, after: round.energyAfter
+        })),
+        reactionRounds: bout && bout.rounds && bout.rounds.map(round => ({
+          reaction: round.reactionId, quality: round.reactionQuality, intent: round.intentStyle
         })) };
     });
     assert.equal(completedCombat.pending, null, 'completed bouts should clear the pending session');
@@ -1814,10 +1826,14 @@ async function run() {
     assert.equal(completedCombat.bout.rounds[2].masteryUses, 2,
       'the permanent bout record should preserve mastery progression in later rounds');
     assert.deepEqual(completedCombat.energyRounds, [
-      { before: 100, cost: 6, recovery: 0, after: 94 },
-      { before: 94, cost: 0, recovery: 14, after: 100 },
-      { before: 100, cost: 6, recovery: 0, after: 94 }
-    ], 'the fight history should persist exact energy spending and one-time recovery across a reload');
+      { before: 100, cost: 7, reactionCost: 1, recovery: 0, after: 93 },
+      { before: 93, cost: 1, reactionCost: 1, recovery: 14, after: 100 },
+      { before: 100, cost: 7, reactionCost: 1, recovery: 0, after: 93 }
+    ], 'the fight history should persist reaction costs and one-time recovery across a reload');
+    assert.ok(completedCombat.reactionRounds.every(round => round.reaction === 'guard'),
+      'every round should retain the selected defensive response');
+    assert.ok(completedCombat.reactionRounds.every(round => ['ممتاز','مقبول','مكشوف'].includes(round.quality)),
+      'every response should record its matchup quality');
 
     await page.locator('.choice').filter({ hasText: 'إدارة مسيرة القتال' }).click();
     await page.locator('.choice').filter({ hasText: 'مجتمع المقاتلين' }).click();
@@ -1855,10 +1871,13 @@ async function run() {
     await page.locator('.choice').filter({ hasText: 'مجتمع المقاتلين' }).click();
     await page.locator('.choice').filter({ hasText: 'آدم منصور' }).click();
     await page.locator('.choice').filter({ hasText: 'تحدي على الحلبة' }).click();
+    await page.locator('.choice').filter({ hasText: 'صد محكم' }).click();
     await page.locator('.choice').filter({ hasText: 'لكمة خاطفة' }).click();
     await page.waitForFunction(() => document.querySelector('#modalRoot')?.textContent.includes('الجولة 2 من 3'));
+    await page.locator('.choice').filter({ hasText: 'صد محكم' }).click();
     await page.locator('.choice').filter({ hasText: 'لكمة خاطفة' }).click();
     await page.waitForFunction(() => document.querySelector('#modalRoot')?.textContent.includes('الجولة 3 من 3'));
+    await page.locator('.choice').filter({ hasText: 'صد محكم' }).click();
     await page.locator('.choice').filter({ hasText: 'لكمة خاطفة' }).click();
     const communityBout = await page.evaluate(() => {
       const saved = JSON.parse(localStorage.getItem('hekayat_hayah_save_v1') || 'null');
