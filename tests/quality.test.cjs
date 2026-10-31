@@ -182,7 +182,7 @@ test('النسخة الاحتياطية الكاملة تجمع الحياة و�
   const settingsContext = { raw: { theme: 'gold', textScale: 'large', sound: true, haptics: false, boosts: false, extra: true } };
   vm.runInNewContext(settingsSource + '\nglobalThis.normalized=normalizeUiSettings(raw);', settingsContext);
   assert.deepEqual(JSON.parse(JSON.stringify(settingsContext.normalized)),
-    { theme: 'gold', textScale: 'large', sound: true, haptics: false, boosts: false },
+    { theme: 'gold', textScale: 'large', sound: true, haptics: false, boosts: false, combatTimingAssist: false },
     'settings import should retain supported choices and discard unknown fields');
 
   const perksSource = functionSource('defaultPermanentPerks', 'loadPermanentPerks');
@@ -912,8 +912,8 @@ test('اختبارات Node دون DOM كامل لا تتطلب querySelector م
 });
 
 
-test('إعدادات الصوت والاهتزاز اختيارية ومستقلة عن حفظ الحياة', () => {
-  assert.ok(app.includes("let uiSettings={theme:'light',textScale:'normal',sound:false,haptics:false,boosts:true}"));
+test('إعدادات الصوت والاهتزاز ومساعدة القتال مستقلة عن حفظ الحياة', () => {
+  assert.ok(app.includes("let uiSettings={theme:'light',textScale:'normal',sound:false,haptics:false,boosts:true,combatTimingAssist:false}"));
   assert.ok(app.includes("function playUiFeedback(kind='tap')"));
   assert.ok(app.includes("typeof navigator.vibrate==='function'"));
   assert.ok(app.includes("window.AudioContext||window.webkitAudioContext"));
