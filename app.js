@@ -1321,7 +1321,7 @@ function modal(icon,title,desc,choices,closable=true,extra=''){
  const activeElement=document.activeElement;
  if(activeElement&&!root.contains(activeElement)&&activeElement!==document.body&&activeElement!==document.documentElement)modalReturnFocus=activeElement;
  if(activeDialogKeyHandler){document.removeEventListener('keydown',activeDialogKeyHandler);activeDialogKeyHandler=null;}
- const isDrawer=['القائمة الرئيسية','الدراسة والشغل','School','University','Class','Cliques','Faculty','Activities','الأصول','الأصول والمشتريات','العلاقات','العلاقات والأسرة','الأنشطة والحياة اليومية','السوشيال ميديا','مجتمع المقاتلين','التسوق'].includes(title)||SOCIAL_PLATFORM_CATALOG.some(p=>p.title===title);
+ const isDrawer=['القائمة الرئيسية','الدراسة والشغل','فرص عمل جديدة','School','University','Class','Cliques','Faculty','Activities','الأصول','الأصول والمشتريات','العلاقات','العلاقات والأسرة','الأنشطة والحياة اليومية','السوشيال ميديا','مجتمع المقاتلين','التسوق'].includes(title)||SOCIAL_PLATFORM_CATALOG.some(p=>p.title===title);
  const context=String(title||'')+' '+String(desc||'')+' '+String(extra||'');
  const symptom=/(عرض|أعراض|صداع|غثيان|حمى|حُمّى|زكام|سعال|ألم|وجع|دوخة|symptom|headache|nausea|flu|diagnosis)/i.test(context);
  const crime=/(جريمة|سرقة|سجن|مخدر|عصابة|شرطة|اختلاس|سطو|crime|robbery|prison)/i.test(context);
@@ -1869,7 +1869,7 @@ function advanceAge(){
  if(state.age===12){state.education.school='المرحلة الإعدادية';log('📚','مرحلة جديدة','خلصت المرحلة الابتدائية وبدأت الإعدادي. اختياراتك الدراسية هتبدأ تفرق أكتر.','special');}
  if(state.age===15){state.education.school='المرحلة الثانوية';log('🎒','الثانوية العامة','دخلت مرحلة مهمة؛ حاول توازن بين المذاكرة وصحتك.','special');}
  if(state.age===18){state.education.school='خريج ثانوية';log('🎓','نهاية مرحلة وبداية التانية','خلصت سنين المدرسة. قدامك الجامعة أو الشغل أو سنة راحة.','special');achievement('أنهيت التعليم المدرسي');}
- if(state.age===60&&!state.retired){state.retired=true;if(state.job){state.jobHistory=state.jobHistory||[];state.jobHistory.push({title:state.job.title,salary:state.job.salary,startAge:state.job.startAge??18,endAge:state.age});log('🌅','التقاعد','وصلت لسن التقاعد. حان وقت الراحة والاستمتاع باللي بنيته.','special');state.job=null;}achievement('وصلت لمرحلة التقاعد');}
+ if(state.age===60&&!state.retired){state.retired=true;if(state.job){archiveCurrentJob('تقاعد');log('🌅','التقاعد','وصلت لسن التقاعد. حان وقت الراحة والاستمتاع باللي بنيته.','special');state.job=null;}achievement('وصلت لمرحلة التقاعد');}
  if(state.age===60)log('🌅','ستون سنة من الحكايات','وصلت لمرحلة جديدة. اهتم بصحتك وعلاقاتك وخططك للسنين الجاية.','special');
  if(state.age>=65&&chance(.12))state.stats.health=clamp(state.stats.health-5);
  state.wealthPeak=Math.max(state.wealthPeak,state.bank);render();save();
@@ -2168,6 +2168,40 @@ function jobRequirementsMenu(job,requirements){
  modal('🔒','متطلبات '+job.title,'لسه مش مؤهل للتقديم. '+requirements.join('؛ ')+'.',opts);
 }
 
+function archiveCurrentJob(reason='استقالة'){
+ if(!state.job)return null;
+ const current=ensureJobProgress(state.job,state.age);
+ if(!current)return null;
+ const record={
+  id:current.id||null,
+  title:current.title,
+  baseTitle:current.baseTitle||current.title,
+  salary:Math.max(0,Number(current.salary)||0),
+  startAge:current.startAge??state.age,
+  endAge:state.age,
+  level:clamp(current.level||1,1,5),
+  experienceYears:Math.max(0,Number(current.experienceYears)||0),
+  promotions:Array.isArray(current.promotions)?current.promotions.slice(-20):[],
+  exitReason:reason
+ };
+ state.jobHistory=Array.isArray(state.jobHistory)?state.jobHistory:[];
+ state.jobHistory.push(record);
+ if(state.jobHistory.length>30)state.jobHistory.splice(0,state.jobHistory.length-30);
+ return record;
+}
+function jobMarketMenu(){
+ if(!state.job){showCareer();return;}
+ const currentJob=ensureJobProgress(state.job,state.age);
+ const opts=jobs.filter(job=>job.id!==currentJob.id).map(job=>{
+  const missing=jobRequirements(job),eligible=missing.length===0;
+  const details=eligible
+   ?job.desc+' فرصة القبول التقديرية '+Math.round(jobAcceptanceChance()*100)+'%. التقديم لا ينهي وظيفتك الحالية إلا بعد قبول العرض.'
+   :job.desc+' متطلبات ناقصة: '+missing.join('، ')+'.';
+  return choice(job.emoji,job.title,details,()=>eligible?applyJob(job):jobRequirementsMenu(job,missing),cash(job.salary)+'/سنة',null,!eligible);
+ });
+ opts.push(choice('↩️','العودة إلى مساري الحالي','احتفظ بوظيفتك الحالية كما هي.',()=>{closeModal();showCareer();}));
+ modal('🔎','فرص عمل جديدة','وظيفتك الحالية: '+currentJob.title+'. إذا لم يُقبل طلبك ستظل في عملك الحالي دون تغيير.',opts);
+}
 function showCareer(){
  if(state.age<6){info('📚','لسه بدري','التعليم التفاعلي يبدأ في سن المدرسة. دلوقتي تقدر تتابع أحداث الطفولة وتتقدم بالعمر.');return;}
  if(state.job)ensureJobProgress(state.job,state.age);
@@ -2176,15 +2210,16 @@ function showCareer(){
   const opts=[
    ...(state.education.yearsLeft>0? [choice('🎓','الجامعة والدراسة','تابع الدراسة والأنشطة الجامعية بالتوازي مع العمل.',()=>{closeModal();schoolHub();})] : []),
    choice('🌟','المهن الخاصة والشهرة','مسار إضافي بجانب وظيفتك التقليدية.',specialCareers),
+   choice('🔎','استكشاف فرص عمل','قارن مسارات أخرى وقدّم على وظيفة جديدة دون ترك عملك الحالي قبل قبول العرض.',()=>{closeModal();jobMarketMenu();}),
    choice('🏅','طلب ترقية','الدرجة '+jobRankLabel(state.job.level)+' · الخبرة '+state.job.experienceYears+' سنة · في الدرجة الحالية '+state.job.yearsInRole+' سنة.',requestJobPromotion),
-   choice('📚','سجل الوظائف السابقة','راجع الوظائف التي تركتها أو انتقلت منها.',()=>{closeModal();const records=(state.jobHistory||[]).map(j=>choice('💼',j.title,(j.startAge??'?')+'–'+(j.endAge??'؟')+' سنة · الراتب '+cash(j.salary),()=>{closeModal();info('💼',j.title,'وظيفة سابقة في سجل حياتك.');}));modal('📚','التاريخ الوظيفي','مسار العمل خلال حياتك.',records.length?records:[choice('📚','لا توجد وظائف سابقة','سيظهر السجل بعد تغيير وظيفة أو الاستقالة.',closeModal)]);}),
+   choice('📚','سجل الوظائف السابقة','راجع الوظائف التي تركتها أو انتقلت منها.',()=>{closeModal();const records=(state.jobHistory||[]).map(j=>choice('💼',j.title,(j.startAge??'?')+'–'+(j.endAge??'؟')+' سنة · الراتب '+cash(j.salary)+(j.exitReason?' · '+j.exitReason:''),()=>{closeModal();info('💼',j.title,'وظيفة سابقة في سجل حياتك.');}));modal('📚','التاريخ الوظيفي','مسار العمل خلال حياتك.',records.length?records:[choice('📚','لا توجد وظائف سابقة','سيظهر السجل بعد تغيير وظيفة أو الاستقالة.',closeModal)]);}),
    choice('📈','طلب علاوة','أداءك الحالي '+state.performance+'%.',()=>{
     closeModal();
     if(state.performance<58){state.performance=clamp(state.performance+4);log('🗣️','مناقشة مع المدير','مديرك طلب منك تحسن الأداء شوية قبل زيادة المرتب.');info('🗣️','مش دلوقتي','حافظ على أداءك واطلب تاني بعد فترة.');return;}
     if(chance(.62)){const inc=Math.round(state.job.salary*.12);state.job.salary+=inc;state.performance=clamp(state.performance+5);log('🎉','علاوة في المرتب','وافق مديرك على علاوة سنوية '+cash(inc)+'.','good');info('🎉','مبروك العلاوة','مرتبك السنوي الجديد '+cash(state.job.salary)+'.');}else{state.performance=clamp(state.performance+2);log('🗣️','لسه بدري على العلاوة','مديرك طلب نتائج إضافية قبل الزيادة.');info('🗣️','المرة الجاية','استمر على نفس المستوى وجرب بعد فترة.');}render();
    }),
    choice('🧰','تطوير الأداء','تدريب يرفع فرص الترقية مقابل 1,200 '+state.place.unit+'.',()=>{closeModal();if(state.bank<1200){info('💳','الرصيد مش كفاية','التدريب يكلف 1,200 '+state.place.unit+'.');return;}state.bank-=1200;state.performance=clamp(state.performance+14);stat('smart',2);log('🧰','تدريب مهني','دفعت 1,200 '+state.place.unit+' في تدريب زوّد أداءك ومهاراتك.','good');render();},cash(1200)),
-   choice('🚪','الاستقالة','تسيب شغلك وتفقد الدخل السنوي.',()=>{closeModal();info('🚪','تأكيد الاستقالة','متأكد إنك عايز تسيب '+state.job.title+'؟',[choice('✓','أيوه، أستقيل','',()=>{closeModal();ensureJobProgress(state.job,state.age);state.jobHistory.push({title:state.job.title,salary:state.job.salary,startAge:state.job.startAge??state.age,endAge:state.age,level:state.job.level||1,experienceYears:state.job.experienceYears||0,promotions:Array.isArray(state.job.promotions)?state.job.promotions.slice():[]});state.job=null;state.performance=50;log('🚪','استقالة','سيبت شغلك وبدأت تدور على الخطوة التالية.');render();showCareer();}),choice('↩️','أتراجع','',closeModal)]);})
+   choice('🚪','الاستقالة','تسيب شغلك وتفقد الدخل السنوي.',()=>{closeModal();info('🚪','تأكيد الاستقالة','متأكد إنك عايز تسيب '+state.job.title+'؟',[choice('✓','أيوه، أستقيل','',()=>{closeModal();archiveCurrentJob('استقالة');state.job=null;state.performance=50;log('🚪','استقالة','سيبت شغلك وبدأت تدور على الخطوة التالية.');render();showCareer();}),choice('↩️','أتراجع','',closeModal)]);})
   ];
   modal('💼','الدراسة والشغل','شغلك الحالي: '+state.job.title+' — الدرجة '+jobRankLabel(state.job.level)+' — الخبرة '+state.job.experienceYears+' سنة — الأداء '+state.performance+'%.',opts,true,'<div class="muted performance-summary">مستوى الأداء · '+state.performance+'%</div><div class="progressline"><div style="width:'+clamp(state.performance)+'%"></div></div>');return;
  }
@@ -2198,16 +2233,36 @@ function showCareer(){
  opts.push(choice('🎓','التعليم والجامعة','اختار تخصصًا يفتح فرصًا جديدة.',()=>{closeModal();university(false);}));
  if(perkOwned('goldenDiploma')&&state.age>=18)opts.push(choice('📜','الدراسة والشهادة الذهبية','افتح قائمة التعليم واستخدم الشهادة الفورية.',()=>{closeModal();schoolHub();}));
  opts.push(choice('🌟','المهن الخاصة والشهرة','التمثيل والموسيقى والمحتوى والرياضة والكتابة والإخراج.',specialCareers));
- if((state.jobHistory||[]).length)opts.push(choice('📚','سجل الوظائف السابقة','عدد الوظائف السابقة '+state.jobHistory.length+'.',()=>{closeModal();const records=state.jobHistory.map(j=>choice('💼',j.title,'الراتب '+cash(j.salary)+' · بداية '+j.startAge+' سنة',()=>{closeModal();info('💼',j.title,'وظيفة سابقة في سجل حياتك.');}));modal('📚','التاريخ الوظيفي','كل وظيفة تركت أثرًا في المسار المهني.',records);}));
+ if((state.jobHistory||[]).length)opts.push(choice('📚','سجل الوظائف السابقة','عدد الوظائف السابقة '+state.jobHistory.length+'.',()=>{closeModal();const records=state.jobHistory.map(j=>choice('💼',j.title,'الراتب '+cash(j.salary)+' · بداية '+j.startAge+' سنة'+(j.exitReason?' · '+j.exitReason:''),()=>{closeModal();info('💼',j.title,'وظيفة سابقة في سجل حياتك.');}));modal('📚','التاريخ الوظيفي','كل وظيفة تركت أثرًا في المسار المهني.',records);}));
  modal('💼','الدراسة والشغل',intro,opts);
 }
 
 function applyJob(job){
  closeModal();
+ if(!job||typeof job!=='object')return;
  if(state.age<job.age||state.stats.smart<job.smart||state.education.level<job.edu){info('🔒','لسه مش مؤهل','الوظيفة محتاجة سنًا أو تعليمًا أو مهارات أعلى.');return;}
+ const previousJob=state.job?ensureJobProgress(state.job,state.age):null;
+ const previousPerformance=Number.isFinite(Number(state.performance))?Number(state.performance):50;
  const success=jobAcceptanceChance();
- if(chance(success)){state.job={id:job.id,title:job.title,baseTitle:job.title,salary:job.salary,startAge:state.age,roleStartAge:state.age,level:1,yearsInRole:0,experienceYears:0,promotions:[]};state.jobHistory=state.jobHistory||[];state.performance=clamp(50+Math.floor(state.stats.smart/8));state.retired=false;if(perkEnabled('hollywoodStar'))state.fame=100;log('💼','اتقبلت في وظيفة جديدة','بدأت شغل '+job.title+' براتب سنوي '+cash(job.salary)+'.','good');achievement('بدأت العمل: '+job.title);info('🎉','مبروك الوظيفة','اتقبلت في '+job.title+'. كل سنة هتستلم دخل على قد أداءك.');}
- else{log('📨','طلب وظيفة','قدمت على '+job.title+' لكنهم اختاروا مرشحًا آخر. جهّز نفسك وحاول تاني.','bad');info('📨','المرة الجاية','طوّر مهاراتك وخليك مستمر في التقديم.');}
+ if(chance(success)){
+  if(previousJob)archiveCurrentJob('انتقال مهني');
+  state.job={id:job.id,title:job.title,baseTitle:job.title,salary:job.salary,startAge:state.age,roleStartAge:state.age,level:1,yearsInRole:0,experienceYears:0,promotions:[]};
+  state.jobHistory=Array.isArray(state.jobHistory)?state.jobHistory:[];
+  state.performance=previousJob?clamp(Math.round(previousPerformance*.85+7.5),20,100):clamp(50+Math.floor(state.stats.smart/8));
+  state.retired=false;
+  if(perkEnabled('hollywoodStar'))state.fame=100;
+  if(previousJob){
+   log('💼','انتقال مهني ناجح','انتقلت من '+previousJob.title+' إلى '+job.title+' براتب سنوي '+cash(job.salary)+'. تم حفظ مسارك السابق في السجل.','good');
+   info('🎉','مبروك الانتقال','اتقبلت في '+job.title+'. بدأت درجة جديدة مع الاحتفاظ بتاريخك الوظيفي وتقييم أدائك السابق.');
+  }else{
+   log('💼','اتقبلت في وظيفة جديدة','بدأت شغل '+job.title+' براتب سنوي '+cash(job.salary)+'.','good');
+   info('🎉','مبروك الوظيفة','اتقبلت في '+job.title+'. كل سنة هتستلم دخل على قد أداءك.');
+  }
+  achievement('بدأت العمل: '+job.title);
+ }else{
+  log('📨','طلب وظيفة','قدمت على '+job.title+' لكنهم اختاروا مرشحًا آخر. جهّز نفسك وحاول تاني.','bad');
+  info('📨','المرة الجاية','طوّر مهاراتك وخليك مستمر في التقديم. وظيفتك الحالية لم تتأثر.');
+ }
  render();
 }
 
@@ -5577,7 +5632,7 @@ function investorQuitJob(){
  const holdings=(state.investments||[]).reduce((s,x)=>s+(Number(x.value)||0),0),assets=(state.assets||[]).reduce((s,x)=>s+(Number(x.value)||0),0),net=state.bank+holdings+assets-(state.debt||0);
  if(net<1000000){info('💼','الاستقلال المالي لسه بدري','صافي الثروة التقديري '+cash(net)+'. احتفظ بوظيفتك حتى تكوّن احتياطيًا أكبر.');return;}
  info('💼','التفرغ للاستثمار','صافي ثروتك التقديري '+cash(net)+'. ترك الوظيفة يوقف الدخل السنوي؛ هل أنت متأكد؟',[
-  choice('✓','أستقيل وأتفرغ','',()=>{closeModal();ensureJobProgress(state.job,state.age);state.jobHistory.push({title:state.job.title,salary:state.job.salary,startAge:state.job.startAge??state.age,endAge:state.age,level:state.job.level||1,experienceYears:state.job.experienceYears||0,promotions:Array.isArray(state.job.promotions)?state.job.promotions.slice():[]});state.job=null;state.performance=50;log('💼','التفرغ للاستثمار','تركت الوظيفة بعد وصول صافي الثروة لمستوى الاستقلال المالي.','special');save();render();investingMenu();}),
+  choice('✓','أستقيل وأتفرغ','',()=>{closeModal();archiveCurrentJob('تفرغ للاستثمار');state.job=null;state.performance=50;log('💼','التفرغ للاستثمار','تركت الوظيفة بعد وصول صافي الثروة لمستوى الاستقلال المالي.','special');save();render();investingMenu();}),
   choice('↩️','أحتفظ بالوظيفة','',investingMenu)
  ]);
 }
