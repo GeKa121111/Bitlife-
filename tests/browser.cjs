@@ -1928,6 +1928,60 @@ async function run() {
       'the film budget should include the lead actor fee and the selected production/marketing tiers');
     assert.equal(producedFilm.pendingProject, null, 'a completed film should clear the saved pending project');
     assert.equal(producedFilm.pendingAuditions.length, 0, 'a completed film should clear stale audition candidates');
+    await page.evaluate(() => {
+      const key = 'hekayat_hayah_save_v1';
+      const saved = JSON.parse(localStorage.getItem(key) || 'null');
+      const film = saved.filmStudio.filmography[saved.filmStudio.filmography.length - 1];
+      film.criticScore = 100;
+      film.success = true;
+      film.actorDrama = false;
+      film.totalCost = 20000;
+      film.net = 10000;
+      film.boxOffice = 30000;
+      saved.filmStudio.awards = 0;
+      saved.filmStudio.festivalEntries = [];
+      saved.bank = 100000;
+      saved.fame = 20;
+      saved.reputation = 50;
+      localStorage.setItem(key, JSON.stringify(saved));
+    });
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await page.locator('[data-panel="career"]').click();
+    await page.locator('.choice').filter({ hasText: 'المهن الخاصة والشهرة' }).click();
+    await page.locator('.choice').filter({ hasText: 'Manage Film Studio' }).click();
+    await page.locator('#modalRoot .choice').filter({ hasText: 'مهرجان حكايات السينما' }).click();
+    await page.locator('#modalRoot .choice').filter({ hasText: producedFilm.film.title }).click();
+    await page.waitForFunction(() => {
+      const saved = JSON.parse(localStorage.getItem('hekayat_hayah_save_v1') || 'null');
+      return saved?.filmStudio?.festivalEntries?.length === 1;
+    });
+    const festivalSubmission = await page.evaluate(() => {
+      const saved = JSON.parse(localStorage.getItem('hekayat_hayah_save_v1') || 'null');
+      return { entry: saved.filmStudio.festivalEntries[0], awards: saved.filmStudio.awards,
+        bank: saved.bank, fame: saved.fame, reputation: saved.reputation };
+    });
+    assert.equal(festivalSubmission.entry.outcome, 'award', 'a high-quality successful film should win a jury award');
+    assert.equal(festivalSubmission.entry.score, 91, 'festival scoring should combine critics, success, profitability, and set discipline');
+    assert.equal(festivalSubmission.entry.prize, 2500, 'festival prize should respect the minimum award amount');
+    assert.equal(festivalSubmission.awards, 1, 'festival awards should update the studio record');
+    assert.equal(festivalSubmission.bank, 102500, 'the prize should be credited to the director');
+    assert.equal(festivalSubmission.fame, 24, 'the festival award should increase fame');
+    assert.equal(festivalSubmission.reputation, 55, 'the festival award should increase reputation');
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await page.locator('[data-panel="career"]').click();
+    await page.locator('.choice').filter({ hasText: 'المهن الخاصة والشهرة' }).click();
+    await page.locator('.choice').filter({ hasText: 'Manage Film Studio' }).click();
+    await page.locator('#modalRoot .choice').filter({ hasText: 'مهرجان حكايات السينما' }).click();
+    assert.equal(await page.locator('#modalRoot .choice').filter({ hasText: producedFilm.film.title }).count(), 1,
+      'a submitted film should appear only in the history list, not as a second eligible entry');
+    const bankBeforeHistoryOpen = await page.evaluate(() => JSON.parse(localStorage.getItem('hekayat_hayah_save_v1') || 'null').bank);
+    await page.locator('#modalRoot .choice').filter({ hasText: producedFilm.film.title }).click();
+    const festivalAfterHistoryOpen = await page.evaluate(() => {
+      const saved = JSON.parse(localStorage.getItem('hekayat_hayah_save_v1') || 'null');
+      return { entries: saved.filmStudio.festivalEntries.length, bank: saved.bank };
+    });
+    assert.equal(festivalAfterHistoryOpen.entries, 1, 'reopening the festival history must not create a duplicate submission');
+    assert.equal(festivalAfterHistoryOpen.bank, bankBeforeHistoryOpen, 'viewing a past festival result must not grant another prize');
     await page.evaluate(({ save, perks }) => {
       localStorage.setItem('hekayat_hayah_save_v1', save);
       if (perks === null) localStorage.removeItem('hayah_permanent_perks_v1');
@@ -1959,7 +2013,7 @@ async function run() {
 
     assert.deepEqual(pageErrors, [], 'the browser run should complete without uncaught JavaScript errors');
 
-    console.log('PASS: mobile layout, legacy v1 load, persistence, rewind, complete backup bundle export/import, auxiliary data restoration, JSON import, inheritance, insolvent estate, career promotion migration, annual supplier market, persistent competitor market, facilities and production capacity, researched and instinct product launches, product pricing, annual product sales, business reports, independent portfolio-company operations, and business credit accrual, repayment, persistence, sale settlement, unpaid-interest capitalization, underwater-sale protection, industry tax assessment, tax arrears, loss exemption, treasury-only tax payment, and annual tax reconciliation, fighter move mastery, one-use stamina recovery and legacy-save migration, fighter community relationships, friendly interactions, named rival bouts, and director actor auditions with persistent cast profiles and on-set conflict effects.');
+    console.log('PASS: mobile layout, legacy v1 load, persistence, rewind, complete backup bundle export/import, auxiliary data restoration, JSON import, inheritance, insolvent estate, career promotion migration, annual supplier market, persistent competitor market, facilities and production capacity, researched and instinct product launches, product pricing, annual product sales, business reports, independent portfolio-company operations, and business credit accrual, repayment, persistence, sale settlement, unpaid-interest capitalization, underwater-sale protection, industry tax assessment, tax arrears, loss exemption, treasury-only tax payment, and annual tax reconciliation, fighter move mastery, one-use stamina recovery and legacy-save migration, fighter community relationships, friendly interactions, named rival bouts, and director actor auditions, persistent cast profiles, on-set conflict effects, and one-time film festival submissions with awards and duplicate protection.');
     await context.close();
   } finally {
     if (browser) await browser.close();

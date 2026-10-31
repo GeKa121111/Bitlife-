@@ -4259,14 +4259,17 @@ function filmActorImpact(actor,genreId,actorDrama=false){
  };
 }
 function createFilmStudio(){
- return {filmography:[],projects:0,totalBudget:0,totalBoxOffice:0,awards:0,bestCritic:0,genreFocus:null,actorRoster:[],pendingAuditions:[],pendingAuditionGenre:null,pendingProject:null};
+ return {filmography:[],projects:0,totalBudget:0,totalBoxOffice:0,awards:0,bestCritic:0,genreFocus:null,actorRoster:[],pendingAuditions:[],pendingAuditionGenre:null,pendingProject:null,festivalEntries:[]};
 }
 function ensureFilmStudio(){
  if(!state)return null;
  if(!state.filmStudio||typeof state.filmStudio!=='object'||Array.isArray(state.filmStudio))state.filmStudio=createFilmStudio();
- const studio=state.filmStudio,defaults={filmography:[],projects:0,totalBudget:0,totalBoxOffice:0,awards:0,bestCritic:0,genreFocus:null,actorRoster:[],pendingAuditions:[],pendingAuditionGenre:null,pendingProject:null};
+ const studio=state.filmStudio,defaults={filmography:[],projects:0,totalBudget:0,totalBoxOffice:0,awards:0,bestCritic:0,genreFocus:null,actorRoster:[],pendingAuditions:[],pendingAuditionGenre:null,pendingProject:null,festivalEntries:[]};
  Object.keys(defaults).forEach(key=>{if(studio[key]===undefined||studio[key]===null)studio[key]=defaults[key];});
  if(!Array.isArray(studio.filmography))studio.filmography=[];
+ if(!Array.isArray(studio.festivalEntries))studio.festivalEntries=[];
+ const seenFestivalFilms=new Set();
+ studio.festivalEntries=studio.festivalEntries.map(normalizeFilmFestivalEntry).filter(entry=>{if(!entry||seenFestivalFilms.has(entry.filmId))return false;seenFestivalFilms.add(entry.filmId);return true;}).slice(-40);
  studio.projects=Math.max(0,Number(studio.projects)||0);studio.awards=Math.max(0,Number(studio.awards)||0);
  if(studio.genreFocus&&!filmGenreCatalog.some(genre=>genre.id===studio.genreFocus))studio.genreFocus=null;
  const seenActors=new Set();
@@ -4280,6 +4283,80 @@ function ensureFilmStudio(){
  const projectStyle=project&&filmCreativeCatalog.find(style=>style.id===project.creativeId);
  studio.pendingProject=projectGenre&&projectBudget&&projectStyle?{genreId:projectGenre.id,budgetId:projectBudget.id,creativeId:projectStyle.id}:null;
  return studio;
+}
+
+
+function normalizeFilmFestivalEntry(raw){
+ if(!raw||typeof raw!=='object'||Array.isArray(raw))return null;
+ const rawId=raw.filmId,filmId=(typeof rawId==='string'||typeof rawId==='number')?String(rawId).trim().slice(0,96):'';
+ if(!filmId)return null;
+ const bounded=(value,fallback,min,max)=>{const number=Number(value);return clamp(Number.isFinite(number)?number:fallback,min,max);};
+ const outcome=['award','selection','not-selected'].includes(raw.outcome)?raw.outcome:'not-selected';
+ return {
+  filmId,
+  filmTitle:typeof raw.filmTitle==='string'&&raw.filmTitle.trim()?raw.filmTitle.trim().slice(0,80):'فيلم بلا عنوان',
+  genre:typeof raw.genre==='string'&&raw.genre.trim()?raw.genre.trim().slice(0,48):'عام',
+  submittedAge:bounded(raw.submittedAge,0,0,150),
+  score:bounded(raw.score,0,0,100),
+  outcome,
+  awardTitle:outcome==='award'?(typeof raw.awardTitle==='string'&&raw.awardTitle.trim()?raw.awardTitle.trim().slice(0,64):'جائزة لجنة التحكيم'):'',
+  prize:bounded(raw.prize,0,0,100000),
+  fameGain:bounded(raw.fameGain,0,0,20),
+  reputationGain:bounded(raw.reputationGain,0,0,20)
+ };
+}
+function filmFestivalResult(film){
+ const critic=clamp(film&&film.criticScore,0,100),cost=clamp(film&&film.totalCost,0,100000000);
+ const netValue=Number(film&&film.net),net=Number.isFinite(netValue)?netValue:0;
+ const success=!!(film&&film.success),actorDrama=!!(film&&film.actorDrama);
+ const score=clamp(Math.round(critic*.72+(success?10:-8)+(net>=0?6:-4)+(actorDrama?-6:3)),0,100);
+ const outcome=score>=86?'award':score>=72?'selection':'not-selected';
+ const prize=outcome==='award'?clamp(Math.round(cost*.12),2500,100000):0;
+ return {score,outcome,prize,awardTitle:outcome==='award'?'جائزة لجنة التحكيم':'',fameGain:outcome==='award'?4:outcome==='selection'?2:0,reputationGain:outcome==='award'?5:outcome==='selection'?2:0};
+}
+function submitFilmToFestival(filmId){
+ if(!state||!state.specialCareer||state.specialCareer.id!=='director'){closeModal();info('🎬','مهرجان السينما','ابدأ مسار إخراج الأفلام من المهن الخاصة أولًا.');return false;}
+ const studio=ensureFilmStudio(),id=String(filmId??'');
+ const film=studio.filmography.find(item=>item&&item.id!==undefined&&item.id!==null&&String(item.id)===id);
+ if(!film){closeModal();info('🎞️','الفيلم غير موجود','قد يكون الفيلم خرج من الأرشيف أو لم يعد متاحًا للتقديم.');return false;}
+ if(studio.festivalEntries.some(entry=>entry.filmId===id)){closeModal();info('🏆','الفيلم شارك بالفعل','كل فيلم يقدر يدخل مهرجان حكايات السينما مرة واحدة فقط.');return false;}
+ const result=filmFestivalResult(film);
+ const entry=normalizeFilmFestivalEntry({filmId:id,filmTitle:film.title,genre:film.genre,submittedAge:state.age,...result});
+ if(!entry)return false;
+ studio.festivalEntries.push(entry);
+ if(studio.festivalEntries.length>40)studio.festivalEntries.shift();
+ if(entry.outcome==='award')studio.awards=Math.max(0,Number(studio.awards)||0)+1;
+ state.bank=(Number(state.bank)||0)+entry.prize;
+ state.fame=clamp((state.fame||0)+entry.fameGain);
+ state.reputation=clamp((state.reputation||50)+entry.reputationGain);
+ if(entry.outcome==='award')achievement('فاز بجائزة مهرجان سينمائي');
+ const status=entry.outcome==='award'?'نال جائزة لجنة التحكيم':entry.outcome==='selection'?'دخل الاختيار الرسمي':'لم يصل إلى القائمة النهائية';
+ log(entry.outcome==='award'?'🏆':entry.outcome==='selection'?'🎬':'🎞️','نتيجة مهرجان حكايات السينما','«'+entry.filmTitle+'» · '+status+' · تقييم المهرجان '+entry.score+'%'+(entry.prize?' · مكافأة '+cash(entry.prize):'')+'.',entry.outcome==='award'?'special':entry.outcome==='selection'?'good':'bad');
+ save();render();closeModal();
+ info(entry.outcome==='award'?'🏆':entry.outcome==='selection'?'🎬':'🎞️','نتيجة مشاركة الفيلم','«'+entry.filmTitle+'» · '+status+' · تقييم اللجنة '+entry.score+'% · '+(entry.prize?'مكافأة '+cash(entry.prize):'بدون مكافأة مالية')+'.',[choice('🏆','العودة للمهرجان','',filmFestivalMenu),choice('🎥','الاستوديو','',filmStudioMenu)]);
+ return true;
+}
+function filmFestivalMenu(){
+ if(!validState()||!state.specialCareer||state.specialCareer.id!=='director'){info('🎬','مهرجان السينما','ابدأ مسار إخراج الأفلام من المهن الخاصة أولًا.');return;}
+ const studio=ensureFilmStudio(),submitted=new Set(studio.festivalEntries.map(entry=>entry.filmId));
+ const eligible=studio.filmography.filter(film=>film&&film.id!==undefined&&film.id!==null&&!submitted.has(String(film.id)));
+ const awards=studio.festivalEntries.filter(entry=>entry.outcome==='award').length;
+ const selections=studio.festivalEntries.filter(entry=>entry.outcome==='selection').length;
+ const opts=[];
+ if(eligible.length){
+  opts.push({section:true,title:'أفلام جاهزة للتقديم'});
+  eligible.slice().reverse().slice(0,10).forEach(film=>opts.push(choice('🎬',film.title||'فيلم بلا عنوان','النوع '+(film.genre||'عام')+' · النقاد '+clamp(film.criticScore)+'% · الصافي '+cash(film.net||0),()=>submitFilmToFestival(film.id))));
+ }else opts.push(choice('🎞️','لا توجد أفلام جديدة للتقديم','كل الأفلام الموجودة شاركت بالفعل، أو لا يحتوي الأرشيف على معرّفات صالحة.',closeModal));
+ if(studio.festivalEntries.length){
+  opts.push({section:true,title:'نتائج المشاركات السابقة'});
+  studio.festivalEntries.slice().reverse().slice(0,10).forEach(entry=>{
+   const label=entry.outcome==='award'?'🏆':entry.outcome==='selection'?'🎬':'🎞️';
+   const status=entry.outcome==='award'?entry.awardTitle:entry.outcome==='selection'?'اختيار رسمي':'خارج القائمة النهائية';
+   opts.push(choice(label,entry.filmTitle+' · '+status,'تقييم اللجنة '+entry.score+'% · '+(entry.prize?'مكافأة '+cash(entry.prize):'بدون مكافأة'),()=>{closeModal();info(label,entry.filmTitle,status+' · تقييم '+entry.score+'% · سنة التقديم '+entry.submittedAge+'.');}));
+  });
+ }
+ opts.push(choice('↩️','رجوع إلى الاستوديو','',filmStudioMenu));
+ modal('🏆','مهرجان حكايات السينما','مشاركات '+studio.festivalEntries.length+' · جوائز المهرجان '+awards+' · اختيارات رسمية '+selections+'. كل فيلم يتقدم مرة واحدة فقط.',opts);
 }
 
 function filmActorRosterMenu(){
@@ -4324,12 +4401,13 @@ function selectFilmActor(genreId,budgetId,creativeId,actorId){
 function filmStudioMenu(){
  if(!validState()||!state.specialCareer||state.specialCareer.id!=='director'){info('🎬','استوديو الأفلام','ابدأ مسار إخراج الأفلام من المهن الخاصة أولًا.');return;}
  const studio=ensureFilmStudio(),focus=filmGenreCatalog.find(g=>g.id===studio.genreFocus),r=state.specialCareer.record||{};
- const summary='الأفلام '+studio.projects+' · الجوائز '+studio.awards+' · إجمالي شباك التذاكر '+cash(studio.totalBoxOffice)+' · أفضل تقييم '+studio.bestCritic+'% · الممثلون '+studio.actorRoster.length+(focus?' · تخصص الاستوديو '+focus.title:' · من غير تخصص ثابت');
+ const summary='الأفلام '+studio.projects+' · الجوائز '+studio.awards+' · مشاركات المهرجان '+studio.festivalEntries.length+' · إجمالي شباك التذاكر '+cash(studio.totalBoxOffice)+' · أفضل تقييم '+studio.bestCritic+'% · الممثلون '+studio.actorRoster.length+(focus?' · تخصص الاستوديو '+focus.title:' · من غير تخصص ثابت');
  const opts=[
   choice('🎬','إنتاج فيلم جديد','اختار النوع والميزانية واتجاه القصة ثم اختبر الممثلين والطاقم والتسويق.',filmGenreMenu),
   choice('🎭','إدارة الممثلين','راجع المواهب المتعاقدة ومستويات الموهبة والانضباط والمشاركات.',filmActorRosterMenu),
+  choice('🏆','مهرجان حكايات السينما','قدّم أفلامك مرة واحدة للمنافسة على جوائز وتقدير نقدي.',filmFestivalMenu),
   choice('🎭','تحديد تخصص الاستوديو','اختار نوعًا يمنحك خبرة إضافية عندما تنتج فيه.',filmFocusMenu),
-  choice('🏆','سجل الأفلام','راجع الميزانيات والإيرادات وتقييم النقاد والجوائز والممثلين.',filmographyMenu),
+  choice('🏆','سجل الأفلام','راجع الميزانيات والإيرادات وتقييم النقاد والجوائز والممثلين والمهرجان.',filmographyMenu),
   choice('📊','تقرير الاستوديو','المستوى الإخراجي '+fmt(state.specialCareer.level||1)+' · محاولات '+fmt(r.attempts||0)+' · نجاحات '+fmt(r.wins||0)+' · إخفاقات '+fmt(r.losses||0)+'.',()=>{closeModal();info('📊','تقرير الاستوديو',summary+' · دخل المسار المسجل '+cash(r.totalEarnings||0)+'.');}),
   choice('⭐','تدريب الإخراج','جلسة تدريب للمسار المتخصص.',trainSpecialCareer),
   choice('↩️','المهن الخاصة','',specialCareers)
@@ -4415,9 +4493,14 @@ function releaseFilm(genreId,budgetId,creativeId,castId,marketingId,actorId){
  save();render();info(success?'🎬':'🎞️',success?'صدر الفيلم بنجاح':'الفيلم لم يحقق التوقعات','«'+title+'» · الممثل الرئيسي '+actor.name+(actorDrama?' · حدث خلاف أثناء التصوير':' · اكتمل التصوير بانضباط')+' · احتمال النجاح قبل الإنتاج '+probability+'% · تقييم النقاد '+criticScore+'% · الميزانية الإجمالية '+cash(totalCost)+' · الإيرادات '+cash(boxOffice)+(award?' · فزت بجائزة نقدية!':'')+'.',[choice('📊','تفاصيل الإنتاج','الاتجاه '+style.title+' · الممثل '+actor.name+' · الطاقم '+cast.title+' · التسويق '+marketing.title+'.',()=>{closeModal();filmStudioMenu();}),choice('🎥','الاستوديو','',()=>{closeModal();filmStudioMenu();})]);
 }
 function filmographyMenu(){
- const studio=ensureFilmStudio(),opts=studio.filmography.slice().reverse().map(f=>choice(f.award?'🏆':f.success?'🎬':'🎞️',f.title+' · '+f.genre,'الممثل '+(f.leadActor||'غير مسجل في السجل القديم')+' · النقاد '+f.criticScore+'% · الإيرادات '+cash(f.boxOffice)+' · تكلفة '+cash(f.totalCost)+' · صافي '+cash(f.net)+(f.actorDrama?' · خلاف أثناء التصوير':'')+(f.award?' · جائزة':'')+'.',()=>{closeModal();info(f.award?'🏆':f.success?'🎬':'🎞️',f.title,'النوع '+f.genre+' · الممثل الرئيسي '+(f.leadActor||'غير مسجل في السجل القديم')+' · الاتجاه '+f.creative+' · الطاقم '+f.cast+' · التسويق '+f.marketing+' · تقييم النقاد '+f.criticScore+'% · '+(f.success?'نجاح':'إخفاق')+' · صافي '+cash(f.net)+(f.actorDrama?' · شهد التصوير خلافًا مع الممثل':'')+(f.award?' · جائزة نقدية':'')+'.');}));
+ const studio=ensureFilmStudio(),opts=studio.filmography.slice().reverse().map(f=>{
+  const festival=studio.festivalEntries.find(entry=>entry.filmId===String(f.id));
+  const festivalStatus=festival?(festival.outcome==='award'?' · جائزة مهرجان':festival.outcome==='selection'?' · اختيار رسمي بالمهرجان':' · شارك بالمهرجان'):'';
+  const icon=festival&&festival.outcome==='award'?'🏆':f.award?'🏆':f.success?'🎬':'🎞️';
+  return choice(icon,f.title+' · '+f.genre,'الممثل '+(f.leadActor||'غير مسجل في السجل القديم')+' · النقاد '+f.criticScore+'% · الإيرادات '+cash(f.boxOffice)+' · تكلفة '+cash(f.totalCost)+' · صافي '+cash(f.net)+(f.actorDrama?' · خلاف أثناء التصوير':'')+(f.award?' · جائزة':'')+festivalStatus+'.',()=>{closeModal();info(icon,f.title,'النوع '+f.genre+' · الممثل الرئيسي '+(f.leadActor||'غير مسجل في السجل القديم')+' · الاتجاه '+f.creative+' · الطاقم '+f.cast+' · التسويق '+f.marketing+' · تقييم النقاد '+f.criticScore+'% · '+(f.success?'نجاح':'إخفاق')+' · صافي '+cash(f.net)+(f.actorDrama?' · شهد التصوير خلافًا مع الممثل':'')+(f.award?' · جائزة نقدية':'')+(festival?' · نتيجة المهرجان: '+(festival.outcome==='award'?festival.awardTitle:festival.outcome==='selection'?'اختيار رسمي':'خارج القائمة النهائية'):' · لم يشارك في المهرجان')+'.');});
+ });
  if(!opts.length)opts.push(choice('🎬','لا توجد أفلام بعد','ابدأ إنتاج أول فيلم من قائمة الاستوديو.',closeModal));opts.push(choice('↩️','رجوع إلى الاستوديو','',filmStudioMenu));
- modal('🏆','أرشيف الأفلام','آخر 20 فيلمًا مع الممثل الرئيسي وتكلفة الإنتاج والإيرادات والتقييمات والجوائز.',opts);
+ modal('🏆','أرشيف الأفلام','آخر 20 فيلمًا مع الممثل الرئيسي وتكلفة الإنتاج والإيرادات والتقييمات والجوائز وحالة المهرجان.',opts);
 }
 
 function specialCareerHistoryMenu(){
