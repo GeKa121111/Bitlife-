@@ -6883,7 +6883,7 @@ function importSave(){
    try{
     const parsed=JSON.parse(String(reader.result||''));
     const isBundle=!!(parsed&&parsed.format===BACKUP_FORMAT);
-    if(isBundle&&(parsed.backupVersion!==BACKUP_VERSION||!Array.isArray(parsed.cemetery)||!parsed.settings||typeof parsed.settings!=='object'||Array.isArray(parsed.settings)||!parsed.perks||typeof parsed.perks!=='object'||Array.isArray(parsed.perks)))throw new Error('invalid-bundle');
+    if(isBundle&&(parsed.backupVersion!==BACKUP_VERSION||!validateCemeteryBackup(parsed.cemetery)||!parsed.settings||typeof parsed.settings!=='object'||Array.isArray(parsed.settings)||!parsed.perks||typeof parsed.perks!=='object'||Array.isArray(parsed.perks)))throw new Error('invalid-bundle');
     const data=isBundle?parsed.life:parsed;
     const importedAux=isBundle?{cemetery:normalizeCemetery(parsed.cemetery),settings:normalizeUiSettings(parsed.settings),perks:normalizePermanentPerks(parsed.perks)}:null;
     if(!isValidSaveData(data)||!Array.isArray(data.family)||!data.place||typeof data.place!=='object'||Array.isArray(data.place))throw new Error('invalid');
@@ -6928,9 +6928,19 @@ function importSave(){
  });
  input.click();
 }
+function validateCemeteryBackup(raw){
+ return Array.isArray(raw)&&raw.every(item=>item&&typeof item==='object'&&!Array.isArray(item)&&typeof item.name==='string'&&item.name.trim().length>0);
+}
+function readCemeteryForBackup(){
+ const raw=localStorage.getItem(CEMETERY_KEY);
+ if(raw===null)return [];
+ let parsed;
+ try{parsed=JSON.parse(raw);}catch(e){throw new Error('cemetery-unreadable');}
+ if(!validateCemeteryBackup(parsed))throw new Error('cemetery-invalid');
+ return normalizeCemetery(parsed);
+}
 function createBackupBundle(){
- let cemetery=[];
- try{cemetery=normalizeCemetery(JSON.parse(localStorage.getItem(CEMETERY_KEY)||'[]'));}catch(e){}
+ const cemetery=readCemeteryForBackup();
  return {
   format:BACKUP_FORMAT,
   backupVersion:BACKUP_VERSION,
@@ -6954,7 +6964,11 @@ function exportSave(){
  }catch(e){
   if(anchor&&typeof anchor.remove==='function')anchor.remove();
   if(url){try{URL.revokeObjectURL(url);}catch(_){}}
-  closeModal();info('⚠️','تعذر تصدير الحفظ','ما قدرناش نجهز الملف في المتصفح الحالي. الحفظ المحلي لم يتغير؛ جرّب متصفحًا أحدث.');return;
+  closeModal();
+  if(e&&e.message==='cemetery-unreadable')info('⚠️','سجل الحيوات السابقة غير قابل للقراءة','لم نصدر نسخة احتياطية ناقصة حتى لا تفقد سجل الأجيال. لم يتم تعديل بيانات المقبرة أو الحياة الحالية. لا تمسح بيانات الموقع؛ احتفظ بها وحاول استعادة سجل المقبرة قبل التصدير.');
+  else if(e&&e.message==='cemetery-invalid')info('⚠️','سجل الحيوات السابقة يحتاج مراجعة','وجدنا سجلًا غير صالح داخل المقبرة، لذلك أوقفنا التصدير بدلًا من إسقاطه من النسخة الاحتياطية. لم يتم تعديل بياناتك.');
+  else info('⚠️','تعذر تصدير الحفظ','ما قدرناش نجهز الملف في المتصفح الحالي. الحفظ المحلي لم يتغير؛ جرّب متصفحًا أحدث.');
+  return;
  }
  // Keep the download URL alive briefly so mobile browsers can start reading the file.
  setTimeout(()=>{if(anchor&&typeof anchor.remove==='function')anchor.remove();try{URL.revokeObjectURL(url);}catch(e){}},1000);
