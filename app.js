@@ -414,7 +414,7 @@ function combatRoundEnergy(currentEnergy,move,mode='street',reactionCost=0){
  const baseCost=hasExplicitCost?Math.max(0,Math.min(30,Math.floor(Number(move.energyCost)))):Math.max(6,Math.round((Number(move&&move.power)||48)/8));
  const moveCost=Math.min(32,baseCost+(mode==='league'?2:0));
  const safeReactionCost=Math.max(0,Math.min(8,Math.floor(Number(reactionCost)||0)));
- const energyCost=Math.min(32,moveCost+safeReactionCost);
+ const energyCost=Math.min(40,moveCost+safeReactionCost);
  const rawRecovery=Number(move&&move.energyRecovery);
  const energyRecovery=Number.isFinite(rawRecovery)?Math.max(0,Math.min(20,Math.floor(rawRecovery))):0;
  return {before,moveCost,reactionCost:safeReactionCost,energyCost,energyRecovery,after:clamp(before-energyCost+energyRecovery)};
@@ -502,7 +502,7 @@ function normalizePendingCombatBout(raw){
    masteryBonus:Math.round(finite(item.masteryBonus,0,0,8)),
    masteryUses:Math.round(finite(item.masteryUses,0,0,100)),
    energyBefore:item.energyBefore==null?null:Math.round(finite(item.energyBefore,0,0,100)),
-   energyCost:item.energyCost==null?null:Math.round(finite(item.energyCost,0,0,32)),
+   energyCost:item.energyCost==null?null:Math.round(finite(item.energyCost,0,0,40)),
    energyRecovery:item.energyRecovery==null?null:Math.round(finite(item.energyRecovery,0,0,20)),
    energyAfter:item.energyAfter==null?null:Math.round(finite(item.energyAfter,0,0,100)),
    intentStyle:styles.includes(item.intentStyle)?item.intentStyle:(styles.includes(item.opponentStyle)?item.opponentStyle:source.style),
