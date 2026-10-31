@@ -285,9 +285,24 @@ test('النسخة الاحتياطية الكاملة تجمع الحياة و�
   assert.equal(cemeteryStore.get('hekayat_hayah_cemetery_v1'), corruptArchive);
   assert.equal(cemeteryStore.get('hekayat_hayah_cemetery_backup_v1'), corruptBackup);
 
+  // A valid recovery copy must remain intact if the browser refuses to restore the primary key.
+  const validBackupRaw = JSON.stringify([{ id: 'saved-life', name: 'حياة محفوظة', age: 61 }]);
+  const unreadablePrimaryRaw = '{primary-write-blocked';
+  cemeteryStore.set('hekayat_hayah_cemetery_v1', unreadablePrimaryRaw);
+  cemeteryStore.set('hekayat_hayah_cemetery_backup_v1', validBackupRaw);
+  const originalSetItem = integrityContext.localStorage.setItem;
+  integrityContext.localStorage.setItem = (key, value) => {
+    if (key === 'hekayat_hayah_cemetery_v1') throw new Error('quota-exceeded');
+    originalSetItem(key, value);
+  };
+  assert.throws(() => integrityContext.readCemeteryForBackup(), /cemetery-recovery-write-failed/);
+  assert.equal(cemeteryStore.get('hekayat_hayah_cemetery_v1'), unreadablePrimaryRaw);
+  assert.equal(cemeteryStore.get('hekayat_hayah_cemetery_backup_v1'), validBackupRaw);
+  integrityContext.localStorage.setItem = originalSetItem;
+
   const wrongShapeArchive = JSON.stringify({ records: [] });
   cemeteryStore.set('hekayat_hayah_cemetery_v1', wrongShapeArchive);
-  assert.throws(() => integrityContext.readCemeteryForBackup(), /cemetery-unreadable/);
+  assert.throws(() => integrityContext.readCemeteryForBackup(), /cemetery-invalid/);
   assert.equal(cemeteryStore.get('hekayat_hayah_cemetery_v1'), wrongShapeArchive);
   const malformedRecordArchive = JSON.stringify([null]);
   cemeteryStore.set('hekayat_hayah_cemetery_v1', malformedRecordArchive);
