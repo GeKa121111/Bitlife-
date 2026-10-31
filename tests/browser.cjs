@@ -137,7 +137,17 @@ async function run() {
         localStorage.setItem('__hayah_browser_test_seeded', 'yes');
       }
       if (!localStorage.getItem('hayah_ui_settings_v1')) {
-        localStorage.setItem('hayah_ui_settings_v1', JSON.stringify({theme:'light',textScale:'normal',sound:false,haptics:false}));
+        localStorage.setItem('hayah_ui_settings_v1', JSON.stringify({theme:'light',textScale:'normal',sound:false,haptics:false,boosts:true}));
+      }
+      if (!localStorage.getItem('hekayat_hayah_cemetery_v1')) {
+        localStorage.setItem('hekayat_hayah_cemetery_v1', JSON.stringify([
+          {id:'browser-legacy-life',name:'حياة محفوظة سابقة',age:67,cause:'نهاية طبيعية',netWorth:125000,ribbon:'حياة متوازنة',country:'مصر',accomplishments:['تأسيس أسرة'],children:2,createdAt:'2026-01-01T00:00:00.000Z'}
+        ]));
+      }
+      if (!localStorage.getItem('hayah_permanent_perks_v1')) {
+        localStorage.setItem('hayah_permanent_perks_v1', JSON.stringify({
+          owned:{fighterPack:true,goldTheme:true},enabled:{},streakSavers:2
+        }));
       }
       window.__hayahAudioStarted = 0;
       window.__hayahVibrationCalls = [];
@@ -747,8 +757,13 @@ async function run() {
     const downloadPath = await download.path();
     assert.ok(downloadPath, 'the browser should produce a readable JSON export');
     const exported = JSON.parse(fs.readFileSync(downloadPath, 'utf8'));
-    assert.equal(exported.version, 1, 'export must preserve the existing save schema');
-    assert.equal(exported.age, 30, 'export must contain the current life state');
+    assert.equal(exported.format, 'hayah-backup', 'new exports should use the complete portable backup envelope');
+    assert.equal(exported.backupVersion, 1, 'the backup envelope has its own version independent of the life schema');
+    assert.equal(exported.life.version, 1, 'the embedded life must preserve the existing save schema');
+    assert.equal(exported.life.age, 30, 'export must contain the current life state');
+    assert.equal(exported.cemetery[0].id, 'browser-legacy-life', 'export must include the previous-life cemetery');
+    assert.equal(exported.settings.textScale, 'normal', 'export must include display preferences');
+    assert.equal(exported.perks.owned.fighterPack, true, 'export must include locally owned permanent perks');
 
     // Invalid JSON must be rejected without overwriting the current save.
     const beforeInvalidImport = await page.evaluate(() => {
@@ -790,7 +805,7 @@ async function run() {
     assert.deepEqual(afterStructuralImport, beforeInvalidImport, 'structurally incomplete JSON must not overwrite the active save');
     await page.locator('.choice').filter({ hasText: 'تمام' }).last().click();
 
-    const imported = { ...exported, name: 'حياة مستوردة للاختبار', age: 44, yearCount: 44 };
+    const imported = { ...exported.life, name: 'حياة مستوردة للاختبار', age: 44, yearCount: 44 };
     const fileChooserPromise = page.waitForEvent('filechooser');
     await page.locator('#menuBtn').click();
     await page.locator('.choice').filter({ hasText: 'تحميل حفظ' }).click();
@@ -805,6 +820,43 @@ async function run() {
       return saved && saved.age === 44 && saved.name === 'حياة مستوردة للاختبار';
     });
     assert.ok((await page.locator('#characterName').innerText()).includes('حياة مستوردة للاختبار'), 'the imported life should render without a reload');
+
+    // A complete backup must restore the separate local-only data stores as well as the life.
+    await page.locator('.choice').filter({ hasText: 'تمام' }).last().click();
+    await page.evaluate(() => {
+      localStorage.setItem('hekayat_hayah_cemetery_v1', '[]');
+      localStorage.setItem('hayah_ui_settings_v1', JSON.stringify({theme:'dark',textScale:'large',sound:true,haptics:true,boosts:false}));
+      localStorage.setItem('hayah_permanent_perks_v1', JSON.stringify({owned:{},enabled:{},streakSavers:0}));
+    });
+    const bundleChooserPromise = page.waitForEvent('filechooser');
+    await page.locator('#menuBtn').click();
+    await page.locator('.choice').filter({ hasText: 'تحميل حفظ' }).click();
+    const bundleChooser = await bundleChooserPromise;
+    await bundleChooser.setFiles({
+      name: 'hayah-complete-backup.json',
+      mimeType: 'application/json',
+      buffer: Buffer.from(JSON.stringify(exported))
+    });
+    await page.waitForFunction(() => {
+      const saved = JSON.parse(localStorage.getItem('hekayat_hayah_save_v1') || 'null');
+      const cemetery = JSON.parse(localStorage.getItem('hekayat_hayah_cemetery_v1') || '[]');
+      const settings = JSON.parse(localStorage.getItem('hayah_ui_settings_v1') || 'null');
+      const perks = JSON.parse(localStorage.getItem('hayah_permanent_perks_v1') || 'null');
+      return saved && saved.age === 30 && cemetery.some(item => item.id === 'browser-legacy-life') &&
+        settings && settings.textScale === 'normal' && perks && perks.owned.fighterPack === true && perks.streakSavers === 2;
+    });
+    const restoredBundle = await page.evaluate(() => ({
+      life: JSON.parse(localStorage.getItem('hekayat_hayah_save_v1') || 'null'),
+      cemetery: JSON.parse(localStorage.getItem('hekayat_hayah_cemetery_v1') || '[]'),
+      settings: JSON.parse(localStorage.getItem('hayah_ui_settings_v1') || 'null'),
+      perks: JSON.parse(localStorage.getItem('hayah_permanent_perks_v1') || 'null')
+    }));
+    assert.equal(restoredBundle.life.age, 30);
+    assert.equal(restoredBundle.cemetery[0].id, 'browser-legacy-life');
+    assert.equal(restoredBundle.settings.textScale, 'normal');
+    assert.equal(restoredBundle.perks.owned.fighterPack, true);
+    assert.equal(restoredBundle.perks.streakSavers, 2);
+    await page.locator('.choice').filter({ hasText: 'تمام' }).last().click();
 
     // Exercise the actual end-of-life UI and reconcile the heir's net estate in Chromium.
     await page.locator('.choice').filter({ hasText: 'تمام' }).last().click();
@@ -1763,7 +1815,7 @@ async function run() {
 
     assert.deepEqual(pageErrors, [], 'the browser run should complete without uncaught JavaScript errors');
 
-    console.log('PASS: mobile layout, legacy v1 load, persistence, rewind, JSON import, inheritance, insolvent estate, career promotion migration, annual supplier market, persistent competitor market, facilities and production capacity, researched and instinct product launches, product pricing, annual product sales, business reports, independent portfolio-company operations, and business credit accrual, repayment, persistence, sale settlement, unpaid-interest capitalization, underwater-sale protection, industry tax assessment, tax arrears, loss exemption, treasury-only tax payment, and annual tax reconciliation, fighter move mastery, one-use stamina recovery and legacy-save migration, fighter community relationships, friendly interactions, and named rival bouts.');
+    console.log('PASS: mobile layout, legacy v1 load, persistence, rewind, complete backup bundle export/import, auxiliary data restoration, JSON import, inheritance, insolvent estate, career promotion migration, annual supplier market, persistent competitor market, facilities and production capacity, researched and instinct product launches, product pricing, annual product sales, business reports, independent portfolio-company operations, and business credit accrual, repayment, persistence, sale settlement, unpaid-interest capitalization, underwater-sale protection, industry tax assessment, tax arrears, loss exemption, treasury-only tax payment, and annual tax reconciliation, fighter move mastery, one-use stamina recovery and legacy-save migration, fighter community relationships, friendly interactions, and named rival bouts.');
     await context.close();
   } finally {
     if (browser) await browser.close();
