@@ -865,6 +865,8 @@ test('مسيرة القتال تدير ثلاث جولات وتستعيد الن
   assert.equal(pendingContext.pending.roundHistory.length, 2);
   assert.equal(pendingContext.pending.roundHistory[0].energyAfter,94,
     'saved round energy details should survive pending-bout normalization');
+  assert.equal(pendingContext.pending.roundHistory[1].energyAfter,null,
+    'legacy pending rounds without energy metadata should remain explicitly unknown');
   assert.equal(pendingContext.pending.feePaid, true);
   assert.equal(pendingContext.invalidLeague, null, 'an unpaid league bout must not be restored from imported data');
 
