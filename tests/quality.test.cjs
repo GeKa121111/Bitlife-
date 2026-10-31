@@ -89,7 +89,7 @@ test('النسخة الاحتياطية الكاملة تجمع الحياة و�
 
   const settingsSource = functionSource('normalizeUiSettings', 'loadUiSettings');
   const settingsContext = { raw: { theme: 'gold', textScale: 'large', sound: true, haptics: false, boosts: false, extra: true } };
-  vm.runInNewContext(settingsSource + '\\nglobalThis.normalized=normalizeUiSettings(raw);', settingsContext);
+  vm.runInNewContext(settingsSource + '\nglobalThis.normalized=normalizeUiSettings(raw);', settingsContext);
   assert.deepEqual(JSON.parse(JSON.stringify(settingsContext.normalized)),
     { theme: 'gold', textScale: 'large', sound: true, haptics: false, boosts: false },
     'settings import should retain supported choices and discard unknown fields');
@@ -101,7 +101,7 @@ test('النسخة الاحتياطية الكاملة تجمع الحياة و�
     clamp: (value, min = 0, max = 100) => Math.max(min, Math.min(max, Math.round(Number(value) || 0))),
     raw: { owned: { fighterPack: true, unknownPack: true }, enabled: { goldTheme: true, fighterPack: true }, streakSavers: 140 }
   };
-  vm.runInNewContext(perksSource + '\\nglobalThis.normalized=normalizePermanentPerks(raw);', perksContext);
+  vm.runInNewContext(perksSource + '\nglobalThis.normalized=normalizePermanentPerks(raw);', perksContext);
   assert.deepEqual(JSON.parse(JSON.stringify(perksContext.normalized)),
     { owned: { fighterPack: true, goldTheme: false }, enabled: { goldTheme: true }, streakSavers: 99 },
     'perk import should retain known ownership, clamp counters, and discard unknown ids');
@@ -113,7 +113,7 @@ test('النسخة الاحتياطية الكاملة تجمع الحياة و�
     null,
     { id: 'empty', name: '   ' }
   ] };
-  vm.runInNewContext(cemeterySource + '\\nglobalThis.normalized=normalizeCemetery(raw);', cemeteryContext);
+  vm.runInNewContext(cemeterySource + '\nglobalThis.normalized=normalizeCemetery(raw);', cemeteryContext);
   assert.equal(cemeteryContext.normalized.length, 2);
   assert.equal(cemeteryContext.normalized[1].id, 'life-a-1');
   assert.equal(cemeteryContext.normalized[1].netWorth, -300);
@@ -124,7 +124,7 @@ test('النسخة الاحتياطية الكاملة تجمع الحياة و�
     settingsSource,
     perksSource,
     functionSource('createBackupBundle', 'exportSave')
-  ].join('\\n');
+  ].join('\n');
   const bundleContext = {
     BACKUP_FORMAT: 'hayah-backup',
     BACKUP_VERSION: 1,
@@ -137,7 +137,7 @@ test('النسخة الاحتياطية الكاملة تجمع الحياة و�
     permanentPerks: { owned: { fighterPack: true }, enabled: {}, streakSavers: 2 },
     localStorage: { getItem: () => JSON.stringify([{ id: 'life-a', name: 'حياة سابقة', age: 50 }]) }
   };
-  vm.runInNewContext(bundleSource + '\\nglobalThis.bundle=createBackupBundle();', bundleContext);
+  vm.runInNewContext(bundleSource + '\nglobalThis.bundle=createBackupBundle();', bundleContext);
   assert.equal(bundleContext.bundle.format, 'hayah-backup');
   assert.equal(bundleContext.bundle.backupVersion, 1);
   assert.equal(bundleContext.bundle.life.name, 'اختبار');
