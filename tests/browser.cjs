@@ -186,6 +186,8 @@ async function run() {
 
     const shownName = (await page.locator('#characterName').innerText()).trim();
     assert.ok(shownName.includes(seedSave.name), 'the legacy v1 save should render the seeded player');
+    assert.equal((await page.locator('#lifeAnnouncement').textContent()).trim(), '',
+      'loading a saved life must not announce its existing diary history');
 
     const accessibleStats = await page.locator('#statsPanel [role="progressbar"]').evaluateAll(elements => elements.map(element => ({
       label: element.getAttribute('aria-label'),
@@ -242,6 +244,32 @@ async function run() {
       'the refreshed mobile layout should render its main regions');
     assert.equal(initialLayout.feedScrollWidth, initialLayout.feedWidth,
       'the life feed should not introduce horizontal scrolling');
+
+    assert.equal(await page.locator('#lifeFeed').getAttribute('aria-live'), null,
+      'the full diary should remain navigable without replaying every saved entry');
+    await page.evaluate(seed => {
+      localStorage.setItem('hekayat_hayah_save_v1', JSON.stringify(seed));
+      localStorage.removeItem('hekayat_hayah_save_backup_v1');
+    }, seedSave);
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    assert.equal((await page.locator('#lifeAnnouncement').textContent()).trim(), '',
+      'reloading a saved life must not announce its entire existing history');
+    await page.locator('#ageUpBtn').click();
+    await page.waitForFunction(() => {
+      const saved = JSON.parse(localStorage.getItem('hekayat_hayah_save_v1') || 'null');
+      const announcement = document.querySelector('#lifeAnnouncement')?.textContent || '';
+      return saved?.age === 31 && announcement.includes('في عمر') && announcement.includes('سنة');
+    });
+    const newEventAnnouncement = (await page.locator('#lifeAnnouncement').textContent()).trim();
+    assert.ok(newEventAnnouncement.length > 0,
+      'new diary entries should be announced through the dedicated status region');
+    assert.ok(!newEventAnnouncement.includes('بداية اختبار المتصفح'),
+      'new-event announcements must not repeat an older saved diary entry');
+    await page.evaluate(seed => {
+      localStorage.setItem('hekayat_hayah_save_v1', JSON.stringify(seed));
+      localStorage.removeItem('hekayat_hayah_save_backup_v1');
+    }, seedSave);
+    await page.reload({ waitUntil: 'domcontentloaded' });
 
     const measureDock = () => page.evaluate(() => {
       const rect = element => {
@@ -582,13 +610,16 @@ async function run() {
     const incrementalFeed = await page.evaluate(() => ({
       firstCardPreserved: window.__hayahFirstLogCard === document.querySelector('#lifeFeed .logcard'),
       cardCount: document.querySelectorAll('#lifeFeed .logcard').length,
-      relevant: document.querySelector('#lifeFeed').getAttribute('aria-relevant'),
-      atomic: document.querySelector('#lifeFeed').getAttribute('aria-atomic')
+      feedLive: document.querySelector('#lifeFeed').getAttribute('aria-live'),
+      announcement: document.querySelector('#lifeAnnouncement').textContent
     }));
     assert.equal(incrementalFeed.firstCardPreserved, true, 'adding a new year should append events without rebuilding the existing log cards');
     assert.ok(incrementalFeed.cardCount > 45, 'new annual events should appear in the life feed');
-    assert.equal(incrementalFeed.relevant, 'additions', 'screen readers should be notified about new log entries rather than all history');
-    assert.equal(incrementalFeed.atomic, 'false', 'the life feed should announce new entries independently');
+    assert.equal(incrementalFeed.feedLive, null, 'the full diary should not be a live region');
+    assert.ok(incrementalFeed.announcement.includes('في عمر') && incrementalFeed.announcement.includes('سنة'),
+      'new events should be summarized in the dedicated screen-reader status region');
+    assert.ok(!incrementalFeed.announcement.includes('ذكرى اختبار 1'),
+      'the announcement should not repeat the saved history');
 
     const businessYear = await page.evaluate(() => {
       const saved = JSON.parse(localStorage.getItem('hekayat_hayah_save_v1') || 'null');

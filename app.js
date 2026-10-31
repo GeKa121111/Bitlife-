@@ -1260,6 +1260,18 @@ function appendLogEntryNode(feed,entry,lastAge){
  content.appendChild(title);content.appendChild(textNode);article.appendChild(icon);article.appendChild(content);feed.appendChild(article);
  return entry.age;
 }
+function announceLifeEvents(entries,startIndex){
+ const live=$('lifeAnnouncement');
+ if(!live||!Array.isArray(entries)||startIndex>=entries.length)return;
+ const added=entries.slice(startIndex);
+ if(!added.length)return;
+ const latest=added.slice(-2).map(entry=>String(entry&&entry.title||'حدث جديد')).filter(Boolean);
+ const age=entries[entries.length-1]&&entries[entries.length-1].age;
+ const message=added.length===1
+  ?'حدث جديد في عمر '+fmt(age)+' سنة: '+latest[0]+'.'
+  :'تم تسجيل '+fmt(added.length)+' أحداث جديدة في عمر '+fmt(age)+' سنة. أحدثها: '+latest.join('، ')+'.';
+ live.textContent=message;
+}
 function renderFeed(){
  const feed=$('lifeFeed');
  if(!feed)return;
@@ -1308,6 +1320,7 @@ function renderFeed(){
    if(previous.length===0&&entries.length)feed.innerHTML='';
    let lastAge=appendFrom>0?entries[appendFrom-1].age:null;
    for(let i=appendFrom;i<entries.length;i++)lastAge=appendLogEntryNode(feed,entries[i],lastAge);
+   if(appendFrom<entries.length)announceLifeEvents(entries,appendFrom);
    renderedLogSnapshot=signatures;renderedFeedElement=feed;
    if(shouldFollowLatest&&appendFrom<entries.length){
     requestAnimationFrame(()=>{

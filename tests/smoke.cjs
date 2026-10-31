@@ -18,7 +18,11 @@ assert.match(app, /navigator\.serviceWorker\.register\('\.\/sw\.js'\)/);
 assert.match(serviceWorker, /request\.mode === 'navigate'/);
 assert.match(serviceWorker, /caches\.match\(APP_SHELL\[0\]\)/);
 assert.match(index, /id="ageUpBtn"/);
-assert.match(index, /id="lifeFeed"[^>]*aria-relevant="additions" aria-atomic="false"/);
+assert.match(index, /id="lifeFeed"[^>]*aria-label="سجل الحياة والأحداث"/);
+assert.doesNotMatch(index, /id="lifeFeed"[^>]*aria-live=/,
+  'the full diary should not be a live region that re-announces the entire history');
+assert.match(index, /id="lifeAnnouncement"[^>]*role="status" aria-live="polite" aria-atomic="true"/);
+assert.match(app, /function announceLifeEvents\(entries,startIndex\)/);
 assert.match(css, /max-width:500px/);
 assert.match(app, /const dailyChallengeDefs=\[/, 'daily challenge catalog should be available');
 assert.match(app, /function ensureDailyChallengeBoard\(\)/, 'daily challenges should rotate and persist by day');
@@ -173,7 +177,7 @@ assert.match(finalUi, /\.fill\s*\{[^}]*position:absolute[^}]*right:0/s, 'status 
 assert.match(finalUi, /\.statvalue\s*\{[^}]*position:absolute[^}]*z-index:1/s, 'status values should overlay the progress bars');
 assert.match(finalUi, /\.nav\{direction:ltr\}/, 'tab positions should follow the original left-to-right order');
 assert.match(finalUi, /\.fill\{left:0;right:auto\}/, 'progress fills should grow from the left edge like the reference');
-assert.match(serviceWorker, /hayah-shell-v59/, 'the app shell cache should refresh the new styles');
+assert.match(serviceWorker, /hayah-shell-v60/, 'the app shell cache should refresh the new styles');
 assert.match(app, /function schoolHub\(\)/);
 assert.match(app, /function maintainAsset\(index\)/);
 assert.match(app, /function schoolClubs\(\)/, 'student clubs should have interactive actions');
@@ -542,7 +546,7 @@ assert.ok(app.includes('boostUsedAge:null'), 'new lives should initialize the op
 assert.ok(app.includes('uiSettings.boosts'), 'recovery opportunities should be optional in settings');
 assert.ok(app.includes('uiSettings.sound'));
 assert.ok(app.includes('uiSettings.haptics'));
-assert.match(serviceWorker, /hayah-shell-v59/);
+assert.match(serviceWorker, /hayah-shell-v60/);
 
 assert.match(app, /function businessTreasuryMenu\(\)/);
 assert.match(app, /function transferBusinessCapital\(direction,amount\)/);
@@ -561,13 +565,13 @@ assert.ok(app.includes("function advanceBusinessRivals(raw,business,industry,yea
 assert.ok(app.includes("function summarizeBusinessRivals(rivals,baselineCompetition,profile)"));
 assert.match(app, /marketRivalPlans/);
 assert.match(app, /الشركات المنافسة داخل المحاكاة/);
-assert.match(serviceWorker, /hayah-shell-v59/);
+assert.match(serviceWorker, /hayah-shell-v60/);
 
 assert.match(app, /function normalizeSocialFeed\(raw\)/, 'social audience feedback should be normalized for legacy saves');
 assert.match(app, /function socialAudienceFeedMenu\(platformId\)/, 'players should be able to review audience feedback');
 assert.match(app, /function offerSoundCloudTrackToLabel\(platformId='soundcloud'\)/, 'SoundCloud tracks should have a label-offer path');
 assert.match(app, /const KEY = 'hekayat_hayah_save_v1';/);
-assert.match(serviceWorker, /hayah-shell-v59/);
+assert.match(serviceWorker, /hayah-shell-v60/);
 
 assert.match(app, /function combatRoundEnergy\(currentEnergy,move,mode='street'\)/);
 assert.match(app, /id:'tactic-breathe'.*energyRecovery:14,oncePerBout:true/);
