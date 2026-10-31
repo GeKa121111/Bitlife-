@@ -1040,12 +1040,14 @@ test('مسيرة القتال تدير ثلاث جولات وتستعيد الن
     globalThis.recovered=combatRoundEnergy(94,{power:20,energyCost:0,energyRecovery:14},'street');
     globalThis.capped=combatRoundEnergy(98,{power:20,energyCost:0,energyRecovery:14},'street');
     globalThis.reacted=combatRoundEnergy(70,{power:34},'street',3);
+    globalThis.maxReactionCost=combatRoundEnergy(100,{energyCost:30,energyRecovery:0},'league',4);
   `, energyContext);
   assert.equal(JSON.stringify(energyContext.normal),JSON.stringify({before:70,moveCost:6,reactionCost:0,energyCost:6,energyRecovery:0,after:64}));
   assert.equal(JSON.stringify(energyContext.league),JSON.stringify({before:70,moveCost:2,reactionCost:0,energyCost:2,energyRecovery:14,after:82}));
   assert.equal(JSON.stringify(energyContext.recovered),JSON.stringify({before:94,moveCost:0,reactionCost:0,energyCost:0,energyRecovery:14,after:100}));
   assert.equal(JSON.stringify(energyContext.capped),JSON.stringify({before:98,moveCost:0,reactionCost:0,energyCost:0,energyRecovery:14,after:100}));
   assert.equal(JSON.stringify(energyContext.reacted),JSON.stringify({before:70,moveCost:6,reactionCost:3,energyCost:9,energyRecovery:0,after:61}));
+  assert.equal(JSON.stringify(energyContext.maxReactionCost),JSON.stringify({before:100,moveCost:32,reactionCost:4,energyCost:36,energyRecovery:0,after:64}));
   assert.match(app,/session\.roundHistory\.some\(item=>item\.actionId===move\.id\)/,
     'a once-per-bout recovery tactic must be rejected if already used');
 
