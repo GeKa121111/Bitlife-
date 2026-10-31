@@ -412,6 +412,27 @@ function combatOpponentStyleForRound(opponent,round,lastPlayerStyle){
  if(Number(round)===2)return next;
  return baseStyles[(baseStyles.indexOf(next)+1)%baseStyles.length];
 }
+const combatMoveMasteryThresholds=[0,3,8,15,25];
+const combatMoveMasteryLabels=['جديدة','ناشئة','متمرّسة','متقنة','خبيرة'];
+function normalizeCombatMoveMastery(raw,knownMoves){
+ const source=raw&&typeof raw==='object'&&!Array.isArray(raw)?raw:{};
+ const known=new Set(Array.isArray(knownMoves)?knownMoves:[]);
+ const normalized={};
+ combatMoveCatalog.forEach(move=>{
+  if(!known.has(move.id))return;
+  const uses=Number(source[move.id]);
+  if(Number.isFinite(uses)&&uses>0)normalized[move.id]=Math.max(0,Math.min(100,Math.floor(uses)));
+ });
+ return normalized;
+}
+function combatMoveMasteryLevel(uses){
+ const count=Math.max(0,Math.min(100,Math.floor(Number(uses)||0)));
+ let level=0;
+ for(let index=1;index<combatMoveMasteryThresholds.length;index++){if(count>=combatMoveMasteryThresholds[index])level=index;}
+ return level;
+}
+function combatMoveMasteryLabel(uses){return combatMoveMasteryLabels[combatMoveMasteryLevel(uses)];}
+function combatMoveMasteryBonus(uses){return combatMoveMasteryLevel(uses)*2;}
 function normalizePendingCombatBout(raw){
  if(!raw||typeof raw!=='object'||Array.isArray(raw))return null;
  const mode=raw.mode==='league'?'league':raw.mode==='street'?'street':null;
@@ -432,7 +453,10 @@ function normalizePendingCombatBout(raw){
    style:styles.includes(item.style)?item.style:'تقنية',
    opponentStyle:styles.includes(item.opponentStyle)?item.opponentStyle:source.style,
    playerScore:finite(item.playerScore,0,-200,200),
-   opponentScore:finite(item.opponentScore,0,-200,200)
+   opponentScore:finite(item.opponentScore,0,-200,200),
+   masteryLevel:Math.round(finite(item.masteryLevel,0,0,4)),
+   masteryBonus:Math.round(finite(item.masteryBonus,0,0,8)),
+   masteryUses:Math.round(finite(item.masteryUses,0,0,100))
   };
  }).filter(Boolean);
  const last=history.length?history[history.length-1]:null;
@@ -467,16 +491,17 @@ function combatDifficultyLabel(rating){
 function createCombatCareer(){
  return {rank:0,leaguePoints:0,streetCred:0,streetWins:0,leagueWins:0,wins:0,losses:0,knockouts:0,draws:0,
   technique:32+Math.floor(Math.random()*8),power:28+Math.floor(Math.random()*8),speed:31+Math.floor(Math.random()*8),defense:28+Math.floor(Math.random()*8),stamina:34+Math.floor(Math.random()*8),energy:100,
-  injury:0,injuryYears:0,restUsedYear:-1,coach:null,movesKnown:['quick-jab','high-guard'],selectedMove:'quick-jab',champion:false,bouts:[],pendingBout:null,community:normalizeCombatCommunity([]),startedAge:state?state.age:18};
+  injury:0,injuryYears:0,restUsedYear:-1,coach:null,movesKnown:['quick-jab','high-guard'],moveMastery:{},selectedMove:'quick-jab',champion:false,bouts:[],pendingBout:null,community:normalizeCombatCommunity([]),startedAge:state?state.age:18};
 }
 function ensureCombatCareer(){
  if(!state)return null;
  let c=state.combatCareer;
  if(!c||typeof c!=='object')c=state.combatCareer=createCombatCareer();
- const defaults={rank:0,leaguePoints:0,streetCred:0,streetWins:0,leagueWins:0,wins:0,losses:0,knockouts:0,draws:0,technique:25,power:25,speed:25,defense:25,stamina:30,energy:100,injury:0,injuryYears:0,restUsedYear:-1,coach:null,movesKnown:['quick-jab','high-guard'],selectedMove:'quick-jab',champion:false,bouts:[],pendingBout:null,community:[]};
+ const defaults={rank:0,leaguePoints:0,streetCred:0,streetWins:0,leagueWins:0,wins:0,losses:0,knockouts:0,draws:0,technique:25,power:25,speed:25,defense:25,stamina:30,energy:100,injury:0,injuryYears:0,restUsedYear:-1,coach:null,movesKnown:['quick-jab','high-guard'],moveMastery:{},selectedMove:'quick-jab',champion:false,bouts:[],pendingBout:null,community:[]};
  Object.keys(defaults).forEach(k=>{if(c[k]===undefined||c[k]===null)c[k]=defaults[k];});
  if(!Array.isArray(c.movesKnown))c.movesKnown=['quick-jab','high-guard'];
  if(!c.movesKnown.length)c.movesKnown=['quick-jab','high-guard'];
+ c.moveMastery=normalizeCombatMoveMastery(c.moveMastery,c.movesKnown);
  if(!Array.isArray(c.bouts))c.bouts=[];
  c.community=normalizeCombatCommunity(c.community);
  c.pendingBout=normalizePendingCombatBout(c.pendingBout);
@@ -3883,10 +3908,10 @@ function interactCombatFighter(fighterId,action){
 function combatCareerMenu(){
  if(!validState()||!state.specialCareer||state.specialCareer.id!=='fighter'){info('🥊','مسيرة القتال','ابدأ مسار المقاتل المحترف من قائمة المهن الخاصة أولًا.');return;}
  const c=ensureCombatCareer();if(c.pendingBout){combatBoutRoundMenu();return;}
- const r=state.specialCareer.record||{},rank=combatRankName(c),moves=c.movesKnown.length;
+ const rank=combatRankName(c),moves=c.movesKnown.length,masteredMoves=c.movesKnown.filter(id=>combatMoveMasteryLevel(c.moveMastery[id]||0)===4).length;
  const injury=c.injury>0?' · إصابة '+c.injury+'%':'';
  const coach=c.coach?' · المدرب '+c.coach.name+' ('+fmt(c.coach.yearsLeft||0)+' سنوات متبقية)':' · من غير مدرب';
- const summary='الرتبة: '+rank+' · نقاط الدوري '+fmt(c.leaguePoints)+' · رصيد الشارع '+fmt(c.streetCred)+injury+coach;
+ const summary='الرتبة: '+rank+' · نقاط الدوري '+fmt(c.leaguePoints)+' · رصيد الشارع '+fmt(c.streetCred)+injury+coach+' · حركات خبيرة '+masteredMoves+'/'+moves;
  const opts=[
   choice('📊','ملف المقاتل',summary,()=>{closeModal();info('🥊','ملف المقاتل',summary+' · فوز '+c.wins+' · خسارة '+c.losses+' · نزالات الشوارع '+c.streetWins+' · نزالات الدوري '+c.leagueWins+' · الطاقة '+c.energy+'%.');},'',c.leaguePoints/2),
   choice('🏋️','تدريب القدرات','تقنية '+c.technique+'% · قوة '+c.power+'% · سرعة '+c.speed+'% · دفاع '+c.defense+'% · لياقة '+c.stamina+'%.',combatTrainingMenu,'',Math.round((c.technique+c.power+c.speed+c.defense+c.stamina)/5)),
@@ -3931,7 +3956,8 @@ function learnCombatMove(){
  const c=ensureCombatCareer();
  const opts=combatMoveCatalog.map(m=>{
   const known=c.movesKnown.includes(m.id),locked=c.rank<m.rank,available=!known&&!locked;
-  const desc=m.desc+' · الأسلوب: '+m.style+' · قوي أمام: '+m.strongAgainst+' · القوة '+m.power+'.'+(known?' تم تعلمها بالفعل.':locked?' تحتاج رتبة '+['مبتدئ','هاوٍ','محترف','منافس على اللقب','بطل الدوري'][m.rank]+'.':'');
+  const uses=Math.max(0,Number(c.moveMastery[m.id])||0),mastery=known?' · الإتقان: '+combatMoveMasteryLabel(uses)+' · '+Math.min(uses,25)+'/25 استخدام · مكافأة '+combatMoveMasteryBonus(uses)+' نقاط':'';
+  const desc=m.desc+' · الأسلوب: '+m.style+' · قوي أمام: '+m.strongAgainst+' · القوة '+m.power+'.'+mastery+(known?' تم تعلمها بالفعل.':locked?' تحتاج رتبة '+['مبتدئ','هاوٍ','محترف','منافس على اللقب','بطل الدوري'][m.rank]+'.':'');
   return choice(known?'✅':locked?'🔒':'🥋',m.title,desc,()=>buyCombatMove(m.id),m.cost?cash(m.cost):'مفتوحة',m.power);
  });
  opts.push(choice('↩️','رجوع','',combatCareerMenu));
@@ -3948,7 +3974,8 @@ function buyCombatMove(id){
 function selectCombatMove(){
  const c=ensureCombatCareer(),opts=c.movesKnown.map(id=>{
   const m=combatMoveCatalog.find(x=>x.id===id);if(!m)return null;
-  return choice(m.id===c.selectedMove?'✅':'🥋',m.title,'الأسلوب '+m.style+' · قوية أمام '+m.strongAgainst+' · القوة '+m.power+'.',()=>{closeModal();c.selectedMove=m.id;log('🎯','تغيير خطة النزال','اخترت '+m.title+' كحركة رئيسية.');save();render();combatCareerMenu();},'',m.power);
+  const uses=Math.max(0,Number(c.moveMastery[m.id])||0);
+  return choice(m.id===c.selectedMove?'✅':'🥋',m.title,'الأسلوب '+m.style+' · قوية أمام '+m.strongAgainst+' · القوة '+m.power+' · الإتقان '+combatMoveMasteryLabel(uses)+' · '+Math.min(uses,25)+'/25 استخدام · مكافأة '+combatMoveMasteryBonus(uses)+'.',()=>{closeModal();c.selectedMove=m.id;log('🎯','تغيير خطة النزال','اخترت '+m.title+' كحركة رئيسية.');save();render();combatCareerMenu();},'',m.power+combatMoveMasteryBonus(uses));
  }).filter(Boolean);
  modal('🎯','الحركة الرئيسية','اختار حركة تناسب أسلوب منافسك القادم.',opts);
 }
@@ -3994,8 +4021,9 @@ function combatBoutRoundMenu(){
  const opponentStyle=combatOpponentStyleForRound(opponent,round,session.lastStyle);
  const opts=c.movesKnown.map(id=>{
   const move=combatMoveCatalog.find(item=>item.id===id);if(!move)return null;
+  const uses=Math.max(0,Number(c.moveMastery[move.id])||0),masteryBonus=combatMoveMasteryBonus(uses);
   const advantage=move.strongAgainst===opponentStyle?' ميزة مباشرة ضد أسلوب الجولة.':move.style===opponent.weakTo?' أسلوبك يستغل نقطة ضعف المنافس.':'';
-  return choice('🥋',move.title,'أسلوب '+move.style+' · قوي أمام '+move.strongAgainst+' · القوة '+move.power+'.'+advantage,()=>resolveCombatRound(move.id),'',move.power);
+  return choice('🥋',move.title,'أسلوب '+move.style+' · قوي أمام '+move.strongAgainst+' · القوة '+move.power+'. الإتقان '+combatMoveMasteryLabel(uses)+' · مكافأة '+masteryBonus+' نقاط. '+advantage,()=>resolveCombatRound(move.id),'',move.power+masteryBonus);
  }).filter(Boolean);
  combatTacticCatalog.forEach(tactic=>{
   const advantage=tactic.strongAgainst===opponentStyle?' ميزة مباشرة ضد أسلوب الجولة.':tactic.style===opponent.weakTo?' يستغل نقطة ضعف المنافس.':'';
@@ -4014,6 +4042,9 @@ function resolveCombatRound(actionId){
  if(!move){closeModal();info('🥋','الحركة غير متاحة','اختار حركة تعلمتها أو تكتيكًا متاحًا في الجولة.');combatBoutRoundMenu();return;}
  const round=session.round,opponent=session.opponent;
  const opponentStyle=combatOpponentStyleForRound(opponent,round,session.lastStyle);
+ const masteryUses=learnedMove?Math.max(0,Number(c.moveMastery[move.id])||0):0;
+ const masteryLevel=learnedMove?combatMoveMasteryLevel(masteryUses):0;
+ const masteryBonus=learnedMove?combatMoveMasteryBonus(masteryUses):0;
  const coachBonus=c.coach?c.coach.bonus:0;
  const counterBonus=move.strongAgainst===opponentStyle?12:(move.style===opponent.weakTo?7:(move.style===opponentStyle?-4:0));
  const agePenalty=state.age>38?(state.age-38)*.8:0;
@@ -4021,14 +4052,20 @@ function resolveCombatRound(actionId){
  const repeatedPenalty=session.lastStyle===move.style?3:0;
  const communityFighter=session.communityFighterId?c.community.find(fighter=>fighter.id===session.communityFighterId):null;
  const communityAdjustment=communityFighter?clamp(Math.round((communityFighter.respect-communityFighter.tension)/25),-4,4):0;
- const playerScore=(c.technique*.19+c.power*.18+c.speed*.16+c.defense*.13+c.stamina*.10+state.stats.health*.10+(state.specialCareer.level||1)*.8+move.power*.12+coachBonus-c.injury*.16-agePenalty)*energyFactor+counterBonus-repeatedPenalty+communityAdjustment;
+ const playerScore=(c.technique*.19+c.power*.18+c.speed*.16+c.defense*.13+c.stamina*.10+state.stats.health*.10+(state.specialCareer.level||1)*.8+move.power*.12+coachBonus-c.injury*.16-agePenalty)*energyFactor+counterBonus-repeatedPenalty+communityAdjustment+masteryBonus;
  const opponentScore=opponent.rating+(Math.random()*12-6)+(round-1)*1.2;
  const energyCost=(move.energyCost||Math.max(6,Math.round(move.power/8)))+(session.mode==='league'?2:0);
  c.energy=clamp(c.energy-energyCost);
+ const nextMasteryUses=learnedMove?Math.min(100,masteryUses+1):masteryUses;
+ if(learnedMove)c.moveMastery[move.id]=nextMasteryUses;
  session.playerScore+=playerScore;session.opponentScore+=opponentScore;
- session.roundHistory.push({round,actionId:move.id,actionTitle:move.title,style:move.style,opponentStyle,playerScore,opponentScore});
+ session.roundHistory.push({round,actionId:move.id,actionTitle:move.title,style:move.style,opponentStyle,playerScore,opponentScore,masteryLevel,masteryBonus,masteryUses:nextMasteryUses});
  session.lastStyle=move.style;session.lastMoveId=move.id;
  log('🥊','انتهت الجولة '+round,move.title+' · أسلوب المنافس '+opponentStyle+' · نقاط الجولة '+Math.round(playerScore)+' مقابل '+Math.round(opponentScore)+' · الطاقة المتبقية '+c.energy+'%.','');
+ if(learnedMove&&combatMoveMasteryLevel(nextMasteryUses)>masteryLevel){
+  log('🥋','تطور إتقان الحركة','وصلت إلى مستوى '+combatMoveMasteryLabel(nextMasteryUses)+' في '+move.title+'. أصبحت تضيف '+combatMoveMasteryBonus(nextMasteryUses)+' نقاط إلى أدائك عند استخدامها.','good');
+  achievement('إتقان حركة قتالية: '+move.title+' · '+combatMoveMasteryLabel(nextMasteryUses));
+ }
  if(session.roundHistory.length>=3){
   const completed={...session,roundHistory:session.roundHistory.slice(0,3)};
   const probability=clamp(50+((completed.playerScore-completed.opponentScore)/3)*1.65,12,88);
@@ -4047,7 +4084,8 @@ function resolveCombatBout(mode,opponent,moveId,probabilityOverride=null,session
  closeModal();if(mode==='league'&&!session)state.bank-=1500;
  const coachBonus=c.coach?c.coach.bonus:0,counterBonus=move.strongAgainst===opponent.style?12:(move.style===opponent.weakTo?7:(move.style===opponent.style?-4:0));
  const agePenalty=state.age>38?(state.age-38)*.8:0;
- const playerScore=c.technique*.19+c.power*.18+c.speed*.16+c.defense*.13+c.stamina*.10+state.stats.health*.10+(state.specialCareer.level||1)*.8+move.power*.12+coachBonus-c.injury*.16-agePenalty;
+ const masteryBonus=combatMoveCatalog.some(item=>item.id===move.id)?combatMoveMasteryBonus(c.moveMastery[move.id]||0):0;
+ const playerScore=c.technique*.19+c.power*.18+c.speed*.16+c.defense*.13+c.stamina*.10+state.stats.health*.10+(state.specialCareer.level||1)*.8+move.power*.12+coachBonus-c.injury*.16-agePenalty+masteryBonus;
  const opponentScore=opponent.rating+(Math.random()*12-6);
  const probability=probabilityOverride!==null&&probabilityOverride!==undefined&&Number.isFinite(Number(probabilityOverride))?clamp(Number(probabilityOverride),12,88):clamp(50+(playerScore-opponentScore)*1.65+counterBonus,12,88);
  const won=chance(probability/100);
