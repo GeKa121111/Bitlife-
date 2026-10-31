@@ -6,6 +6,8 @@ const BACKUP_KEY = 'hekayat_hayah_save_backup_v1';
 const CEMETERY_KEY = 'hekayat_hayah_cemetery_v1';
 const SETTINGS_KEY = 'hayah_ui_settings_v1';
 const PERKS_KEY = 'hayah_permanent_perks_v1';
+const BACKUP_FORMAT = 'hayah-backup';
+const BACKUP_VERSION = 1;
 const PERK_IDS = ['challengeVault','goldTheme','expandedTime','actorPack','bossMode','healthShield','goldenWrench','goldenPassport','goldenPiggyBank','goldenNeko','fameFortuneBundle','billionairesBundle','crimePaysBundle','partyAnimalBundle','hollywoodStar','goldenResume','goldenDiploma','friendshipBracelet','goldenPacifier','jailCard','businessPack','landlordPack','investorPack','mafiaPack','blackMarketPack','assassinsBlade','zooExpansionPack','superstarMode','cultPack','casinoPack','godMode','bitizenship','movieDirectorPack','dealerPack','auraRing','fighterPack','proAthletePack','politicianPack','astronautPack','modelPack','musicianPack','musicProducerPack','vampireMode','outdoorsPack','gatedCommunityPack'];
 const PERK_TOGGLE_IDS = ['goldTheme','healthShield','goldenWrench','bossMode','goldenNeko','hollywoodStar','goldenResume','goldenPacifier','godMode','bitizenship'];
 const JOB_PACK_IDS = ['actorPack','fighterPack','proAthletePack','politicianPack','astronautPack','businessPack','dealerPack','mafiaPack','movieDirectorPack','modelPack','musicianPack','musicProducerPack'];
@@ -191,14 +193,17 @@ function defaultPermanentPerks(){
  const owned={},enabled={};PERK_IDS.forEach(id=>owned[id]=false);PERK_TOGGLE_IDS.forEach(id=>enabled[id]=false);
  return {owned,enabled,streakSavers:0};
 }
-function loadPermanentPerks(){
+function normalizePermanentPerks(raw){
  const defaults=defaultPermanentPerks();
- try{const saved=JSON.parse(localStorage.getItem(PERKS_KEY)||'null');if(saved&&typeof saved==='object'){
-  PERK_IDS.forEach(id=>defaults.owned[id]=!!(saved.owned&&saved.owned[id]));
-  PERK_TOGGLE_IDS.forEach(id=>defaults.enabled[id]=!!(saved.enabled&&saved.enabled[id]));
-  defaults.streakSavers=clamp(Number(saved.streakSavers)||0,0,99);
- }}catch(e){}
+ if(!raw||typeof raw!=='object'||Array.isArray(raw))return defaults;
+ PERK_IDS.forEach(id=>defaults.owned[id]=!!(raw.owned&&raw.owned[id]));
+ PERK_TOGGLE_IDS.forEach(id=>defaults.enabled[id]=!!(raw.enabled&&raw.enabled[id]));
+ defaults.streakSavers=clamp(Number(raw.streakSavers)||0,0,99);
  return defaults;
+}
+function loadPermanentPerks(){
+ try{return normalizePermanentPerks(JSON.parse(localStorage.getItem(PERKS_KEY)||'null'));}
+ catch(e){return defaultPermanentPerks();}
 }
 function persistPermanentPerks(){try{localStorage.setItem(PERKS_KEY,JSON.stringify(permanentPerks));}catch(e){}}
 function perkOwned(id){return !!(permanentPerks&&permanentPerks.owned&&permanentPerks.owned[id])||(id==='actorPack'&&!!(permanentPerks&&permanentPerks.owned&&permanentPerks.owned.bossMode))||!!(permanentPerks&&permanentPerks.owned&&permanentPerks.owned.bossMode&&JOB_PACK_IDS.includes(id));}
@@ -837,7 +842,8 @@ function save(){
   }catch(e){}
   localStorage.setItem(KEY,serialized);
   $('saveStatus').textContent='● محفوظة';
- }catch(e){$('saveStatus').textContent='⚠ الحفظ غير متاح';}
+  return true;
+ }catch(e){$('saveStatus').textContent='⚠ الحفظ غير متاح';return false;}
 }
 function normalizeHeirlooms(raw,currentAge=0){
  const seen=new Set();
@@ -4944,10 +4950,34 @@ function createLifeConfigured(gender,place){
  log('👶','أول يوم في الدنيا','اتولدت في '+state.place.city+'، '+state.place.country+'. بدأت حكايتك بعائلة وظروف مختلفة، وكل سنة هتفتح قدامك اختيارات جديدة.','special');
  log('🏡','البيت والعيلة','أبوك '+state.family[0].name+' وأمك '+state.family[1].name+' هما أول شبكة أمان ليك.');achievement('بدأت رحلة الحياة');render();
 }
+function normalizeCemetery(raw){
+ if(!Array.isArray(raw))return [];
+ const seen=new Set();
+ return raw.filter(item=>item&&typeof item==='object'&&!Array.isArray(item)).slice(0,100).map((item,index)=>{
+  const name=typeof item.name==='string'?item.name.trim().slice(0,80):'';
+  if(!name)return null;
+  let id=String(item.id||('legacy-life-'+index)).trim().slice(0,80);
+  if(!id)id='legacy-life-'+index;
+  if(seen.has(id))id=id+'-'+index;
+  seen.add(id);
+  const age=Number(item.age),netWorth=Number(item.netWorth),children=Number(item.children);
+  return {
+   id,name,
+   age:Number.isFinite(age)?Math.max(0,Math.min(150,Math.floor(age))):0,
+   cause:typeof item.cause==='string'?item.cause.slice(0,160):'نهاية الرحلة',
+   netWorth:Number.isFinite(netWorth)?Math.max(-1000000000000,Math.min(1000000000000,Math.round(netWorth))):0,
+   ribbon:typeof item.ribbon==='string'?item.ribbon.slice(0,80):'حياة سابقة',
+   country:typeof item.country==='string'?item.country.slice(0,80):'',
+   accomplishments:Array.isArray(item.accomplishments)?item.accomplishments.filter(value=>typeof value==='string').slice(0,40).map(value=>value.slice(0,120)):[],
+   children:Number.isFinite(children)?Math.max(0,Math.min(100,Math.floor(children))):0,
+   createdAt:typeof item.createdAt==='string'?item.createdAt.slice(0,40):''
+  };
+ }).filter(Boolean);
+}
 function archiveLife(reason){
  if(!state||state.cemeterySaved)return;
  try{
-  const list=JSON.parse(localStorage.getItem(CEMETERY_KEY)||'[]');const id=state.lifeId||('life-'+Date.now());
+  const list=normalizeCemetery(JSON.parse(localStorage.getItem(CEMETERY_KEY)||'[]'));const id=state.lifeId||('life-'+Date.now());
   if(!list.some(x=>x.id===id)){const assets=(state.assets||[]).reduce((n,a)=>n+(a.value||0),0),invest=(state.investments||[]).reduce((n,a)=>n+(a.value||0),0);
    list.unshift({id,name:state.name,age:state.age,cause:state.cause||reason||'نهاية الرحلة',netWorth:(state.bank||0)+assets+invest-(state.debt||0),ribbon:reason&&state.status==='حي'?'حياة متروكة · '+lifeRibbon():lifeRibbon(),country:state.place?.country||'',accomplishments:(state.accomplishments||[]).slice(0,40),children:(state.children||[]).length,createdAt:new Date().toISOString()});
    localStorage.setItem(CEMETERY_KEY,JSON.stringify(list.slice(0,100)));
@@ -5192,17 +5222,20 @@ function applyUiSettings(){
  if(typeof document.querySelector==='function'){const themeMeta=document.querySelector('meta[name="theme-color"]');if(themeMeta)themeMeta.setAttribute('content',uiSettings.theme==='dark'?'#17232c':uiSettings.theme==='gold'?'#c3982a':'#E53935');}
 }
 
+function normalizeUiSettings(raw){
+ const defaults={theme:'light',textScale:'normal',sound:false,haptics:false,boosts:true};
+ if(!raw||typeof raw!=='object'||Array.isArray(raw))return defaults;
+ return {
+  theme:['dark','light','gold'].includes(raw.theme)?raw.theme:defaults.theme,
+  textScale:raw.textScale==='large'?'large':defaults.textScale,
+  sound:typeof raw.sound==='boolean'?raw.sound:defaults.sound,
+  haptics:typeof raw.haptics==='boolean'?raw.haptics:defaults.haptics,
+  boosts:typeof raw.boosts==='boolean'?raw.boosts:defaults.boosts
+ };
+}
 function loadUiSettings(){
- try{
-  const raw=JSON.parse(localStorage.getItem(SETTINGS_KEY)||'null');
-  if(raw&&typeof raw==='object'&&!Array.isArray(raw)){
-   if(raw.theme==='dark'||raw.theme==='light'||raw.theme==='gold')uiSettings.theme=raw.theme;
-   if(raw.textScale==='large'||raw.textScale==='normal')uiSettings.textScale=raw.textScale;
-   if(typeof raw.sound==='boolean')uiSettings.sound=raw.sound;
-   if(typeof raw.haptics==='boolean')uiSettings.haptics=raw.haptics;
-   if(typeof raw.boosts==='boolean')uiSettings.boosts=raw.boosts;
-  }
- }catch(e){}
+ try{uiSettings=normalizeUiSettings(JSON.parse(localStorage.getItem(SETTINGS_KEY)||'null'));}
+ catch(e){uiSettings=normalizeUiSettings(null);}
  applyUiSettings();
 }
 function persistUiSettings(){
@@ -6490,7 +6523,11 @@ function importSave(){
   const reader=new FileReader();
   reader.onload=()=>{
    try{
-    const data=JSON.parse(String(reader.result||''));
+    const parsed=JSON.parse(String(reader.result||''));
+    const isBundle=!!(parsed&&parsed.format===BACKUP_FORMAT);
+    if(isBundle&&(parsed.backupVersion!==BACKUP_VERSION||!Array.isArray(parsed.cemetery)||!parsed.settings||typeof parsed.settings!=='object'||Array.isArray(parsed.settings)||!parsed.perks||typeof parsed.perks!=='object'||Array.isArray(parsed.perks)))throw new Error('invalid-bundle');
+    const data=isBundle?parsed.life:parsed;
+    const importedAux=isBundle?{cemetery:normalizeCemetery(parsed.cemetery),settings:normalizeUiSettings(parsed.settings),perks:normalizePermanentPerks(parsed.perks)}:null;
     if(!isValidSaveData(data)||!Array.isArray(data.family)||!data.place||typeof data.place!=='object'||Array.isArray(data.place))throw new Error('invalid');
     normalizeCoreState(data);
     const defaults={lifeId:Date.now()+Math.random(),cemeterySaved:false,jobHistory:[],specialCareer:null,specialCareerHistory:[],combatCareer:null,filmStudio:null,investments:[],business:null,married:false,children:[],coParentingPlans:[],pets:[],hobbies:[],fame:0,followers:0,socialMediaAccount:false,socialMediaPosts:0,socialFeed:[],reputation:50,crimeRecord:0,prison:null,debt:0,willDistribution:'الأسرة بالتساوي',heirlooms:[],dailyRewardDate:null,dailyChallenges:null,boostUsedAge:null,timeMachineSnapshots:[],legacy:{name:null,inheritance:0,heirloom:null},driversLicense:false,travelHistory:[],retired:false,yearCount:data.age||0,assets:[],friends:[],accomplishments:[],status:'حي'};
@@ -6498,7 +6535,26 @@ function importSave(){
     if(!Array.isArray(data.assets))data.assets=[];if(!Array.isArray(data.timeMachineSnapshots))data.timeMachineSnapshots=[];if(!Array.isArray(data.coParentingPlans))data.coParentingPlans=[];data.coParentingPlans.forEach(p=>{if(p&&typeof p==='object'){if(!Array.isArray(p.childIds))p.childIds=[];if(!Array.isArray(p.history))p.history=[];if(!Number.isFinite(Number(p.supportPerChild)))p.supportPerChild=2200;if(!Number.isFinite(Number(p.arrears)))p.arrears=0;}});data.assets.forEach(a=>{if((a.kind==='car'||a.kind==='property')&&!Number.isFinite(Number(a.condition)))a.condition=100;});
     if(!data.education||typeof data.education!=='object')data.education={level:0,school:'لم تبدأ الدراسة',major:null,yearsLeft:0,tuition:0};data.education.clubs=Array.isArray(data.education.clubs)?data.education.clubs:[];
     const npcDefaults=n=>{if(!n||typeof n!=='object')return;if(!Number.isFinite(Number(n.generosity)))n.generosity=50;if(!Number.isFinite(Number(n.craziness)))n.craziness=50;if(!Number.isFinite(Number(n.money)))n.money=50;if(!Number.isFinite(Number(n.petulance)))n.petulance=50;if(!Number.isFinite(Number(n.loyalty)))n.loyalty=55;if(!Number.isFinite(Number(n.jealousy)))n.jealousy=40;if(!Number.isFinite(Number(n.reliability)))n.reliability=55;if(!Array.isArray(n.interactions))n.interactions=[];};if(!Array.isArray(data.specialCareerHistory))data.specialCareerHistory=[];const careerDefaults=c=>{if(!c||typeof c!=='object')return;if(!c.record||typeof c.record!=='object')c.record={attempts:0,wins:0,losses:0,projects:0,totalEarnings:0,bestLevel:clamp(c.level||1)};if(!Array.isArray(c.history))c.history=[];};careerDefaults(data.specialCareer);data.specialCareerHistory.forEach(careerDefaults);(data.family||[]).forEach(npcDefaults);(data.friends||[]).forEach(npcDefaults);(data.children||[]).forEach(npcDefaults);npcDefaults(data.partner);
-    state=data;dead=state.status==='متوفى';save();render();if(dead)death(state.cause||'نهاية رحلة الحياة');else info('📥','تم استيراد الحفظ','تم تحميل '+state.name+' · العمر '+state.age+' سنة.');
+    const previousState=state,previousDead=dead,previousSettings={...uiSettings},previousPerks=permanentPerks;
+    const storageKeys=[KEY,BACKUP_KEY,CEMETERY_KEY,SETTINGS_KEY,PERKS_KEY],previousStorage={};
+    storageKeys.forEach(key=>{previousStorage[key]=localStorage.getItem(key);});
+    try{
+     if(importedAux){
+      localStorage.setItem(CEMETERY_KEY,JSON.stringify(importedAux.cemetery));
+      localStorage.setItem(SETTINGS_KEY,JSON.stringify(importedAux.settings));
+      localStorage.setItem(PERKS_KEY,JSON.stringify(importedAux.perks));
+      uiSettings=importedAux.settings;permanentPerks=importedAux.perks;applyUiSettings();
+     }
+     state=data;dead=state.status==='متوفى';
+     if(!save())throw new Error('storage-write-failed');
+     render();
+     if(dead)death(state.cause||'نهاية رحلة الحياة');else info('📥','تم استيراد الحفظ','تم تحميل '+state.name+' · العمر '+state.age+' سنة.');
+    }catch(importError){
+     state=previousState;dead=previousDead;uiSettings=previousSettings;permanentPerks=previousPerks;applyUiSettings();
+     storageKeys.forEach(key=>{try{const value=previousStorage[key];if(value===null)localStorage.removeItem(key);else localStorage.setItem(key,value);}catch(e){}});
+     if(previousState){try{render();}catch(e){}}
+     throw importError;
+    }
    }catch(e){info('⚠️','ملف حفظ غير صالح','اختار ملف JSON تم تصديره من لعبة حياة. الحفظ الحالي لم يتغير.');}
   };
   reader.onerror=()=>info('⚠️','تعذرت قراءة الملف','جرّب ملفًا آخر.');
@@ -6506,11 +6562,25 @@ function importSave(){
  });
  input.click();
 }
+function createBackupBundle(){
+ let cemetery=[];
+ try{cemetery=normalizeCemetery(JSON.parse(localStorage.getItem(CEMETERY_KEY)||'[]'));}catch(e){}
+ return {
+  format:BACKUP_FORMAT,
+  backupVersion:BACKUP_VERSION,
+  exportedAt:new Date().toISOString(),
+  life:JSON.parse(JSON.stringify(state)),
+  cemetery,
+  settings:normalizeUiSettings(uiSettings),
+  perks:normalizePermanentPerks(permanentPerks)
+ };
+}
 function exportSave(){
  if(!state){info('⚠️','لا توجد حياة للتصدير','ابدأ حياة أو حمّل ملف حفظ أولًا.');return;}
  let url=null,anchor=null;
  try{
-  const blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'});
+  const bundle=createBackupBundle();
+  const blob=new Blob([JSON.stringify(bundle,null,2)],{type:'application/json'});
   url=URL.createObjectURL(blob);
   anchor=document.createElement('a');anchor.href=url;anchor.download='hekayat-hayah-save.json';anchor.style.display='none';
   document.body.appendChild(anchor);
@@ -6522,7 +6592,7 @@ function exportSave(){
  }
  // Keep the download URL alive briefly so mobile browsers can start reading the file.
  setTimeout(()=>{if(anchor&&typeof anchor.remove==='function')anchor.remove();try{URL.revokeObjectURL(url);}catch(e){}},1000);
- closeModal();flash('تم تجهيز ملف الحفظ');
+ closeModal();flash('تم تجهيز نسخة احتياطية كاملة');
 }
 document.querySelectorAll('[data-panel]').forEach(btn=>btn.addEventListener('click',()=>{
  document.querySelectorAll('.navbtn').forEach(b=>{
