@@ -5627,8 +5627,29 @@ function playUiFeedback(kind='tap'){
   oscillator.start(now);oscillator.stop(now+.14);
  }catch(e){}
 }
+function requestStorageProtection(){
+ if(typeof navigator==='undefined'||!navigator.storage||typeof navigator.storage.persist!=='function')return Promise.resolve('unsupported');
+ const storage=navigator.storage;
+ return Promise.resolve()
+  .then(()=>typeof storage.persisted==='function'?storage.persisted():false)
+  .then(already=>already?'already':storage.persist())
+  .then(granted=>typeof granted==='string'?granted:(granted?'granted':'denied'))
+  .catch(()=> 'error');
+}
+function requestStorageProtectionFromSettings(){
+ closeModal();
+ requestStorageProtection().then(result=>{
+  if(result==='already')info('🛡️','مساحة الحفظ محمية بالفعل','المتصفح أكد أن بيانات الموقع ضمن تخزين مستديم. احتفظ بنسخة JSON خارجية أيضًا؛ الحماية لا تمنع المسح اليدوي لبيانات الموقع.');
+  else if(result==='granted')info('🛡️','تم تفعيل حماية التخزين','وافق المتصفح على تقليل احتمال حذف بيانات «حياة» تلقائيًا تحت ضغط المساحة. دي مش مزامنة سحابية ولا بديل عن تصدير نسخة خارجية.');
+  else if(result==='denied')info('ℹ️','المتصفح لم يمنح الحماية','الحفظ المحلي مستمر، لكن بيانات الموقع قد تُحذف في ظروف معينة. صدّر نسخة JSON واحتفظ بها خارج المتصفح.');
+  else if(result==='unsupported')info('ℹ️','الميزة غير مدعومة هنا','المتصفح الحالي لا يوفّر طلب التخزين المستديم. استخدم تصدير الحفظ للاحتفاظ بنسخة خارجية.');
+  else info('⚠️','تعذر طلب حماية التخزين','حصل خطأ أثناء التواصل مع المتصفح. الحفظ الحالي لم يتغير؛ جرّب مرة أخرى أو صدّر نسخة احتياطية.');
+ });
+}
+
 function settingsMenu(){
  const opts=[
+  choice('🛡️','حماية بيانات الحفظ','اطلب من المتصفح تقليل احتمال حذف بيانات اللعبة تلقائيًا. لا تمنع المسح اليدوي ولا تغني عن نسخة خارجية.',()=>requestStorageProtectionFromSettings()),
   choice(uiSettings.theme==='dark'?'☀️':'🌙',uiSettings.theme==='dark'?'تفعيل الوضع الفاتح':'تفعيل الوضع الداكن','المظهر الحالي: '+(uiSettings.theme==='dark'?'داكن':uiSettings.theme==='gold'?'ذهبي':'فاتح')+'.',()=>{uiSettings.theme=uiSettings.theme==='dark'?'light':'dark';persistUiSettings();settingsMenu();}),
   choice('🔤',uiSettings.textScale==='large'?'حجم النص: كبير':'حجم النص: عادي','كبّر نص سجل الأحداث والقرارات لسهولة القراءة.',()=>{uiSettings.textScale=uiSettings.textScale==='large'?'normal':'large';persistUiSettings();settingsMenu();}),
   choice(uiSettings.sound?'🔊':'🔇',uiSettings.sound?'الأصوات: مفعّلة':'الأصوات: متوقفة','نغمة قصيرة أصلية عند اختيار قرار أو التقدم سنة. لا تعمل إلا بعد تفعيلها.',()=>{uiSettings.sound=!uiSettings.sound;persistUiSettings();settingsMenu();}),
