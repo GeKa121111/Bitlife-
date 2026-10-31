@@ -4207,9 +4207,11 @@ function resolveCombatRound(actionId){
  const opponentScore=opponent.rating+(Math.random()*12-6)+(round-1)*1.2+reaction.opponentBonus;
  const healthBefore=clamp(state.stats.health),injuryBefore=clamp(c.injury);
  const impact=combatRoundImpact(opponent.rating,c.defense,reaction.quality,reactionTiming.bonus);
- state.stats.health=clamp(healthBefore-impact.healthDamage);
- c.injury=clamp(injuryBefore+impact.injuryGain);
- if(impact.injuryGain>0)c.injuryYears=Math.max(c.injuryYears,1);
+ const appliedHealthDamage=Math.min(healthBefore,impact.healthDamage);
+ const appliedInjuryGain=healthBefore>0?impact.injuryGain:0;
+ state.stats.health=clamp(healthBefore-appliedHealthDamage);
+ c.injury=clamp(injuryBefore+appliedInjuryGain);
+ if(appliedInjuryGain>0)c.injuryYears=Math.max(c.injuryYears,1);
  const energyResult=combatRoundEnergy(c.energy,move,session.mode,reaction.energyCost);
  c.energy=energyResult.after;
  const nextMasteryUses=learnedMove?Math.min(100,masteryUses+1):masteryUses;
@@ -4220,10 +4222,10 @@ function resolveCombatRound(actionId){
   reactionPlayerBonus:reaction.playerBonus,reactionOpponentBonus:reaction.opponentBonus,reactionCost:energyResult.reactionCost,
   reactionTimeMs:reactionTiming.elapsedMs,reactionTimingBonus:reactionTiming.bonus,reactionTimingAssist:session.reactionTimingAssist===true,
   energyBefore:energyResult.before,energyCost:energyResult.energyCost,energyRecovery:energyResult.energyRecovery,energyAfter:energyResult.after,
-  healthBefore,healthDamage:impact.healthDamage,healthAfter:state.stats.health,
-  injuryBefore,injuryGain:impact.injuryGain,injuryAfter:c.injury});
+  healthBefore,healthDamage:appliedHealthDamage,healthAfter:state.stats.health,
+  injuryBefore,injuryGain:appliedInjuryGain,injuryAfter:c.injury});
  session.lastStyle=move.style;session.lastMoveId=move.id;
- log('🥊','انتهت الجولة '+round,move.title+' · إشارة المنافس '+intent.title+' · ردك '+reaction.title+' ('+reaction.quality+') · توقيت الاستجابة '+reactionTiming.label+(reactionTiming.bonus?' +'+reactionTiming.bonus+' نقاط':'')+' · نقاط الجولة '+Math.round(playerScore)+' مقابل '+Math.round(opponentScore)+' · الطاقة المتبقية '+c.energy+'% · الصحة -'+impact.healthDamage+'%'+(impact.injuryGain?' · إصابة +'+impact.injuryGain+'%':'')+'.'+(energyResult.energyRecovery?' · استعدت '+energyResult.energyRecovery+' طاقة.':''),'');
+ log('🥊','انتهت الجولة '+round,move.title+' · إشارة المنافس '+intent.title+' · ردك '+reaction.title+' ('+reaction.quality+') · توقيت الاستجابة '+reactionTiming.label+(reactionTiming.bonus?' +'+reactionTiming.bonus+' نقاط':'')+' · نقاط الجولة '+Math.round(playerScore)+' مقابل '+Math.round(opponentScore)+' · الطاقة المتبقية '+c.energy+'% · الصحة -'+appliedHealthDamage+'%'+(appliedInjuryGain?' · إصابة +'+appliedInjuryGain+'%':'')+'.'+(energyResult.energyRecovery?' · استعدت '+energyResult.energyRecovery+' طاقة.':''),'');
  if(learnedMove&&combatMoveMasteryLevel(nextMasteryUses)>masteryLevel){
   log('🥋','تطور إتقان الحركة','وصلت إلى مستوى '+combatMoveMasteryLabel(nextMasteryUses)+' في '+move.title+'. أصبحت تضيف '+combatMoveMasteryBonus(nextMasteryUses)+' نقاط إلى أدائك عند استخدامها.','good');
   achievement('إتقان حركة قتالية: '+move.title+' · '+combatMoveMasteryLabel(nextMasteryUses));
@@ -4320,10 +4322,10 @@ function treatCombatInjury(){
 }
 function combatBoutHistory(){
  const c=ensureCombatCareer(),opts=c.bouts.slice().reverse().map(b=>{
-  const rounds=Array.isArray(b.rounds)?b.rounds:[],hasImpact=rounds.some(item=>item&&item.healthBefore!==null&&item.healthBefore!==undefined);
-  const damage=rounds.reduce((sum,item)=>sum+Math.max(0,Number(item&&item.healthDamage)||0),0);
-  const roundInjury=rounds.reduce((sum,item)=>sum+Math.max(0,Number(item&&item.injuryGain)||0),0);
-  const impactLabel=hasImpact?' · ضرر الصحة أثناء الجولات '+damage+'% · إصابات الجولات '+roundInjury+'%':' · تفاصيل الضرر غير متاحة لهذا النزال القديم';
+  const rounds=Array.isArray(b.rounds)?b.rounds:[],impactRounds=rounds.filter(item=>item&&item.healthBefore!==null&&item.healthBefore!==undefined),hasImpact=impactRounds.length>0;
+  const damage=impactRounds.reduce((sum,item)=>sum+Math.max(0,Number(item.healthDamage)||0),0);
+  const roundInjury=impactRounds.reduce((sum,item)=>sum+Math.max(0,Number(item.injuryGain)||0),0);
+  const impactLabel=hasImpact?' · الضرر المسجل '+damage+'% في '+impactRounds.length+'/'+rounds.length+' جولات · إصابات الجولات المسجلة '+roundInjury+'%':' · تفاصيل الضرر غير متاحة لهذا النزال القديم';
   return choice(b.won?'🏆':'🥊',(b.mode==='league'?'الدوري':'الشوارع')+' · '+b.opponent+' · '+(b.won?'فوز':'خسارة'),'العمر '+b.age+' · الحركة '+b.move+' · الجولات '+(rounds.length||1)+' · الاحتمال المقدر '+b.probability+'% · إصابة بعد النزال '+b.injury+'%'+impactLabel+(b.earnings?' · المكافأة '+cash(b.earnings):''),()=>{closeModal();info(b.won?'🏆':'🥊',b.opponent,(b.won?'فزت':'خسرت')+' باستخدام '+b.move+'. الاحتمال المقدر قبل النزال '+b.probability+'%. '+(hasImpact?'ضرر الصحة أثناء الجولات '+damage+'% وإصابات الجولات '+roundInjury+'%.':'النزال من سجل قديم لا يحتوي على تفاصيل الضرر لكل جولة.'));});
  });
  if(!opts.length)opts.push(choice('🥊','لسه مفيش نزالات','ابدأ بنزال شوارع لبناء الخبرة وفتح الدوري.',closeModal));
