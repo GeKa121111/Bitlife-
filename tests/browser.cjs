@@ -1873,6 +1873,68 @@ async function run() {
     assert.ok(communityBout.respect > communityAfterChat.respect,
       'a completed rivalry match should update community respect even after a loss');
 
+    const originalFilmPerks = await page.evaluate(() => localStorage.getItem('hayah_permanent_perks_v1'));
+    const originalFilmSave = await page.evaluate(() => localStorage.getItem('hekayat_hayah_save_v1'));
+    await page.evaluate(() => {
+      const key = 'hekayat_hayah_save_v1';
+      const saved = JSON.parse(localStorage.getItem(key) || 'null');
+      saved.specialCareer = { id: 'director', title: 'إخراج الأفلام', level: 3, startedAge: saved.age,
+        record: { attempts: 0, wins: 0, losses: 0, projects: 0, totalEarnings: 0, bestLevel: 3 }, history: [] };
+      saved.filmStudio = null;
+      saved.bank = 500000;
+      saved.fame = 40;
+      saved.reputation = 65;
+      saved.stats.smart = 85;
+      localStorage.setItem(key, JSON.stringify(saved));
+      localStorage.setItem('hayah_permanent_perks_v1', JSON.stringify({
+        owned: { movieDirectorPack: true }, enabled: {}, streakSavers: 0
+      }));
+    });
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await page.locator('[data-panel="career"]').click();
+    await page.locator('.choice').filter({ hasText: 'المهن الخاصة والشهرة' }).click();
+    await page.locator('.choice').filter({ hasText: 'Manage Film Studio' }).click();
+    await page.locator('.choice').filter({ hasText: 'إنتاج فيلم جديد' }).click();
+    await page.locator('.choice').filter({ hasText: 'دراما إنسانية' }).click();
+    await page.locator('.choice').filter({ hasText: 'إنتاج مستقل' }).click();
+    await page.locator('.choice').filter({ hasText: 'أسلوب فني' }).click();
+    await page.waitForFunction(() => document.querySelector('#modalRoot [role="dialog"]')?.textContent.includes('اختيار الممثل الرئيسي'));
+    await page.locator('.choice').filter({ hasText: 'اختبارات أداء جديدة' }).click();
+    await page.waitForFunction(() => document.querySelector('#modalRoot [role="dialog"]')?.textContent.includes('نتائج اختبارات الأداء'));
+    await page.locator('#modalRoot .choice').first().click();
+    await page.waitForFunction(() => document.querySelector('#modalRoot [role="dialog"]')?.textContent.includes('اختيار طاقم الإنتاج'));
+    await page.locator('.choice').filter({ hasText: 'متابعة إلى التسويق' }).click();
+    await page.waitForFunction(() => document.querySelector('#modalRoot [role="dialog"]')?.textContent.includes('خطة إطلاق الفيلم'));
+    await page.locator('.choice').filter({ hasText: 'انتشار طبيعي' }).click();
+    await page.waitForFunction(() => {
+      const saved = JSON.parse(localStorage.getItem('hekayat_hayah_save_v1') || 'null');
+      return saved?.filmStudio?.filmography?.length === 1;
+    });
+    const producedFilm = await page.evaluate(() => {
+      const saved = JSON.parse(localStorage.getItem('hekayat_hayah_save_v1') || 'null');
+      const studio = saved.filmStudio;
+      const film = studio.filmography[studio.filmography.length - 1];
+      const actor = studio.actorRoster.find(item => item.id === film.actorId);
+      return { actorCount: studio.actorRoster.length, actor, film, pendingProject: studio.pendingProject,
+        pendingAuditions: studio.pendingAuditions };
+    });
+    assert.equal(producedFilm.actorCount, 1, 'an auditioned actor should be added to the persistent studio roster');
+    assert.ok(producedFilm.actor, 'the selected lead actor should remain in the studio roster');
+    assert.equal(producedFilm.actor.name, producedFilm.film.leadActor, 'the film record should retain its lead actor');
+    assert.equal(producedFilm.actor.projects, 1, 'the actor profile should count the completed film');
+    assert.equal(typeof producedFilm.film.actorDrama, 'boolean', 'the production should record whether an on-set conflict occurred');
+    assert.equal(producedFilm.film.totalCost,
+      producedFilm.film.budget + producedFilm.film.castCost + producedFilm.film.marketingCost + producedFilm.film.actorFee,
+      'the film budget should include the lead actor fee and the selected production/marketing tiers');
+    assert.equal(producedFilm.pendingProject, null, 'a completed film should clear the saved pending project');
+    assert.equal(producedFilm.pendingAuditions.length, 0, 'a completed film should clear stale audition candidates');
+    await page.evaluate(({ save, perks }) => {
+      localStorage.setItem('hekayat_hayah_save_v1', save);
+      if (perks === null) localStorage.removeItem('hayah_permanent_perks_v1');
+      else localStorage.setItem('hayah_permanent_perks_v1', perks);
+    }, { save: originalFilmSave, perks: originalFilmPerks });
+    await page.reload({ waitUntil: 'domcontentloaded' });
+
     const originalBoostSave = await page.evaluate(() => localStorage.getItem('hekayat_hayah_save_v1'));
     await page.evaluate(() => {
       const key = 'hekayat_hayah_save_v1';
@@ -1897,7 +1959,7 @@ async function run() {
 
     assert.deepEqual(pageErrors, [], 'the browser run should complete without uncaught JavaScript errors');
 
-    console.log('PASS: mobile layout, legacy v1 load, persistence, rewind, complete backup bundle export/import, auxiliary data restoration, JSON import, inheritance, insolvent estate, career promotion migration, annual supplier market, persistent competitor market, facilities and production capacity, researched and instinct product launches, product pricing, annual product sales, business reports, independent portfolio-company operations, and business credit accrual, repayment, persistence, sale settlement, unpaid-interest capitalization, underwater-sale protection, industry tax assessment, tax arrears, loss exemption, treasury-only tax payment, and annual tax reconciliation, fighter move mastery, one-use stamina recovery and legacy-save migration, fighter community relationships, friendly interactions, and named rival bouts.');
+    console.log('PASS: mobile layout, legacy v1 load, persistence, rewind, complete backup bundle export/import, auxiliary data restoration, JSON import, inheritance, insolvent estate, career promotion migration, annual supplier market, persistent competitor market, facilities and production capacity, researched and instinct product launches, product pricing, annual product sales, business reports, independent portfolio-company operations, and business credit accrual, repayment, persistence, sale settlement, unpaid-interest capitalization, underwater-sale protection, industry tax assessment, tax arrears, loss exemption, treasury-only tax payment, and annual tax reconciliation, fighter move mastery, one-use stamina recovery and legacy-save migration, fighter community relationships, friendly interactions, named rival bouts, and director actor auditions with persistent cast profiles and on-set conflict effects.');
     await context.close();
   } finally {
     if (browser) await browser.close();
