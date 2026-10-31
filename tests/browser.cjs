@@ -137,7 +137,7 @@ async function run() {
         localStorage.setItem('__hayah_browser_test_seeded', 'yes');
       }
       if (!localStorage.getItem('hayah_ui_settings_v1')) {
-        localStorage.setItem('hayah_ui_settings_v1', JSON.stringify({theme:'light',textScale:'normal',sound:false,haptics:false,boosts:true}));
+        localStorage.setItem('hayah_ui_settings_v1', JSON.stringify({theme:'light',textScale:'normal',sound:false,haptics:false,boosts:true,combatTimingAssist:false}));
       }
       if (!localStorage.getItem('hekayat_hayah_cemetery_v1')) {
         localStorage.setItem('hekayat_hayah_cemetery_v1', JSON.stringify([
@@ -321,6 +321,7 @@ async function run() {
     const initialSensorySettings = await page.evaluate(() => JSON.parse(localStorage.getItem('hayah_ui_settings_v1') || '{}'));
     assert.equal(initialSensorySettings.sound, false, 'sound should be off by default');
     assert.equal(initialSensorySettings.haptics, false, 'haptics should be off by default');
+    assert.equal(initialSensorySettings.combatTimingAssist, false, 'combat timing assistance should be off by default');
     await page.locator('#menuBtn').click();
     assert.equal(await page.locator('#modalRoot .modal.drawer').count(), 1,
       'the main menu should use the same organized scrollable drawer as other sections');
@@ -386,6 +387,9 @@ async function run() {
     const enabledSensorySettings = await page.evaluate(() => JSON.parse(localStorage.getItem('hayah_ui_settings_v1') || '{}'));
     assert.equal(enabledSensorySettings.sound, true, 'sound setting should persist when enabled');
     assert.equal(enabledSensorySettings.haptics, true, 'haptics setting should persist when enabled');
+    await page.locator('.choice').filter({ hasText: 'مساعدة توقيت القتال: متوقفة' }).click();
+    const enabledCombatAssist = await page.evaluate(() => JSON.parse(localStorage.getItem('hayah_ui_settings_v1') || '{}'));
+    assert.equal(enabledCombatAssist.combatTimingAssist, true, 'combat timing assistance should persist independently of the life save');
     await page.keyboard.press('Escape');
     await page.waitForFunction(() => !document.querySelector('#modalRoot [role="dialog"]'));
 
@@ -1768,15 +1772,16 @@ async function run() {
     await page.locator('.choice').filter({ hasText: 'المهن الخاصة والشهرة' }).click();
     await page.locator('.choice').filter({ hasText: 'إدارة مسيرة القتال' }).click();
     await page.locator('.choice').filter({ hasText: 'نزال شوارع' }).click();
-    await page.waitForFunction(() => document.querySelector('#modalRoot')?.textContent.includes('استجابة سريعة خلال 1.8 ثانية'));
+    await page.waitForFunction(() => document.querySelector('#modalRoot')?.textContent.includes('مساعدة التوقيت مفعّلة'));
+    assert.equal(await page.locator('.combat-reaction-clock').count(), 0, 'assisted combat should not require a visible countdown');
     await page.locator('.choice').filter({ hasText: 'صد محكم' }).click();
     const firstReactionTiming = await page.evaluate(() => {
       const pending = JSON.parse(localStorage.getItem('hekayat_hayah_save_v1') || 'null').combatCareer.pendingBout;
-      return { elapsed: pending.reactionTimeMs, openedAt: pending.reactionWindowStartedAt };
+      return { elapsed: pending.reactionTimeMs, openedAt: pending.reactionWindowStartedAt, assist: pending.reactionTimingAssist };
     });
-    assert.ok(Number.isFinite(firstReactionTiming.elapsed) && firstReactionTiming.elapsed >= 0,
-      'the selected reaction should persist its measured response time before a reload');
-    assert.equal(firstReactionTiming.openedAt, null, 'the response window should close after a reaction is chosen');
+    assert.equal(firstReactionTiming.elapsed, null, 'assisted combat should not measure or require a reaction time');
+    assert.equal(firstReactionTiming.assist, true, 'the selected response should preserve its accessibility mode');
+    assert.equal(firstReactionTiming.openedAt, null, 'the assisted response should not create a countdown timestamp');
     await page.reload({ waitUntil: 'domcontentloaded' });
     await page.locator('[data-panel="career"]').click();
     await page.locator('.choice').filter({ hasText: 'المهن الخاصة والشهرة' }).click();
@@ -1821,7 +1826,7 @@ async function run() {
         })),
         reactionRounds: bout && bout.rounds && bout.rounds.map(round => ({
           reaction: round.reactionId, quality: round.reactionQuality, intent: round.intentStyle,
-          timingMs: round.reactionTimeMs, timingBonus: round.reactionTimingBonus
+          timingMs: round.reactionTimeMs, timingBonus: round.reactionTimingBonus, assisted: round.reactionTimingAssist
         })) };
     });
     assert.equal(completedCombat.pending, null, 'completed bouts should clear the pending session');
@@ -1843,12 +1848,12 @@ async function run() {
       'every round should retain the selected defensive response');
     assert.ok(completedCombat.reactionRounds.every(round => ['ممتاز','مقبول','مكشوف'].includes(round.quality)),
       'every response should record its matchup quality');
-    assert.ok(completedCombat.reactionRounds.every(round => Number.isFinite(round.timingMs) && round.timingMs >= 0 && round.timingMs <= 60000),
-      'every new reaction should retain its measured timing across the completed bout');
+    assert.ok(completedCombat.reactionRounds.every(round => round.timingMs === null && round.assisted === true),
+      'assisted reactions should retain their untimed accessibility mode across the completed bout');
     assert.ok(completedCombat.reactionRounds.every(round => [0, 4].includes(round.timingBonus)),
       'timing should award only the quick-response bonus and never penalize a slower player');
-    assert.ok(completedCombat.reactionRounds.every(round => round.timingBonus === (round.timingMs <= 1800 ? 4 : 0)),
-      'the saved timing bonus should match the 1.8-second response window');
+    assert.ok(completedCombat.reactionRounds.every(round => round.timingBonus === 4),
+      'assisted reactions should receive the same fixed bonus without a speed requirement');
 
     await page.locator('.choice').filter({ hasText: 'إدارة مسيرة القتال' }).click();
     await page.locator('.choice').filter({ hasText: 'مجتمع المقاتلين' }).click();
