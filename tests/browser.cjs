@@ -1768,7 +1768,15 @@ async function run() {
     await page.locator('.choice').filter({ hasText: 'المهن الخاصة والشهرة' }).click();
     await page.locator('.choice').filter({ hasText: 'إدارة مسيرة القتال' }).click();
     await page.locator('.choice').filter({ hasText: 'نزال شوارع' }).click();
+    await page.waitForFunction(() => document.querySelector('#modalRoot')?.textContent.includes('استجابة سريعة خلال 1.8 ثانية'));
     await page.locator('.choice').filter({ hasText: 'صد محكم' }).click();
+    const firstReactionTiming = await page.evaluate(() => {
+      const pending = JSON.parse(localStorage.getItem('hekayat_hayah_save_v1') || 'null').combatCareer.pendingBout;
+      return { elapsed: pending.reactionTimeMs, openedAt: pending.reactionWindowStartedAt };
+    });
+    assert.ok(Number.isFinite(firstReactionTiming.elapsed) && firstReactionTiming.elapsed >= 0,
+      'the selected reaction should persist its measured response time before a reload');
+    assert.equal(firstReactionTiming.openedAt, null, 'the response window should close after a reaction is chosen');
     await page.reload({ waitUntil: 'domcontentloaded' });
     await page.locator('[data-panel="career"]').click();
     await page.locator('.choice').filter({ hasText: 'المهن الخاصة والشهرة' }).click();
@@ -1812,7 +1820,8 @@ async function run() {
           recovery: round.energyRecovery, after: round.energyAfter
         })),
         reactionRounds: bout && bout.rounds && bout.rounds.map(round => ({
-          reaction: round.reactionId, quality: round.reactionQuality, intent: round.intentStyle
+          reaction: round.reactionId, quality: round.reactionQuality, intent: round.intentStyle,
+          timingMs: round.reactionTimeMs, timingBonus: round.reactionTimingBonus
         })) };
     });
     assert.equal(completedCombat.pending, null, 'completed bouts should clear the pending session');
@@ -1834,6 +1843,12 @@ async function run() {
       'every round should retain the selected defensive response');
     assert.ok(completedCombat.reactionRounds.every(round => ['ممتاز','مقبول','مكشوف'].includes(round.quality)),
       'every response should record its matchup quality');
+    assert.ok(completedCombat.reactionRounds.every(round => Number.isFinite(round.timingMs) && round.timingMs >= 0 && round.timingMs <= 60000),
+      'every new reaction should retain its measured timing across the completed bout');
+    assert.ok(completedCombat.reactionRounds.every(round => [0, 4].includes(round.timingBonus)),
+      'timing should award only the quick-response bonus and never penalize a slower player');
+    assert.ok(completedCombat.reactionRounds.every(round => round.timingBonus === (round.timingMs <= 1800 ? 4 : 0)),
+      'the saved timing bonus should match the 1.8-second response window');
 
     await page.locator('.choice').filter({ hasText: 'إدارة مسيرة القتال' }).click();
     await page.locator('.choice').filter({ hasText: 'مجتمع المقاتلين' }).click();
