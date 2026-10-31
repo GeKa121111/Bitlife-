@@ -1369,6 +1369,7 @@ test('مهرجان السينما يسجل كل فيلم مرة واحدة وي�
   const film = { id: 101, title: 'حكاية اختبارية', genre: 'دراما إنسانية',
     criticScore: 100, success: true, actorDrama: false, totalCost: 20000, net: 10000, boxOffice: 30000 };
   const context = {
+    filmStudioMenu() {},
     filmGenreCatalog: [{ id: 'drama' }],
     filmBudgetCatalog: [{ id: 'indie' }],
     filmCreativeCatalog: [{ id: 'artistic' }],
