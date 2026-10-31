@@ -930,6 +930,9 @@ async function run() {
       }];
       localStorage.setItem(key, JSON.stringify(saved));
     });
+    const cemeteryCountBeforeDeath = await page.evaluate(() =>
+      JSON.parse(localStorage.getItem('hekayat_hayah_cemetery_v1') || '[]').length
+    );
     await page.reload({ waitUntil: 'domcontentloaded' });
     await page.evaluate(() => {
       const originalSetItem = Storage.prototype.setItem;
@@ -953,7 +956,8 @@ async function run() {
       return { cemeterySaved: saved.cemeterySaved, cemeteryCount: cemetery.length, lifeId: saved.lifeId };
     });
     assert.equal(pendingArchive.cemeterySaved, false);
-    assert.equal(pendingArchive.cemeteryCount, 0);
+    assert.equal(pendingArchive.cemeteryCount, cemeteryCountBeforeDeath,
+      'a failed archive must leave the pre-existing cemetery unchanged');
     const archivedParentId = pendingArchive.lifeId;
     assert.equal(await deathDialog.getAttribute('role'), 'dialog', 'the end-of-life screen should be announced as a dialog');
     assert.equal(await deathDialog.getAttribute('aria-modal'), 'true', 'the end-of-life screen should be modal to assistive technology');
