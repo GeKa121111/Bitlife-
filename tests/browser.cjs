@@ -1769,6 +1769,11 @@ async function run() {
     await page.locator('.choice').filter({ hasText: 'إدارة مسيرة القتال' }).click();
     await page.locator('.choice').filter({ hasText: 'نزال شوارع' }).click();
     await page.locator('.choice').filter({ hasText: 'صد محكم' }).click();
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await page.locator('[data-panel="career"]').click();
+    await page.locator('.choice').filter({ hasText: 'المهن الخاصة والشهرة' }).click();
+    await page.locator('.choice').filter({ hasText: 'إدارة مسيرة القتال' }).click();
+    await page.waitForFunction(() => document.querySelector('#modalRoot')?.textContent.includes('رد فعلك: صد محكم'));
     await page.locator('.choice').filter({ hasText: 'لكمة خاطفة' }).click();
     await page.reload({ waitUntil: 'domcontentloaded' });
     const firstMoveMastery = await page.evaluate(() => {
