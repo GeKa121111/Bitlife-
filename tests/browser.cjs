@@ -1827,6 +1827,10 @@ async function run() {
         reactionRounds: bout && bout.rounds && bout.rounds.map(round => ({
           reaction: round.reactionId, quality: round.reactionQuality, intent: round.intentStyle,
           timingMs: round.reactionTimeMs, timingBonus: round.reactionTimingBonus, assisted: round.reactionTimingAssist
+        })),
+        impactRounds: bout && bout.rounds && bout.rounds.map(round => ({
+          healthBefore: round.healthBefore, healthDamage: round.healthDamage, healthAfter: round.healthAfter,
+          injuryBefore: round.injuryBefore, injuryGain: round.injuryGain, injuryAfter: round.injuryAfter
         })) };
     });
     assert.equal(completedCombat.pending, null, 'completed bouts should clear the pending session');
@@ -1854,6 +1858,19 @@ async function run() {
       'timing should award only the quick-response bonus and never penalize a slower player');
     assert.ok(completedCombat.reactionRounds.every(round => round.timingBonus === 4),
       'assisted reactions should receive the same fixed bonus without a speed requirement');
+    assert.equal(completedCombat.impactRounds.length, 3, 'every completed round should record incoming health and injury impact');
+    for (const round of completedCombat.impactRounds) {
+      assert.ok(Number.isFinite(round.healthBefore) && Number.isFinite(round.healthDamage) && Number.isFinite(round.healthAfter));
+      assert.equal(round.healthAfter, Math.max(0, round.healthBefore - round.healthDamage),
+        'round health damage should be applied exactly once and remain visible in the save');
+      assert.equal(round.injuryAfter, Math.min(100, round.injuryBefore + round.injuryGain),
+        'round injury should be applied exactly once and remain visible in the save');
+      assert.ok(round.healthDamage >= 0 && round.healthDamage <= 9 && round.injuryGain >= 0 && round.injuryGain <= 2);
+    }
+    assert.equal(completedCombat.bout.healthDamage,
+      completedCombat.impactRounds.reduce((sum, round) => sum + round.healthDamage, 0));
+    assert.equal(completedCombat.bout.roundInjuryGain,
+      completedCombat.impactRounds.reduce((sum, round) => sum + round.injuryGain, 0));
 
     await page.locator('.choice').filter({ hasText: 'إدارة مسيرة القتال' }).click();
     await page.locator('.choice').filter({ hasText: 'مجتمع المقاتلين' }).click();
