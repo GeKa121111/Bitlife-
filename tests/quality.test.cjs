@@ -1261,7 +1261,7 @@ test('التعافي يستمر بعد إيقاف مسيرة القتال ولا
       return Math.max(min, Math.min(max, Math.round(Number(value) || 0)));
     }
   };
-  vm.runInNewContext(helperSource + '\\nglobalThis.advanceRecovery=advanceCombatRecovery;', context);
+  vm.runInNewContext(helperSource + '\nglobalThis.advanceRecovery=advanceCombatRecovery;', context);
 
   const singleYear = { injury: 40, injuryYears: 1 };
   assert.equal(context.advanceRecovery(singleYear), true);
@@ -1278,7 +1278,7 @@ test('التعافي يستمر بعد إيقاف مسيرة القتال ولا
   assert.deepEqual(JSON.parse(JSON.stringify(healed)), { injury: 0, injuryYears: 0 });
 
   const ageStart = app.indexOf('function advanceAge(){');
-  const ageEnd = app.indexOf('\\nfunction ', ageStart + 1);
+  const ageEnd = app.indexOf('\nfunction ', ageStart + 1);
   assert.ok(ageStart >= 0 && ageEnd > ageStart, 'annual progression should be available for inspection');
   const ageSource = app.slice(ageStart, ageEnd);
   const recoveryIndex = ageSource.indexOf('advanceCombatRecovery(state.combatCareer)');
