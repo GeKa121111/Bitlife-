@@ -800,6 +800,44 @@ async function run() {
     assert.equal(exported.settings.textScale, 'normal', 'export must include display preferences');
     assert.equal(exported.perks.owned.fighterPack, true, 'export must include locally owned permanent perks');
 
+    // A damaged local cemetery must stop export rather than create a partial backup.
+    const corruptCemeteryRaw = '{broken-json';
+    await page.evaluate(raw => localStorage.setItem('hekayat_hayah_cemetery_v1', raw), corruptCemeteryRaw);
+    let corruptCemeteryDownload = false;
+    page.once('download', () => { corruptCemeteryDownload = true; });
+    await page.locator('#menuBtn').click();
+    await page.locator('.choice').filter({ hasText: 'تصدير الحفظ' }).click();
+    await page.getByText('سجل الحيوات السابقة غير قابل للقراءة', { exact: true }).waitFor();
+    await page.waitForTimeout(50);
+    assert.equal(corruptCemeteryDownload, false, 'an unreadable cemetery must not produce an incomplete backup');
+    assert.equal(await page.evaluate(() => localStorage.getItem('hekayat_hayah_cemetery_v1')), corruptCemeteryRaw,
+      'failed backup export must leave the unreadable cemetery bytes untouched');
+    await page.locator('.choice').filter({ hasText: 'تمام' }).last().click();
+    await page.evaluate(cemetery => localStorage.setItem('hekayat_hayah_cemetery_v1', JSON.stringify(cemetery)), exported.cemetery);
+
+    // A bundle with malformed cemetery entries must be rejected before any local store changes.
+    const beforeInvalidBundle = await page.evaluate(() => {
+      const saved = JSON.parse(localStorage.getItem('hekayat_hayah_save_v1') || 'null');
+      return { lifeId: saved && saved.lifeId, age: saved && saved.age, bank: saved && saved.bank };
+    });
+    const invalidBundleChooserPromise = page.waitForEvent('filechooser');
+    await page.locator('#menuBtn').click();
+    await page.locator('.choice').filter({ hasText: 'تحميل حفظ' }).click();
+    const invalidBundleChooser = await invalidBundleChooserPromise;
+    await invalidBundleChooser.setFiles({
+      name: 'invalid-cemetery-bundle.json',
+      mimeType: 'application/json',
+      buffer: Buffer.from(JSON.stringify({ ...exported, cemetery: [null] }))
+    });
+    await page.getByText('ملف حفظ غير صالح', { exact: true }).waitFor();
+    const afterInvalidBundle = await page.evaluate(() => {
+      const saved = JSON.parse(localStorage.getItem('hekayat_hayah_save_v1') || 'null');
+      return { lifeId: saved && saved.lifeId, age: saved && saved.age, bank: saved && saved.bank };
+    });
+    assert.deepEqual(afterInvalidBundle, beforeInvalidBundle,
+      'a bundle with malformed cemetery data must not replace the current life');
+    await page.locator('.choice').filter({ hasText: 'تمام' }).last().click();
+
     // Invalid JSON must be rejected without overwriting the current save.
     const beforeInvalidImport = await page.evaluate(() => {
       const saved = JSON.parse(localStorage.getItem('hekayat_hayah_save_v1') || 'null');
