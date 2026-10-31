@@ -186,6 +186,8 @@ async function run() {
 
     const shownName = (await page.locator('#characterName').innerText()).trim();
     assert.ok(shownName.includes(seedSave.name), 'the legacy v1 save should render the seeded player');
+    assert.equal((await page.locator('#lifeAnnouncement').textContent()).trim(), '',
+      'loading a saved life must not announce its existing diary history');
 
     const accessibleStats = await page.locator('#statsPanel [role="progressbar"]').evaluateAll(elements => elements.map(element => ({
       label: element.getAttribute('aria-label'),
@@ -245,8 +247,13 @@ async function run() {
 
     assert.equal(await page.locator('#lifeFeed').getAttribute('aria-live'), null,
       'the full diary should remain navigable without replaying every saved entry');
+    await page.evaluate(seed => {
+      localStorage.setItem('hekayat_hayah_save_v1', JSON.stringify(seed));
+      localStorage.removeItem('hekayat_hayah_save_backup_v1');
+    }, seedSave);
+    await page.reload({ waitUntil: 'domcontentloaded' });
     assert.equal((await page.locator('#lifeAnnouncement').textContent()).trim(), '',
-      'loading an existing life should not announce its entire saved history');
+      'reloading a saved life must not announce its entire existing history');
     await page.locator('#ageUpBtn').click();
     await page.waitForFunction(() => {
       const saved = JSON.parse(localStorage.getItem('hekayat_hayah_save_v1') || 'null');
