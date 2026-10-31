@@ -214,7 +214,7 @@ let state, dead=false, logBatchDepth=0, logBatchDirty=false, saveRecovered=false
 let renderedLogSnapshot=null, renderedFeedElement=null;
 let activeDialogKeyHandler=null, modalReturnFocus=null;
 let managedCompanyId = null;
-let uiSettings={theme:'light',textScale:'normal',sound:false,haptics:false,boosts:true};
+let uiSettings={theme:'light',textScale:'normal',sound:false,haptics:false,boosts:true,combatTimingAssist:false};
 const STAT_BOOST_CATALOG={
  happiness:{label:'السعادة',icon:'🌿',free:{title:'وقت مع شخص قريب',cost:0,gain:7,description:'خصص وقتًا لشخص ترتاح له، حتى لو بمكالمة قصيرة.'},paid:{title:'خروجة تغيّر الجو',cost:500,gain:12,description:'نشاط ترفيهي بسيط يساعدك تفصل عن الضغط.'}},
  health:{label:'الصحة',icon:'🩺',free:{title:'راحة وتعافٍ',cost:0,gain:5,description:'خفف المجهود وخد وقتًا كافيًا للراحة.'},paid:{title:'فحص طبي',cost:1200,gain:13,description:'اطمئن على حالتك من خلال زيارة طبية داخل اللعبة.'}},
@@ -444,7 +444,8 @@ const combatReactionCatalog=[
  {id:'dodge',title:'مراوغة جانبية',energyCost:3,description:'غيّر زاويتك لتفادي خط الهجوم.'},
  {id:'counter',title:'رد مضاد',energyCost:4,description:'اقرأ اندفاع المنافس وحاول الرد في توقيت مناسب.'}
 ];
-function combatReactionTiming(elapsedMs){
+function combatReactionTiming(elapsedMs,assisted=false){
+ if(assisted)return {elapsedMs:null,bonus:4,label:'مساعدة مفعّلة'};
  if(elapsedMs===null||elapsedMs===undefined)return {elapsedMs:null,bonus:0,label:'غير محسوبة'};
  const value=Number(elapsedMs);
  if(!Number.isFinite(value)||value<0)return {elapsedMs:null,bonus:0,label:'غير محسوبة'};
@@ -522,7 +523,8 @@ function normalizePendingCombatBout(raw){
    reactionOpponentBonus:Math.round(finite(item.reactionOpponentBonus,0,-10,10)),
    reactionCost:item.reactionCost==null?null:Math.round(finite(item.reactionCost,0,0,8)),
    reactionTimeMs:item.reactionTimeMs==null||!Number.isFinite(Number(item.reactionTimeMs))?null:Math.round(finite(item.reactionTimeMs,0,0,60000)),
-   reactionTimingBonus:Math.round(finite(item.reactionTimingBonus,0,0,4))
+   reactionTimingBonus:Math.round(finite(item.reactionTimingBonus,0,0,4)),
+   reactionTimingAssist:item.reactionTimingAssist===true
   };
  }).filter(Boolean);
  const last=history.length?history[history.length-1]:null;
@@ -547,7 +549,8 @@ function normalizePendingCombatBout(raw){
   communityFighterId:typeof raw.communityFighterId==='string'&&/^[a-z0-9-]{1,40}$/.test(raw.communityFighterId)?raw.communityFighterId:null,
   reactionId:['guard','dodge','counter'].includes(raw.reactionId)?raw.reactionId:'',
   reactionWindowStartedAt:raw.reactionWindowStartedAt==null||!Number.isFinite(Number(raw.reactionWindowStartedAt))?null:Math.round(finite(raw.reactionWindowStartedAt,0,0,9007199254740991)),
-  reactionTimeMs:raw.reactionTimeMs==null||!Number.isFinite(Number(raw.reactionTimeMs))?null:Math.round(finite(raw.reactionTimeMs,0,0,60000))
+  reactionTimeMs:raw.reactionTimeMs==null||!Number.isFinite(Number(raw.reactionTimeMs))?null:Math.round(finite(raw.reactionTimeMs,0,0,60000)),
+  reactionTimingAssist:raw.reactionTimingAssist===true
  };
 }
 function combatDifficultyLabel(rating){
@@ -4107,10 +4110,16 @@ function combatBoutRoundMenu(){
  const opponent=session.opponent,round=session.round;
  const intent=combatOpponentIntent(opponent,round,session.lastStyle);
  if(!session.reactionId){
-  if(!Number.isFinite(Number(session.reactionWindowStartedAt))||Number(session.reactionWindowStartedAt)<=0){session.reactionWindowStartedAt=Date.now();save();}
+  if(session.reactionTimingAssist!==true&&(!Number.isFinite(Number(session.reactionWindowStartedAt))||Number(session.reactionWindowStartedAt)<=0)){
+   session.reactionTimingAssist=uiSettings.combatTimingAssist===true;
+   if(!session.reactionTimingAssist)session.reactionWindowStartedAt=Date.now();
+   save();
+  }
   const elapsedSinceOpen=Math.max(0,Date.now()-Number(session.reactionWindowStartedAt));
   const animationDelay=Math.min(1800,elapsedSinceOpen);
-  const timingMarkup='<div class="combat-reaction-clock" aria-hidden="true"><span style="animation-delay:-'+animationDelay+'ms"></span></div><p class="combat-reaction-hint">استجابة سريعة خلال 1.8 ثانية تمنحك 4 نقاط إضافية. التأخر لا يخصم نقاطًا.</p>';
+  const timingMarkup=session.reactionTimingAssist===true
+   ?'<p class="combat-reaction-hint" role="status">مساعدة التوقيت مفعّلة: لا يوجد عدّ تنازلي أو استجابة سريعة مطلوبة، وتحصل على 4 نقاط ثابتة.</p>'
+   :'<div class="combat-reaction-clock" aria-hidden="true"><span style="animation-delay:-'+animationDelay+'ms"></span></div><p class="combat-reaction-hint">استجابة سريعة خلال 1.8 ثانية تمنحك 4 نقاط إضافية. التأخر لا يخصم نقاطًا.</p>';
   const reactionOptions=combatReactionCatalog.map(item=>{
    const effect=combatReactionEffect(intent.style,item.id);
    const qualityText=effect.quality==='ممتاز'?'أفضل رد متوقع':effect.quality==='مقبول'?'رد مقبول':'رد محفوف بالمخاطرة';
@@ -4145,7 +4154,8 @@ function chooseCombatReaction(reactionId){
  const reaction=combatReactionCatalog.find(item=>item.id===reactionId);
  if(!session||session.reactionId||!reaction){combatBoutRoundMenu();return;}
  const startedAt=Number(session.reactionWindowStartedAt);
- const timing=combatReactionTiming(session.reactionWindowStartedAt==null?null:Date.now()-startedAt);
+ const assisted=session.reactionTimingAssist===true;
+ const timing=combatReactionTiming(assisted?null:(session.reactionWindowStartedAt==null?null:Date.now()-startedAt),assisted);
  session.reactionId=reaction.id;
  session.reactionTimeMs=timing.elapsedMs;
  session.reactionWindowStartedAt=null;
@@ -4166,8 +4176,8 @@ function resolveCombatRound(actionId){
  const round=session.round,opponent=session.opponent;
  const intent=combatOpponentIntent(opponent,round,session.lastStyle),opponentStyle=intent.style;
  const reaction=combatReactionEffect(opponentStyle,session.reactionId);
- if(!reaction){session.reactionId='';session.reactionTimeMs=null;session.reactionWindowStartedAt=null;save();combatBoutRoundMenu();return;}
- const reactionTiming=combatReactionTiming(session.reactionTimeMs);
+ if(!reaction){session.reactionId='';session.reactionTimeMs=null;session.reactionWindowStartedAt=null;session.reactionTimingAssist=false;save();combatBoutRoundMenu();return;}
+ const reactionTiming=combatReactionTiming(session.reactionTimeMs,session.reactionTimingAssist===true);
  const masteryUses=learnedMove?Math.max(0,Number(c.moveMastery[move.id])||0):0;
  const masteryLevel=learnedMove?combatMoveMasteryLevel(masteryUses):0;
  const masteryBonus=learnedMove?combatMoveMasteryBonus(masteryUses):0;
@@ -4188,7 +4198,7 @@ function resolveCombatRound(actionId){
  session.roundHistory.push({round,actionId:move.id,actionTitle:move.title,style:move.style,opponentStyle,playerScore,opponentScore,masteryLevel,masteryBonus,masteryUses:nextMasteryUses,
   intentStyle:intent.style,intentTitle:intent.title,reactionId:reaction.id,reactionTitle:reaction.title,reactionQuality:reaction.quality,
   reactionPlayerBonus:reaction.playerBonus,reactionOpponentBonus:reaction.opponentBonus,reactionCost:energyResult.reactionCost,
-  reactionTimeMs:reactionTiming.elapsedMs,reactionTimingBonus:reactionTiming.bonus,
+  reactionTimeMs:reactionTiming.elapsedMs,reactionTimingBonus:reactionTiming.bonus,reactionTimingAssist:session.reactionTimingAssist===true,
   energyBefore:energyResult.before,energyCost:energyResult.energyCost,energyRecovery:energyResult.energyRecovery,energyAfter:energyResult.after});
  session.lastStyle=move.style;session.lastMoveId=move.id;
  log('🥊','انتهت الجولة '+round,move.title+' · إشارة المنافس '+intent.title+' · ردك '+reaction.title+' ('+reaction.quality+') · توقيت الاستجابة '+reactionTiming.label+(reactionTiming.bonus?' +'+reactionTiming.bonus+' نقاط':'')+' · نقاط الجولة '+Math.round(playerScore)+' مقابل '+Math.round(opponentScore)+' · الطاقة المتبقية '+c.energy+'%.'+(energyResult.energyRecovery?' · استعدت '+energyResult.energyRecovery+' طاقة.':''),'');
@@ -4203,7 +4213,7 @@ function resolveCombatRound(actionId){
   resolveCombatBout(completed.mode,completed.opponent,move.id,probability,completed);
   return;
  }
- session.round=session.roundHistory.length+1;session.reactionId='';session.reactionTimeMs=null;session.reactionWindowStartedAt=null;
+ session.round=session.roundHistory.length+1;session.reactionId='';session.reactionTimeMs=null;session.reactionWindowStartedAt=null;session.reactionTimingAssist=false;
  save();render();combatBoutRoundMenu();
 }
 function resolveCombatBout(mode,opponent,moveId,probabilityOverride=null,session=null){
@@ -5519,14 +5529,15 @@ function applyUiSettings(){
 }
 
 function normalizeUiSettings(raw){
- const defaults={theme:'light',textScale:'normal',sound:false,haptics:false,boosts:true};
+ const defaults={theme:'light',textScale:'normal',sound:false,haptics:false,boosts:true,combatTimingAssist:false};
  if(!raw||typeof raw!=='object'||Array.isArray(raw))return defaults;
  return {
   theme:['dark','light','gold'].includes(raw.theme)?raw.theme:defaults.theme,
   textScale:raw.textScale==='large'?'large':defaults.textScale,
   sound:typeof raw.sound==='boolean'?raw.sound:defaults.sound,
   haptics:typeof raw.haptics==='boolean'?raw.haptics:defaults.haptics,
-  boosts:typeof raw.boosts==='boolean'?raw.boosts:defaults.boosts
+  boosts:typeof raw.boosts==='boolean'?raw.boosts:defaults.boosts,
+  combatTimingAssist:typeof raw.combatTimingAssist==='boolean'?raw.combatTimingAssist:defaults.combatTimingAssist
  };
 }
 function loadUiSettings(){
@@ -5571,8 +5582,9 @@ function settingsMenu(){
   choice('🔤',uiSettings.textScale==='large'?'حجم النص: كبير':'حجم النص: عادي','كبّر نص سجل الأحداث والقرارات لسهولة القراءة.',()=>{uiSettings.textScale=uiSettings.textScale==='large'?'normal':'large';persistUiSettings();settingsMenu();}),
   choice(uiSettings.sound?'🔊':'🔇',uiSettings.sound?'الأصوات: مفعّلة':'الأصوات: متوقفة','نغمة قصيرة أصلية عند اختيار قرار أو التقدم سنة. لا تعمل إلا بعد تفعيلها.',()=>{uiSettings.sound=!uiSettings.sound;persistUiSettings();settingsMenu();}),
   choice(uiSettings.haptics?'📳':'📴',uiSettings.haptics?'الاهتزاز: مفعّل':'الاهتزاز: متوقف','اهتزاز خفيف عند القرارات والتقدم سنة، إذا كان المتصفح والجهاز يدعمانه.',()=>{uiSettings.haptics=!uiSettings.haptics;persistUiSettings();settingsMenu();}),
+  choice(uiSettings.combatTimingAssist?'🧭':'⏱️',uiSettings.combatTimingAssist?'مساعدة توقيت القتال: مفعّلة':'مساعدة توقيت القتال: متوقفة','عند التفعيل لا تحتاج إلى استجابة سريعة؛ تحصل على مكافأة توقيت ثابتة قدرها 4 نقاط. يطبق الاختيار من الجولة التالية.',()=>{uiSettings.combatTimingAssist=!uiSettings.combatTimingAssist;persistUiSettings();settingsMenu();}),
   choice(uiSettings.boosts?'✨':'▫️',uiSettings.boosts?'فرص تحسين الإحصاءات: مفعّلة':'فرص تحسين الإحصاءات: متوقفة','تظهر فرصة واحدة في السنة عند انخفاض أحد الإحصاءات الأساسية، مع اختيار مجاني أو مدفوع.',()=>{uiSettings.boosts=!uiSettings.boosts;persistUiSettings();renderStats();settingsMenu();}),
-  choice('↩️','استعادة إعدادات العرض الافتراضية','العودة للوضع الفاتح وحجم النص العادي وإيقاف الصوت والاهتزاز.',()=>{uiSettings={theme:'light',textScale:'normal',sound:false,haptics:false,boosts:true};persistUiSettings();renderStats();settingsMenu();})
+  choice('↩️','استعادة إعدادات العرض الافتراضية','العودة للوضع الفاتح وحجم النص العادي وإيقاف الصوت والاهتزاز.',()=>{uiSettings={theme:'light',textScale:'normal',sound:false,haptics:false,boosts:true,combatTimingAssist:false};persistUiSettings();renderStats();settingsMenu();})
  ];
  if(perkOwned('goldTheme'))opts.push(choice(uiSettings.theme==='gold'?'⭐':'🌟',uiSettings.theme==='gold'?'إيقاف الطابع الذهبي':'تفعيل الطابع الذهبي','هوية لونية ذهبية أصلية للعبة حياة.',()=>togglePremiumPerk('goldTheme')));
  else opts.push(choice('⭐','الطابع الذهبي','افتحه من متجر مزايا حياة لتفعيله من هنا.',premiumPerksMenu));
