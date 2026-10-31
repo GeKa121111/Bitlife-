@@ -4235,32 +4235,111 @@ const filmMarketingCatalog=[
  {id:'social',title:'حملة منصات',cost:2500,successBonus:2,audienceBonus:8,desc:'حملة رقمية بميزانية متوسطة.'},
  {id:'wide',title:'إطلاق واسع',cost:8500,successBonus:5,audienceBonus:18,desc:'توزيع وتسويق أوسع وتكلفة أكبر.'}
 ];
+function normalizeFilmActor(raw){
+ if(!raw||typeof raw!=='object'||Array.isArray(raw))return null;
+ const id=typeof raw.id==='string'?raw.id.trim().slice(0,96):'',name=typeof raw.name==='string'?raw.name.trim().slice(0,64):'';
+ if(!/^film-actor-[a-z0-9-]{6,90}$/.test(id)||!name)return null;
+ const bounded=(value,fallback,min,max)=>{const number=Number(value);return clamp(Number.isFinite(number)?number:fallback,min,max);};
+ const genreId=filmGenreCatalog.some(genre=>genre.id===raw.genreId)?raw.genreId:'general';
+ return {id,name,genreId,acting:bounded(raw.acting,50,20,100),professionalism:bounded(raw.professionalism,60,0,100),ego:bounded(raw.ego,40,0,100),genreFit:bounded(raw.genreFit,55,0,100),fee:bounded(raw.fee,3500,0,1000000),projects:bounded(raw.projects,0,0,1000)};
+}
+function createFilmActorCandidate(genreId){
+ const gender=chance(.5)?'male':'female',acting=45+Math.floor(Math.random()*51),professionalism=40+Math.floor(Math.random()*56),ego=15+Math.floor(Math.random()*81),genreFit=40+Math.floor(Math.random()*56);
+ return normalizeFilmActor({id:'film-actor-'+Date.now()+'-'+Math.random().toString(36).slice(2,8),name:pick(names[gender])+' '+pick(names.family),genreId,acting,professionalism,ego,genreFit,fee:1800+acting*72+genreFit*18,projects:0});
+}
+function filmActorImpact(actor,genreId,actorDrama=false){
+ if(!actor)return {successBonus:-8,criticBonus:-5,dramaRisk:0,dramaPenalty:0};
+ const acting=clamp(actor.acting),professionalism=clamp(actor.professionalism),ego=clamp(actor.ego),fit=actor.genreId===genreId?clamp(actor.genreFit):Math.max(20,clamp(actor.genreFit)-18);
+ const dramaRisk=clamp(Math.round(ego*.45+(100-professionalism)*.55));
+ const dramaPenalty=actorDrama?Math.max(2,Math.round(dramaRisk/14)):0;
+ return {
+  successBonus:clamp(Math.round((acting-60)*.12+(fit-60)*.10+(professionalism-60)*.06)-dramaPenalty,-12,12),
+  criticBonus:clamp(Math.round((acting-60)*.10+(fit-60)*.08)-(actorDrama?4:0),-8,10),
+  dramaRisk,dramaPenalty
+ };
+}
 function createFilmStudio(){
- return {filmography:[],projects:0,totalBudget:0,totalBoxOffice:0,awards:0,bestCritic:0,genreFocus:null};
+ return {filmography:[],projects:0,totalBudget:0,totalBoxOffice:0,awards:0,bestCritic:0,genreFocus:null,actorRoster:[],pendingAuditions:[],pendingAuditionGenre:null,pendingProject:null};
 }
 function ensureFilmStudio(){
  if(!state)return null;
- if(!state.filmStudio||typeof state.filmStudio!=='object')state.filmStudio=createFilmStudio();
- const defaults={filmography:[],projects:0,totalBudget:0,totalBoxOffice:0,awards:0,bestCritic:0,genreFocus:null};
- Object.keys(defaults).forEach(k=>{if(state.filmStudio[k]===undefined||state.filmStudio[k]===null)state.filmStudio[k]=defaults[k];});
- if(!Array.isArray(state.filmStudio.filmography))state.filmStudio.filmography=[];
- state.filmStudio.projects=Math.max(0,Number(state.filmStudio.projects)||0);state.filmStudio.awards=Math.max(0,Number(state.filmStudio.awards)||0);
- if(state.filmStudio.genreFocus&&!filmGenreCatalog.some(g=>g.id===state.filmStudio.genreFocus))state.filmStudio.genreFocus=null;
- return state.filmStudio;
+ if(!state.filmStudio||typeof state.filmStudio!=='object'||Array.isArray(state.filmStudio))state.filmStudio=createFilmStudio();
+ const studio=state.filmStudio,defaults={filmography:[],projects:0,totalBudget:0,totalBoxOffice:0,awards:0,bestCritic:0,genreFocus:null,actorRoster:[],pendingAuditions:[],pendingAuditionGenre:null,pendingProject:null};
+ Object.keys(defaults).forEach(key=>{if(studio[key]===undefined||studio[key]===null)studio[key]=defaults[key];});
+ if(!Array.isArray(studio.filmography))studio.filmography=[];
+ studio.projects=Math.max(0,Number(studio.projects)||0);studio.awards=Math.max(0,Number(studio.awards)||0);
+ if(studio.genreFocus&&!filmGenreCatalog.some(genre=>genre.id===studio.genreFocus))studio.genreFocus=null;
+ const seenActors=new Set();
+ studio.actorRoster=(Array.isArray(studio.actorRoster)?studio.actorRoster:[]).map(normalizeFilmActor).filter(actor=>{if(!actor||seenActors.has(actor.id))return false;seenActors.add(actor.id);return true;}).slice(0,12);
+ const seenAuditions=new Set();
+ studio.pendingAuditions=(Array.isArray(studio.pendingAuditions)?studio.pendingAuditions:[]).map(normalizeFilmActor).filter(actor=>{if(!actor||seenAuditions.has(actor.id))return false;seenAuditions.add(actor.id);return true;}).slice(0,3);
+ if(!filmGenreCatalog.some(genre=>genre.id===studio.pendingAuditionGenre))studio.pendingAuditionGenre=null;
+ const project=studio.pendingProject;
+ const projectGenre=project&&filmGenreCatalog.find(genre=>genre.id===project.genreId);
+ const projectBudget=project&&filmBudgetCatalog.find(budget=>budget.id===project.budgetId);
+ const projectStyle=project&&filmCreativeCatalog.find(style=>style.id===project.creativeId);
+ studio.pendingProject=projectGenre&&projectBudget&&projectStyle?{genreId:projectGenre.id,budgetId:projectBudget.id,creativeId:projectStyle.id}:null;
+ return studio;
 }
 
+function filmActorRosterMenu(){
+ const studio=ensureFilmStudio(),opts=studio.actorRoster.map(actor=>choice('🎭',actor.name,'الموهبة '+actor.acting+'% · الانضباط '+actor.professionalism+'% · الغرور '+actor.ego+'% · التوافق النوعي '+actor.genreFit+'% · شارك في '+actor.projects+' أفلام · أجره '+cash(actor.fee)+'.',()=>{closeModal();info('🎭',actor.name,'ممثل متعاقد مع الاستوديو. الموهبة '+actor.acting+'%، الانضباط '+actor.professionalism+'%، الغرور '+actor.ego+'%، وشارك في '+actor.projects+' أفلام.');}));
+ if(!opts.length)opts.push(choice('🌱','لا يوجد ممثلون متعاقدون','ابدأ مشروعًا جديدًا ثم أجرِ اختبارات أداء لاكتشاف أول موهبة.',closeModal));
+ opts.push(choice('↩️','العودة إلى الاستوديو','',filmStudioMenu));
+ modal('🎭','الممثلون المتعاقدون','قائمة المواهب التي اكتشفها الاستوديو وسجل مشاركاتها.',opts);
+}
+function filmActorMenu(genreId,budgetId,creativeId){
+ const studio=ensureFilmStudio();
+ if(!studio.pendingProject||studio.pendingProject.genreId!==genreId||studio.pendingProject.budgetId!==budgetId||studio.pendingProject.creativeId!==creativeId){filmStudioMenu();return;}
+ const opts=studio.actorRoster.map(actor=>choice('🎭',actor.name,'الموهبة '+actor.acting+'% · الانضباط '+actor.professionalism+'% · التوافق مع النوع '+(actor.genreId===genreId?actor.genreFit:Math.max(20,actor.genreFit-18))+'% · أجر الفيلم '+cash(actor.fee)+'.',()=>filmCastMenu(genreId,budgetId,creativeId,actor.id)));
+ if(studio.pendingAuditions.length&&studio.pendingAuditionGenre===genreId)opts.unshift(choice('📋','استكمال اختبارات الأداء','لديك '+studio.pendingAuditions.length+' مرشحين محفوظين للمشروع الحالي.',()=>filmAuditionResultsMenu(genreId,budgetId,creativeId,false)));
+ if(studio.actorRoster.length<12)opts.push(choice('🎟️','اختبارات أداء جديدة','قابل 3 مرشحين بمهارات وانضباط وتوافق وتكاليف مختلفة.',()=>filmAuditionResultsMenu(genreId,budgetId,creativeId,true)));
+ else opts.push(choice('🔒','اكتملت قائمة الممثلين','وصل الاستوديو إلى الحد الآمن البالغ 12 ممثلًا. اختر ممثلًا متعاقدًا أو راجع القائمة.',filmActorRosterMenu));
+ opts.push(choice('↩️','العودة إلى الاستوديو','',filmStudioMenu));
+ modal('🎭','اختيار الممثل الرئيسي','اختيار الممثل يؤثر على تكلفة الفيلم وفرص نجاحه واحتمال الخلافات أثناء التصوير.',opts);
+}
+function filmAuditionResultsMenu(genreId,budgetId,creativeId,refresh=false){
+ const studio=ensureFilmStudio();
+ if(!studio.pendingProject||studio.pendingProject.genreId!==genreId||studio.pendingProject.budgetId!==budgetId||studio.pendingProject.creativeId!==creativeId){filmStudioMenu();return;}
+ if(studio.actorRoster.length>=12){info('🎭','قائمة الممثلين مكتملة','لا يمكن إضافة مرشحين جدد قبل مراجعة القائمة الحالية.');filmActorMenu(genreId,budgetId,creativeId);return;}
+ if(refresh||studio.pendingAuditionGenre!==genreId||studio.pendingAuditions.length!==3){
+  studio.pendingAuditions=Array.from({length:3},()=>createFilmActorCandidate(genreId));
+  studio.pendingAuditionGenre=genreId;
+  save();
+ }
+ const opts=studio.pendingAuditions.map(actor=>choice('🎭',actor.name,'الموهبة '+actor.acting+'% · الانضباط '+actor.professionalism+'% · الغرور '+actor.ego+'% · التوافق النوعي '+actor.genreFit+'% · أجر الفيلم '+cash(actor.fee)+'.',()=>selectFilmActor(genreId,budgetId,creativeId,actor.id),cash(actor.fee)));
+ opts.push(choice('🔄','إعادة الاختبارات','غيّر المرشحين الثلاثة قبل توقيع اتفاق الفيلم.',()=>filmAuditionResultsMenu(genreId,budgetId,creativeId,true)));
+ opts.push(choice('↩️','العودة إلى الممثلين','',()=>filmActorMenu(genreId,budgetId,creativeId)));
+ modal('🎟️','نتائج اختبارات الأداء','اختار ممثلًا رئيسيًا. الموهبة والتوافق يرفعان الجودة، بينما الغرور وضعف الانضباط يزيدان خطر الخلافات.',opts);
+}
+function selectFilmActor(genreId,budgetId,creativeId,actorId){
+ const studio=ensureFilmStudio(),actor=studio.pendingAuditions.find(item=>item.id===actorId);
+ if(!actor){info('🎭','المرشح لم يعد متاحًا','أعد اختبارات الأداء للحصول على قائمة محدثة.');filmActorMenu(genreId,budgetId,creativeId);return;}
+ if(studio.actorRoster.length>=12){info('🎭','قائمة الممثلين مكتملة','راجع الممثلين المتعاقدين قبل إضافة موهبة جديدة.');filmActorMenu(genreId,budgetId,creativeId);return;}
+ if(!studio.actorRoster.some(item=>item.id===actor.id))studio.actorRoster.push(actor);
+ studio.pendingAuditions=[];studio.pendingAuditionGenre=null;
+ save();
+ filmCastMenu(genreId,budgetId,creativeId,actor.id);
+}
 function filmStudioMenu(){
  if(!validState()||!state.specialCareer||state.specialCareer.id!=='director'){info('🎬','استوديو الأفلام','ابدأ مسار إخراج الأفلام من المهن الخاصة أولًا.');return;}
  const studio=ensureFilmStudio(),focus=filmGenreCatalog.find(g=>g.id===studio.genreFocus),r=state.specialCareer.record||{};
- const summary='الأفلام '+studio.projects+' · الجوائز '+studio.awards+' · إجمالي شباك التذاكر '+cash(studio.totalBoxOffice)+' · أفضل تقييم '+studio.bestCritic+'%'+(focus?' · تخصص الاستوديو '+focus.title:' · من غير تخصص ثابت');
- modal('🎥','استوديو الأفلام',summary,[
-  choice('🎬','إنتاج فيلم جديد','اختار النوع والميزانية واتجاه القصة والطاقم والتسويق.',filmGenreMenu),
+ const summary='الأفلام '+studio.projects+' · الجوائز '+studio.awards+' · إجمالي شباك التذاكر '+cash(studio.totalBoxOffice)+' · أفضل تقييم '+studio.bestCritic+'% · الممثلون '+studio.actorRoster.length+(focus?' · تخصص الاستوديو '+focus.title:' · من غير تخصص ثابت');
+ const opts=[
+  choice('🎬','إنتاج فيلم جديد','اختار النوع والميزانية واتجاه القصة ثم اختبر الممثلين والطاقم والتسويق.',filmGenreMenu),
+  choice('🎭','إدارة الممثلين','راجع المواهب المتعاقدة ومستويات الموهبة والانضباط والمشاركات.',filmActorRosterMenu),
   choice('🎭','تحديد تخصص الاستوديو','اختار نوعًا يمنحك خبرة إضافية عندما تنتج فيه.',filmFocusMenu),
-  choice('🏆','سجل الأفلام','راجع الميزانيات والإيرادات وتقييم النقاد والجوائز.',filmographyMenu),
+  choice('🏆','سجل الأفلام','راجع الميزانيات والإيرادات وتقييم النقاد والجوائز والممثلين.',filmographyMenu),
   choice('📊','تقرير الاستوديو','المستوى الإخراجي '+fmt(state.specialCareer.level||1)+' · محاولات '+fmt(r.attempts||0)+' · نجاحات '+fmt(r.wins||0)+' · إخفاقات '+fmt(r.losses||0)+'.',()=>{closeModal();info('📊','تقرير الاستوديو',summary+' · دخل المسار المسجل '+cash(r.totalEarnings||0)+'.');}),
   choice('⭐','تدريب الإخراج','جلسة تدريب للمسار المتخصص.',trainSpecialCareer),
   choice('↩️','المهن الخاصة','',specialCareers)
- ]);
+ ];
+ if(studio.pendingProject){
+  const pendingGenre=filmGenreCatalog.find(genre=>genre.id===studio.pendingProject.genreId);
+  opts.unshift(choice('🗑️','إلغاء المشروع الجاري','إلغاء التجهيز دون خصم ميزانية أو تغيير سجل الأفلام.',()=>{studio.pendingProject=null;studio.pendingAuditions=[];studio.pendingAuditionGenre=null;save();filmStudioMenu();}));
+  opts.unshift(choice('▶️','استكمال المشروع الجاري','مشروع '+(pendingGenre?pendingGenre.title:'سينمائي')+' محفوظ ويمكنك متابعة اختيار الممثل.',()=>filmActorMenu(studio.pendingProject.genreId,studio.pendingProject.budgetId,studio.pendingProject.creativeId)));
+ }
+ modal('🎥','استوديو الأفلام',summary,opts);
 }
 function filmFocusMenu(){
  const studio=ensureFilmStudio(),genres=filmGenreCatalog.filter(g=>!g.packOnly||perkOwned('movieDirectorPack')),opts=genres.map(g=>choice(g.emoji,g.title,g.desc+' اختيار النوع ده كتخصص يزيد كفاءة مشاريع النوع نفسه.',()=>{closeModal();studio.genreFocus=g.id;log('🎬','تخصص الاستوديو','اخترت '+g.title+' كتخصص لاستوديو الأفلام.','good');save();render();filmStudioMenu();},'',g.id===studio.genreFocus?100:undefined));
@@ -4280,56 +4359,65 @@ function filmBudgetMenu(genreId){
 }
 function filmCreativeMenu(genreId,budgetId){
  const genre=filmGenreCatalog.find(g=>g.id===genreId),budget=filmBudgetCatalog.find(b=>b.id===budgetId);if(!genre||!budget){closeModal();filmStudioMenu();return;}
- const opts=filmCreativeCatalog.map(style=>choice('✍️',style.title,style.desc,()=>filmCastMenu(genreId,budgetId,style.id),'',style.criticBonus+20));
+ const opts=filmCreativeCatalog.map(style=>choice('✍️',style.title,style.desc,()=>{const studio=ensureFilmStudio();studio.pendingProject={genreId,budgetId,creativeId:style.id};studio.pendingAuditions=[];studio.pendingAuditionGenre=null;save();filmActorMenu(genreId,budgetId,style.id);},'',style.criticBonus+20));
  modal('📝','اتجاه القصة','اختار شكل الحكاية؛ قرارك يوازن بين فرصة النجاح الجماهيري وتقييم النقاد.',opts);
 }
-function filmCastMenu(genreId,budgetId,creativeId){
- const budget=filmBudgetCatalog.find(b=>b.id===budgetId),style=filmCreativeCatalog.find(x=>x.id===creativeId);if(!budget||!style){closeModal();filmStudioMenu();return;}
+function filmCastMenu(genreId,budgetId,creativeId,actorId){
+ const budget=filmBudgetCatalog.find(b=>b.id===budgetId),style=filmCreativeCatalog.find(x=>x.id===creativeId),studio=ensureFilmStudio(),actor=studio.actorRoster.find(item=>item.id===actorId);
+ if(!budget||!style||!actor){closeModal();filmActorMenu(genreId,budgetId,creativeId);return;}
  const castOptions=filmCastCatalog.map(cast=>'<option value="'+esc(cast.id)+'">'+esc(cast.title+' — '+cash(cast.cost))+'</option>').join('');
- const form='<div class="event-form"><label for="filmCastSelect">اختار طاقم التمثيل:</label><select id="filmCastSelect" data-surpriseable="true">'+castOptions+'</select><p class="field-note">اختيار الطاقم بيأثر على فرص النجاح والتقييم والتكلفة النهائية.</p></div>';
+ const form='<div class="event-form"><label for="filmCastSelect">اختار فئة طاقم الإنتاج:</label><select id="filmCastSelect" data-surpriseable="true">'+castOptions+'</select><p class="field-note">الممثل الرئيسي: '+esc(actor.name)+'. فئة الطاقم الإضافية تؤثر على التكلفة وفرص النجاح.</p></div>';
  const continueToMarketing=()=>{
   const selected=filmCastCatalog.find(cast=>cast.id===$('filmCastSelect')?.value);
-  if(!selected){info('🎭','اختار طاقم التمثيل','حدد طاقمًا من القائمة الأول.');return;}
-  filmMarketingMenu(genreId,budgetId,creativeId,selected.id);
+  if(!selected){info('🎭','اختار طاقم الإنتاج','حدد فئة طاقم من القائمة الأول.');return;}
+  filmMarketingMenu(genreId,budgetId,creativeId,selected.id,actorId);
  };
- modal('🎭','اختيار طاقم التمثيل','راجع ميزانية الفيلم واختار مستوى الطاقم قبل التسويق.',[
+ modal('🎭','اختيار طاقم الإنتاج','الممثل الرئيسي: '+actor.name+' · أجره '+cash(actor.fee)+'. اختار حجم فريق الإنتاج قبل التسويق.',[
   choice('➡️','متابعة إلى التسويق','اختيار الخطة التسويقية التالية.',continueToMarketing)
  ],true,form);
 }
 
-function filmMarketingMenu(genreId,budgetId,creativeId,castId){
- const opts=filmMarketingCatalog.map(marketing=>choice('📣',marketing.title,marketing.desc+' تكلفة التسويق '+cash(marketing.cost)+'.',()=>releaseFilm(genreId,budgetId,creativeId,castId,marketing.id),cash(marketing.cost)));
- modal('📣','خطة إطلاق الفيلم','اختار التسويق. إجمالي التكلفة هيظهر ويتراجع قبل تنفيذ الإنتاج.',opts);
+function filmMarketingMenu(genreId,budgetId,creativeId,castId,actorId){
+ const studio=ensureFilmStudio(),actor=studio.actorRoster.find(item=>item.id===actorId);
+ if(!actor){filmActorMenu(genreId,budgetId,creativeId);return;}
+ const opts=filmMarketingCatalog.map(marketing=>choice('📣',marketing.title,marketing.desc+' تكلفة التسويق '+cash(marketing.cost)+'.',()=>releaseFilm(genreId,budgetId,creativeId,castId,marketing.id,actorId),cash(marketing.cost)));
+ modal('📣','خطة إطلاق الفيلم','الممثل الرئيسي: '+actor.name+' · أجره '+cash(actor.fee)+'. اختار التسويق؛ ستُراجع الميزانية الكاملة قبل إصدار الفيلم.',opts);
 }
-function releaseFilm(genreId,budgetId,creativeId,castId,marketingId){
- const genre=filmGenreCatalog.find(g=>g.id===genreId),budget=filmBudgetCatalog.find(b=>b.id===budgetId),style=filmCreativeCatalog.find(x=>x.id===creativeId),cast=filmCastCatalog.find(x=>x.id===castId),marketing=filmMarketingCatalog.find(x=>x.id===marketingId);
- if(!genre||!budget||!style||!cast||!marketing){closeModal();info('🎬','تفاصيل الفيلم غير مكتملة','ارجع لاختيار النوع والميزانية والطاقم من جديد.');return;}
- const studio=ensureFilmStudio(),totalCost=budget.cost+cast.cost+marketing.cost;
- if(state.bank<totalCost){closeModal();info('💳','الميزانية مش كفاية','إنتاج '+budget.title+' مع '+cast.title+' وتسويق '+marketing.title+' يحتاج '+cash(totalCost)+'. اختار حزمة أقل تكلفة.',[choice('💰','اختيار ميزانية أخرى','',()=>filmBudgetMenu(genreId)),choice('↩️','الاستوديو','',filmStudioMenu)]);return;}
+function releaseFilm(genreId,budgetId,creativeId,castId,marketingId,actorId){
+ const genre=filmGenreCatalog.find(g=>g.id===genreId),budget=filmBudgetCatalog.find(b=>b.id===budgetId),style=filmCreativeCatalog.find(x=>x.id===creativeId),cast=filmCastCatalog.find(x=>x.id===castId),marketing=filmMarketingCatalog.find(x=>x.id===marketingId),studio=ensureFilmStudio(),actor=studio.actorRoster.find(item=>item.id===actorId);
+ if(!genre||!budget||!style||!cast||!marketing||!actor){closeModal();info('🎬','تفاصيل الفيلم غير مكتملة','ارجع لاختيار النوع والميزانية والممثل والطاقم من جديد.');return;}
+ const totalCost=budget.cost+cast.cost+marketing.cost+actor.fee;
+ if(state.bank<totalCost){closeModal();info('💳','الميزانية مش كفاية','إنتاج '+budget.title+' مع '+actor.name+' و'+cast.title+' وتسويق '+marketing.title+' يحتاج '+cash(totalCost)+'. اختار حزمة أقل تكلفة.',[choice('💰','اختيار ميزانية أخرى','',()=>filmBudgetMenu(genreId)),choice('↩️','الاستوديو','',filmStudioMenu)]);return;}
  closeModal();
  const focusBonus=studio.genreFocus===genre.id?5:0,level=Math.max(1,state.specialCareer.level||1);
- const probability=clamp(42+level*2.4+state.stats.smart*.14+(state.fame||0)*.07+(state.reputation||50)*.04+style.successBonus+cast.successBonus+marketing.successBonus+focusBonus+Math.floor(Math.random()*15)-7,12,90);
+ const actorBaseImpact=filmActorImpact(actor,genre.id,false),actorDrama=chance(actorBaseImpact.dramaRisk/100*.28),actorImpact=filmActorImpact(actor,genre.id,actorDrama);
+ const probability=clamp(42+level*2.4+state.stats.smart*.14+(state.fame||0)*.07+(state.reputation||50)*.04+style.successBonus+cast.successBonus+marketing.successBonus+focusBonus+actorImpact.successBonus+Math.floor(Math.random()*15)-7,12,90);
  const success=chance(probability/100);
- const criticScore=clamp(38+state.stats.smart*.22+level*1.8+genre.critic+style.criticBonus+cast.criticBonus+(success?6:-7)+Math.floor(Math.random()*31)-15+(studio.genreFocus===genre.id?4:0),5,100);
+ const criticScore=clamp(38+state.stats.smart*.22+level*1.8+genre.critic+style.criticBonus+cast.criticBonus+actorImpact.criticBonus+(success?6:-7)+Math.floor(Math.random()*31)-15+(studio.genreFocus===genre.id?4:0),5,100);
  const audienceModifier=(genre.audience+style.audienceBonus+marketing.audienceBonus+budget.reach*3)/100;
  const revenueMultiplier=success?1.3+level*.075+Math.max(-.04,audienceModifier)*.55+Math.random()*.55:.22+Math.random()*.36;
  const boxOffice=Math.max(0,Math.round(totalCost*revenueMultiplier));
  const title=pick(genre.titles),award=success&&criticScore>=82;
- const film={id:Date.now()+Math.random(),title,genre:genre.title,budget:budget.cost,totalCost,creative:style.title,cast:cast.title,marketing:marketing.title,releaseAge:state.age,criticScore,probability,success,boxOffice,net:boxOffice-totalCost,award};
+ const film={id:Date.now()+Math.random(),title,genre:genre.title,budget:budget.cost,castCost:cast.cost,marketingCost:marketing.cost,actorFee:actor.fee,totalCost,creative:style.title,cast:cast.title,leadActor:actor.name,actorId:actor.id,actorDrama,actorImpact:{successBonus:actorImpact.successBonus,criticBonus:actorImpact.criticBonus,dramaRisk:actorImpact.dramaRisk,dramaPenalty:actorImpact.dramaPenalty},marketing:marketing.title,releaseAge:state.age,criticScore,probability,success,boxOffice,net:boxOffice-totalCost,award};
+ actor.projects=Math.min(1000,actor.projects+1);
+ if(actorDrama){actor.professionalism=clamp(actor.professionalism-3);actor.ego=clamp(actor.ego+2);}
+ else{actor.professionalism=clamp(actor.professionalism+1);actor.ego=clamp(actor.ego-1);}
+ studio.pendingProject=null;studio.pendingAuditions=[];studio.pendingAuditionGenre=null;
  state.bank-=totalCost;state.bank+=boxOffice;studio.projects++;studio.totalBudget+=totalCost;studio.totalBoxOffice+=boxOffice;studio.bestCritic=Math.max(studio.bestCritic,criticScore);if(award)studio.awards++;studio.filmography.push(film);if(studio.filmography.length>20)studio.filmography.shift();
- state.fame=clamp((state.fame||0)+(success?3+Math.floor(criticScore/25)+cast.fameBonus: -1));state.reputation=clamp((state.reputation||50)+(success?3:-2));
+ state.fame=clamp((state.fame||0)+(success?3+Math.floor(criticScore/25)+cast.fameBonus+(actor.acting>=85?2:0): -1));state.reputation=clamp((state.reputation||50)+(success?3:-2));
+ if(actorDrama)log('🎭','توتر في موقع التصوير',actor.name+' دخل في خلاف أثناء التصوير. انخفض الانضباط وقلّ تأثيره على الفيلم.','bad');
  if(!state.specialCareer.record||typeof state.specialCareer.record!=='object')state.specialCareer.record={attempts:0,wins:0,losses:0,projects:0,totalEarnings:0,bestLevel:level};
  const record=state.specialCareer.record;record.attempts=(record.attempts||0)+1;record.wins=(record.wins||0)+(success?1:0);record.losses=(record.losses||0)+(success?0:1);record.projects=(record.projects||0)+1;record.totalEarnings=(record.totalEarnings||0)+boxOffice;
  if(success)state.specialCareer.level=clamp(level+1,1,100);
  if(!Array.isArray(state.specialCareer.history))state.specialCareer.history=[];state.specialCareer.history.push({age:state.age,title:'إنتاج فيلم: '+title,success,earnings:boxOffice,fameGain:success?3+Math.floor(criticScore/25):0});if(state.specialCareer.history.length>20)state.specialCareer.history.shift();
  if(award){achievement('حصلت على جائزة نقدية في إخراج الأفلام');log('🏆','جائزة نقدية','فيلم «'+title+'» حصل على تقييم '+criticScore+'% ونال جائزة داخل اللعبة.','special');}
- log(success?'🎥':'🎞️',success?'نجاح إصدار الفيلم':'إصدار فيلم لم يحقق التوقعات','«'+title+'» · '+genre.title+' · تقييم النقاد '+criticScore+'% · إيرادات '+cash(boxOffice)+' · صافي النتيجة '+cash(boxOffice-totalCost)+'.',success?'good':'bad');
- save();render();info(success?'🎬':'🎞️',success?'صدر الفيلم بنجاح':'الفيلم لم يحقق التوقعات','«'+title+'» · احتمال النجاح قبل الإنتاج '+probability+'% · تقييم النقاد '+criticScore+'% · الميزانية الإجمالية '+cash(totalCost)+' · الإيرادات '+cash(boxOffice)+(award?' · فزت بجائزة نقدية!':'')+'.',[choice('📊','تفاصيل الإنتاج','الاتجاه '+style.title+' · الطاقم '+cast.title+' · التسويق '+marketing.title+'.',()=>{closeModal();filmStudioMenu();}),choice('🎥','الاستوديو','',()=>{closeModal();filmStudioMenu();})]);
+ log(success?'🎥':'🎞️',success?'نجاح إصدار الفيلم':'إصدار فيلم لم يحقق التوقعات','«'+title+'» · '+genre.title+' · الممثل '+actor.name+' · تقييم النقاد '+criticScore+'% · إيرادات '+cash(boxOffice)+' · صافي النتيجة '+cash(boxOffice-totalCost)+'.',success?'good':'bad');
+ save();render();info(success?'🎬':'🎞️',success?'صدر الفيلم بنجاح':'الفيلم لم يحقق التوقعات','«'+title+'» · الممثل الرئيسي '+actor.name+(actorDrama?' · حدث خلاف أثناء التصوير':' · اكتمل التصوير بانضباط')+' · احتمال النجاح قبل الإنتاج '+probability+'% · تقييم النقاد '+criticScore+'% · الميزانية الإجمالية '+cash(totalCost)+' · الإيرادات '+cash(boxOffice)+(award?' · فزت بجائزة نقدية!':'')+'.',[choice('📊','تفاصيل الإنتاج','الاتجاه '+style.title+' · الممثل '+actor.name+' · الطاقم '+cast.title+' · التسويق '+marketing.title+'.',()=>{closeModal();filmStudioMenu();}),choice('🎥','الاستوديو','',()=>{closeModal();filmStudioMenu();})]);
 }
 function filmographyMenu(){
- const studio=ensureFilmStudio(),opts=studio.filmography.slice().reverse().map(f=>choice(f.award?'🏆':f.success?'🎬':'🎞️',f.title+' · '+f.genre,'النقاد '+f.criticScore+'% · الإيرادات '+cash(f.boxOffice)+' · تكلفة '+cash(f.totalCost)+' · صافي '+cash(f.net)+(f.award?' · جائزة':'')+'.',()=>{closeModal();info(f.award?'🏆':f.success?'🎬':'🎞️',f.title,'النوع '+f.genre+' · الاتجاه '+f.creative+' · الطاقم '+f.cast+' · التسويق '+f.marketing+' · تقييم النقاد '+f.criticScore+'% · '+(f.success?'نجاح':'إخفاق')+' · صافي '+cash(f.net)+(f.award?' · جائزة نقدية':'')+'.');}));
+ const studio=ensureFilmStudio(),opts=studio.filmography.slice().reverse().map(f=>choice(f.award?'🏆':f.success?'🎬':'🎞️',f.title+' · '+f.genre,'الممثل '+(f.leadActor||'غير مسجل في السجل القديم')+' · النقاد '+f.criticScore+'% · الإيرادات '+cash(f.boxOffice)+' · تكلفة '+cash(f.totalCost)+' · صافي '+cash(f.net)+(f.actorDrama?' · خلاف أثناء التصوير':'')+(f.award?' · جائزة':'')+'.',()=>{closeModal();info(f.award?'🏆':f.success?'🎬':'🎞️',f.title,'النوع '+f.genre+' · الممثل الرئيسي '+(f.leadActor||'غير مسجل في السجل القديم')+' · الاتجاه '+f.creative+' · الطاقم '+f.cast+' · التسويق '+f.marketing+' · تقييم النقاد '+f.criticScore+'% · '+(f.success?'نجاح':'إخفاق')+' · صافي '+cash(f.net)+(f.actorDrama?' · شهد التصوير خلافًا مع الممثل':'')+(f.award?' · جائزة نقدية':'')+'.');}));
  if(!opts.length)opts.push(choice('🎬','لا توجد أفلام بعد','ابدأ إنتاج أول فيلم من قائمة الاستوديو.',closeModal));opts.push(choice('↩️','رجوع إلى الاستوديو','',filmStudioMenu));
- modal('🏆','أرشيف الأفلام','آخر 20 فيلمًا مع تكلفة الإنتاج والإيرادات والتقييمات والجوائز.',opts);
+ modal('🏆','أرشيف الأفلام','آخر 20 فيلمًا مع الممثل الرئيسي وتكلفة الإنتاج والإيرادات والتقييمات والجوائز.',opts);
 }
 
 function specialCareerHistoryMenu(){

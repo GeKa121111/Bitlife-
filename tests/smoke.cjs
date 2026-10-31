@@ -77,9 +77,11 @@ assert.match(app, /function filmStudioMenu\(\)/, 'director career should have a 
 assert.match(app, /function filmGenreMenu\(\)/, 'director should choose a film genre');
 assert.match(app, /function filmBudgetMenu\(genreId\)/, 'director should choose a production budget');
 assert.match(app, /function filmCreativeMenu\(genreId,budgetId\)/, 'director should choose a creative direction');
-assert.match(app, /function filmCastMenu\(genreId,budgetId,creativeId\)/, 'director should choose a cast package');
-assert.match(app, /function filmMarketingMenu\(genreId,budgetId,creativeId,castId\)/, 'director should choose a marketing package');
-assert.match(app, /function releaseFilm\(genreId,budgetId,creativeId,castId,marketingId\)/, 'film releases should resolve costs and outcomes');
+assert.match(app, /function filmActorMenu\(genreId,budgetId,creativeId\)/, 'director should select an individual lead actor');
+assert.match(app, /function filmAuditionResultsMenu\(genreId,budgetId,creativeId,refresh=false\)/, 'director should audition original actor candidates');
+assert.match(app, /function filmCastMenu\(genreId,budgetId,creativeId,actorId\)/, 'director should choose a production crew package after casting');
+assert.match(app, /function filmMarketingMenu\(genreId,budgetId,creativeId,castId,actorId\)/, 'director should choose a marketing package');
+assert.match(app, /function releaseFilm\(genreId,budgetId,creativeId,castId,marketingId,actorId\)/, 'film releases should resolve actor fees and outcomes');
 assert.match(app, /function filmographyMenu\(\)/, 'director should be able to review a filmography');
 assert.match(app, /loyalty:25\+Math\.floor\(Math\.random\(\)\*76\)/, 'new NPCs should have a loyalty trait');
 assert.match(app, /jealousy:Math\.floor\(Math\.random\(\)\*101\)/, 'new NPCs should have a jealousy trait');
@@ -177,7 +179,7 @@ assert.match(finalUi, /\.fill\s*\{[^}]*position:absolute[^}]*right:0/s, 'status 
 assert.match(finalUi, /\.statvalue\s*\{[^}]*position:absolute[^}]*z-index:1/s, 'status values should overlay the progress bars');
 assert.match(finalUi, /\.nav\{direction:ltr\}/, 'tab positions should follow the original left-to-right order');
 assert.match(finalUi, /\.fill\{left:0;right:auto\}/, 'progress fills should grow from the left edge like the reference');
-assert.match(serviceWorker, /hayah-shell-v60/, 'the app shell cache should refresh the new styles');
+assert.match(serviceWorker, /hayah-shell-v61/, 'the app shell cache should refresh the new styles');
 assert.match(app, /function schoolHub\(\)/);
 assert.match(app, /function maintainAsset\(index\)/);
 assert.match(app, /function schoolClubs\(\)/, 'student clubs should have interactive actions');
@@ -546,7 +548,7 @@ assert.ok(app.includes('boostUsedAge:null'), 'new lives should initialize the op
 assert.ok(app.includes('uiSettings.boosts'), 'recovery opportunities should be optional in settings');
 assert.ok(app.includes('uiSettings.sound'));
 assert.ok(app.includes('uiSettings.haptics'));
-assert.match(serviceWorker, /hayah-shell-v60/);
+assert.match(serviceWorker, /hayah-shell-v61/);
 
 assert.match(app, /function businessTreasuryMenu\(\)/);
 assert.match(app, /function transferBusinessCapital\(direction,amount\)/);
@@ -565,13 +567,13 @@ assert.ok(app.includes("function advanceBusinessRivals(raw,business,industry,yea
 assert.ok(app.includes("function summarizeBusinessRivals(rivals,baselineCompetition,profile)"));
 assert.match(app, /marketRivalPlans/);
 assert.match(app, /الشركات المنافسة داخل المحاكاة/);
-assert.match(serviceWorker, /hayah-shell-v60/);
+assert.match(serviceWorker, /hayah-shell-v61/);
 
 assert.match(app, /function normalizeSocialFeed\(raw\)/, 'social audience feedback should be normalized for legacy saves');
 assert.match(app, /function socialAudienceFeedMenu\(platformId\)/, 'players should be able to review audience feedback');
 assert.match(app, /function offerSoundCloudTrackToLabel\(platformId='soundcloud'\)/, 'SoundCloud tracks should have a label-offer path');
 assert.match(app, /const KEY = 'hekayat_hayah_save_v1';/);
-assert.match(serviceWorker, /hayah-shell-v60/);
+assert.match(serviceWorker, /hayah-shell-v61/);
 
 assert.match(app, /function combatRoundEnergy\(currentEnergy,move,mode='street'\)/);
 assert.match(app, /id:'tactic-breathe'.*energyRecovery:14,oncePerBout:true/);
