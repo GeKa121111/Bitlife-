@@ -444,6 +444,14 @@ const combatReactionCatalog=[
  {id:'dodge',title:'مراوغة جانبية',energyCost:3,description:'غيّر زاويتك لتفادي خط الهجوم.'},
  {id:'counter',title:'رد مضاد',energyCost:4,description:'اقرأ اندفاع المنافس وحاول الرد في توقيت مناسب.'}
 ];
+function combatReactionTiming(elapsedMs){
+ if(elapsedMs===null||elapsedMs===undefined)return {elapsedMs:null,bonus:0,label:'غير محسوبة'};
+ const value=Number(elapsedMs);
+ if(!Number.isFinite(value)||value<0)return {elapsedMs:null,bonus:0,label:'غير محسوبة'};
+ const elapsed=Math.min(60000,Math.round(value));
+ const quick=elapsed<=1800;
+ return {elapsedMs:elapsed,bonus:quick?4:0,label:quick?'سريعة':'هادئة'};
+}
 function combatReactionEffect(opponentStyle,reactionId){
  const reaction=combatReactionCatalog.find(item=>item.id===reactionId);
  if(!reaction)return null;
@@ -512,7 +520,9 @@ function normalizePendingCombatBout(raw){
    reactionQuality:['ممتاز','مقبول','مكشوف'].includes(item.reactionQuality)?item.reactionQuality:'',
    reactionPlayerBonus:Math.round(finite(item.reactionPlayerBonus,0,-10,10)),
    reactionOpponentBonus:Math.round(finite(item.reactionOpponentBonus,0,-10,10)),
-   reactionCost:item.reactionCost==null?null:Math.round(finite(item.reactionCost,0,0,8))
+   reactionCost:item.reactionCost==null?null:Math.round(finite(item.reactionCost,0,0,8)),
+   reactionTimeMs:item.reactionTimeMs==null||!Number.isFinite(Number(item.reactionTimeMs))?null:Math.round(finite(item.reactionTimeMs,0,0,60000)),
+   reactionTimingBonus:Math.round(finite(item.reactionTimingBonus,0,0,4))
   };
  }).filter(Boolean);
  const last=history.length?history[history.length-1]:null;
@@ -535,7 +545,9 @@ function normalizePendingCombatBout(raw){
   startedAge:finite(raw.startedAge,18,0,120),
   feePaid:mode==='league',
   communityFighterId:typeof raw.communityFighterId==='string'&&/^[a-z0-9-]{1,40}$/.test(raw.communityFighterId)?raw.communityFighterId:null,
-  reactionId:['guard','dodge','counter'].includes(raw.reactionId)?raw.reactionId:''
+  reactionId:['guard','dodge','counter'].includes(raw.reactionId)?raw.reactionId:'',
+  reactionWindowStartedAt:raw.reactionWindowStartedAt==null||!Number.isFinite(Number(raw.reactionWindowStartedAt))?null:Math.round(finite(raw.reactionWindowStartedAt,0,0,9007199254740991)),
+  reactionTimeMs:raw.reactionTimeMs==null||!Number.isFinite(Number(raw.reactionTimeMs))?null:Math.round(finite(raw.reactionTimeMs,0,0,60000))
  };
 }
 function combatDifficultyLabel(rating){
@@ -4095,13 +4107,17 @@ function combatBoutRoundMenu(){
  const opponent=session.opponent,round=session.round;
  const intent=combatOpponentIntent(opponent,round,session.lastStyle);
  if(!session.reactionId){
+  if(!Number.isFinite(Number(session.reactionWindowStartedAt))||Number(session.reactionWindowStartedAt)<=0){session.reactionWindowStartedAt=Date.now();save();}
+  const elapsedSinceOpen=Math.max(0,Date.now()-Number(session.reactionWindowStartedAt));
+  const animationDelay=Math.min(1800,elapsedSinceOpen);
+  const timingMarkup='<div class="combat-reaction-clock" aria-hidden="true"><span style="animation-delay:-'+animationDelay+'ms"></span></div><p class="combat-reaction-hint">استجابة سريعة خلال 1.8 ثانية تمنحك 4 نقاط إضافية. التأخر لا يخصم نقاطًا.</p>';
   const reactionOptions=combatReactionCatalog.map(item=>{
    const effect=combatReactionEffect(intent.style,item.id);
    const qualityText=effect.quality==='ممتاز'?'أفضل رد متوقع':effect.quality==='مقبول'?'رد مقبول':'رد محفوف بالمخاطرة';
    return choice('🛡️',item.title,item.description+' · '+qualityText+' أمام '+intent.style+' · استهلاك '+item.energyCost+' طاقة.',()=>chooseCombatReaction(item.id));
   });
   reactionOptions.unshift({icon:'⚠️',title:'إشارة المنافس: '+intent.title,desc:intent.description+' · الأسلوب المتوقع '+intent.style+' · '+combatDifficultyLabel(opponent.rating)+' · طاقتك '+c.energy+'%.',progress:opponent.rating,disabled:true});
-  modal(session.mode==='league'?'🏆':'🥊','الجولة '+round+' من 3 · اقرأ نية المنافس','قبل اختيار حركتك، حدّد رد فعلك على الهجمة التي يستعد لها المنافس. اختيارك يؤثر على نقاط الجولة واستهلاك الطاقة.',reactionOptions);
+  modal(session.mode==='league'?'🏆':'🥊','الجولة '+round+' من 3 · اقرأ نية المنافس','قبل اختيار حركتك، حدّد رد فعلك على الهجمة التي يستعد لها المنافس. اختيارك يؤثر على نقاط الجولة واستهلاك الطاقة.',reactionOptions,true,timingMarkup);
   return;
  }
  const reaction=combatReactionEffect(intent.style,session.reactionId);
@@ -4128,7 +4144,11 @@ function chooseCombatReaction(reactionId){
  const session=ensureCombatCareer().pendingBout;
  const reaction=combatReactionCatalog.find(item=>item.id===reactionId);
  if(!session||session.reactionId||!reaction){combatBoutRoundMenu();return;}
+ const startedAt=Number(session.reactionWindowStartedAt);
+ const timing=combatReactionTiming(session.reactionWindowStartedAt==null?null:Date.now()-startedAt);
  session.reactionId=reaction.id;
+ session.reactionTimeMs=timing.elapsedMs;
+ session.reactionWindowStartedAt=null;
  save();render();combatBoutRoundMenu();
 }
 function resolveCombatRound(actionId){
@@ -4146,7 +4166,8 @@ function resolveCombatRound(actionId){
  const round=session.round,opponent=session.opponent;
  const intent=combatOpponentIntent(opponent,round,session.lastStyle),opponentStyle=intent.style;
  const reaction=combatReactionEffect(opponentStyle,session.reactionId);
- if(!reaction){session.reactionId='';save();combatBoutRoundMenu();return;}
+ if(!reaction){session.reactionId='';session.reactionTimeMs=null;session.reactionWindowStartedAt=null;save();combatBoutRoundMenu();return;}
+ const reactionTiming=combatReactionTiming(session.reactionTimeMs);
  const masteryUses=learnedMove?Math.max(0,Number(c.moveMastery[move.id])||0):0;
  const masteryLevel=learnedMove?combatMoveMasteryLevel(masteryUses):0;
  const masteryBonus=learnedMove?combatMoveMasteryBonus(masteryUses):0;
@@ -4157,7 +4178,7 @@ function resolveCombatRound(actionId){
  const repeatedPenalty=session.lastStyle===move.style?3:0;
  const communityFighter=session.communityFighterId?c.community.find(fighter=>fighter.id===session.communityFighterId):null;
  const communityAdjustment=communityFighter?clamp(Math.round((communityFighter.respect-communityFighter.tension)/25),-4,4):0;
- const playerScore=(c.technique*.19+c.power*.18+c.speed*.16+c.defense*.13+c.stamina*.10+state.stats.health*.10+(state.specialCareer.level||1)*.8+move.power*.12+coachBonus-c.injury*.16-agePenalty)*energyFactor+counterBonus-repeatedPenalty+communityAdjustment+masteryBonus+reaction.playerBonus;
+ const playerScore=(c.technique*.19+c.power*.18+c.speed*.16+c.defense*.13+c.stamina*.10+state.stats.health*.10+(state.specialCareer.level||1)*.8+move.power*.12+coachBonus-c.injury*.16-agePenalty)*energyFactor+counterBonus-repeatedPenalty+communityAdjustment+masteryBonus+reaction.playerBonus+reactionTiming.bonus;
  const opponentScore=opponent.rating+(Math.random()*12-6)+(round-1)*1.2+reaction.opponentBonus;
  const energyResult=combatRoundEnergy(c.energy,move,session.mode,reaction.energyCost);
  c.energy=energyResult.after;
@@ -4167,9 +4188,10 @@ function resolveCombatRound(actionId){
  session.roundHistory.push({round,actionId:move.id,actionTitle:move.title,style:move.style,opponentStyle,playerScore,opponentScore,masteryLevel,masteryBonus,masteryUses:nextMasteryUses,
   intentStyle:intent.style,intentTitle:intent.title,reactionId:reaction.id,reactionTitle:reaction.title,reactionQuality:reaction.quality,
   reactionPlayerBonus:reaction.playerBonus,reactionOpponentBonus:reaction.opponentBonus,reactionCost:energyResult.reactionCost,
+  reactionTimeMs:reactionTiming.elapsedMs,reactionTimingBonus:reactionTiming.bonus,
   energyBefore:energyResult.before,energyCost:energyResult.energyCost,energyRecovery:energyResult.energyRecovery,energyAfter:energyResult.after});
  session.lastStyle=move.style;session.lastMoveId=move.id;
- log('🥊','انتهت الجولة '+round,move.title+' · إشارة المنافس '+intent.title+' · ردك '+reaction.title+' ('+reaction.quality+') · نقاط الجولة '+Math.round(playerScore)+' مقابل '+Math.round(opponentScore)+' · الطاقة المتبقية '+c.energy+'%.'+(energyResult.energyRecovery?' · استعدت '+energyResult.energyRecovery+' طاقة.':''),'');
+ log('🥊','انتهت الجولة '+round,move.title+' · إشارة المنافس '+intent.title+' · ردك '+reaction.title+' ('+reaction.quality+') · توقيت الاستجابة '+reactionTiming.label+(reactionTiming.bonus?' +'+reactionTiming.bonus+' نقاط':'')+' · نقاط الجولة '+Math.round(playerScore)+' مقابل '+Math.round(opponentScore)+' · الطاقة المتبقية '+c.energy+'%.'+(energyResult.energyRecovery?' · استعدت '+energyResult.energyRecovery+' طاقة.':''),'');
  if(learnedMove&&combatMoveMasteryLevel(nextMasteryUses)>masteryLevel){
   log('🥋','تطور إتقان الحركة','وصلت إلى مستوى '+combatMoveMasteryLabel(nextMasteryUses)+' في '+move.title+'. أصبحت تضيف '+combatMoveMasteryBonus(nextMasteryUses)+' نقاط إلى أدائك عند استخدامها.','good');
   achievement('إتقان حركة قتالية: '+move.title+' · '+combatMoveMasteryLabel(nextMasteryUses));
@@ -4181,7 +4203,7 @@ function resolveCombatRound(actionId){
   resolveCombatBout(completed.mode,completed.opponent,move.id,probability,completed);
   return;
  }
- session.round=session.roundHistory.length+1;session.reactionId='';
+ session.round=session.roundHistory.length+1;session.reactionId='';session.reactionTimeMs=null;session.reactionWindowStartedAt=null;
  save();render();combatBoutRoundMenu();
 }
 function resolveCombatBout(mode,opponent,moveId,probabilityOverride=null,session=null){
@@ -4230,6 +4252,7 @@ function resolveCombatBout(mode,opponent,moveId,probabilityOverride=null,session
  c.rank=c.leaguePoints>=150?4:c.leaguePoints>=100?3:c.leaguePoints>=60?2:c.leaguePoints>=25?1:0;
  const roundSummary=session?session.roundHistory.map(item=>({round:item.round,move:item.actionTitle,style:item.style,opponentStyle:item.opponentStyle,playerScore:Math.round(item.playerScore),opponentScore:Math.round(item.opponentScore),masteryLevel:item.masteryLevel||0,masteryBonus:item.masteryBonus||0,masteryUses:item.masteryUses||0,
   intentStyle:item.intentStyle||item.opponentStyle,intentTitle:item.intentTitle||'',reactionId:item.reactionId||'',reactionTitle:item.reactionTitle||'',reactionQuality:item.reactionQuality||'',reactionCost:item.reactionCost===undefined?null:item.reactionCost,
+  reactionTimeMs:item.reactionTimeMs===undefined?null:item.reactionTimeMs,reactionTimingBonus:item.reactionTimingBonus||0,
   energyBefore:item.energyBefore===undefined?null:item.energyBefore,energyCost:item.energyCost===undefined?null:item.energyCost,energyRecovery:item.energyRecovery===undefined?null:item.energyRecovery,energyAfter:item.energyAfter===undefined?null:item.energyAfter})):[];
  c.bouts.push({age:state.age,mode,opponent:opponent.name,opponentStyle:opponent.style,communityFighterId:session&&session.communityFighterId?session.communityFighterId:null,move:move.title,moves:roundSummary.map(item=>item.move),rounds:roundSummary,scoreline:session?{player:Math.round(session.playerScore),opponent:Math.round(session.opponentScore)}:null,won,probability,earnings,injury:c.injury,rank:c.rank});
  if(c.bouts.length>30)c.bouts.shift();

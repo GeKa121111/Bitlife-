@@ -2544,3 +2544,11 @@ body.text-large .navbtn{font-size:10px!important}
 .statboost-btn:focus-visible{outline:2px solid #176b66;outline-offset:2px}
 body.theme-dark .statboost-btn{background:#25443f;color:#b7e4d4;border-color:#568f80}
 body.theme-gold .statboost-btn{background:#f7edcf;color:#89631a;border-color:#c8a34e}
+
+
+/* Timed combat response window — bonus-only, with no late-response penalty. */
+.combat-reaction-clock{height:7px;margin:4px 0 8px;border-radius:999px;overflow:hidden;background:var(--hayah-track,#e6ece8);direction:rtl}
+.combat-reaction-clock>span{display:block;width:100%;height:100%;border-radius:inherit;background:linear-gradient(90deg,var(--hayah-accent,#d2ad62),var(--hayah-primary,#176b66));transform:scaleX(1);transform-origin:right center;animation:hayah-reaction-window 1.8s linear forwards}
+@keyframes hayah-reaction-window{to{transform:scaleX(0)}}
+.combat-reaction-hint{margin:0 0 10px;color:var(--hayah-muted,#66736d);font-size:12px;line-height:1.6;text-align:right}
+@media(prefers-reduced-motion:reduce){.combat-reaction-clock>span{animation:none;transform:scaleX(.35)}}
