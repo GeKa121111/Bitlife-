@@ -549,8 +549,8 @@ assert.ok(app.includes('uiSettings.boosts'), 'recovery opportunities should be o
 assert.ok(app.includes('uiSettings.sound'));
 assert.ok(app.includes('uiSettings.haptics'));
 assert.match(serviceWorker, /hayah-shell-v72/);
-assert.match(app, /function formatStorageBytes\\(bytes\\)/);
-assert.match(app, /function inspectStorageCapacity\\(\\)/);
+assert.ok(app.includes('function formatStorageBytes(bytes)'));
+assert.ok(app.includes('function inspectStorageCapacity()'));
 assert.match(app, /فحص مساحة التخزين/);
 
 assert.match(app, /function businessTreasuryMenu\(\)/);

@@ -1793,9 +1793,12 @@ test('تقدير مساحة التخزين يعرض قيمًا آمنة ولا �
   async function run(storage) {
     const context = {};
     if (storage) context.navigator = { storage };
-    vm.runInNewContext(formatSource + '\\n' + estimateSource +
-      '\\nglobalThis.formatted=[formatStorageBytes(0),formatStorageBytes(1024),formatStorageBytes(86*1024*1024),formatStorageBytes(-1),formatStorageBytes(NaN)];' +
-      '\\nglobalThis.result=inspectStorageCapacity();', context);
+    vm.runInNewContext(
+      formatSource + String.fromCharCode(10) + estimateSource +
+      String.fromCharCode(10) + 'globalThis.formatted=[formatStorageBytes(0),formatStorageBytes(1024),formatStorageBytes(86*1024*1024),formatStorageBytes(-1),formatStorageBytes(NaN)];' +
+      String.fromCharCode(10) + 'globalThis.result=inspectStorageCapacity();',
+      context
+    );
     return { formatted: Array.from(context.formatted), result: await context.result };
   }
   const unsupported = await run(null);
@@ -1826,6 +1829,6 @@ test('تقدير مساحة التخزين يعرض قيمًا آمنة ولا �
   const settingsSource = functionSource('settingsMenu', 'cultMenu');
   assert.ok(settingsSource.includes('فحص مساحة التخزين'));
   assert.ok(settingsSource.includes('inspectStorageCapacityFromSettings'));
-  assert.match(app, /result\\.percent>=85/);
+  assert.ok(app.includes('const highUsage=result.percent>=85;'));
   assert.match(app, /ليس حجم ملف الحفظ وحده/);
 });

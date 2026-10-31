@@ -402,8 +402,8 @@ async function run() {
     await page.locator('#modalRoot [role="dialog"]').waitFor();
     const storageReport = await page.locator('#modalRoot').innerText();
     assert.match(storageReport, /86%/, 'storage diagnostics should show the estimated usage percentage');
-    assert.match(storageReport, /86 م\\.ب/, 'storage diagnostics should format the used space');
-    assert.match(storageReport, /100 م\\.ب/, 'storage diagnostics should format the quota');
+    assert.ok(storageReport.includes('86 م.ب'), 'storage diagnostics should format the used space');
+    assert.ok(storageReport.includes('100 م.ب'), 'storage diagnostics should format the quota');
     assert.match(storageReport, /التخزين المستديم مفعّل/, 'storage diagnostics should report persistent status');
     const saveAfterStorageCheck = await page.evaluate(() => localStorage.getItem('hekayat_hayah_save_v1'));
     assert.equal(saveAfterStorageCheck, saveBeforeStorageCheck, 'storage diagnostics must not mutate the life save');
