@@ -1321,7 +1321,7 @@ function modal(icon,title,desc,choices,closable=true,extra=''){
  const activeElement=document.activeElement;
  if(activeElement&&!root.contains(activeElement)&&activeElement!==document.body&&activeElement!==document.documentElement)modalReturnFocus=activeElement;
  if(activeDialogKeyHandler){document.removeEventListener('keydown',activeDialogKeyHandler);activeDialogKeyHandler=null;}
- const isDrawer=['القائمة الرئيسية','الدراسة والشغل','School','University','Class','Cliques','Faculty','Activities','الأصول','الأصول والمشتريات','العلاقات','العلاقات والأسرة','الأنشطة والحياة اليومية','السوشيال ميديا','مجتمع المقاتلين','التسوق'].includes(title)||SOCIAL_PLATFORM_CATALOG.some(p=>p.title===title);
+ const isDrawer=['القائمة الرئيسية','الدراسة والشغل','فرص عمل جديدة','School','University','Class','Cliques','Faculty','Activities','الأصول','الأصول والمشتريات','العلاقات','العلاقات والأسرة','الأنشطة والحياة اليومية','السوشيال ميديا','مجتمع المقاتلين','التسوق'].includes(title)||SOCIAL_PLATFORM_CATALOG.some(p=>p.title===title);
  const context=String(title||'')+' '+String(desc||'')+' '+String(extra||'');
  const symptom=/(عرض|أعراض|صداع|غثيان|حمى|حُمّى|زكام|سعال|ألم|وجع|دوخة|symptom|headache|nausea|flu|diagnosis)/i.test(context);
  const crime=/(جريمة|سرقة|سجن|مخدر|عصابة|شرطة|اختلاس|سطو|crime|robbery|prison)/i.test(context);
@@ -1869,7 +1869,7 @@ function advanceAge(){
  if(state.age===12){state.education.school='المرحلة الإعدادية';log('📚','مرحلة جديدة','خلصت المرحلة الابتدائية وبدأت الإعدادي. اختياراتك الدراسية هتبدأ تفرق أكتر.','special');}
  if(state.age===15){state.education.school='المرحلة الثانوية';log('🎒','الثانوية العامة','دخلت مرحلة مهمة؛ حاول توازن بين المذاكرة وصحتك.','special');}
  if(state.age===18){state.education.school='خريج ثانوية';log('🎓','نهاية مرحلة وبداية التانية','خلصت سنين المدرسة. قدامك الجامعة أو الشغل أو سنة راحة.','special');achievement('أنهيت التعليم المدرسي');}
- if(state.age===60&&!state.retired){state.retired=true;if(state.job){state.jobHistory=state.jobHistory||[];state.jobHistory.push({title:state.job.title,salary:state.job.salary,startAge:state.job.startAge??18,endAge:state.age});log('🌅','التقاعد','وصلت لسن التقاعد. حان وقت الراحة والاستمتاع باللي بنيته.','special');state.job=null;}achievement('وصلت لمرحلة التقاعد');}
+ if(state.age===60&&!state.retired){state.retired=true;if(state.job){archiveCurrentJob('تقاعد');log('🌅','التقاعد','وصلت لسن التقاعد. حان وقت الراحة والاستمتاع باللي بنيته.','special');state.job=null;}achievement('وصلت لمرحلة التقاعد');}
  if(state.age===60)log('🌅','ستون سنة من الحكايات','وصلت لمرحلة جديدة. اهتم بصحتك وعلاقاتك وخططك للسنين الجاية.','special');
  if(state.age>=65&&chance(.12))state.stats.health=clamp(state.stats.health-5);
  state.wealthPeak=Math.max(state.wealthPeak,state.bank);render();save();
@@ -2212,7 +2212,7 @@ function showCareer(){
    choice('🌟','المهن الخاصة والشهرة','مسار إضافي بجانب وظيفتك التقليدية.',specialCareers),
    choice('🔎','استكشاف فرص عمل','قارن مسارات أخرى وقدّم على وظيفة جديدة دون ترك عملك الحالي قبل قبول العرض.',()=>{closeModal();jobMarketMenu();}),
    choice('🏅','طلب ترقية','الدرجة '+jobRankLabel(state.job.level)+' · الخبرة '+state.job.experienceYears+' سنة · في الدرجة الحالية '+state.job.yearsInRole+' سنة.',requestJobPromotion),
-   choice('📚','سجل الوظائف السابقة','راجع الوظائف التي تركتها أو انتقلت منها.',()=>{closeModal();const records=(state.jobHistory||[]).map(j=>choice('💼',j.title,(j.startAge??'?')+'–'+(j.endAge??'؟')+' سنة · الراتب '+cash(j.salary),()=>{closeModal();info('💼',j.title,'وظيفة سابقة في سجل حياتك.');}));modal('📚','التاريخ الوظيفي','مسار العمل خلال حياتك.',records.length?records:[choice('📚','لا توجد وظائف سابقة','سيظهر السجل بعد تغيير وظيفة أو الاستقالة.',closeModal)]);}),
+   choice('📚','سجل الوظائف السابقة','راجع الوظائف التي تركتها أو انتقلت منها.',()=>{closeModal();const records=(state.jobHistory||[]).map(j=>choice('💼',j.title,(j.startAge??'?')+'–'+(j.endAge??'؟')+' سنة · الراتب '+cash(j.salary)+(j.exitReason?' · '+j.exitReason:''),()=>{closeModal();info('💼',j.title,'وظيفة سابقة في سجل حياتك.');}));modal('📚','التاريخ الوظيفي','مسار العمل خلال حياتك.',records.length?records:[choice('📚','لا توجد وظائف سابقة','سيظهر السجل بعد تغيير وظيفة أو الاستقالة.',closeModal)]);}),
    choice('📈','طلب علاوة','أداءك الحالي '+state.performance+'%.',()=>{
     closeModal();
     if(state.performance<58){state.performance=clamp(state.performance+4);log('🗣️','مناقشة مع المدير','مديرك طلب منك تحسن الأداء شوية قبل زيادة المرتب.');info('🗣️','مش دلوقتي','حافظ على أداءك واطلب تاني بعد فترة.');return;}
@@ -2233,7 +2233,7 @@ function showCareer(){
  opts.push(choice('🎓','التعليم والجامعة','اختار تخصصًا يفتح فرصًا جديدة.',()=>{closeModal();university(false);}));
  if(perkOwned('goldenDiploma')&&state.age>=18)opts.push(choice('📜','الدراسة والشهادة الذهبية','افتح قائمة التعليم واستخدم الشهادة الفورية.',()=>{closeModal();schoolHub();}));
  opts.push(choice('🌟','المهن الخاصة والشهرة','التمثيل والموسيقى والمحتوى والرياضة والكتابة والإخراج.',specialCareers));
- if((state.jobHistory||[]).length)opts.push(choice('📚','سجل الوظائف السابقة','عدد الوظائف السابقة '+state.jobHistory.length+'.',()=>{closeModal();const records=state.jobHistory.map(j=>choice('💼',j.title,'الراتب '+cash(j.salary)+' · بداية '+j.startAge+' سنة',()=>{closeModal();info('💼',j.title,'وظيفة سابقة في سجل حياتك.');}));modal('📚','التاريخ الوظيفي','كل وظيفة تركت أثرًا في المسار المهني.',records);}));
+ if((state.jobHistory||[]).length)opts.push(choice('📚','سجل الوظائف السابقة','عدد الوظائف السابقة '+state.jobHistory.length+'.',()=>{closeModal();const records=state.jobHistory.map(j=>choice('💼',j.title,'الراتب '+cash(j.salary)+' · بداية '+j.startAge+' سنة'+(j.exitReason?' · '+j.exitReason:'')',()=>{closeModal();info('💼',j.title,'وظيفة سابقة في سجل حياتك.');}));modal('📚','التاريخ الوظيفي','كل وظيفة تركت أثرًا في المسار المهني.',records);}));
  modal('💼','الدراسة والشغل',intro,opts);
 }
 
