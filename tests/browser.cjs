@@ -610,13 +610,16 @@ async function run() {
     const incrementalFeed = await page.evaluate(() => ({
       firstCardPreserved: window.__hayahFirstLogCard === document.querySelector('#lifeFeed .logcard'),
       cardCount: document.querySelectorAll('#lifeFeed .logcard').length,
-      relevant: document.querySelector('#lifeFeed').getAttribute('aria-relevant'),
-      atomic: document.querySelector('#lifeFeed').getAttribute('aria-atomic')
+      feedLive: document.querySelector('#lifeFeed').getAttribute('aria-live'),
+      announcement: document.querySelector('#lifeAnnouncement').textContent
     }));
     assert.equal(incrementalFeed.firstCardPreserved, true, 'adding a new year should append events without rebuilding the existing log cards');
     assert.ok(incrementalFeed.cardCount > 45, 'new annual events should appear in the life feed');
-    assert.equal(incrementalFeed.relevant, 'additions', 'screen readers should be notified about new log entries rather than all history');
-    assert.equal(incrementalFeed.atomic, 'false', 'the life feed should announce new entries independently');
+    assert.equal(incrementalFeed.feedLive, null, 'the full diary should not be a live region');
+    assert.ok(incrementalFeed.announcement.includes('في عمر') && incrementalFeed.announcement.includes('سنة'),
+      'new events should be summarized in the dedicated screen-reader status region');
+    assert.ok(!incrementalFeed.announcement.includes('ذكرى اختبار 1'),
+      'the announcement should not repeat the saved history');
 
     const businessYear = await page.evaluate(() => {
       const saved = JSON.parse(localStorage.getItem('hekayat_hayah_save_v1') || 'null');
