@@ -5647,8 +5647,58 @@ function requestStorageProtectionFromSettings(){
  });
 }
 
+
+function formatStorageBytes(bytes){
+ const value=Number(bytes);
+ if(!Number.isFinite(value)||value<=0)return '0 بايت';
+ const units=['بايت','ك.ب','م.ب','ج.ب','ت.ب'];
+ let amount=value,index=0;
+ while(amount>=1024&&index<units.length-1){amount/=1024;index++;}
+ const rounded=amount>=10||index===0?Math.round(amount):Math.round(amount*10)/10;
+ return String(rounded)+' '+units[index];
+}
+function inspectStorageCapacity(){
+ if(typeof navigator==='undefined'||!navigator.storage||typeof navigator.storage.estimate!=='function')return Promise.resolve({status:'unsupported'});
+ const storage=navigator.storage;
+ return Promise.resolve()
+  .then(()=>storage.estimate())
+  .then(estimate=>{
+   const usage=Number(estimate&&estimate.usage),quota=Number(estimate&&estimate.quota);
+   if(!Number.isFinite(usage)||!Number.isFinite(quota)||usage<0||quota<=0)return {status:'unavailable'};
+   const boundedUsage=Math.min(usage,quota);
+   const percent=Math.max(0,Math.min(100,Math.round((boundedUsage/quota)*100)));
+   const remaining=Math.max(0,quota-boundedUsage);
+   const persistentCheck=typeof storage.persisted==='function'
+    ?Promise.resolve().then(()=>storage.persisted()).then(value=>!!value).catch(()=>null)
+    :Promise.resolve(null);
+   return persistentCheck.then(persistent=>({status:'ok',usage:boundedUsage,quota,remaining,percent,persistent}));
+  })
+  .catch(()=>({status:'error'}));
+}
+function inspectStorageCapacityFromSettings(){
+ closeModal();
+ inspectStorageCapacity().then(result=>{
+  if(result.status==='unsupported'){
+   info('ℹ️','تقدير المساحة غير مدعوم','المتصفح الحالي لا يوفّر واجهة تقدير مساحة الموقع. الحفظ مستمر كالمعتاد؛ احتفظ بنسخة JSON خارج المتصفح.');
+   return;
+  }
+  if(result.status==='error'||result.status==='unavailable'){
+   info('⚠️','تعذر تقدير مساحة التخزين','لم يرجع المتصفح تقديرًا صالحًا للمساحة. لم نغيّر أي بيانات من الحفظ؛ يمكنك إعادة المحاولة لاحقًا.');
+   return;
+  }
+  const highUsage=result.percent>=85;
+  const persistenceText=result.persistent===true?'التخزين المستديم مفعّل.':result.persistent===false?'التخزين المستديم غير مفعّل.':'تعذر التحقق من حالة التخزين المستديم.';
+  const details='تقدير المتصفح لاستخدام مساحة هذا الموقع: '+formatStorageBytes(result.usage)+' من '+formatStorageBytes(result.quota)+' ('+result.percent+'%). المساحة المتبقية المقدّرة: '+formatStorageBytes(result.remaining)+'. '+persistenceText+' هذا تقدير لكل بيانات الموقع المخزنة عبر واجهات المتصفح، وليس حجم ملف الحفظ وحده؛ وقد تتغير الحصة حسب الجهاز والمتصفح.';
+  info(highUsage?'⚠️':'💾',highUsage?'استخدام مساحة الموقع مرتفع':'تقدير مساحة التخزين',details,[
+   choice('🛡️','طلب حماية التخزين','اطلب من المتصفح تقليل احتمال حذف بيانات الموقع تلقائيًا.',()=>requestStorageProtectionFromSettings()),
+   choice('✓','تمام','',closeModal)
+  ]);
+ });
+}
+
 function settingsMenu(){
  const opts=[
+  choice('💾','فحص مساحة التخزين','اعرض تقدير المتصفح لمساحة بيانات الموقع والحصة المتاحة دون تغيير ملف الحفظ.',()=>inspectStorageCapacityFromSettings()),
   choice('🛡️','حماية بيانات الحفظ','اطلب من المتصفح تقليل احتمال حذف بيانات اللعبة تلقائيًا. لا تمنع المسح اليدوي ولا تغني عن نسخة خارجية.',()=>requestStorageProtectionFromSettings()),
   choice(uiSettings.theme==='dark'?'☀️':'🌙',uiSettings.theme==='dark'?'تفعيل الوضع الفاتح':'تفعيل الوضع الداكن','المظهر الحالي: '+(uiSettings.theme==='dark'?'داكن':uiSettings.theme==='gold'?'ذهبي':'فاتح')+'.',()=>{uiSettings.theme=uiSettings.theme==='dark'?'light':'dark';persistUiSettings();settingsMenu();}),
   choice('🔤',uiSettings.textScale==='large'?'حجم النص: كبير':'حجم النص: عادي','كبّر نص سجل الأحداث والقرارات لسهولة القراءة.',()=>{uiSettings.textScale=uiSettings.textScale==='large'?'normal':'large';persistUiSettings();settingsMenu();}),
