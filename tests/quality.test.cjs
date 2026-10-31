@@ -243,7 +243,7 @@ test('النسخة الاحتياطية الكاملة تجمع الحياة و�
     CEMETERY_KEY: 'hekayat_hayah_cemetery_v1',
     localStorage: { getItem(key) { return cemeteryStore.has(key) ? cemeteryStore.get(key) : null; } }
   };
-  vm.runInNewContext(cemeterySource + integrityHelpers + '\\nglobalThis.readCemeteryForBackup=readCemeteryForBackup;', integrityContext);
+  vm.runInNewContext(cemeterySource + integrityHelpers + String.fromCharCode(10) + 'globalThis.readCemeteryForBackup=readCemeteryForBackup;', integrityContext);
   assert.deepEqual(JSON.parse(JSON.stringify(integrityContext.readCemeteryForBackup())), [],
     'a missing cemetery key should remain a valid empty archive');
   const validArchive = JSON.stringify([{ id: 'saved-life', name: 'حياة محفوظة', age: 61 }]);
@@ -269,7 +269,7 @@ test('النسخة الاحتياطية الكاملة تجمع الحياة و�
   assert.equal(cemeteryStore.get('hekayat_hayah_cemetery_v1'), malformedRecordArchive);
 
   assert.match(app, /!validateCemeteryBackup\\(parsed\\.cemetery\\)/,
-    'backup imports must reject malformed cemetery records before writing local stores');
+  assert.ok(app.includes('!validateCemeteryBackup(parsed.cemetery)'),
   assert.match(app, /سجل الحيوات السابقة غير قابل للقراءة/);
 });
 
