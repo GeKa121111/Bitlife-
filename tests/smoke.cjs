@@ -577,7 +577,7 @@ assert.match(serviceWorker, /hayah-shell-v65/);
 
 assert.match(app, /function combatRoundEnergy\(currentEnergy,move,mode='street',reactionCost=0\)/);
 assert.match(app, /const combatReactionCatalog=\[/);
-assert.match(app, /function combatReactionTiming\(elapsedMs\)/);
+assert.match(app, /function combatReactionTiming\(elapsedMs,assisted=false\)/);
 assert.match(app, /function combatReactionEffect\(opponentStyle,reactionId\)/);
 assert.match(app, /function chooseCombatReaction\(reactionId\)/);
 assert.match(app, /id:'tactic-breathe'.*energyRecovery:14,oncePerBout:true/);
