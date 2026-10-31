@@ -4,7 +4,9 @@ const $ = id => document.getElementById(id);
 const KEY = 'hekayat_hayah_save_v1';
 const BACKUP_KEY = 'hekayat_hayah_save_backup_v1';
 const CEMETERY_KEY = 'hekayat_hayah_cemetery_v1';
+const CEMETERY_BACKUP_KEY = 'hekayat_hayah_cemetery_backup_v1';
 const SETTINGS_KEY = 'hayah_ui_settings_v1';
+let cemeteryRecoveryNotice = false;
 const PERKS_KEY = 'hayah_permanent_perks_v1';
 const BACKUP_FORMAT = 'hayah-backup';
 const BACKUP_VERSION = 1;
@@ -5313,37 +5315,36 @@ function normalizeCemetery(raw){
 function archiveLife(reason){
  if(!state)return false;
  try{
-  // Do not trust the old cemeterySaved flag by itself: earlier storage failures
-  // could set it even when the archive entry was never written.
-  const raw=localStorage.getItem(CEMETERY_KEY);
-  const parsed=raw===null?[]:JSON.parse(raw);
-  if(!Array.isArray(parsed))throw new Error('invalid-cemetery');
-  const list=normalizeCemetery(parsed),id=state.lifeId||('life-'+Date.now());
-  if(list.some(item=>String(item.id)===String(id))){
-   state.cemeterySaved=true;
-   return true;
-  }
+  const list=readCemeteryForBackup(),id=state.lifeId||('life-'+Date.now());
+  if(list.some(item=>String(item.id)===String(id))){state.cemeterySaved=true;return true;}
   const assets=(state.assets||[]).reduce((n,a)=>n+(a.value||0),0),invest=(state.investments||[]).reduce((n,a)=>n+(a.value||0),0);
   const entry={id,name:state.name,age:state.age,cause:state.cause||reason||'نهاية الرحلة',netWorth:(state.bank||0)+assets+invest-(state.debt||0),ribbon:reason&&state.status==='حي'?'حياة متروكة · '+lifeRibbon():lifeRibbon(),country:state.place?.country||'',accomplishments:(state.accomplishments||[]).slice(0,40),children:(state.children||[]).length,createdAt:new Date().toISOString()};
   const nextList=[entry,...list].slice(0,100);
+  // Preserve the previous verified archive before changing the primary copy.
+  persistCemeteryBackup(list);
   localStorage.setItem(CEMETERY_KEY,JSON.stringify(nextList));
-  const persistedRaw=localStorage.getItem(CEMETERY_KEY);
-  const persisted=persistedRaw?JSON.parse(persistedRaw):null;
+  const persistedRaw=localStorage.getItem(CEMETERY_KEY),persisted=persistedRaw?JSON.parse(persistedRaw):null;
   if(!Array.isArray(persisted)||!persisted.some(item=>item&&String(item.id)===String(id)))throw new Error('cemetery-write-unverified');
+  try{persistCemeteryBackup(persisted);}catch(e){}
   state.cemeterySaved=true;
   return true;
- }catch(e){
-  state.cemeterySaved=false;
-  return false;
- }
+ }catch(e){state.cemeterySaved=false;return false;}
 }
 function cemeteryMenu(){
- let list=[];try{list=JSON.parse(localStorage.getItem(CEMETERY_KEY)||'[]');}catch(e){}
+ let list=[];
+ try{list=readCemeteryForBackup();}catch(e){
+  info('⚠️','تعذر فتح المقبرة','السجل المحلي والنسخة الاحتياطية غير قابلين للقراءة. لا تمسح بيانات الموقع؛ استورد نسخة خارجية سليمة إن كانت لديك.');
+  return;
+ }
+ const recovered=cemeteryRecoveryNotice;cemeteryRecoveryNotice=false;
+ if(recovered){
+  info('🛟','تم استعادة سجل الحيوات السابقة','استعدنا آخر نسخة محلية سليمة من المقبرة. راجع سجل الحيوات السابقة وصدّر نسخة احتياطية خارجية للاحتفاظ بها.');
+  return;
+ }
  const opts=list.map((l,i)=>choice('🪦',l.name+' · '+l.age+' سنة',l.country+' · '+l.ribbon+' · الثروة '+cash(l.netWorth),()=>{closeModal();info('🪦','حياة سابقة: '+l.name,'عاش '+l.age+' سنة. سبب النهاية: '+l.cause+'. شريط الحياة: '+l.ribbon+'. الإنجازات المسجلة: '+(l.accomplishments||[]).join('، ')+'.');}));
  if(!opts.length)opts.push(choice('🌱','لا توجد حيوات سابقة','عند انتهاء حياة شخصية، هتظهر هنا على نفس الجهاز.',closeModal));
  modal('🪦','المقبرة والحيوات السابقة','سجل محلي لأهم ملخصات الحيوات المنتهية، محفوظ على نفس المتصفح.',opts);
 }
-
 function editCharacterTraits(){
  const rows=[['health','الصحة','❤️'],['happiness','السعادة','😄'],['smart','الذكاء','🧠'],['looks','المظهر','😎']];
  const opts=rows.map(([key,label,icon])=>choice(icon,label+' · '+clamp(state.stats[key])+'%', 'تعديل مستوى '+label+' من 0 إلى 100.',()=>editCharacterTrait(key,label)));
@@ -6894,7 +6895,7 @@ function importSave(){
     if(!data.education||typeof data.education!=='object')data.education={level:0,school:'لم تبدأ الدراسة',major:null,yearsLeft:0,tuition:0};data.education.clubs=Array.isArray(data.education.clubs)?data.education.clubs:[];
     const npcDefaults=n=>{if(!n||typeof n!=='object')return;if(!Number.isFinite(Number(n.generosity)))n.generosity=50;if(!Number.isFinite(Number(n.craziness)))n.craziness=50;if(!Number.isFinite(Number(n.money)))n.money=50;if(!Number.isFinite(Number(n.petulance)))n.petulance=50;if(!Number.isFinite(Number(n.loyalty)))n.loyalty=55;if(!Number.isFinite(Number(n.jealousy)))n.jealousy=40;if(!Number.isFinite(Number(n.reliability)))n.reliability=55;if(!Array.isArray(n.interactions))n.interactions=[];};if(!Array.isArray(data.specialCareerHistory))data.specialCareerHistory=[];const careerDefaults=c=>{if(!c||typeof c!=='object')return;if(!c.record||typeof c.record!=='object')c.record={attempts:0,wins:0,losses:0,projects:0,totalEarnings:0,bestLevel:clamp(c.level||1)};if(!Array.isArray(c.history))c.history=[];};careerDefaults(data.specialCareer);data.specialCareerHistory.forEach(careerDefaults);(data.family||[]).forEach(npcDefaults);(data.friends||[]).forEach(npcDefaults);(data.children||[]).forEach(npcDefaults);npcDefaults(data.partner);
     const previousState=state,previousDead=dead,previousSettings={...uiSettings},previousPerks=permanentPerks;
-    const storageKeys=[KEY,BACKUP_KEY,CEMETERY_KEY,SETTINGS_KEY,PERKS_KEY],previousStorage={};
+    const storageKeys=[KEY,BACKUP_KEY,CEMETERY_KEY,CEMETERY_BACKUP_KEY,SETTINGS_KEY,PERKS_KEY],previousStorage={};
     storageKeys.forEach(key=>{previousStorage[key]=localStorage.getItem(key);});
     try{
      // Preserve the currently active life before any import, even when the incoming
@@ -6906,6 +6907,8 @@ function importSave(){
       if(isValidSaveData(previousLife))localStorage.setItem(BACKUP_KEY,previousLifeRaw);
      }
      if(importedAux){
+      // Store the validated recovery snapshot before replacing the primary archive.
+      persistCemeteryBackup(importedAux.cemetery);
       localStorage.setItem(CEMETERY_KEY,JSON.stringify(importedAux.cemetery));
       localStorage.setItem(SETTINGS_KEY,JSON.stringify(importedAux.settings));
       localStorage.setItem(PERKS_KEY,JSON.stringify(importedAux.perks));
@@ -6931,13 +6934,40 @@ function importSave(){
 function validateCemeteryBackup(raw){
  return Array.isArray(raw)&&raw.every(item=>item&&typeof item==='object'&&!Array.isArray(item)&&typeof item.name==='string'&&item.name.trim().length>0);
 }
+function persistCemeteryBackup(raw){
+ const normalized=normalizeCemetery(raw);
+ if(!validateCemeteryBackup(normalized))throw new Error('cemetery-invalid');
+ const serialized=JSON.stringify(normalized);
+ if(localStorage.getItem(CEMETERY_BACKUP_KEY)!==serialized){
+  localStorage.setItem(CEMETERY_BACKUP_KEY,serialized);
+  if(localStorage.getItem(CEMETERY_BACKUP_KEY)!==serialized)throw new Error('cemetery-backup-write-unverified');
+ }
+ return serialized;
+}
+function restoreCemeteryBackup(failureCode){
+ const backupRaw=localStorage.getItem(CEMETERY_BACKUP_KEY);
+ if(backupRaw===null)throw new Error(failureCode||'cemetery-unreadable');
+ let parsed;
+ try{parsed=JSON.parse(backupRaw);}catch(e){throw new Error(failureCode||'cemetery-unreadable');}
+ if(!validateCemeteryBackup(parsed))throw new Error(failureCode||'cemetery-invalid');
+ const normalized=normalizeCemetery(parsed),serialized=JSON.stringify(normalized);
+ try{localStorage.setItem(CEMETERY_KEY,serialized);}catch(e){throw new Error('cemetery-recovery-write-failed');}
+ if(localStorage.getItem(CEMETERY_KEY)!==serialized)throw new Error('cemetery-recovery-write-failed');
+ cemeteryRecoveryNotice=true;
+ return normalized;
+}
 function readCemeteryForBackup(){
  const raw=localStorage.getItem(CEMETERY_KEY);
- if(raw===null)return [];
+ if(raw===null){
+  if(localStorage.getItem(CEMETERY_BACKUP_KEY)===null)return [];
+  return restoreCemeteryBackup('cemetery-unreadable');
+ }
  let parsed;
- try{parsed=JSON.parse(raw);}catch(e){throw new Error('cemetery-unreadable');}
- if(!validateCemeteryBackup(parsed))throw new Error('cemetery-invalid');
- return normalizeCemetery(parsed);
+ try{parsed=JSON.parse(raw);}catch(e){return restoreCemeteryBackup('cemetery-unreadable');}
+ if(!validateCemeteryBackup(parsed))return restoreCemeteryBackup('cemetery-invalid');
+ const normalized=normalizeCemetery(parsed);
+ try{persistCemeteryBackup(normalized);}catch(e){}
+ return normalized;
 }
 function createBackupBundle(){
  const cemetery=readCemeteryForBackup();
@@ -6965,14 +6995,18 @@ function exportSave(){
   if(anchor&&typeof anchor.remove==='function')anchor.remove();
   if(url){try{URL.revokeObjectURL(url);}catch(_){}}
   closeModal();
-  if(e&&e.message==='cemetery-unreadable')info('⚠️','سجل الحيوات السابقة غير قابل للقراءة','لم نصدر نسخة احتياطية ناقصة حتى لا تفقد سجل الأجيال. لم يتم تعديل بيانات المقبرة أو الحياة الحالية. لا تمسح بيانات الموقع؛ احتفظ بها وحاول استعادة سجل المقبرة قبل التصدير.');
-  else if(e&&e.message==='cemetery-invalid')info('⚠️','سجل الحيوات السابقة يحتاج مراجعة','وجدنا سجلًا غير صالح داخل المقبرة، لذلك أوقفنا التصدير بدلًا من إسقاطه من النسخة الاحتياطية. لم يتم تعديل بياناتك.');
+  if(e&&e.message==='cemetery-recovery-write-failed')info('⚠️','تعذر تثبيت النسخة المستعادة','وجدنا نسخة محلية سليمة، لكن المتصفح لم يسمح بكتابتها إلى سجل المقبرة. لم نكمل التصدير ولم نمسح النسخة الاحتياطية؛ وفّر مساحة ثم حاول مرة أخرى.');
+  else if(e&&e.message==='cemetery-unreadable')info('⚠️','سجل الحيوات السابقة غير قابل للقراءة','لم نعثر على نسخة محلية سليمة يمكن استعادتها، لذلك لم نصدر نسخة ناقصة. لم يتم تعديل بيانات المقبرة أو الحياة الحالية. لا تمسح بيانات الموقع؛ استورد نسخة خارجية سليمة إن كانت لديك.');
+  else if(e&&e.message==='cemetery-invalid')info('⚠️','سجل الحيوات السابقة يحتاج مراجعة','لم نعثر على نسخة محلية سليمة يمكن استعادتها من السجل غير الصالح. لم نُسقط أي بيانات من التخزين.');
   else info('⚠️','تعذر تصدير الحفظ','ما قدرناش نجهز الملف في المتصفح الحالي. الحفظ المحلي لم يتغير؛ جرّب متصفحًا أحدث.');
   return;
  }
  // Keep the download URL alive briefly so mobile browsers can start reading the file.
  setTimeout(()=>{if(anchor&&typeof anchor.remove==='function')anchor.remove();try{URL.revokeObjectURL(url);}catch(e){}},1000);
- closeModal();flash('تم تجهيز نسخة احتياطية كاملة');
+ closeModal();
+ const recoveredCemetery=cemeteryRecoveryNotice;cemeteryRecoveryNotice=false;
+ if(recoveredCemetery)info('🛟','تم استعادة المقبرة وتجهيز النسخة','استعدنا آخر سجل محلي سليم وأدرجناه في النسخة الاحتياطية التي تم تنزيلها. احتفظ بالملف خارج المتصفح.');
+ else flash('تم تجهيز نسخة احتياطية كاملة');
 }
 document.querySelectorAll('[data-panel]').forEach(btn=>btn.addEventListener('click',()=>{
  document.querySelectorAll('.navbtn').forEach(b=>{

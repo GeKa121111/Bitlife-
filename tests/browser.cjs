@@ -800,25 +800,59 @@ async function run() {
     assert.equal(exported.settings.textScale, 'normal', 'export must include display preferences');
     assert.equal(exported.perks.owned.fighterPack, true, 'export must include locally owned permanent perks');
 
-    // A damaged local cemetery must stop export rather than create a partial backup.
+    // The first complete export seeds a same-device recovery copy of the cemetery.
+    const seededCemeteryBackup = await page.evaluate(() => JSON.parse(localStorage.getItem('hekayat_hayah_cemetery_backup_v1') || 'null'));
+    assert.equal(seededCemeteryBackup[0].id, 'browser-legacy-life');
+
+    // A damaged primary archive should recover from that verified local copy.
     const corruptCemeteryRaw = '{broken-json';
     await page.evaluate(raw => localStorage.setItem('hekayat_hayah_cemetery_v1', raw), corruptCemeteryRaw);
+    const recoveryDownloadPromise = page.waitForEvent('download');
+    await page.locator('#menuBtn').click();
+    await page.locator('.choice').filter({ hasText: 'تصدير الحفظ' }).click();
+    const recoveryDownload = await recoveryDownloadPromise;
+    const recoveredExport = JSON.parse(fs.readFileSync(await recoveryDownload.path(), 'utf8'));
+    assert.equal(recoveredExport.cemetery[0].id, 'browser-legacy-life');
+    const restoredCemetery = await page.evaluate(() => ({
+      primary: JSON.parse(localStorage.getItem('hekayat_hayah_cemetery_v1') || 'null'),
+      backup: JSON.parse(localStorage.getItem('hekayat_hayah_cemetery_backup_v1') || 'null')
+    }));
+    assert.equal(restoredCemetery.primary[0].id, 'browser-legacy-life');
+    assert.equal(restoredCemetery.backup[0].id, 'browser-legacy-life');
+    await page.locator('.choice').filter({ hasText: 'تمام' }).last().click();
+
+    // If both local copies are damaged, fail closed and preserve both byte-for-byte.
+    const corruptBackupRaw = '{broken-backup-json';
+    await page.evaluate(({ primary, backup }) => {
+      localStorage.setItem('hekayat_hayah_cemetery_v1', primary);
+      localStorage.setItem('hekayat_hayah_cemetery_backup_v1', backup);
+    }, { primary: corruptCemeteryRaw, backup: corruptBackupRaw });
     let corruptCemeteryDownload = false;
     page.once('download', () => { corruptCemeteryDownload = true; });
     await page.locator('#menuBtn').click();
     await page.locator('.choice').filter({ hasText: 'تصدير الحفظ' }).click();
     await page.getByText('سجل الحيوات السابقة غير قابل للقراءة', { exact: true }).waitFor();
     await page.waitForTimeout(50);
-    assert.equal(corruptCemeteryDownload, false, 'an unreadable cemetery must not produce an incomplete backup');
-    assert.equal(await page.evaluate(() => localStorage.getItem('hekayat_hayah_cemetery_v1')), corruptCemeteryRaw,
-      'failed backup export must leave the unreadable cemetery bytes untouched');
+    assert.equal(corruptCemeteryDownload, false, 'two damaged copies must not produce an incomplete backup');
+    const preservedDamagedCopies = await page.evaluate(() => ({
+      primary: localStorage.getItem('hekayat_hayah_cemetery_v1'),
+      backup: localStorage.getItem('hekayat_hayah_cemetery_backup_v1')
+    }));
+    assert.deepEqual(preservedDamagedCopies, { primary: corruptCemeteryRaw, backup: corruptBackupRaw });
     await page.locator('.choice').filter({ hasText: 'تمام' }).last().click();
-    await page.evaluate(cemetery => localStorage.setItem('hekayat_hayah_cemetery_v1', JSON.stringify(cemetery)), exported.cemetery);
+    await page.evaluate(cemetery => {
+      const serialized = JSON.stringify(cemetery);
+      localStorage.setItem('hekayat_hayah_cemetery_v1', serialized);
+      localStorage.setItem('hekayat_hayah_cemetery_backup_v1', serialized);
+    }, exported.cemetery);
 
     // A bundle with malformed cemetery entries must be rejected before any local store changes.
     const beforeInvalidBundle = await page.evaluate(() => {
       const saved = JSON.parse(localStorage.getItem('hekayat_hayah_save_v1') || 'null');
-      return { lifeId: saved && saved.lifeId, age: saved && saved.age, bank: saved && saved.bank };
+      return {
+        lifeId: saved && saved.lifeId, age: saved && saved.age, bank: saved && saved.bank,
+        cemeteryBackup: localStorage.getItem('hekayat_hayah_cemetery_backup_v1')
+      };
     });
     const invalidBundleChooserPromise = page.waitForEvent('filechooser');
     await page.locator('#menuBtn').click();
@@ -832,7 +866,10 @@ async function run() {
     await page.getByText('ملف حفظ غير صالح', { exact: true }).waitFor();
     const afterInvalidBundle = await page.evaluate(() => {
       const saved = JSON.parse(localStorage.getItem('hekayat_hayah_save_v1') || 'null');
-      return { lifeId: saved && saved.lifeId, age: saved && saved.age, bank: saved && saved.bank };
+      return {
+        lifeId: saved && saved.lifeId, age: saved && saved.age, bank: saved && saved.bank,
+        cemeteryBackup: localStorage.getItem('hekayat_hayah_cemetery_backup_v1')
+      };
     });
     assert.deepEqual(afterInvalidBundle, beforeInvalidBundle,
       'a bundle with malformed cemetery data must not replace the current life');
@@ -936,19 +973,23 @@ async function run() {
     await page.waitForFunction(() => {
       const saved = JSON.parse(localStorage.getItem('hekayat_hayah_save_v1') || 'null');
       const cemetery = JSON.parse(localStorage.getItem('hekayat_hayah_cemetery_v1') || '[]');
+      const cemeteryBackup = JSON.parse(localStorage.getItem('hekayat_hayah_cemetery_backup_v1') || 'null');
       const settings = JSON.parse(localStorage.getItem('hayah_ui_settings_v1') || 'null');
       const perks = JSON.parse(localStorage.getItem('hayah_permanent_perks_v1') || 'null');
       return saved && saved.age === 30 && cemetery.some(item => item.id === 'browser-legacy-life') &&
+        cemeteryBackup && cemeteryBackup.some(item => item.id === 'browser-legacy-life') &&
         settings && settings.textScale === 'normal' && perks && perks.owned.fighterPack === true && perks.streakSavers === 2;
     });
     const restoredBundle = await page.evaluate(() => ({
       life: JSON.parse(localStorage.getItem('hekayat_hayah_save_v1') || 'null'),
       cemetery: JSON.parse(localStorage.getItem('hekayat_hayah_cemetery_v1') || '[]'),
+      cemeteryBackup: JSON.parse(localStorage.getItem('hekayat_hayah_cemetery_backup_v1') || 'null'),
       settings: JSON.parse(localStorage.getItem('hayah_ui_settings_v1') || 'null'),
       perks: JSON.parse(localStorage.getItem('hayah_permanent_perks_v1') || 'null')
     }));
     assert.equal(restoredBundle.life.age, 30);
     assert.equal(restoredBundle.cemetery[0].id, 'browser-legacy-life');
+    assert.equal(restoredBundle.cemeteryBackup[0].id, 'browser-legacy-life');
     assert.equal(restoredBundle.settings.textScale, 'normal');
     assert.equal(restoredBundle.perks.owned.fighterPack, true);
     assert.equal(restoredBundle.perks.streakSavers, 2);
@@ -1053,10 +1094,12 @@ async function run() {
     const inherited = await page.evaluate(parentId => {
       const saved = JSON.parse(localStorage.getItem('hekayat_hayah_save_v1') || 'null');
       const cemetery = JSON.parse(localStorage.getItem('hekayat_hayah_cemetery_v1') || '[]');
+      const cemeteryBackup = JSON.parse(localStorage.getItem('hekayat_hayah_cemetery_backup_v1') || '[]');
       const assets = Array.isArray(saved.assets) ? saved.assets : [];
       const investments = Array.isArray(saved.investments) ? saved.investments : [];
       return {
         archivedParent: cemetery.some(item => String(item.id) === String(parentId)),
+        archivedParentBackup: cemeteryBackup.some(item => String(item.id) === String(parentId)),
         name: saved.name,
         sourceName: saved.legacy.name,
         legacyValue: saved.legacy.inheritance,
@@ -1071,6 +1114,8 @@ async function run() {
     }, archivedParentId);
     assert.equal(inherited.archivedParent, true,
       'the previous generation must be archived successfully before inheritance replaces it');
+    assert.equal(inherited.archivedParentBackup, true,
+      'the local recovery copy must include the archived previous generation');
     assert.equal(inherited.name, 'وارث اختبار');
     assert.equal(inherited.sourceName, 'الوالد الاختباري');
     assert.equal(inherited.legacyValue, inherited.componentValue, 'recorded inheritance should reconcile with all transferred assets');
