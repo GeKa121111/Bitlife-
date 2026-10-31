@@ -1655,14 +1655,19 @@ async function run() {
     await page.locator('.choice').filter({ hasText: 'المهن الخاصة والشهرة' }).click();
     await page.locator('.choice').filter({ hasText: 'إدارة مسيرة القتال' }).click();
     await page.waitForFunction(() => document.querySelector('#modalRoot')?.textContent.includes('الجولة 2 من 3'));
-    await page.locator('.choice').filter({ hasText: 'حراسة متحركة' }).click();
+    await page.locator('.choice').filter({ hasText: 'التقاط الأنفاس' }).click();
     await page.waitForFunction(() => document.querySelector('#modalRoot')?.textContent.includes('الجولة 3 من 3'));
+    assert.equal(await page.locator('.choice').filter({ hasText: 'التقاط الأنفاس' }).count(), 0,
+      'the recovery tactic should disappear after its single use in the bout');
     await page.locator('.choice').filter({ hasText: 'لكمة خاطفة' }).click();
     const completedCombat = await page.evaluate(() => {
       const saved = JSON.parse(localStorage.getItem('hekayat_hayah_save_v1') || 'null');
       const career = saved && saved.combatCareer;
       const bout = career && career.bouts && career.bouts[career.bouts.length - 1];
-      return { pending: career && career.pendingBout, bout, moveMastery: career && career.moveMastery };
+      return { pending: career && career.pendingBout, bout, moveMastery: career && career.moveMastery,
+        energyRounds: bout && bout.rounds && bout.rounds.map(round => ({
+          before: round.energyBefore, cost: round.energyCost, recovery: round.energyRecovery, after: round.energyAfter
+        })) };
     });
     assert.equal(completedCombat.pending, null, 'completed bouts should clear the pending session');
     assert.ok(completedCombat.bout, 'the completed bout should be recorded');
@@ -1674,6 +1679,11 @@ async function run() {
       'the permanent bout record should preserve the first round mastery count');
     assert.equal(completedCombat.bout.rounds[2].masteryUses, 2,
       'the permanent bout record should preserve mastery progression in later rounds');
+    assert.deepEqual(completedCombat.energyRounds, [
+      { before: 100, cost: 6, recovery: 0, after: 94 },
+      { before: 94, cost: 0, recovery: 14, after: 100 },
+      { before: 100, cost: 6, recovery: 0, after: 94 }
+    ], 'the fight history should persist exact energy spending and one-time recovery across a reload');
 
     await page.locator('.choice').filter({ hasText: 'إدارة مسيرة القتال' }).click();
     await page.locator('.choice').filter({ hasText: 'مجتمع المقاتلين' }).click();
@@ -1753,7 +1763,7 @@ async function run() {
 
     assert.deepEqual(pageErrors, [], 'the browser run should complete without uncaught JavaScript errors');
 
-    console.log('PASS: mobile layout, legacy v1 load, persistence, rewind, JSON import, inheritance, insolvent estate, career promotion migration, annual supplier market, persistent competitor market, facilities and production capacity, researched and instinct product launches, product pricing, annual product sales, business reports, independent portfolio-company operations, and business credit accrual, repayment, persistence, sale settlement, unpaid-interest capitalization, underwater-sale protection, industry tax assessment, tax arrears, loss exemption, treasury-only tax payment, and annual tax reconciliation, fighter move mastery and legacy-save migration, fighter community relationships, friendly interactions, and named rival bouts.');
+    console.log('PASS: mobile layout, legacy v1 load, persistence, rewind, JSON import, inheritance, insolvent estate, career promotion migration, annual supplier market, persistent competitor market, facilities and production capacity, researched and instinct product launches, product pricing, annual product sales, business reports, independent portfolio-company operations, and business credit accrual, repayment, persistence, sale settlement, unpaid-interest capitalization, underwater-sale protection, industry tax assessment, tax arrears, loss exemption, treasury-only tax payment, and annual tax reconciliation, fighter move mastery, one-use stamina recovery and legacy-save migration, fighter community relationships, friendly interactions, and named rival bouts.');
     await context.close();
   } finally {
     if (browser) await browser.close();
