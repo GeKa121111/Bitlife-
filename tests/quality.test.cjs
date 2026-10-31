@@ -302,10 +302,14 @@ test('النسخة الاحتياطية الكاملة تجمع الحياة و�
 
   const wrongShapeArchive = JSON.stringify({ records: [] });
   cemeteryStore.set('hekayat_hayah_cemetery_v1', wrongShapeArchive);
-  assert.throws(() => integrityContext.readCemeteryForBackup(), /cemetery-invalid/);
-  assert.equal(cemeteryStore.get('hekayat_hayah_cemetery_v1'), wrongShapeArchive);
+  const recoveredShapeArchive = integrityContext.readCemeteryForBackup();
+  assert.equal(recoveredShapeArchive[0].id, 'saved-life',
+    'a structurally invalid primary archive should recover from a valid local copy');
+  assert.equal(JSON.parse(cemeteryStore.get('hekayat_hayah_cemetery_v1'))[0].id, 'saved-life');
+
   const malformedRecordArchive = JSON.stringify([null]);
   cemeteryStore.set('hekayat_hayah_cemetery_v1', malformedRecordArchive);
+  cemeteryStore.set('hekayat_hayah_cemetery_backup_v1', corruptBackup);
   assert.throws(() => integrityContext.readCemeteryForBackup(), /cemetery-invalid/);
   assert.equal(cemeteryStore.get('hekayat_hayah_cemetery_v1'), malformedRecordArchive);
 
