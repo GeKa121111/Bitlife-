@@ -1095,6 +1095,10 @@ test('مسيرة القتال تدير ثلاث جولات وتستعيد الن
       mode:'league',feePaid:false,
       opponent:{name:'منافس',style:'قوة',weakTo:'سرعة',rating:40}
     });
+    globalThis.legacyPending=normalizePendingCombatBout({
+      mode:'street',opponent:{name:'منافس قديم',style:'سرعة',weakTo:'تقنية',rating:40},
+      roundHistory:[],playerScore:0,opponentScore:0
+    });
   `, pendingContext);
   assert.deepEqual(Array.from(pendingContext.styles), ['قوة', 'تقنية', 'قوة']);
   assert.equal(pendingContext.pending.round, 3, 'a saved two-round bout should resume at round three');
@@ -1107,11 +1111,7 @@ test('مسيرة القتال تدير ثلاث جولات وتستعيد الن
     'a selected response should survive reloading a pending round');
   assert.equal(pendingContext.pending.roundHistory[0].reactionId,'',
     'legacy round records without response data should normalize safely');
-  const legacyPending = normalizePendingCombatBout({
-    mode:'street',opponent:{name:'منافس قديم',style:'سرعة',weakTo:'تقنية',rating:40},
-    roundHistory:[],playerScore:0,opponentScore:0
-  });
-  assert.equal(legacyPending.reactionId,'',
+  assert.equal(pendingContext.legacyPending.reactionId,'',
     'old pending bouts should enter the new reaction phase without losing the bout');
   assert.equal(pendingContext.pending.feePaid, true);
   assert.equal(pendingContext.invalidLeague, null, 'an unpaid league bout must not be restored from imported data');
