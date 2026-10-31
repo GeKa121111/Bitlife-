@@ -978,6 +978,31 @@ async function run() {
     assert.equal(promotedJob.promotions[0].fromLevel, 1);
     assert.equal(promotedJob.promotions[0].toLevel, 2);
 
+    // A successful career move archives the promoted role and carries most performance into the new job.
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await page.evaluate(() => { Math.random = () => 0; });
+    await page.locator('[data-panel="career"]').click();
+    await page.locator('.choice').filter({ hasText: 'استكشاف فرص عمل' }).click();
+    await page.locator('.choice').filter({ hasText: 'موظف مبيعات' }).click();
+    const jobSwitch = await page.evaluate(() => {
+      const saved = JSON.parse(localStorage.getItem('hekayat_hayah_save_v1') || 'null');
+      const history = Array.isArray(saved.jobHistory) ? saved.jobHistory : [];
+      return {
+        job: saved.job,
+        previous: history[history.length - 1] || null,
+        performance: saved.performance
+      };
+    });
+    assert.equal(jobSwitch.job.id, 'sales', 'the accepted offer should become the active job');
+    assert.equal(jobSwitch.job.level, 1, 'a new employer starts a fresh promotion ladder');
+    assert.equal(jobSwitch.previous.id, 'admin', 'the previous job should remain in career history');
+    assert.equal(jobSwitch.previous.level, 2, 'the archived job should keep its earned grade');
+    assert.equal(jobSwitch.previous.salary, 114000, 'the archived job should keep its final salary');
+    assert.equal(jobSwitch.previous.exitReason, 'انتقال مهني', 'the history should explain why the role ended');
+    assert.equal(jobSwitch.previous.endAge, 32, 'the archive should record the transition age');
+    assert.equal(jobSwitch.previous.promotions[0].toLevel, 2, 'promotion history should survive a job change');
+    assert.ok(jobSwitch.performance >= 80 && jobSwitch.performance < 98,
+      'a new role should carry most, but not all, of the previous performance rating');
 
     // Portfolio companies now use the same supplier, staffing and product systems without touching the primary business.
     await page.evaluate(() => {
