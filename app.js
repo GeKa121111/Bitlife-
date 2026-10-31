@@ -6951,7 +6951,7 @@ function restoreCemeteryBackup(failureCode){
  try{parsed=JSON.parse(backupRaw);}catch(e){throw new Error(failureCode||'cemetery-unreadable');}
  if(!validateCemeteryBackup(parsed))throw new Error(failureCode||'cemetery-invalid');
  const normalized=normalizeCemetery(parsed),serialized=JSON.stringify(normalized);
- localStorage.setItem(CEMETERY_KEY,serialized);
+ try{localStorage.setItem(CEMETERY_KEY,serialized);}catch(e){throw new Error('cemetery-recovery-write-failed');}
  if(localStorage.getItem(CEMETERY_KEY)!==serialized)throw new Error('cemetery-recovery-write-failed');
  cemeteryRecoveryNotice=true;
  return normalized;
