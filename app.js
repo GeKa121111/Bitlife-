@@ -6539,6 +6539,14 @@ function importSave(){
     const storageKeys=[KEY,BACKUP_KEY,CEMETERY_KEY,SETTINGS_KEY,PERKS_KEY],previousStorage={};
     storageKeys.forEach(key=>{previousStorage[key]=localStorage.getItem(key);});
     try{
+     // Preserve the currently active life before any import, even when the incoming
+     // file has the same lifeId and age (the normal save checkpoint would skip it).
+     const previousLifeRaw=previousStorage[KEY];
+     if(previousLifeRaw){
+      let previousLife=null;
+      try{previousLife=JSON.parse(previousLifeRaw);}catch(e){}
+      if(isValidSaveData(previousLife))localStorage.setItem(BACKUP_KEY,previousLifeRaw);
+     }
      if(importedAux){
       localStorage.setItem(CEMETERY_KEY,JSON.stringify(importedAux.cemetery));
       localStorage.setItem(SETTINGS_KEY,JSON.stringify(importedAux.settings));
