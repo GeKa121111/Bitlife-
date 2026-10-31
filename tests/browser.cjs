@@ -859,7 +859,6 @@ async function run() {
     await page.locator('.choice').filter({ hasText: 'تمام' }).last().click();
 
     // Exercise the actual end-of-life UI and reconcile the heir's net estate in Chromium.
-    await page.locator('.choice').filter({ hasText: 'تمام' }).last().click();
     await page.evaluate(() => {
       const key = 'hekayat_hayah_save_v1';
       const saved = JSON.parse(localStorage.getItem(key));
