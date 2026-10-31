@@ -33,6 +33,10 @@ jobs:
         run: node tests/smoke.cjs
       - name: Run regression checks
         run: node --test tests/quality.test.cjs
+      - name: Check life-simulation stress-test syntax
+        run: node --check tests/life-simulation.test.cjs
+      - name: Run deterministic life-simulation stress test
+        run: node --test tests/life-simulation.test.cjs
       - name: Test offline service-worker behavior
         run: node --test tests/service-worker.test.cjs
       - name: Install Playwright and Chromium
