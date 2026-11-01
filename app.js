@@ -1725,7 +1725,11 @@ function inheritanceHistoryRecordMenu(recordId){
  const reportedDelta=record.reportedReconciliationDelta;
  const mismatchDetail=reportedDelta!==null&&reportedDelta!==undefined&&Number.isFinite(Number(reportedDelta))?' (القيمة المسجلة '+(Number(reportedDelta)>0?'+':'')+fmt(reportedDelta)+' '+currency+')':'';
  const reconciliation=record.reconciliationMetadataMismatch?' · بيانات التسوية المسجلة لا تطابق تفاصيل المستفيدين'+mismatchDetail+' وتحتاج مراجعة':delta===0?' · حصة الوارث متطابقة':' · فرق تسوية حصة الوارث '+(delta>0?'+':'')+fmt(delta)+' '+currency+' يحتاج مراجعة';
- const description='صافي التركة '+fmt(record.totalEstateValue)+' '+currency+' · إجمالي المخصص '+fmt(record.totalAllocated)+' '+currency+' · المحفوظ '+fmt(record.totalReservedBalance)+' '+currency+' · المنقول '+fmt(record.totalSettledAmount)+' '+currency+reconciliation+'. هذه بيانات تاريخية محفوظة وليست محافظ قابلة للصرف للمستفيدين غير النشطين بعد.';
+ const firstAccountIssue=Array.isArray(record.accountLedgerIssues)?record.accountLedgerIssues[0]:null;
+ const firstSummaryIssue=Array.isArray(record.accountLedgerSummaryIssues)?record.accountLedgerSummaryIssues[0]:null;
+ const accountIssueDetail=firstAccountIssue?'؛ '+firstAccountIssue.name+(firstAccountIssue.delta!==null&&firstAccountIssue.delta!==undefined&&Number.isFinite(Number(firstAccountIssue.delta))?'، فرق '+fmt(firstAccountIssue.delta)+' '+currency:''):firstSummaryIssue?'؛ '+firstSummaryIssue.label:'';
+ const accountLedgerText=record.accountLedgerMismatch?' · دفتر الاستحقاقات غير متوازن ('+record.accountLedgerIssueCount+' ملاحظة'+accountIssueDetail+')':Number(record.accountLedgerIncompleteCount)>0?' · تعذر التحقق الكامل من دفتر الاستحقاقات في '+record.accountLedgerIncompleteCount+' بند قديم':' · دفتر الاستحقاقات متوازن';
+ const description='صافي التركة '+fmt(record.totalEstateValue)+' '+currency+' · إجمالي المخصص '+fmt(record.totalAllocated)+' '+currency+' · المحفوظ '+fmt(record.totalReservedBalance)+' '+currency+' · المنقول '+fmt(record.totalSettledAmount)+' '+currency+reconciliation+accountLedgerText+'. هذه بيانات تاريخية محفوظة وليست محافظ قابلة للصرف للمستفيدين غير النشطين بعد.';
  modal('📒','تركة '+(record.sourceName||'الجيل السابق'),description,opts);
 }
 function recordBusinessFinancialReport(entity,report){
@@ -6003,8 +6007,14 @@ function createInheritanceHistoryRecord(registry,sourceName,sourceAge){
  const sourceLifeId=String(registry.sourceLifeId??registry.id??'legacy');
  const safeMoney=value=>{const number=Number(value);return Number.isFinite(number)?Math.max(0,Math.round(number)):0;};
  const currency=String(registry.currency||'ج.م');
+ const knownAccountStatuses=new Set(['transferred','reserved','earmarked','unassigned']);
  const accounts=registry.accounts.filter(account=>account&&typeof account==='object').map((account,index)=>{
   const shareValue=Number(account.share);
+  const ledgerKeys=['allocatedAmount','balance','settledAmount'];
+  const ledgerAmountsPresent=ledgerKeys.every(key=>account[key]!==undefined&&account[key]!==null&&String(account[key]).trim()!=='');
+  const ledgerAmountsFinite=ledgerAmountsPresent&&ledgerKeys.every(key=>Number.isFinite(Number(account[key])));
+  const ledgerAmountsNonNegative=ledgerAmountsFinite&&ledgerKeys.every(key=>Number(account[key])>=0);
+  const statusValue=String(account.status||'');
   return {
    ...account,
    id:String(account.id||('estate-account-'+sourceLifeId+'-'+index)),
@@ -6015,9 +6025,11 @@ function createInheritanceHistoryRecord(registry,sourceName,sourceAge){
    allocatedAmount:safeMoney(account.allocatedAmount),
    balance:safeMoney(account.balance),
    settledAmount:safeMoney(account.settledAmount),
-   status:String(account.status||'reserved'),
+   status:statusValue||'reserved',
    currency:String(account.currency||currency),
-   sourceLifeId:String(account.sourceLifeId||sourceLifeId)
+   sourceLifeId:String(account.sourceLifeId||sourceLifeId),
+   ledgerAuditComplete:account.ledgerAuditComplete!==false&&ledgerAmountsNonNegative&&knownAccountStatuses.has(statusValue),
+   ledgerAuditInvalid:ledgerAmountsPresent&&ledgerAmountsFinite&&!ledgerAmountsNonNegative
   };
  });
  const transferredAccounts=accounts.filter(account=>account.status==='transferred');
@@ -6037,6 +6049,58 @@ function createInheritanceHistoryRecord(registry,sourceName,sourceAge){
  const reportedReconciliationDelta=reconciliationMetadataMismatch
   ?(hasPriorReported?priorReportedDelta:hasDeclaredDelta?declaredReconciliationDelta:null)
   :null;
+ const accountLedgerIssues=[];
+ let accountLedgerIncompleteCount=0;
+ accounts.forEach(account=>{
+  if(account.ledgerAuditInvalid){
+   accountLedgerIssues.push({
+    accountId:account.id,name:account.name,status:account.status,
+    allocatedAmount:account.allocatedAmount,balance:account.balance,settledAmount:account.settledAmount,
+    delta:null,reason:'negative_amount'
+   });
+   return;
+  }
+  if(!account.ledgerAuditComplete){
+   accountLedgerIncompleteCount++;
+   return;
+  }
+  const delta=account.balance+account.settledAmount-account.allocatedAmount;
+  const statusMismatch=account.status==='transferred'
+   ?account.balance!==0||account.settledAmount!==account.allocatedAmount
+   :account.settledAmount!==0||account.balance!==account.allocatedAmount;
+  if(delta!==0||statusMismatch){
+   accountLedgerIssues.push({
+    accountId:account.id,name:account.name,status:account.status,
+    allocatedAmount:account.allocatedAmount,balance:account.balance,settledAmount:account.settledAmount,
+    delta,reason:statusMismatch?'status_mismatch':'balance_mismatch'
+   });
+  }
+ });
+ const accountLedgerSummaryIssues=[];
+ if(accountLedgerIncompleteCount===0){
+  const calculatedAllocated=accounts.reduce((sum,account)=>sum+account.allocatedAmount,0);
+  const calculatedBalance=accounts.reduce((sum,account)=>sum+account.balance,0);
+  const calculatedSettled=accounts.reduce((sum,account)=>sum+account.settledAmount,0);
+  const summaryChecks=[
+   ['totalEstateValue','صافي التركة',calculatedAllocated],
+   ['totalAllocated','إجمالي المخصص',calculatedAllocated],
+   ['totalReservedBalance','إجمالي الرصيد المحفوظ',calculatedBalance],
+   ['totalSettledAmount','إجمالي المبلغ المنقول',calculatedSettled]
+  ];
+  summaryChecks.forEach(([field,label,calculated])=>{
+   const raw=registry[field];
+   if(raw===undefined||raw===null||!Number.isFinite(Number(raw))){
+    accountLedgerIncompleteCount++;
+    return;
+   }
+   const declared=safeMoney(raw);
+   if(declared!==calculated){
+    accountLedgerSummaryIssues.push({field,label,declared,calculated,delta:calculated-declared});
+   }
+  });
+ }
+ const accountLedgerIssueCount=accountLedgerIssues.length+accountLedgerSummaryIssues.length;
+ const accountLedgerMismatch=accountLedgerIssueCount>0;
  const ageValue=sourceAge===null||sourceAge===undefined?null:Number(sourceAge);
  return {
   id:String(registry.id||('estate-history-'+encodeURIComponent(sourceLifeId))),
@@ -6051,6 +6115,11 @@ function createInheritanceHistoryRecord(registry,sourceName,sourceAge){
   reconciliationDelta,
   reconciliationMetadataMismatch,
   reportedReconciliationDelta,
+  accountLedgerMismatch,
+  accountLedgerIssueCount,
+  accountLedgerIncompleteCount,
+  accountLedgerIssues:accountLedgerIssues.slice(0,10),
+  accountLedgerSummaryIssues:accountLedgerSummaryIssues.slice(0,4),
   accounts
  };
 }
