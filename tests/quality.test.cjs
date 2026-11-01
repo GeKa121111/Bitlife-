@@ -24,7 +24,7 @@ function functionSource(name, nextName) {
 test('اختصار لوحة المفاتيح يتجاوز الرأس وينقل التركيز إلى يوميات الحياة', () => {
   assert.ok(html.includes('<a class="skip-link" href="#lifeFeed">انتقل إلى يوميات الحياة</a>'));
   assert.match(html, /<main class="feed" id="lifeFeed"[^>]*tabindex="-1"/);
-  assert.ok(css.includes('.skip-link:focus-visible{transform:translateY(0);'));
+  assert.ok(css.includes('.skip-link:focus{transform:translateY(0)}'));
   assert.ok(css.includes('@media(prefers-reduced-motion:reduce){.skip-link{transition:none!important}}'));
 });
 
