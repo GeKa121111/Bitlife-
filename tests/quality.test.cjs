@@ -1851,14 +1851,18 @@ test('تقدير مساحة التخزين يعرض قيمًا آمنة ولا �
 
 test('النوافذ الحوارية تعلن العنوان والوصف والسؤال المرئي لقارئات الشاشة', () => {
   const modalSource = functionSource('modal', 'info');
+  const helperSource = functionSource('buildDialogDescriptionIds', 'modal');
+  const helperContext = {};
+  vm.runInNewContext(helperSource + "\nglobalThis.descriptionCases = [buildDialogDescriptionIds('وصف', 'سؤال'), buildDialogDescriptionIds('', 'سؤال'), buildDialogDescriptionIds('', '')];", helperContext);
+  assert.deepEqual(Array.from(helperContext.descriptionCases[0]), ['dialogDescription', 'dialogQuestion']);
+  assert.deepEqual(Array.from(helperContext.descriptionCases[1]), ['dialogQuestion']);
+  assert.deepEqual(Array.from(helperContext.descriptionCases[2]), []);
   assert.equal((modalSource.match(/aria-labelledby="dialogTitle"/g) || []).length, 2,
     'both drawer and event dialogs should expose their visible title as the accessible name');
   assert.equal((modalSource.match(/\+describedBy\+/g) || []).length, 2,
     'both dialog variants should use only the visible description references they render');
   assert.match(modalSource, /const questionPrompt=!isDrawer&&!isNotice/);
-  assert.match(modalSource, /const dialogDescriptionIds=\[\]/);
-  assert.match(modalSource, /if\(desc\)dialogDescriptionIds\.push\('dialogDescription'\)/);
-  assert.match(modalSource, /if\(questionPrompt\)dialogDescriptionIds\.push\('dialogQuestion'\)/);
+  assert.match(modalSource, /buildDialogDescriptionIds\(desc,questionPrompt\)/);
   assert.match(modalSource, /class="modaltitle" id="dialogTitle" role="heading" aria-level="2"/);
   assert.match(modalSource, /class="event-title" id="dialogTitle"/);
   assert.equal((modalSource.match(/class="desc" id="dialogDescription"/g) || []).length, 2);
