@@ -24,6 +24,7 @@ const propertyOwnershipSource = [
   extractFunction('syncFamilyPropertyMarketValue'),
   extractFunction('beneficiaryWalletLedgerTotals'),
   extractFunction('recordBeneficiaryWalletRentalIncome'),
+  extractFunction('classifyFamilyPropertyRentResult'),
   extractFunction('distributeFamilyPropertyRent')
 ].join('\n');
 const combatStart = app.indexOf('function normalizeCombatInjuryYears(');
