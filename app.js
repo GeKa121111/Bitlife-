@@ -5558,8 +5558,10 @@ function calculateInheritance(previous,share){
  const backingAssetFor=entity=>{
   const id=entity.assetId??entity.id;
   if(id!==undefined&&id!==null){
-   const found=assets.find(item=>item&&String(item.id)===String(id));
-   if(found)return found;
+   const foundByIdAndTitle=assets.find(item=>item&&String(item.id)===String(id)&&(!entity.title||String(item.title)===String(entity.title)));
+   if(foundByIdAndTitle)return foundByIdAndTitle;
+   const foundById=assets.find(item=>item&&String(item.id)===String(id));
+   if(foundById)return foundById;
   }
   const matches=assets.filter(item=>item&&item.kind==='business'&&entity.title&&String(item.title)===String(entity.title));
   return matches.length===1?matches[0]:null;
@@ -5587,10 +5589,26 @@ function calculateInheritance(previous,share){
  const shareRate=Math.max(0,Math.min(1,Number(share)||0));
  const netRate=gross>0?net/gross:0;
  const factor=shareRate*netRate;
- const assetIdMap=new Map();
+ const assetIdMap=new Map(),usedInheritanceIds=new Set();
+ const rememberSourceId=item=>{
+  if(!item||typeof item!=='object')return;
+  [item.id,item.assetId].forEach(id=>{if(id!==undefined&&id!==null)usedInheritanceIds.add(String(id));});
+ };
+ assets.forEach(rememberSourceId);investments.forEach(rememberSourceId);businessEntries.forEach(entry=>rememberSourceId(entry.entity));
+ let inheritanceIdSequence=0;
+ const createInheritanceId=()=>{
+  let id;
+  do{
+   inheritanceIdSequence++;
+   id=Date.now()+Math.random();
+   if(usedInheritanceIds.has(String(id)))id=Date.now()+inheritanceIdSequence+Math.random();
+  }while(usedInheritanceIds.has(String(id)));
+  usedInheritanceIds.add(String(id));
+  return id;
+ };
  const inheritedAssets=factor>0?assets.map(item=>{
-  const id=Date.now()+Math.random();
-  if(item&&item.id!==undefined&&item.id!==null)assetIdMap.set(String(item.id),id);
+  const id=createInheritanceId();
+  if(item&&item.id!==undefined&&item.id!==null&&!assetIdMap.has(String(item.id)))assetIdMap.set(String(item.id),id);
   return {
    ...item,
    value:Math.round(valueOf(item)*factor),
@@ -5601,7 +5619,7 @@ function calculateInheritance(previous,share){
  const inheritedInvestments=factor>0?investments.map(item=>({
   ...item,
   value:Math.round(valueOf(item)*factor),
-  id:Date.now()+Math.random()
+  id:createInheritanceId()
  })):[];
 
  const usedBusinessAssetIds=new Set();
@@ -5611,16 +5629,19 @@ function calculateInheritance(previous,share){
   if(!copy||typeof copy!=='object'||Array.isArray(copy))return null;
   const originalId=copy.assetId??copy.id;
   let nextId=originalId!==undefined&&originalId!==null?assetIdMap.get(String(originalId)):undefined;
-  let asset=nextId!==undefined?inheritedAssets.find(item=>item&&String(item.id)===String(nextId)):null;
+  let asset=nextId!==undefined?inheritedAssets.find(item=>item&&String(item.id)===String(nextId)&&(!copy.title||String(item.title)===String(copy.title))):null;
   if(!asset){
    const fallback=backingAssetFor(entry.entity);
-   if(fallback&&!usedBusinessAssetIds.has(String(fallback.id))){
-    nextId=assetIdMap.get(String(fallback.id));
-    asset=nextId!==undefined?inheritedAssets.find(item=>item&&String(item.id)===String(nextId)):null;
+   if(fallback){
+    const mappedFallbackId=assetIdMap.get(String(fallback.id));
+    if(mappedFallbackId!==undefined&&!usedBusinessAssetIds.has(String(mappedFallbackId))){
+     nextId=mappedFallbackId;
+     asset=inheritedAssets.find(item=>item&&String(item.id)===String(nextId)&&(!copy.title||String(item.title)===String(copy.title)));
+    }
    }
   }
   if(!asset){
-   nextId=Date.now()+Math.random();
+   nextId=createInheritanceId();
    asset={
     id:nextId,
     title:copy.title||'شركة موروثة',
