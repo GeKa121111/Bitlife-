@@ -811,7 +811,7 @@ test('سجل مواريث العائلة يحتفظ بخمسة أجيال دون
     const heir = context.state;
     const history = heir.legacy.inheritanceHistory;
     assert.equal(history.length, generation + 1);
-    assert.deepEqual(history.map(record => record.sourceLifeId), sourceIds);
+    assert.deepEqual(Array.from(history, record => record.sourceLifeId), sourceIds);
     assert.equal(new Set(history.map(record => record.id)).size, history.length);
     assert.equal(history[history.length - 1].sourceName, parent.name);
     assert.ok(history.every(record => Array.isArray(record.accounts)));
@@ -874,7 +874,7 @@ test('حفظ v84 القديم يُعرض ويُرحّل إلى تاريخ الأ
     legacy
   }, currentRegistry);
 
-  assert.deepEqual(history.map(record => record.sourceLifeId), ['grandparent-v84', 'parent-v85']);
+  assert.deepEqual(Array.from(history, record => record.sourceLifeId), ['grandparent-v84', 'parent-v85']);
   assert.equal(history[1].sourceName, 'الأب الحالي');
   assert.equal(legacy.inheritanceHistory, undefined, 'reading an old save must not mutate it');
 });
