@@ -22,8 +22,8 @@ body{display:flex;justify-content:center}
 button,input,select,textarea{font:inherit}
 button{cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
 button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid #8fc8ef;outline-offset:2px}
-.skip-link{position:fixed;top:8px;right:8px;z-index:1000;transform:translateY(calc(-100% - 16px));padding:10px 14px;border:2px solid #e5b34b;border-radius:11px;background:#123e3a;color:#fff;font-size:13px;font-weight:900;text-decoration:none;box-shadow:0 8px 24px #102d2a30;transition:transform .16s ease}
-.skip-link:focus{transform:translateY(0)}
+.skip-link{position:fixed;top:-72px;right:8px;z-index:1000;display:block;padding:10px 14px;border:2px solid #e5b34b;border-radius:11px;background:#123e3a;color:#fff;font-size:13px;font-weight:900;text-decoration:none;box-shadow:0 8px 24px #102d2a30;transition:top .16s ease}
+.skip-link:focus{top:8px}
 .skip-link:focus-visible{outline:3px solid #e5b34b;outline-offset:3px}
 button:disabled{opacity:.42;cursor:not-allowed}
 .app{width:100%;max-width:500px;min-height:100dvh;background:var(--paper);position:relative;padding-bottom:170px;overflow:hidden;box-shadow:0 0 36px #1f34420b}
