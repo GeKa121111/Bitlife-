@@ -1894,5 +1894,7 @@ test('سجل مواريث العائلة يحتفظ بتاريخ الأجيال 
   assert.match(app, /inheritanceHistory:buildInheritanceHistory\(previous,beneficiaryAccounts\)/);
   assert.match(ledgerMenu, /سجل مواريث العائلة/);
   assert.match(ledgerMenu, /inheritanceHistoryRecordMenu/);
+  assert.match(ledgerMenu, /fmt\(allocated\)\+' '\+currency/);
+  assert.match(ledgerMenu, /fmt\(record\.totalEstateValue\)\+' '\+currency/);
   assert.match(read('sw.js'), /hayah-shell-v85/);
 });
