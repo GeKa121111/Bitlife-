@@ -1767,11 +1767,10 @@ function getBeneficiaryWallets(legacy){
  const before=JSON.stringify(Array.isArray(legacy.beneficiaryWallets)?legacy.beneficiaryWallets:[]);
  const registry=legacy.distribution&&legacy.distribution.beneficiaryAccounts;
  const wallets=buildBeneficiaryWallets(legacy,registry,legacy.name||'الجيل السابق',null);
- if(JSON.stringify(wallets)!==before){
-  legacy.beneficiaryWallets=wallets;
-  if(state&&state.legacy===legacy)save();
- }
- return wallets;
+ const changed=JSON.stringify(wallets)!==before;
+ legacy.beneficiaryWallets=wallets;
+ if(changed&&state&&state.legacy===legacy)save();
+ return legacy.beneficiaryWallets;
 }
 function recordBeneficiaryWalletSupport(wallet,amount,source){
  if(!wallet||typeof wallet!=='object')return {ok:false,reason:'wallet_missing'};
