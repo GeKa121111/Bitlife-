@@ -2069,10 +2069,18 @@ function age18Choice(){
 function death(cause){
  dead=true;state.status='متوفى';state.cause=cause;const archived=archiveLife();save();render();
  if(activeDialogKeyHandler){document.removeEventListener('keydown',activeDialogKeyHandler);activeDialogKeyHandler=null;}
- const assetValue=state.assets.reduce((sum,a)=>sum+a.value,0),investmentValue=(state.investments||[]).reduce((sum,a)=>sum+(a.value||0),0),net=state.bank+assetValue+investmentValue-(state.debt||0);
+ const estatePreview=buildInheritancePreview(state),net=estatePreview.totalEstateValue;
+ const children=Array.isArray(state.children)?state.children:[];
+ const inheritancePolicyNote=children.length?'<div class="muted" data-inheritance-policy="true" role="note" style="margin:6px 0 10px;line-height:1.7">الوصية: '+esc(estatePreview.policy)+' · حصة الأبناء '+Math.round(estatePreview.childPoolShare*100)+'% موزعة بالتساوي على '+children.length+' أبناء · المتبقي '+Math.round(estatePreview.outsideChildrenPoolShare*100)+'% لـ '+esc(estatePreview.outsideChildrenPoolRecipient)+' ('+esc(cash(estatePreview.outsideChildrenPoolValue))+').</div>':'';
+ const heirChoices=children.map((child,index)=>{
+  const allocation=estatePreview.siblingAllocations[index]||{share:0,estimatedValue:0};
+  const sharePercent=Math.round((Number(allocation.share)||0)*100);
+  const estimate=Math.max(0,Math.round(Number(allocation.estimatedValue)||0));
+  return '<button class="smallbtn inheritance-heir-choice" data-heir="'+index+'" data-inheritance-share="'+sharePercent+'" data-inheritance-estimate="'+estimate+'" aria-label="استكمل حياة '+esc(child.name)+'، حصة تقديرية '+sharePercent+'% بقيمة '+esc(cash(estimate))+'" style="width:100%;margin:4px 0"><span>🌳 استكمل كـ '+esc(child.name)+'</span><small style="display:block;margin-top:4px;font-weight:400">الحصة التقديرية '+sharePercent+'% · '+esc(cash(estimate))+'</small></button>';
+ }).join('');
  const achievements=state.accomplishments.length?state.accomplishments.map(a=>'• '+esc(a)).join('<br>'):'لسه مفيش إنجازات مسجلة، بس كل حياة ليها حكايتها.';
  const archiveWarning=archived?'':'<div class="listitem" role="alert" style="text-align:right;border:1px solid #b45309;background:rgba(180,83,9,.08)">تعذر حفظ ملخص الحياة في المقبرة بسبب مشكلة في التخزين. لن نبدأ حياة جديدة أو ننقل الإرث قبل نجاح الحفظ؛ صدّر نسخة احتياطية كاملة، وفّر مساحة ثم أعد المحاولة.</div>';
- $('modalRoot').innerHTML='<div class="overlay death-overlay"><section class="modal" id="deathDialog" role="dialog" aria-modal="true" aria-labelledby="deathDialogTitle" aria-describedby="deathDialogDescription" tabindex="-1"><div class="death"><div class="tomb" aria-hidden="true">🪦</div><div class="deathtitle" id="deathDialogTitle" role="heading" aria-level="1">انتهت حكاية '+esc(state.name)+'</div><div class="deathsub" id="deathDialogDescription">عشت '+fmt(state.age)+' سنة.<br>سبب الوفاة: '+esc(cause)+'.<br>شريط حياتك: '+esc(lifeRibbon())+'.<br>كل قرار ساب أثر، وكل سنة كانت فصل من قصتك.</div><div class="summarygrid"><div class="summarycell"><div class="summarylabel">الثروة النهائية</div><div class="summaryvalue">'+cash(net)+'</div></div><div class="summarycell"><div class="summarylabel">العمر</div><div class="summaryvalue">'+fmt(state.age)+' سنة</div></div><div class="summarycell"><div class="summarylabel">إنجازات</div><div class="summaryvalue">'+fmt(state.accomplishments.length)+'</div></div><div class="summarycell"><div class="summarylabel">الأصول</div><div class="summaryvalue">'+fmt(state.assets.length)+'</div></div></div>'+archiveWarning+'<div class="listitem" style="text-align:right"><div class="listtitle">محطات من حياتك</div><div class="muted" style="margin-top:8px;line-height:2">'+achievements+'</div></div><button class="primarybtn" id="newLifeBtn">🌱 حياة جديدة</button>'+((state.timeMachineSnapshots||[]).length?'<button class="smallbtn" id="timeMachineDeathBtn" style="width:100%;margin-top:8px">⏳ تراجع عن سنة قاتلة</button>':'')+(state.children.length?'<div class="muted" style="margin:8px 0">كمّل إرث العائلة:</div>'+state.children.map((c,i)=>'<button class="smallbtn" data-heir="'+i+'" style="width:100%;margin:4px 0">🌳 استكمل كـ '+esc(c.name)+'</button>').join(''):'')+'<button class="smallbtn" id="reviewBtn" style="width:100%;margin-top:9px">راجع دفتر حياتك</button></div></section></div>';
+ $('modalRoot').innerHTML='<div class="overlay death-overlay"><section class="modal" id="deathDialog" role="dialog" aria-modal="true" aria-labelledby="deathDialogTitle" aria-describedby="deathDialogDescription" tabindex="-1"><div class="death"><div class="tomb" aria-hidden="true">🪦</div><div class="deathtitle" id="deathDialogTitle" role="heading" aria-level="1">انتهت حكاية '+esc(state.name)+'</div><div class="deathsub" id="deathDialogDescription">عشت '+fmt(state.age)+' سنة.<br>سبب الوفاة: '+esc(cause)+'.<br>شريط حياتك: '+esc(lifeRibbon())+'.<br>كل قرار ساب أثر، وكل سنة كانت فصل من قصتك.</div><div class="summarygrid"><div class="summarycell"><div class="summarylabel">صافي التركة</div><div class="summaryvalue" data-estate-net="'+net+'">'+cash(net)+'</div></div><div class="summarycell"><div class="summarylabel">العمر</div><div class="summaryvalue">'+fmt(state.age)+' سنة</div></div><div class="summarycell"><div class="summarylabel">إنجازات</div><div class="summaryvalue">'+fmt(state.accomplishments.length)+'</div></div><div class="summarycell"><div class="summarylabel">الأصول</div><div class="summaryvalue">'+fmt(state.assets.length)+'</div></div></div>'+archiveWarning+'<div class="listitem" style="text-align:right"><div class="listtitle">محطات من حياتك</div><div class="muted" style="margin-top:8px;line-height:2">'+achievements+'</div></div><button class="primarybtn" id="newLifeBtn">🌱 حياة جديدة</button>'+((state.timeMachineSnapshots||[]).length?'<button class="smallbtn" id="timeMachineDeathBtn" style="width:100%;margin-top:8px">⏳ تراجع عن سنة قاتلة</button>':'')+(children.length?'<div class="muted" style="margin:8px 0">كمّل إرث العائلة:</div>'+inheritancePolicyNote+heirChoices:'')+'<button class="smallbtn" id="reviewBtn" style="width:100%;margin-top:9px">راجع دفتر حياتك</button></div></section></div>';
  $('newLifeBtn').addEventListener('click',()=>{closeModal();if(confirm('تبدأ حياة جديدة وتستبدل الحفظ الحالي؟'))newLifeSetup();});
  $('reviewBtn').addEventListener('click',closeModal);
  const rewindDeathBtn=$('timeMachineDeathBtn');if(rewindDeathBtn)rewindDeathBtn.addEventListener('click',timeMachineMenu);
@@ -5543,7 +5551,7 @@ function finishDrivingTest(passed){
  }
 }
 
-function calculateInheritance(previous,share){
+function calculateEstateSnapshot(previous){
  const bank=Math.max(0,Number(previous&&previous.bank)||0);
  const assets=Array.isArray(previous&&previous.assets)?previous.assets:[];
  const investments=Array.isArray(previous&&previous.investments)?previous.investments:[];
@@ -5589,8 +5597,13 @@ function calculateInheritance(previous,share){
   return sum+tax+businessCreditBalance(entry.entity);
  },0)+businessOverdraft;
  const gross=bank+assetValue+investmentValue+businessCash+unbackedBusinessValue;
- const debt=Math.max(0,Number(previous&&previous.debt)||0)+businessLiabilities;
- const net=Math.max(0,gross-debt);
+ const personalDebt=Math.max(0,Number(previous&&previous.debt)||0);
+ const net=Math.max(0,gross-personalDebt-businessLiabilities);
+ return {bank,assets,investments,valueOf,businessEntries,backingAssetFor,businessCash,businessOverdraft,businessLiabilities,gross,personalDebt,net};
+}
+function calculateInheritance(previous,share){
+ const estate=calculateEstateSnapshot(previous);
+ const {bank,assets,investments,valueOf,businessEntries,backingAssetFor,businessLiabilities,gross,net}=estate;
  const shareRate=Math.max(0,Math.min(1,Number(share)||0));
  // Company liabilities travel with the operating business, so only personal debt
  // reduces the transferable gross before the proportional inheritance is applied.
@@ -5723,6 +5736,28 @@ function calculateChildInheritanceShare(previous,index){
  if(!Number.isInteger(childIndex)||childIndex<0||childIndex>=children.length)return 0;
  return childInheritancePoolShare(previous)/children.length;
 }
+function buildInheritancePreview(previous){
+ const children=Array.isArray(previous&&previous.children)?previous.children:[];
+ const policy=String(previous&&previous.willDistribution||'الأسرة بالتساوي');
+ const childPoolShare=childInheritancePoolShare(previous);
+ const totalEstateValue=calculateEstateSnapshot(previous).net;
+ const childCount=children.length;
+ const perChildShare=childCount?childPoolShare/childCount:0;
+ const childPoolValue=Math.round(totalEstateValue*childPoolShare);
+ const baseChildValue=childCount?Math.floor(childPoolValue/childCount):0;
+ const childValueRemainder=childCount?childPoolValue-baseChildValue*childCount:0;
+ const siblingAllocations=children.map((sibling,index)=>({
+  childId:sibling&&sibling.id!==undefined?String(sibling.id):'child-'+index,
+  name:sibling&&sibling.name?sibling.name:'ابن/ابنة',
+  share:perChildShare,
+  estimatedValue:baseChildValue+(index<childValueRemainder?1:0),
+  selected:false
+ }));
+ const outsideChildrenPoolShare=Math.round(Math.max(0,1-childPoolShare)*100)/100;
+ const outsideChildrenPoolValue=Math.max(0,totalEstateValue-childPoolValue);
+ const outsideChildrenPoolRecipient=policy==='التبرع بجزء'?'تبرع خيري':previous&&previous.partner?'الشريك':'مستفيدون آخرون';
+ return {policy,childPoolShare,perChildShare,totalEstateValue,childCount,childPoolValue,siblingAllocations,outsideChildrenPoolShare,outsideChildrenPoolValue,outsideChildrenPoolRecipient};
+}
 function startAsChild(index){
  if(!state||!Array.isArray(state.children)||!state.children[index])return;
  if(!archiveLife()){
@@ -5730,23 +5765,16 @@ function startAsChild(index){
   return;
  }
  const previous=state,child=previous.children[index],oldPartner=previous.partner;
- const childPoolShare=childInheritancePoolShare(previous),share=calculateChildInheritanceShare(previous,index);
+ const distributionPreview=buildInheritancePreview(previous);
+ const childPoolShare=distributionPreview.childPoolShare,share=distributionPreview.perChildShare;
  const inheritance=calculateInheritance(previous,share);
- const totalEstateValue=inheritance.totalEstateValue;
- const childCount=previous.children.length,childPoolValue=Math.round(totalEstateValue*childPoolShare);
- const baseChildValue=childCount?Math.floor(childPoolValue/childCount):0;
- const childValueRemainder=childCount?childPoolValue-baseChildValue*childCount:0;
- const siblingAllocations=previous.children.map((sibling,i)=>({
-  childId:sibling&&sibling.id!==undefined?String(sibling.id):'child-'+i,
-  name:sibling&&sibling.name?sibling.name:'ابن/ابنة',
-  share,
-  estimatedValue:baseChildValue+(i<childValueRemainder?1:0),
-  selected:i===index
- }));
+ const totalEstateValue=distributionPreview.totalEstateValue;
+ const childCount=distributionPreview.childCount,childPoolValue=distributionPreview.childPoolValue;
+ const siblingAllocations=distributionPreview.siblingAllocations.map((allocation,i)=>({...allocation,selected:i===index}));
  if(siblingAllocations[index])siblingAllocations[index].actualValue=inheritance.value;
  const heir=newLife();ensureChildGrowthProfile(child);heir.name=child.name;heir.gender=child.gender||'male';heir.age=typeof child.age==='number'?child.age:18;heir.place={...previous.place};heir.bank=inheritance.bank;if(perkOwned('goldenPiggyBank'))heir.bank+=1000000;heir.stats={...heir.stats,health:clamp(child.health??heir.stats.health),happiness:clamp(child.happiness??heir.stats.happiness),smart:clamp(child.smart??heir.stats.smart),looks:clamp(child.looks??heir.stats.looks)};heir.reputation=clamp((Number(child.schoolPerformance)||50)*.35+(Number(child.careerPotential)||40)*.35+(Number(child.relationshipLevel)||50)*.3);
  heir.family=[...previous.family];previous.children.forEach((sibling,i)=>{if(i!==index){const allocation=siblingAllocations[i]||{};heir.family.push({...sibling,relation:'أخ/أخت',inheritanceShare:share,inheritanceEstimate:allocation.estimatedValue,inheritanceStatus:'مخصص من التركة'});}});heir.partner=null;heir.married=false;heir.children=[];
- heir.legacy={name:previous.name,inheritance:inheritance.value,heirloom:(previous.heirlooms||[])[0]?.name||null,distribution:{policy:previous.willDistribution||'الأسرة بالتساوي',childrenPoolShare:childPoolShare,perChildShare:share,childCount,selectedChildIndex:index,selectedChildName:child.name,totalEstateValue,childPoolValue,outsideChildrenPoolShare:Math.round(Math.max(0,1-childPoolShare)*100)/100,outsideChildrenPoolValue:Math.max(0,totalEstateValue-childPoolValue),outsideChildrenPoolRecipient:previous.willDistribution==='التبرع بجزء'?'تبرع خيري':oldPartner?'الشريك':'مستفيدون آخرون',siblingAllocations}};
+ heir.legacy={name:previous.name,inheritance:inheritance.value,heirloom:(previous.heirlooms||[])[0]?.name||null,distribution:{policy:previous.willDistribution||'الأسرة بالتساوي',childrenPoolShare:childPoolShare,perChildShare:share,childCount,selectedChildIndex:index,selectedChildName:child.name,totalEstateValue,childPoolValue,outsideChildrenPoolShare:distributionPreview.outsideChildrenPoolShare,outsideChildrenPoolValue:distributionPreview.outsideChildrenPoolValue,outsideChildrenPoolRecipient:distributionPreview.outsideChildrenPoolRecipient,siblingAllocations}};
  heir.heirlooms=[...(previous.heirlooms||[])];heir.accomplishments=['بدأ حياة جديدة كامتداد لعائلة '+previous.name,'ورث '+cash(inheritance.value)];
  heir.job=null;heir.assets=inheritance.assets;heir.investments=inheritance.investments;heir.business=inheritance.business||null;heir.companies=Array.isArray(inheritance.companies)?inheritance.companies:[];
  heir.family.push({id:'legacy-parent-'+Date.now(),name:previous.name,relation:'والد/والدة متوفى',emoji:previous.gender==='male'?'👨‍🦳':'👩‍🦳',age:previous.age,job:previous.job?previous.job.title:'متوفى',relationshipLevel:100,personality:'موروث عائلي'});if(oldPartner){const partnerRecord={...oldPartner,relation:'الأم/الأب'};if(previous.willDistribution!=='التبرع بجزء'){const partnerShare=Math.round(Math.max(0,1-childPoolShare)*100)/100;partnerRecord.inheritanceShare=partnerShare;partnerRecord.inheritanceEstimate=Math.round(totalEstateValue*partnerShare);partnerRecord.inheritanceStatus='مخصص للشريك';}heir.family.push(partnerRecord);}
@@ -6186,8 +6214,13 @@ function applyGodTalent(talent){
  state.specialTalent=talent;log('🧬','تفعيل موهبة خاصة','اخترت موهبة '+talent+' لوضع التخصيص.','special');save();render();info('✨','الموهبة اتفعلت','تم تطبيق '+talent+' على الشخصية الحالية.');
 }
 function godModeHeirMenu(){
- const opts=(state.children||[]).map((c,i)=>choice(c.emoji||'🧒',c.name+' · '+c.age+' سنة','متابعة حياة الابن/الابنة كوريث.',()=>{closeModal();startAsChild(i);}));
- opts.push(choice('↩️','رجوع','',godModeMenu));modal('🌳','اختيار وريث','استكمل حياتك من منظور أحد الأبناء. الثروة تتبع قواعد الإرث الحالية.',opts);
+ const preview=buildInheritancePreview(state);
+ const opts=(state.children||[]).map((child,index)=>{
+  const allocation=preview.siblingAllocations[index]||{share:0,estimatedValue:0};
+  const sharePercent=Math.round((Number(allocation.share)||0)*100);
+  return choice(child.emoji||'🧒',child.name+' · '+child.age+' سنة','حصة تقديرية '+sharePercent+'% · '+cash(allocation.estimatedValue),()=>{closeModal();startAsChild(index);});
+ });
+ opts.push(choice('↩️','رجوع','',godModeMenu));modal('🌳','اختيار وريث','راجع الحصة التقديرية لكل ابن قبل استكمال السلالة. صافي التركة يُحسب بعد خصوم الشركات والديون.',opts);
 }
 function bitizenshipMenu(){
  if(!perkOwned('bitizenship')||!perkEnabled('bitizenship')){closeModal();info('🌟','عضوية Bitizen متوقفة','فعّل العضوية من متجر المزايا.');return;}
