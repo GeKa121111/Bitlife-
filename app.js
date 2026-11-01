@@ -2391,23 +2391,28 @@ function familyPropertyOwnershipRecordMenu(recordId){
  const opts=owners.map(owner=>{
   const share=safeFamilyOwnershipShare(owner&&owner.share)||0;
   const amount=Math.round(Math.max(0,Number(record.marketValue)||0)*share);
-  return choice(owner&&owner.kind==='external'?'🏠':'👤',String(owner&&owner.name||'مالك')+' · '+formatInheritancePercent(share)+'%',(statusLabels[owner&&owner.status]||'حصة مسجلة')+' · قيمة الحصة '+fmt(amount)+' '+currency,()=>info('📒',String(owner&&owner.name||'مالك'), 'الحصة '+formatInheritancePercent(share)+'% · القيمة المسجلة '+fmt(amount)+' '+currency+'.'));
+  const expenseOwed=Math.max(0,Number(owner&&owner.propertyExpenseOwed)||0);
+  const expenseText=expenseOwed?' · مصروفات مستحقة '+fmt(expenseOwed)+' '+currency:'';
+  return choice(owner&&owner.kind==='external'?'🏠':'👤',String(owner&&owner.name||'مالك')+' · '+formatInheritancePercent(share)+'%',(statusLabels[owner&&owner.status]||'حصة مسجلة')+' · قيمة الحصة '+fmt(amount)+' '+currency+expenseText,()=>info('📒',String(owner&&owner.name||'مالك'),'الحصة '+formatInheritancePercent(share)+'% · القيمة المسجلة '+fmt(amount)+' '+currency+expenseText+'.'));
  });
  const encumbered=safeFamilyOwnershipShare(record.encumberedShare)||0;
  if(encumbered>0)opts.push(choice('⚠️','حصة مرتبطة بالتزامات التركة · '+formatInheritancePercent(encumbered)+'%','هذه الحصة لم تُسند إلى مستفيد بسبب التزامات أو بيانات توزيع تحتاج مراجعة.',()=>info('⚠️','حصة غير موزعة','هذه الحصة مرتبطة بالتزامات التركة أو بيانات تحتاج مراجعة قبل توزيعها.')));
  const transactions=Array.isArray(record.transactions)?record.transactions.slice(-5).reverse():[];
  transactions.forEach(transaction=>{
-  const isRent=transaction.type==='rent_distribution';
-  const title=transaction.type==='sale'?'نقل حصة إلى مشترٍ خارجي':transaction.type==='maintenance'?'تحديث قيمة العقار':isRent?'توزيع دخل الإيجار':'توزيع ملكية عائلية';
+  const isRent=transaction.type==='rent_distribution',isExpense=transaction.type==='property_expense';
+  const title=transaction.type==='sale'?'نقل حصة إلى مشترٍ خارجي':transaction.type==='maintenance'?'تحديث قيمة العقار':isRent?'توزيع دخل الإيجار':isExpense?'توزيع مصروفات العقار':'توزيع ملكية عائلية';
   const detail=isRent
    ?'إجمالي الإيجار '+fmt(transaction.grossRent||0)+' '+currency+' · محافظ الأسرة '+fmt(transaction.familyWalletAmount||0)+' · المبلغ المعلّق '+fmt(transaction.reservedAmount||0)
-   :'تاريخ العملية '+(transaction.age===null||transaction.age===undefined?'غير مسجل':fmt(transaction.age))+' · '+(transaction.type==='sale'?'قيمة البيع '+fmt(transaction.amount||0)+' '+currency:'مصدر العملية '+String(transaction.sourceName||transaction.sourceLifeId||'سجل العائلة'));
-  opts.push(choice(isRent?'🏠':'📜',title,detail,()=>info('📜',title,detail)));
+   :isExpense
+    ?'إجمالي المصروف '+fmt(transaction.grossCost||0)+' '+currency+' · دفع الملاك '+fmt((transaction.activeAmount||0)+(transaction.familyWalletAmount||0))+' · متأخرات '+fmt(transaction.unpaidAmount||0)
+    :'تاريخ العملية '+(transaction.age===null||transaction.age===undefined?'غير مسجل':fmt(transaction.age))+' · '+(transaction.type==='sale'?'قيمة البيع '+fmt(transaction.amount||0)+' '+currency:'مصدر العملية '+String(transaction.sourceName||transaction.sourceLifeId||'سجل العائلة'));
+  opts.push(choice(isRent?'🏠':isExpense?'🧰':'📜',title,detail,()=>info('📜',title,detail)));
  });
  opts.push(choice('↩️','رجوع للعقارات العائلية','',familyPropertyOwnershipMenu));
- const audit=record.auditStatus==='balanced'?'إجمالي الحصص والالتزامات يساوي 100%.':'تنبيه: بيانات الملكية لا تتطابق بالكامل؛ تم إيقاف بيع الحصة لحماية حقوق بقية الملاك.';
+ const audit=record.auditStatus==='balanced'?'إجمالي الحصص والالتزامات يساوي 100%.':'تنبيه: بيانات الملكية لا تتطابق بالكامل؛ تم إيقاف بيع الحصة والصيانة المشتركة لحماية حقوق بقية الملاك.';
  const reserveOutstanding=Math.max(0,(Number(record.rentReserveTotal)||0)-(Number(record.rentReserveReleasedTotal)||0));
- modal('🏘️','ملاك '+String(record.title||'العقار'),'القيمة الكاملة '+fmt(record.marketValue||0)+' '+currency+' · الصيانة السنوية '+fmt(record.upkeep||0)+' '+currency+' · إيجار محفوظ للتسوية '+fmt(reserveOutstanding)+' '+currency+'. '+audit,opts);
+ const expenseOwed=Math.max(0,Number(record.propertyExpenseOwedTotal)||0);
+ modal('🏘️','ملاك '+String(record.title||'العقار'),'القيمة الكاملة '+fmt(record.marketValue||0)+' '+currency+' · الصيانة السنوية '+fmt(record.upkeep||0)+' '+currency+' · إيجار محفوظ للتسوية '+fmt(reserveOutstanding)+' '+currency+' · مصروفات عقارية مسجلة '+fmt(record.propertyExpenseTotal||0)+' '+currency+' · مصروفات مستحقة '+fmt(expenseOwed)+' '+currency+'. '+audit,opts);
 }
 function inheritanceAccountsMenu(){
  if(!state)return;
