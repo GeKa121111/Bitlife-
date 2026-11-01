@@ -656,4 +656,4 @@ assert.match(app, /function supportBeneficiaryWallet\(/, 'the active heir should
 assert.match(app, /function recordBeneficiaryWalletSupport\(/, 'wallet transfers should update a bounded auditable transaction ledger');
 assert.match(app, /const beneficiaryWallets=buildBeneficiaryWallets\(previous\.legacy,beneficiaryAccounts,previous\.name,previous\.age\)/,
   'wallets should be prepared when the family advances to the next generation');
-assert.match(app, /inheritanceHistory:buildInheritanceHistory\(previous,beneficiaryAccounts\),beneficiaryWallets,distribution/, 'wallets should be saved with the new generation legacy record');
+assert.match(app, /inheritanceHistory:buildInheritanceHistory\(previous,beneficiaryAccounts\),beneficiaryWallets,familyPropertyOwnership,distribution/, 'wallets should be saved with the new generation legacy record');
