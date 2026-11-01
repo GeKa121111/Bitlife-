@@ -79,6 +79,9 @@ const runtime = [
   'formatInheritancePercent',
   'buildInheritancePreview',
   'buildInheritanceAccounts',
+  'createInheritanceHistoryRecord',
+  'getInheritanceHistoryRecords',
+  'buildInheritanceHistory',
   'familyTreeNode',
   'startAsChild'
 ].map(findFunction);
@@ -763,4 +766,115 @@ test('سجل الوصية يميز المبلغ الخيري والمستفيد�
   assert.equal(other.status, 'unassigned');
   assert.equal(other.balance, noFamilyPreview.otherBeneficiaryValue);
   assert.equal(noFamilyRegistry.totalAllocated, noFamilyPreview.totalEstateValue);
+});
+
+
+test('سجل مواريث العائلة يحتفظ بخمسة أجيال دون تكرار أو تعديل سجلات الأجداد', () => {
+  const context = makeContext();
+  let parent = makeParent();
+  const sourceIds = [];
+
+  for (let generation = 0; generation < 5; generation++) {
+    if (generation > 0) {
+      parent.lifeId = 'dynasty-life-' + generation;
+      parent.name = 'الجيل ' + generation;
+      parent.age = 60;
+      parent.bank = 100000 + generation * 1000;
+      parent.debt = 0;
+      parent.assets = [];
+      parent.investments = [];
+      parent.business = null;
+      parent.companies = [];
+      parent.partner = null;
+      parent.heirlooms = [];
+      parent.children = [{
+        id: 'dynasty-heir-' + generation,
+        name: 'وارث ' + generation,
+        gender: 'male',
+        age: 25,
+        health: 80,
+        happiness: 80,
+        smart: 75,
+        looks: 70,
+        relationshipLevel: 90,
+        schoolPerformance: 85,
+        careerPotential: 85,
+        independence: 80
+      }];
+    }
+
+    sourceIds.push(parent.lifeId);
+    const previousHistory = JSON.stringify(parent.legacy && parent.legacy.inheritanceHistory || []);
+    context.state = parent;
+    vm.runInContext('startAsChild(0);', context);
+
+    const heir = context.state;
+    const history = heir.legacy.inheritanceHistory;
+    assert.equal(history.length, generation + 1);
+    assert.deepEqual(Array.from(history, record => record.sourceLifeId), sourceIds);
+    assert.equal(new Set(history.map(record => record.id)).size, history.length);
+    assert.equal(history[history.length - 1].sourceName, parent.name);
+    assert.ok(history.every(record => Array.isArray(record.accounts)));
+    assert.equal(
+      JSON.stringify(parent.legacy && parent.legacy.inheritanceHistory || []),
+      previousHistory,
+      'starting the next generation must not mutate the previous generation history'
+    );
+    parent = heir;
+  }
+});
+
+test('حفظ v84 القديم يُعرض ويُرحّل إلى تاريخ الأجيال دون تعديل المصدر', () => {
+  const context = makeContext();
+  const oldRegistry = {
+    version: 1,
+    sourceLifeId: 'grandparent-v84',
+    currency: 'جنيه',
+    totalEstateValue: 50000,
+    totalAllocated: 50000,
+    totalReservedBalance: 30000,
+    totalSettledAmount: 20000,
+    accounts: [{
+      id: 'old-account',
+      beneficiaryId: 'old-sibling',
+      name: 'الأخ القديم',
+      kind: 'child',
+      share: 0.4,
+      allocatedAmount: 20000,
+      balance: 20000,
+      settledAmount: 0,
+      status: 'reserved',
+      currency: 'جنيه'
+    }]
+  };
+  const legacy = {
+    name: 'الجد القديم',
+    distribution: { beneficiaryAccounts: oldRegistry }
+  };
+
+  const visibleRecords = context.getInheritanceHistoryRecords(legacy);
+  assert.equal(visibleRecords.length, 1);
+  assert.equal(visibleRecords[0].sourceLifeId, 'grandparent-v84');
+  assert.equal(visibleRecords[0].sourceName, 'الجد القديم');
+  assert.equal(visibleRecords[0].accounts[0].name, 'الأخ القديم');
+
+  const currentRegistry = {
+    version: 1,
+    sourceLifeId: 'parent-v85',
+    currency: 'جنيه',
+    totalEstateValue: 80000,
+    totalAllocated: 80000,
+    totalReservedBalance: 40000,
+    totalSettledAmount: 40000,
+    accounts: []
+  };
+  const history = context.buildInheritanceHistory({
+    name: 'الأب الحالي',
+    age: 65,
+    legacy
+  }, currentRegistry);
+
+  assert.deepEqual(Array.from(history, record => record.sourceLifeId), ['grandparent-v84', 'parent-v85']);
+  assert.equal(history[1].sourceName, 'الأب الحالي');
+  assert.equal(legacy.inheritanceHistory, undefined, 'reading an old save must not mutate it');
 });
