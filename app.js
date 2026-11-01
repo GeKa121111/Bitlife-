@@ -1838,7 +1838,8 @@ function beneficiaryWalletSupportMenu(walletId){
  if(!wallet.ledgerAuditComplete||wallet.ledgerMismatch){info('⚠️','التحويل متوقف','بيانات المحفظة تحتاج مراجعة قبل تسجيل أي مساعدة.');return;}
  const currency=String(state.place&&state.place.unit||'ج.م');
  if(String(wallet.currency||'ج.م')!==currency){info('💱','العملة مختلفة','عملة المحفظة '+wallet.currency+'، وعملة رصيدك '+currency+'. لا يمكن التحويل دون سعر صرف معتمد.');return;}
- const available=Math.max(0,Math.floor(Number(state.bank)||0));
+ const bankBalance=Number(state.bank);
+ const available=Number.isSafeInteger(bankBalance)&&bankBalance>0?bankBalance:0;
  const amounts=[1000,5000,10000].filter(amount=>available>=amount);
  const opts=amounts.map(amount=>choice('💝','إرسال '+fmt(amount)+' '+currency,'خصم فعلي من رصيدك وإضافة المبلغ إلى محفظة '+wallet.name+'.',()=>supportBeneficiaryWallet(wallet.id,amount)));
  if(!opts.length){const unavailable=choice('⚠️','الرصيد غير كافٍ','تحتاج إلى 1,000 '+currency+' على الأقل لتقديم مساعدة.',()=>beneficiaryWalletMenu(wallet.id));unavailable.disabled=true;opts.push(unavailable);}
@@ -1887,7 +1888,7 @@ function supportBeneficiaryWallet(walletId,amount){
  });
  if(!result.ok){info('⚠️','التحويل لم يتم',result.reason==='ledger_mismatch'?'دفتر المحفظة غير متوازن؛ راجع السجل قبل التحويل.':'تعذر تسجيل حركة المساعدة.');return;}
  state.bank=Math.round(bank-value);
- log('💝','مساعدة عائلية','حوّلت '+cash(value)+' '+currency+' إلى محفظة '+wallet.name+'.','good');
+ log('💝','مساعدة عائلية','حوّلت '+fmt(value)+' '+currency+' إلى محفظة '+wallet.name+'.','good');
  if(!save()){
   state.bank=previousBank;
   Object.keys(wallet).forEach(key=>delete wallet[key]);
