@@ -71,9 +71,11 @@ const runtime = [
   'advanceChildren',
   'businessUsesSeparateTreasury',
   'businessCreditBalance',
+  'calculateEstateSnapshot',
   'calculateInheritance',
   'childInheritancePoolShare',
   'calculateChildInheritanceShare',
+  'buildInheritancePreview',
   'familyTreeNode',
   'startAsChild'
 ].map(findFunction);
@@ -421,6 +423,79 @@ test('حصة الأبناء تُقسَّم بالتساوي عبر الوصاي�
   context.state = { children: [{ id: 'only-child' }] };
   assert.equal(vm.runInContext('calculateChildInheritanceShare(state, -1)', context), 0);
   assert.equal(vm.runInContext('calculateChildInheritanceShare(state, 1)', context), 0);
+});
+
+test('ملخص صافي التركة يطابق حساب الإرث ويشمل خزائن الشركات وخصومها', () => {
+  const context = makeContext();
+  const parent = makeParent();
+  const snapshot = context.calculateEstateSnapshot(parent);
+  const fullInheritance = context.calculateInheritance(parent, 1);
+
+  assert.equal(snapshot.net, fullInheritance.totalEstateValue);
+  assert.ok(snapshot.businessCash > 0, 'separate company treasuries should be included in gross estate value');
+  assert.ok(snapshot.businessLiabilities > 0, 'tax and credit obligations should reduce the estate');
+  assert.ok(snapshot.personalDebt > 0, 'personal debt should remain distinct from company liabilities');
+
+  const legacy = {
+    bank: 20000,
+    debt: 1000,
+    assets: [{ id: 'legacy-business-asset', title: 'مشروع قديم', kind: 'business', value: 50000 }],
+    investments: [],
+    business: { assetId: 'legacy-business-asset', title: 'مشروع قديم', value: 50000, cashBalance: 7777, taxLiability: 0 }
+  };
+  const legacySnapshot = context.calculateEstateSnapshot(legacy);
+  assert.equal(legacySnapshot.businessCash, 0, 'legacy shared cash must not be counted as a separate treasury');
+  assert.equal(legacySnapshot.net, context.calculateInheritance(legacy, 1).totalEstateValue);
+});
+
+test('معاينة الإرث تستخدم نفس الحصص والقيم في شاشة الوفاة واستكمال السلالة دون تغيير الحفظ', () => {
+  const context = makeContext();
+  const policies = [
+    ['الأسرة بالتساوي', 0.8],
+    ['الأبناء أولًا', 0.9],
+    ['الشريك أولًا', 0.45],
+    ['التبرع بجزء', 0.65],
+    [undefined, 0.8]
+  ];
+
+  for (const [policy, poolShare] of policies) {
+    for (const count of [1, 2, 5]) {
+      const parent = makeParent();
+      parent.children = Array.from({ length: count }, (_, index) => ({
+        id: 'preview-child-' + index,
+        name: 'ابن المعاينة ' + index
+      }));
+      parent.partner = { id: 'preview-partner', name: 'شريك المعاينة' };
+      parent.willDistribution = policy;
+      const before = JSON.stringify(parent);
+      const preview = context.buildInheritancePreview(parent);
+      const expectedPool = Math.round(preview.totalEstateValue * poolShare);
+      const expectedBase = Math.floor(expectedPool / count);
+      const expectedRemainder = expectedPool - expectedBase * count;
+
+      assert.equal(preview.childPoolShare, poolShare);
+      assert.equal(preview.perChildShare, poolShare / count);
+      assert.equal(preview.childCount, count);
+      assert.equal(preview.childPoolValue, expectedPool);
+      assert.equal(preview.siblingAllocations.length, count);
+      assert.equal(preview.siblingAllocations.reduce((sum, item) => sum + item.estimatedValue, 0), expectedPool);
+      preview.siblingAllocations.forEach((item, index) => {
+        assert.equal(item.share, poolShare / count);
+        assert.equal(item.estimatedValue, expectedBase + (index < expectedRemainder ? 1 : 0));
+        assert.equal(item.selected, false);
+      });
+      assert.equal(preview.outsideChildrenPoolRecipient,
+        policy === 'التبرع بجزء' ? 'تبرع خيري' : 'الشريك');
+      assert.equal(JSON.stringify(parent), before, 'preview must not mutate the saved parent or children');
+    }
+  }
+
+  context.setSeed(0x790123);
+  const expectedRandom = vm.runInContext('Math.random()', context);
+  context.setSeed(0x790123);
+  context.buildInheritancePreview(makeParent());
+  const actualRandom = vm.runInContext('Math.random()', context);
+  assert.equal(actualRandom, expectedRandom, 'preview must not consume gameplay randomness');
 });
 
 test('بدء حياة أحد الأبناء ينقل حصته فقط ويسجل حصص الإخوة بالتساوي', () => {
