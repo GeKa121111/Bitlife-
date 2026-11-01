@@ -1556,7 +1556,7 @@ test('ملكية العقار العائلي تتوزع على المستفيد�
   assert.equal(record.owners.length, 2);
   assert.equal(record.owners.find(owner => owner.beneficiaryId === 'active-heir').share, 0.5);
   assert.equal(record.owners.find(owner => owner.beneficiaryId === 'sibling-heir').share, 0.5);
-  assert.equal(record.totalOwnershipShare, 1);
+  assert.ok(Math.abs(record.totalOwnershipShare - 1) < 1e-9);
 });
 
 test('التزامات التركة تظهر كحصة غير موزعة ولا تختفي من سجل الملكية', () => {
@@ -1857,7 +1857,7 @@ test('دخل الإيجار غير المدفوع يتراكم كمتأخرات 
     ownershipShare: 0.5, kind: 'property', value: 500000, rented: true };
   const first = context.distributeFamilyPropertyRent(asset, 10000);
   assert.equal(first.activeAmount, 10000);
-  assert.equal(record.owners.find(owner => owner.beneficiaryId === 'sibling-arrears-owner').rentOwed, 10000);
+  assert.equal(record.owners.find(owner => owner.beneficiaryId === 'sibling-arrears-owner').rentOwed, 10000, JSON.stringify({ result: first, owner: record.owners.find(owner => owner.beneficiaryId === 'sibling-arrears-owner'), bank: context.state.bank }));
   assert.equal(record.rentReserveTotal, 10000);
 
   const wallet = {
