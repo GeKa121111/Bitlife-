@@ -1027,8 +1027,34 @@ async function run() {
       saved.assets = [
         { id: 'estate-property-test', kind: 'property', title: 'عقار اختبار الإرث', value: 500001, upkeep: 1000, condition: 100, rented: false },
         { id: 'estate-car-test', kind: 'car', title: 'سيارة اختبار الإرث', value: 260003, upkeep: 500, condition: 100 },
-        { id: 'estate-business-test', kind: 'business', title: 'مشروع اختبار الإرث', value: 150007, upkeep: 2000 }
+        { id: 'estate-business-test', kind: 'business', title: 'مشروع اختبار الإرث', value: 150007, upkeep: 2000 },
+        { id: 'estate-company-test', kind: 'business', title: 'شركة اختبار ثانية', value: 200009, upkeep: 1000, companyPortfolio: true }
       ];
+      saved.business = {
+        assetId: 'estate-business-test',
+        title: 'مشروع اختبار الإرث',
+        value: 150007,
+        treasuryMode: 'separate',
+        cashBalance: 12007,
+        taxLiability: 1000,
+        credit: { principal: 5000, accruedInterest: 500 },
+        staff: [{ id: 'estate-staff-1', role: 'operations', years: 4, salary: 3500 }],
+        products: [{ id: 'estate-product-1', title: 'خدمة اختبار', history: [] }],
+        financialHistory: []
+      };
+      saved.companies = [{
+        id: 'estate-company-test',
+        assetId: 'estate-company-test',
+        title: 'شركة اختبار ثانية',
+        value: 200009,
+        treasuryMode: 'separate',
+        cashBalance: 25003,
+        taxLiability: 500,
+        credit: { principal: 10000, accruedInterest: 1000 },
+        staff: [{ id: 'estate-staff-2', role: 'sales', years: 3, salary: 4200 }],
+        products: [{ id: 'estate-product-2', title: 'منتج اختبار', history: [] }],
+        financialHistory: []
+      }];
       saved.investments = [
         { id: 'estate-investment-a', kind: 'low-risk', title: 'استثمار أول', value: 123457 },
         { id: 'estate-investment-b', kind: 'مخاطرة عالية', title: 'استثمار ثانٍ', value: 98765 },
@@ -1134,6 +1160,10 @@ async function run() {
         bank: saved.bank,
         assetCount: assets.length,
         investmentCount: investments.length,
+        businessCount: saved.business ? 1 : 0,
+        companyCount: Array.isArray(saved.companies) ? saved.companies.length : 0,
+        primaryBusinessLinked: !!saved.business && assets.some(asset => String(asset.id) === String(saved.business.assetId)),
+        portfolioCompaniesLinked: (Array.isArray(saved.companies) ? saved.companies : []).every(company => assets.some(asset => String(asset.id) === String(company.id))),
         debt: saved.debt
       };
     }, archivedParentId);
@@ -1145,7 +1175,11 @@ async function run() {
     assert.equal(inherited.sourceName, 'الوالد الاختباري');
     assert.equal(inherited.legacyValue, inherited.componentValue, 'recorded inheritance should reconcile with all transferred assets');
     assert.equal(inherited.debt, 0, 'parent debt should not be copied as debt to the new life');
-    assert.ok(inherited.bank > 0 && inherited.assetCount === 3 && inherited.investmentCount === 3, 'inheritance should proportionally transfer multiple asset and investment entries');
+    assert.ok(inherited.bank > 0 && inherited.assetCount === 4 && inherited.investmentCount === 3, 'inheritance should proportionally transfer the property, car, businesses, and investments');
+    assert.equal(inherited.businessCount, 1, 'the primary operating business should continue with the heir');
+    assert.equal(inherited.companyCount, 1, 'the portfolio company should continue with the heir');
+    assert.equal(inherited.primaryBusinessLinked, true, 'the inherited primary business should link to its new asset ID');
+    assert.equal(inherited.portfolioCompaniesLinked, true, 'inherited portfolio companies should link to their new asset IDs');
 
     // A second estate whose debt exceeds all positive assets should yield no negative inheritance.
     await page.locator('.choice').filter({ hasText: 'تمام' }).last().click();
