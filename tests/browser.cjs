@@ -1162,8 +1162,10 @@ async function run() {
         investmentCount: investments.length,
         businessCount: saved.business ? 1 : 0,
         companyCount: Array.isArray(saved.companies) ? saved.companies.length : 0,
-        primaryBusinessLinked: !!saved.business && assets.some(asset => String(asset.id) === String(saved.business.assetId)),
-        portfolioCompaniesLinked: (Array.isArray(saved.companies) ? saved.companies : []).every(company => assets.some(asset => String(asset.id) === String(company.id))),
+        primaryBusinessLinked: !!saved.business && assets.some(asset => asset.kind === 'business' && String(asset.id) === String(saved.business.assetId)),
+        primaryBusinessAssetMatches: !!saved.business && assets.some(asset => asset.kind === 'business' && String(asset.id) === String(saved.business.assetId) && asset.title === saved.business.title && Number(asset.value) === Number(saved.business.value)),
+        portfolioCompaniesLinked: (Array.isArray(saved.companies) ? saved.companies : []).every(company => assets.some(asset => asset.kind === 'business' && asset.companyPortfolio && String(asset.id) === String(company.id))),
+        portfolioCompanyAssetsMatch: (Array.isArray(saved.companies) ? saved.companies : []).every(company => assets.some(asset => asset.kind === 'business' && asset.companyPortfolio && String(asset.id) === String(company.id) && asset.title === company.title && Number(asset.value) === Number(company.value))),
         debt: saved.debt
       };
     }, archivedParentId);
@@ -1179,7 +1181,9 @@ async function run() {
     assert.equal(inherited.businessCount, 1, 'the primary operating business should continue with the heir');
     assert.equal(inherited.companyCount, 1, 'the portfolio company should continue with the heir');
     assert.equal(inherited.primaryBusinessLinked, true, 'the inherited primary business should link to its new asset ID');
+    assert.equal(inherited.primaryBusinessAssetMatches, true, 'the primary business must remain linked to its own title and value, not another inherited asset');
     assert.equal(inherited.portfolioCompaniesLinked, true, 'inherited portfolio companies should link to their new asset IDs');
+    assert.equal(inherited.portfolioCompanyAssetsMatch, true, 'each portfolio company must remain linked to its own title and value');
 
     // A second estate whose debt exceeds all positive assets should yield no negative inheritance.
     await page.locator('.choice').filter({ hasText: 'تمام' }).last().click();
