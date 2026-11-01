@@ -184,6 +184,12 @@ async function run() {
     await page.keyboard.press('Tab');
     assert.equal(await page.evaluate(() => document.activeElement?.classList.contains('skip-link')), true,
       'the first keyboard stop should expose the Arabic skip link');
+    await page.waitForFunction(() => {
+      const element = document.querySelector('.skip-link');
+      if (!element) return false;
+      const rect = element.getBoundingClientRect();
+      return rect.top >= 0 && rect.bottom <= window.innerHeight;
+    });
     const skipLinkVisible = await page.locator('.skip-link').evaluate(element => {
       const rect = element.getBoundingClientRect();
       return rect.top >= 0 && rect.bottom <= window.innerHeight;
