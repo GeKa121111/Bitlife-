@@ -1847,3 +1847,15 @@ test('تقدير مساحة التخزين يعرض قيمًا آمنة ولا �
   assert.ok(app.includes('const highUsage=result.percent>=85;'));
   assert.match(app, /ليس حجم ملف الحفظ وحده/);
 });
+
+
+test('النوافذ الحوارية تعلن عنوانها ووصفها لقارئات الشاشة', () => {
+  const modalSource = functionSource('modal', 'info');
+  assert.equal((modalSource.match(/aria-labelledby="dialogTitle"/g) || []).length, 2,
+    'both drawer and event dialogs should expose their visible title as the accessible name');
+  assert.equal((modalSource.match(/aria-describedby="dialogDescription"/g) || []).length, 2,
+    'both dialog variants should associate a description only when one is provided');
+  assert.match(modalSource, /class="modaltitle" id="dialogTitle" role="heading" aria-level="2"/);
+  assert.match(modalSource, /class="event-title" id="dialogTitle"/);
+  assert.equal((modalSource.match(/class="desc" id="dialogDescription"/g) || []).length, 2);
+});
