@@ -648,3 +648,5 @@ assert.ok(app.includes('share_total_mismatch'), 'inheritance auditing should rec
 assert.ok(app.includes('duplicate_beneficiary_id'), 'inheritance auditing should detect duplicate beneficiary identities');
 assert.ok(app.includes('currency_mismatch'), 'inheritance auditing should detect mixed estate currencies');
 assert.ok(app.includes('source_life_mismatch'), 'inheritance auditing should detect accounts linked to another estate');
+
+assert.ok(app.includes('accountLedgerAmountIncompleteCount'), 'missing share data must not suppress independent amount-summary auditing');
