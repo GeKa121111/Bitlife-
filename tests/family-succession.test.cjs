@@ -285,6 +285,25 @@ test('حساب الإرث يضم خزائن الشركات وخصومها مع �
   assert.equal(noBusiness.value, 800);
   assert.equal(noBusiness.business, null);
   assert.deepEqual(Array.from(noBusiness.companies), []);
+
+  const overdraftParent = makeParent();
+  overdraftParent.business.cashBalance = -12000;
+  const overdraftInheritance = context.calculateInheritance(overdraftParent, 0.8);
+  const overdraftBusinesses = [overdraftInheritance.business, ...overdraftInheritance.companies].filter(Boolean);
+  const overdraftCash = overdraftBusinesses.reduce((sum, business) =>
+    sum + (business.treasuryMode === 'separate' ? Math.max(0, Number(business.cashBalance) || 0) : 0), 0);
+  const overdraftLiabilities = overdraftBusinesses.reduce((sum, business) =>
+    sum + Math.max(0, Number(business.taxLiability) || 0)
+      + Math.max(0, Math.round(Number(business.credit && business.credit.principal) || 0)
+        + Math.round(Number(business.credit && business.credit.accruedInterest) || 0))
+      + (business.treasuryMode === 'separate' ? Math.max(0, -Number(business.cashBalance) || 0) : 0), 0);
+  const overdraftGross = overdraftInheritance.bank
+    + overdraftInheritance.assets.reduce((sum, item) => sum + Math.max(0, Number(item.value) || 0), 0)
+    + overdraftInheritance.investments.reduce((sum, item) => sum + Math.max(0, Number(item.value) || 0), 0)
+    + overdraftCash;
+  assert.ok(overdraftInheritance.business.cashBalance < 0, 'a separate-treasury overdraft must remain attached to the inherited company');
+  assert.equal(overdraftInheritance.value, Math.max(0, overdraftGross - overdraftLiabilities),
+    'the net estate must subtract inherited tax, credit, and overdraft exactly once');
 });
 
 test('بدء حياة الابن ينقل الشركات التشغيلية ويربطها بأصولها الجديدة دون مشاركة مراجع الوالد', () => {
