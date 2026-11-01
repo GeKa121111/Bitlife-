@@ -1665,6 +1665,241 @@ function familyTreeNode(p){
  const inheritanceNote=hasInheritance?'<small class="family-tree-foot">حصة الإرث '+formatInheritancePercent(p.inheritanceShare)+'% · تقدير '+esc(cash(p.inheritanceEstimate||0))+' · '+esc(inheritanceStatus)+'</small>':'';
  return '<article class="family-tree-node'+(gone?' family-tree-deceased':'')+'"><div class="family-tree-person"><span class="family-tree-avatar">'+esc(p.emoji||'👤')+'</span><span class="family-tree-copy"><strong>'+esc(p.name||'فرد من العائلة')+'</strong><small>'+esc(p.relation||'قريب')+(Number.isFinite(Number(p.age))?' · '+fmt(p.age)+' سنة':'')+(gone?' · متوفى':'')+'</small></span></div><div class="family-tree-meter"><span style="width:'+level+'%"></span></div><small class="family-tree-foot">العلاقة '+level+'%</small>'+inheritanceNote+'</article>';
 }
+function buildBeneficiaryWallets(previousLegacy,currentRegistry,sourceName,sourceAge){
+ const legacy=previousLegacy&&typeof previousLegacy==='object'?previousLegacy:{};
+ const wallets=[],seen=new Set();
+ const safeAmount=value=>{const amount=Number(value);return Number.isFinite(amount)?Math.max(0,Math.round(amount)):0;};
+ const appendExisting=raw=>{
+  if(!raw||typeof raw!=='object'||Array.isArray(raw))return;
+  const id=String(raw.id||'').trim(),beneficiaryId=String(raw.beneficiaryId||'').trim();
+  const kind=raw.kind==='partner'?'partner':raw.kind==='child'?'child':null;
+  if(!id||!beneficiaryId||!kind||seen.has(id))return;
+  const currency=String(raw.currency||'ج.م');
+  const transactions=Array.isArray(raw.transactions)?raw.transactions.slice(-100):[];
+  const inferredOpening=transactions.filter(tx=>tx&&typeof tx==='object'&&tx.type==='inheritance').reduce((sum,tx)=>sum+safeAmount(tx.amount),0);
+  const inferredSupport=transactions.filter(tx=>tx&&typeof tx==='object'&&tx.type==='support').reduce((sum,tx)=>sum+safeAmount(tx.amount),0);
+  const openingValue=raw.openingBalance===undefined||raw.openingBalance===null?inferredOpening:Number(raw.openingBalance);
+  const supportValue=raw.supportTotal===undefined||raw.supportTotal===null?inferredSupport:Number(raw.supportTotal);
+  const balanceValue=Number(raw.balance);
+  const amountFieldsValid=Number.isSafeInteger(openingValue)&&openingValue>=0&&Number.isSafeInteger(supportValue)&&supportValue>=0&&Number.isSafeInteger(balanceValue)&&balanceValue>=0;
+  const openingBalance=safeAmount(openingValue);
+  const supportTotal=safeAmount(supportValue);
+  const balance=safeAmount(balanceValue);
+  const transactionsValid=transactions.length>0&&transactions.every(tx=>{
+   if(!tx||typeof tx!=='object'||Array.isArray(tx))return false;
+   const amount=Number(tx.amount);
+   return Number.isSafeInteger(amount)&&amount>=0&&['inheritance','support'].includes(String(tx.type||''))&&String(tx.currency||currency)===currency;
+  });
+  const balanceMatches=openingBalance+supportTotal===balance;
+  const ledgerAuditComplete=raw.ledgerAuditComplete!==false&&transactionsValid&&amountFieldsValid&&balanceMatches;
+  wallets.push({
+   ...raw,
+   id,
+   beneficiaryId,
+   name:String(raw.name||'مستفيد'),
+   kind,
+   currency,
+   sourceLifeId:String(raw.sourceLifeId||'legacy'),
+   sourceName:String(raw.sourceName||sourceName||'الجيل السابق'),
+   sourceAge:raw.sourceAge===null||raw.sourceAge===undefined||!Number.isFinite(Number(raw.sourceAge))?null:Math.max(0,Math.round(Number(raw.sourceAge))),
+   openingBalance,
+   supportTotal,
+   balance,
+   transactions,
+   ledgerAuditComplete,
+   ledgerMismatch:raw.ledgerMismatch===true||!balanceMatches||!transactionsValid||!amountFieldsValid,
+   sourceLedgerWarning:raw.sourceLedgerWarning===true
+  });
+  seen.add(id);
+ };
+ (Array.isArray(legacy.beneficiaryWallets)?legacy.beneficiaryWallets:[]).forEach(appendExisting);
+ const record=createInheritanceHistoryRecord(currentRegistry,sourceName,sourceAge);
+ if(record&&!record.accountLedgerShareMismatch){
+  const accountIdCounts=new Map(),beneficiaryIdCounts=new Map();
+  record.accounts.forEach(account=>{
+   accountIdCounts.set(account.id,(accountIdCounts.get(account.id)||0)+1);
+   beneficiaryIdCounts.set(account.beneficiaryId,(beneficiaryIdCounts.get(account.beneficiaryId)||0)+1);
+  });
+  record.accounts.forEach(account=>{
+   if(!['child','partner'].includes(account.kind)||account.status!=='reserved')return;
+   const amountConsistent=account.ledgerAuditComplete&&!account.ledgerAuditInvalid
+    &&account.allocatedAmount===account.balance+account.settledAmount
+    &&account.balance===account.allocatedAmount&&account.settledAmount===0;
+   const identityUnique=accountIdCounts.get(account.id)===1&&beneficiaryIdCounts.get(account.beneficiaryId)===1;
+   if(!amountConsistent||!identityUnique||!account.ledgerShareAuditComplete||account.ledgerShareAuditInvalid||account.ledgerCurrencyMismatch||account.ledgerSourceMismatch)return;
+   const amount=safeAmount(account.balance);
+   if(amount<=0)return;
+   const id='beneficiary-wallet-'+encodeURIComponent(record.sourceLifeId)+'-'+encodeURIComponent(account.beneficiaryId);
+   if(seen.has(id))return;
+   const currency=String(account.currency||record.currency||'ج.م');
+   wallets.push({
+    id,
+    beneficiaryId:String(account.beneficiaryId),
+    name:String(account.name||'مستفيد'),
+    kind:account.kind,
+    currency,
+    sourceLifeId:record.sourceLifeId,
+    sourceName:record.sourceName,
+    sourceAge:record.sourceAge,
+    openingBalance:amount,
+    supportTotal:0,
+    balance:amount,
+    transactions:[{
+     id:id+'-inheritance',
+     type:'inheritance',
+     amount,
+     currency,
+     sourceLifeId:record.sourceLifeId,
+     sourceName:record.sourceName,
+     sourceAge:record.sourceAge
+    }],
+    ledgerAuditComplete:true,
+    ledgerMismatch:false,
+    sourceLedgerWarning:record.accountLedgerMismatch===true||record.reconciliationMetadataMismatch===true
+   });
+   seen.add(id);
+  });
+ }
+ return wallets;
+}
+function getBeneficiaryWallets(legacy){
+ if(!legacy||typeof legacy!=='object')return [];
+ const before=JSON.stringify(Array.isArray(legacy.beneficiaryWallets)?legacy.beneficiaryWallets:[]);
+ const registry=legacy.distribution&&legacy.distribution.beneficiaryAccounts;
+ const wallets=buildBeneficiaryWallets(legacy,registry,legacy.name||'الجيل السابق',null);
+ const changed=JSON.stringify(wallets)!==before;
+ legacy.beneficiaryWallets=wallets;
+ if(changed&&state&&state.legacy===legacy)save();
+ return legacy.beneficiaryWallets;
+}
+function recordBeneficiaryWalletSupport(wallet,amount,source){
+ if(!wallet||typeof wallet!=='object')return {ok:false,reason:'wallet_missing'};
+ const value=Number(amount),opening=Number(wallet.openingBalance),support=Number(wallet.supportTotal),balance=Number(wallet.balance);
+ if(!Number.isSafeInteger(value)||value<=0)return {ok:false,reason:'invalid_amount'};
+ if(wallet.ledgerAuditComplete!==true||wallet.ledgerMismatch===true||!Number.isSafeInteger(opening)||opening<0||!Number.isSafeInteger(support)||support<0||!Number.isSafeInteger(balance)||balance<0||opening+support!==balance){
+  return {ok:false,reason:'ledger_mismatch'};
+ }
+ const sourceData=source&&typeof source==='object'?source:{};
+ const transactionId=String(sourceData.transactionId||'').trim();
+ const transactions=Array.isArray(wallet.transactions)?wallet.transactions:[];
+ if(!transactionId||transactions.some(tx=>tx&&String(tx.id)===transactionId))return {ok:false,reason:'duplicate_transaction'};
+ const nextSupport=support+value;
+ if(!Number.isSafeInteger(nextSupport)||!Number.isSafeInteger(opening+nextSupport))return {ok:false,reason:'amount_overflow'};
+ const currency=String(wallet.currency||'ج.م');
+ wallet.supportTotal=nextSupport;
+ wallet.balance=opening+nextSupport;
+ wallet.transactions=[...transactions,{
+  id:transactionId,
+  type:'support',
+  amount:value,
+  currency,
+  fromLifeId:String(sourceData.lifeId||''),
+  fromName:String(sourceData.name||''),
+  age:Number.isFinite(Number(sourceData.age))?Math.max(0,Math.round(Number(sourceData.age))):null,
+  year:Number.isFinite(Number(sourceData.year))?Math.max(0,Math.round(Number(sourceData.year))):null
+ }].slice(-100);
+ wallet.ledgerAuditComplete=true;
+ wallet.ledgerMismatch=false;
+ return {ok:true,balance:wallet.balance};
+}
+function beneficiaryWalletsMenu(){
+ if(!state)return;
+ const wallets=getBeneficiaryWallets(state.legacy);
+ if(!wallets.length){
+  info('🏦','لا توجد محافظ ورثة','لا يحتوي الحفظ الحالي على حصص مستقلة قابلة للإدارة. ستظهر المحافظ عند انتقال تركة بها حصص محفوظة للأبناء أو الشريك.');
+  return;
+ }
+ const opts=wallets.slice().reverse().map(wallet=>{
+  const currency=String(wallet.currency||'ج.م');
+  const warning=wallet.ledgerMismatch||!wallet.ledgerAuditComplete?' · بيانات المحفظة تحتاج مراجعة':wallet.sourceLedgerWarning?' · ملخص التركة الأصلية يحتاج مراجعة':'';
+  const description='الرصيد '+fmt(wallet.balance)+' '+currency+' · '+(wallet.transactions||[]).length+' حركة'+warning;
+  return choice('👛',wallet.name+' · '+(wallet.kind==='partner'?'الشريك':'الأسرة'),description,()=>beneficiaryWalletMenu(wallet.id),fmt(wallet.balance)+' '+currency);
+ });
+ opts.push(choice('↩️','رجوع لشجرة العائلة','',familyTreeMenu));
+ modal('🏦','محافظ الورثة','أرصدة مستقلة بدأت من حصص التركة المحفوظة. لا تدخل هذه الأرصدة ضمن ثروتك الشخصية.',opts);
+}
+function beneficiaryWalletMenu(walletId){
+ if(!state)return;
+ const wallet=getBeneficiaryWallets(state.legacy).find(item=>item.id===String(walletId));
+ if(!wallet){info('🏦','المحفظة غير متاحة','تعذر العثور على المحفظة في الحفظ الحالي.');return;}
+ const currency=String(wallet.currency||'ج.م');
+ const warning=wallet.ledgerMismatch||!wallet.ledgerAuditComplete?'بيانات المحفظة غير مكتملة؛ تم إيقاف التحويلات لحماية الرصيد.':wallet.sourceLedgerWarning?'ملخص التركة الأصلية يحتاج مراجعة، لكن رصيد الحساب الفردي محفوظ كما ورد.':'';
+ const description='الرصيد الحالي '+fmt(wallet.balance)+' '+currency+' · رصيد بداية التركة '+fmt(wallet.openingBalance)+' '+currency+' · مساعدات لاحقة '+fmt(wallet.supportTotal)+' '+currency+'. '+warning+' هذه محفظة محلية للمستفيد وليست ضمن رصيدك الشخصي.';
+ const support=choice('💝','تقديم مساعدة مالية','تحويل مبلغ من رصيدك إلى هذه المحفظة.',()=>beneficiaryWalletSupportMenu(wallet.id));
+ if(!wallet.ledgerAuditComplete||wallet.ledgerMismatch)support.disabled=true;
+ const opts=[support,choice('📜','سجل الحركات','راجع مصدر الرصيد والمساعدات المسجلة.',()=>beneficiaryWalletTransactionsMenu(wallet.id)),choice('↩️','رجوع للمحافظ','',beneficiaryWalletsMenu)];
+ modal('👛','محفظة '+wallet.name,description,opts);
+}
+function beneficiaryWalletSupportMenu(walletId){
+ if(!state)return;
+ const wallet=getBeneficiaryWallets(state.legacy).find(item=>item.id===String(walletId));
+ if(!wallet){info('🏦','المحفظة غير متاحة','تعذر العثور على المحفظة المطلوبة.');return;}
+ if(!wallet.ledgerAuditComplete||wallet.ledgerMismatch){info('⚠️','التحويل متوقف','بيانات المحفظة تحتاج مراجعة قبل تسجيل أي مساعدة.');return;}
+ const currency=String(state.place&&state.place.unit||'ج.م');
+ if(String(wallet.currency||'ج.م')!==currency){info('💱','العملة مختلفة','عملة المحفظة '+wallet.currency+'، وعملة رصيدك '+currency+'. لا يمكن التحويل دون سعر صرف معتمد.');return;}
+ const bankBalance=Number(state.bank);
+ const available=Number.isSafeInteger(bankBalance)&&bankBalance>0?bankBalance:0;
+ const amounts=[1000,5000,10000].filter(amount=>available>=amount);
+ const opts=amounts.map(amount=>choice('💝','إرسال '+fmt(amount)+' '+currency,'خصم فعلي من رصيدك وإضافة المبلغ إلى محفظة '+wallet.name+'.',()=>supportBeneficiaryWallet(wallet.id,amount)));
+ if(!opts.length){const unavailable=choice('⚠️','الرصيد غير كافٍ','تحتاج إلى 1,000 '+currency+' على الأقل لتقديم مساعدة.',()=>beneficiaryWalletMenu(wallet.id));unavailable.disabled=true;opts.push(unavailable);}
+ opts.push(choice('↩️','رجوع للمحفظة','',()=>beneficiaryWalletMenu(wallet.id)));
+ modal('💝','مساعدة مالية إلى '+wallet.name,'اختر مبلغًا متاحًا. سيُسجل التحويل في رصيدك وسجل المحفظة معًا.',opts);
+}
+function beneficiaryWalletTransactionsMenu(walletId){
+ if(!state)return;
+ const wallet=getBeneficiaryWallets(state.legacy).find(item=>item.id===String(walletId));
+ if(!wallet){info('🏦','المحفظة غير متاحة','تعذر العثور على المحفظة المطلوبة.');return;}
+ const transactions=Array.isArray(wallet.transactions)?wallet.transactions.slice(-20).reverse():[];
+ const opts=transactions.map(transaction=>{
+  const valid=transaction&&typeof transaction==='object';
+  const amount=valid&&Number.isFinite(Number(transaction.amount))?Math.max(0,Math.round(Number(transaction.amount))):0;
+  const currency=String(valid&&transaction.currency||wallet.currency||'ج.م');
+  const title=valid&&transaction.type==='inheritance'?'حصة من التركة':'مساعدة مالية';
+  const detail=valid&&transaction.type==='support'
+   ?'من '+String(transaction.fromName||'الحياة الحالية')+' · العمر '+(transaction.age===null||transaction.age===undefined?'غير مسجل':fmt(transaction.age))+' سنة'
+   :'من تركة '+String(valid&&transaction.sourceName||wallet.sourceName||'الجيل السابق');
+  return choice(valid&&transaction.type==='inheritance'?'📜':'💝',title+' · '+fmt(amount)+' '+currency,detail,()=>info('📒',title,detail+' · '+fmt(amount)+' '+currency));
+ });
+ if(!opts.length)opts.push(choice('📭','لا توجد حركات','لم تُسجل معاملات في هذه المحفظة بعد.',()=>beneficiaryWalletMenu(wallet.id)));
+ opts.push(choice('↩️','رجوع للمحفظة','',()=>beneficiaryWalletMenu(wallet.id)));
+ modal('📜','حركات '+wallet.name,'آخر '+transactions.length+' حركة محفوظة في دفتر المحفظة.',opts);
+}
+function supportBeneficiaryWallet(walletId,amount){
+ if(!state||!state.legacy)return;
+ const wallet=getBeneficiaryWallets(state.legacy).find(item=>item.id===String(walletId));
+ if(!wallet){info('🏦','المحفظة غير متاحة','تعذر العثور على المحفظة المطلوبة.');return;}
+ const currency=String(state.place&&state.place.unit||'ج.م');
+ if(String(wallet.currency||'ج.م')!==currency){info('💱','العملة مختلفة','لا يمكن تحويل مبلغ بعملة مختلفة دون سعر صرف معتمد.');return;}
+ const value=Number(amount),bank=Number(state.bank);
+ if(!Number.isSafeInteger(value)||value<=0){info('⚠️','مبلغ غير صالح','اختر مبلغًا صحيحًا موجبًا.');return;}
+ if(!Number.isSafeInteger(bank)||bank<0){info('⚠️','رصيد غير صالح','تعذر التحقق من رصيدك الحالي؛ لم يتم التحويل.');return;}
+ if(bank<value){info('💳','الرصيد غير كافٍ','رصيدك الحالي '+fmt(bank)+' '+currency+'، ولا يكفي للتحويل.');return;}
+ const previousBank=state.bank;
+ const previousLog=Array.isArray(state.log)?state.log.slice():null;
+ let walletSnapshot;
+ try{walletSnapshot=JSON.parse(JSON.stringify(wallet));}catch(e){info('⚠️','تعذر حفظ التحويل','تعذر تجهيز نسخة آمنة من المحفظة. لم يتم تنفيذ التحويل.');return;}
+ const result=recordBeneficiaryWalletSupport(wallet,value,{
+  transactionId:'wallet-support-'+Date.now()+'-'+Math.random().toString(36).slice(2,8),
+  lifeId:state.lifeId,
+  name:state.name,
+  age:state.age,
+  year:state.yearCount
+ });
+ if(!result.ok){info('⚠️','التحويل لم يتم',result.reason==='ledger_mismatch'?'دفتر المحفظة غير متوازن؛ راجع السجل قبل التحويل.':'تعذر تسجيل حركة المساعدة.');return;}
+ state.bank=Math.round(bank-value);
+ log('💝','مساعدة عائلية','حوّلت '+fmt(value)+' '+currency+' إلى محفظة '+wallet.name+'.','good');
+ if(!save()){
+  state.bank=previousBank;
+  Object.keys(wallet).forEach(key=>delete wallet[key]);
+  Object.assign(wallet,walletSnapshot);
+  if(previousLog)state.log=previousLog;
+  info('⚠️','تعذر حفظ التحويل','لم يتم تثبيت المساعدة لأن الحفظ المحلي لم ينجح. لم نحتسب التحويل.');
+  return;
+ }
+ const newBalance=wallet.balance;
+ render();closeModal();
+ info('💝','تم تسجيل المساعدة','أرسلت '+fmt(value)+' '+currency+' إلى محفظة '+wallet.name+'. الرصيد الجديد '+fmt(newBalance)+' '+currency+'.');
+}
 function familyTreeMenu(){
  if(!state)return;const fam=Array.isArray(state.family)?state.family:[],kids=Array.isArray(state.children)?state.children:[];
  const siblings=fam.filter(p=>/(أخ|أخت)/.test(String(p.relation||''))),parents=fam.filter(p=>/(الأب|الأم|والد|والدة|جد|جدة|أب|أم)/.test(String(p.relation||''))&&!siblings.includes(p)),others=fam.filter(p=>!siblings.includes(p)&&!parents.includes(p));
@@ -1677,7 +1912,8 @@ function familyTreeMenu(){
  [...parents,...others,...siblings,...ex].forEach(p=>opts.push(choice(p.deceased?'🕯️':(p.emoji||'👤'),(p.name||'فرد من العائلة')+' · '+(p.relation||'قريب'),'العمر '+fmt(p.age||0)+' · العلاقة '+clamp(p.relationshipLevel??0)+'%',()=>{closeModal();if(p.deceased)info('🕯️',p.name||'ذكرى عائلية','الشخص ده محفوظ في سجل الأسرة.');else personModal(p);},clamp(p.relationshipLevel??0)+'%')));
  if(state.partner)opts.push(choice('💞',state.partner.name+' · الشريك','العلاقة '+clamp(state.partner.relationshipLevel)+'%',()=>{closeModal();personModal(state.partner)}));
  kids.forEach((c,i)=>opts.push(choice(c.emoji||'🧒',c.name+' · '+childDevelopmentStage(c.age),'العمر '+fmt(c.age)+' سنة · التحصيل '+clamp(c.schoolPerformance??50)+'%',()=>{closeModal();childMenu(i)},clamp(c.relationshipLevel??0)+'%')));
- opts.push(choice('📒','سجل استحقاقات التركة','راجع الحصص المسجلة لكل مستفيد والمبالغ المنقولة للجيل الحالي.',inheritanceAccountsMenu),choice('📜','إدارة الوصية والإرث','',willMenu),choice('↩️','رجوع للعلاقات','',relations));
+ const walletCount=getBeneficiaryWallets(state.legacy).length;
+ opts.push(choice('🏦','محافظ الورثة',walletCount?'إدارة '+walletCount+' محفظة مستقلة للمستفيدين.':'لا توجد محافظ موروثة قابلة للإدارة بعد.',beneficiaryWalletsMenu),choice('📒','سجل استحقاقات التركة','راجع الحصص المسجلة لكل مستفيد والمبالغ المنقولة للجيل الحالي.',inheritanceAccountsMenu),choice('📜','إدارة الوصية والإرث','',willMenu),choice('↩️','رجوع للعلاقات','',relations));
  modal('🌳','شجرة العائلة','استعرض الجيل السابق وشخصيتك الحالية والشريك والأبناء، واضغط على فرد من القائمة لإدارة علاقتك به.',opts,true,extra);
 }
 
@@ -1742,7 +1978,7 @@ function inheritanceHistoryRecordMenu(recordId){
  const accountIssueDetail=firstAccountIssue?'؛ '+firstAccountIssue.name+(accountIssueReason?' ('+accountIssueReason+')':'')+(firstAccountIssue.delta!==null&&firstAccountIssue.delta!==undefined&&Number.isFinite(Number(firstAccountIssue.delta))?'، فرق '+fmt(firstAccountIssue.delta)+' '+currency:''):firstSummaryIssue?'؛ '+firstSummaryIssue.label:'';
  const shareAuditText=record.accountLedgerShareTotal!==null&&record.accountLedgerShareTotal!==undefined?' · مجموع نسب المستفيدين '+formatInheritancePercent(record.accountLedgerShareTotal)+'%':'';
  const accountLedgerText=record.accountLedgerMismatch?' · دفتر الاستحقاقات غير متوازن ('+record.accountLedgerIssueCount+' ملاحظة'+accountIssueDetail+')':Number(record.accountLedgerIncompleteCount)>0?' · تعذر التحقق الكامل من دفتر الاستحقاقات في '+record.accountLedgerIncompleteCount+' بند قديم':' · دفتر الاستحقاقات متوازن';
- const description='صافي التركة '+fmt(record.totalEstateValue)+' '+currency+' · إجمالي المخصص '+fmt(record.totalAllocated)+' '+currency+' · المحفوظ '+fmt(record.totalReservedBalance)+' '+currency+' · المنقول '+fmt(record.totalSettledAmount)+' '+currency+shareAuditText+reconciliation+accountLedgerText+'. هذه بيانات تاريخية محفوظة وليست محافظ قابلة للصرف للمستفيدين غير النشطين بعد.';
+ const description='صافي التركة '+fmt(record.totalEstateValue)+' '+currency+' · إجمالي المخصص '+fmt(record.totalAllocated)+' '+currency+' · المحفوظ '+fmt(record.totalReservedBalance)+' '+currency+' · المنقول '+fmt(record.totalSettledAmount)+' '+currency+shareAuditText+reconciliation+accountLedgerText+'. هذا سجل التركة الأصلي؛ المحافظ الحالية وحركات المساندة تُعرض في قسم مستقل.';
  modal('📒','تركة '+(record.sourceName||'الجيل السابق'),description,opts);
 }
 function recordBusinessFinancialReport(entity,report){
@@ -6231,12 +6467,13 @@ function startAsChild(index){
  const totalEstateValue=distributionPreview.totalEstateValue;
  const childCount=distributionPreview.childCount,childPoolValue=distributionPreview.childPoolValue;
  const beneficiaryAccounts=buildInheritanceAccounts(previous,distributionPreview,index,inheritance.value);
+ const beneficiaryWallets=buildBeneficiaryWallets(previous.legacy,beneficiaryAccounts,previous.name,previous.age);
  const childAccounts=beneficiaryAccounts.accounts.filter(account=>account.kind==='child');
  const siblingAllocations=distributionPreview.siblingAllocations.map((allocation,i)=>({...allocation,selected:i===index,accountId:childAccounts[i]?childAccounts[i].id:null,accountStatus:i===index?'transferred':'reserved'}));
  if(siblingAllocations[index])siblingAllocations[index].actualValue=inheritance.value;
  const heir=newLife();ensureChildGrowthProfile(child);heir.name=child.name;heir.gender=child.gender||'male';heir.age=typeof child.age==='number'?child.age:18;heir.place={...previous.place};heir.bank=inheritance.bank;if(perkOwned('goldenPiggyBank'))heir.bank+=1000000;heir.stats={...heir.stats,health:clamp(child.health??heir.stats.health),happiness:clamp(child.happiness??heir.stats.happiness),smart:clamp(child.smart??heir.stats.smart),looks:clamp(child.looks??heir.stats.looks)};heir.reputation=clamp((Number(child.schoolPerformance)||50)*.35+(Number(child.careerPotential)||40)*.35+(Number(child.relationshipLevel)||50)*.3);
  heir.family=[...previous.family];previous.children.forEach((sibling,i)=>{if(i!==index){const allocation=siblingAllocations[i]||{};heir.family.push({...sibling,relation:'أخ/أخت',inheritanceShare:share,inheritanceEstimate:allocation.estimatedValue,inheritanceStatus:'مخصص من التركة',inheritanceAccountId:allocation.accountId,inheritanceAccountStatus:'استحقاق محفوظ'});}});heir.partner=null;heir.married=false;heir.children=[];
- heir.legacy={name:previous.name,inheritance:inheritance.value,heirloom:(previous.heirlooms||[])[0]?.name||null,inheritanceHistory:buildInheritanceHistory(previous,beneficiaryAccounts),distribution:{policy:previous.willDistribution||'الأسرة بالتساوي',childrenPoolShare:childPoolShare,perChildShare:share,childCount,selectedChildIndex:index,selectedChildName:child.name,totalEstateValue,childPoolValue,partnerShare:distributionPreview.partnerShare,partnerValue:distributionPreview.partnerValue,charitableShare:distributionPreview.charitableShare,charitableValue:distributionPreview.charitableValue,otherBeneficiaryShare:distributionPreview.otherBeneficiaryShare,otherBeneficiaryValue:distributionPreview.otherBeneficiaryValue,beneficiaryAllocations:distributionPreview.beneficiaryAllocations,beneficiarySummary:distributionPreview.beneficiarySummary,outsideChildrenPoolShare:distributionPreview.outsideChildrenPoolShare,outsideChildrenPoolValue:distributionPreview.outsideChildrenPoolValue,outsideChildrenPoolRecipient:distributionPreview.outsideChildrenPoolRecipient,siblingAllocations,beneficiaryAccounts,selectedAccountId:childAccounts[index]?childAccounts[index].id:null}};
+ heir.legacy={name:previous.name,inheritance:inheritance.value,heirloom:(previous.heirlooms||[])[0]?.name||null,inheritanceHistory:buildInheritanceHistory(previous,beneficiaryAccounts),beneficiaryWallets,distribution:{policy:previous.willDistribution||'الأسرة بالتساوي',childrenPoolShare:childPoolShare,perChildShare:share,childCount,selectedChildIndex:index,selectedChildName:child.name,totalEstateValue,childPoolValue,partnerShare:distributionPreview.partnerShare,partnerValue:distributionPreview.partnerValue,charitableShare:distributionPreview.charitableShare,charitableValue:distributionPreview.charitableValue,otherBeneficiaryShare:distributionPreview.otherBeneficiaryShare,otherBeneficiaryValue:distributionPreview.otherBeneficiaryValue,beneficiaryAllocations:distributionPreview.beneficiaryAllocations,beneficiarySummary:distributionPreview.beneficiarySummary,outsideChildrenPoolShare:distributionPreview.outsideChildrenPoolShare,outsideChildrenPoolValue:distributionPreview.outsideChildrenPoolValue,outsideChildrenPoolRecipient:distributionPreview.outsideChildrenPoolRecipient,siblingAllocations,beneficiaryAccounts,selectedAccountId:childAccounts[index]?childAccounts[index].id:null}};
  heir.heirlooms=[...(previous.heirlooms||[])];heir.accomplishments=['بدأ حياة جديدة كامتداد لعائلة '+previous.name,'ورث '+cash(inheritance.value)];
  heir.job=null;heir.assets=inheritance.assets;heir.investments=inheritance.investments;heir.business=inheritance.business||null;heir.companies=Array.isArray(inheritance.companies)?inheritance.companies:[];
  heir.family.push({id:'legacy-parent-'+Date.now(),name:previous.name,relation:'والد/والدة متوفى',emoji:previous.gender==='male'?'👨‍🦳':'👩‍🦳',age:previous.age,job:previous.job?previous.job.title:'متوفى',relationshipLevel:100,personality:'موروث عائلي'});if(oldPartner){const partnerRecord={...oldPartner,relation:'الأم/الأب'};if(distributionPreview.partnerShare>0){const partnerAccount=beneficiaryAccounts.accounts.find(account=>account.kind==='partner');partnerRecord.inheritanceShare=distributionPreview.partnerShare;partnerRecord.inheritanceEstimate=distributionPreview.partnerValue;partnerRecord.inheritanceStatus='مخصص للشريك';partnerRecord.inheritanceAccountId=partnerAccount?partnerAccount.id:null;partnerRecord.inheritanceAccountStatus='استحقاق محفوظ';}heir.family.push(partnerRecord);}

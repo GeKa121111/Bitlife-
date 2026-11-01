@@ -80,6 +80,8 @@ const runtime = [
   'buildInheritancePreview',
   'buildInheritanceAccounts',
   'createInheritanceHistoryRecord',
+  'buildBeneficiaryWallets',
+  'recordBeneficiaryWalletSupport',
   'getInheritanceHistoryRecords',
   'buildInheritanceHistory',
   'familyTreeNode',
@@ -1332,4 +1334,108 @@ test('النسبة الرقمية المحفوظة كنص تظل مقروءة ل
   assert.equal(record.accountLedgerMismatch, false);
   assert.equal(record.accounts[0].share, 1);
   assert.equal(record.accounts[0].ledgerShareAuditComplete, true);
+});
+
+
+test('محافظ الورثة تنشأ للحصص المحفوظة للأبناء والشريك فقط دون تكرار حصة الوارث الحالي', () => {
+  const context = makeContext();
+  const registry = {
+    sourceLifeId: 'wallet-estate-one',
+    currency: 'جنيه',
+    totalEstateValue: 100000,
+    totalAllocated: 100000,
+    totalReservedBalance: 60000,
+    totalSettledAmount: 40000,
+    reconciliationDelta: 0,
+    accounts: [
+      { id: 'wallet-sibling-account', beneficiaryId: 'sibling-wallet-1', name: 'الأخت سلمى', kind: 'child', share: 0.4, allocatedAmount: 40000, balance: 40000, settledAmount: 0, status: 'reserved', currency: 'جنيه' },
+      { id: 'wallet-selected-account', beneficiaryId: 'selected-wallet-heir', name: 'الوارث الحالي', kind: 'child', share: 0.4, allocatedAmount: 40000, balance: 0, settledAmount: 40000, status: 'transferred', currency: 'جنيه' },
+      { id: 'wallet-partner-account', beneficiaryId: 'partner-wallet-1', name: 'الشريك', kind: 'partner', share: 0.2, allocatedAmount: 20000, balance: 20000, settledAmount: 0, status: 'reserved', currency: 'جنيه' }
+    ]
+  };
+
+  const wallets = context.buildBeneficiaryWallets({}, registry, 'صاحب التركة', 72);
+  assert.equal(wallets.length, 2);
+  assert.deepEqual(Array.from(wallets, wallet => wallet.kind).sort(), ['child', 'partner']);
+  assert.ok(wallets.every(wallet => wallet.ledgerAuditComplete && !wallet.ledgerMismatch));
+  assert.equal(wallets.find(wallet => wallet.beneficiaryId === 'sibling-wallet-1').balance, 40000);
+  assert.equal(wallets.find(wallet => wallet.beneficiaryId === 'partner-wallet-1').balance, 20000);
+  assert.equal(wallets.some(wallet => wallet.beneficiaryId === 'selected-wallet-heir'), false);
+  assert.equal(wallets[0].transactions[0].type, 'inheritance');
+
+  const reloaded = context.buildBeneficiaryWallets({ beneficiaryWallets: wallets }, registry, 'صاحب التركة', 72);
+  assert.equal(reloaded.length, 2, 'rebuilding the same estate must not duplicate wallets');
+  assert.deepEqual(Array.from(reloaded, wallet => wallet.id), Array.from(wallets, wallet => wallet.id));
+});
+
+test('محفظة الوارث تحتفظ برصيدها وحركات المساندة عند إضافة تركة من جيل لاحق', () => {
+  const context = makeContext();
+  const firstRegistry = {
+    sourceLifeId: 'wallet-generation-one',
+    currency: 'جنيه',
+    totalEstateValue: 5000,
+    totalAllocated: 5000,
+    totalReservedBalance: 5000,
+    totalSettledAmount: 0,
+    reconciliationDelta: 0,
+    accounts: [{ id: 'wallet-first-account', beneficiaryId: 'sibling-stable-id', name: 'الأخ كريم', kind: 'child', share: 1, allocatedAmount: 5000, balance: 5000, settledAmount: 0, status: 'reserved', currency: 'جنيه' }]
+  };
+  const first = context.buildBeneficiaryWallets({}, firstRegistry, 'الجيل الأول', 70);
+  const wallet = first[0];
+  const support = context.recordBeneficiaryWalletSupport(wallet, 1500, {
+    transactionId: 'support-generation-one',
+    lifeId: 'active-heir-life',
+    name: 'ليلى',
+    age: 31,
+    year: 31
+  });
+  assert.equal(support.ok, true);
+  assert.equal(wallet.balance, 6500);
+  assert.equal(wallet.supportTotal, 1500);
+
+  const secondRegistry = {
+    sourceLifeId: 'wallet-generation-two',
+    currency: 'جنيه',
+    totalEstateValue: 8000,
+    totalAllocated: 8000,
+    totalReservedBalance: 8000,
+    totalSettledAmount: 0,
+    reconciliationDelta: 0,
+    accounts: [{ id: 'wallet-second-account', beneficiaryId: 'second-sibling-id', name: 'الأخت نور', kind: 'child', share: 1, allocatedAmount: 8000, balance: 8000, settledAmount: 0, status: 'reserved', currency: 'جنيه' }]
+  };
+  const next = context.buildBeneficiaryWallets({ beneficiaryWallets: first }, secondRegistry, 'الجيل الثاني', 68);
+  const preserved = next.find(item => item.id === wallet.id);
+  assert.equal(next.length, 2);
+  assert.equal(preserved.balance, 6500);
+  assert.equal(preserved.supportTotal, 1500);
+  assert.equal(preserved.transactions.length, 2);
+  assert.ok(next.some(item => item.beneficiaryId === 'second-sibling-id'));
+});
+
+test('تحويل المساعدة إلى محفظة الوريث يرفض المبالغ غير الصالحة والتكرار والدفتر غير المتوازن', () => {
+  const context = makeContext();
+  const wallet = {
+    id: 'wallet-support-test',
+    beneficiaryId: 'support-heir',
+    kind: 'child',
+    currency: 'جنيه',
+    openingBalance: 5000,
+    supportTotal: 0,
+    balance: 5000,
+    transactions: [{ id: 'wallet-support-test-inheritance', type: 'inheritance', amount: 5000, currency: 'جنيه' }],
+    ledgerAuditComplete: true,
+    ledgerMismatch: false
+  };
+
+  assert.equal(context.recordBeneficiaryWalletSupport(wallet, 0, { transactionId: 'zero' }).reason, 'invalid_amount');
+  assert.equal(context.recordBeneficiaryWalletSupport(wallet, -100, { transactionId: 'negative' }).reason, 'invalid_amount');
+  assert.equal(context.recordBeneficiaryWalletSupport(wallet, 1000, { transactionId: 'gift-1', lifeId: 'life-a', name: 'الوارث', age: 30, year: 30 }).ok, true);
+  assert.equal(wallet.balance, 6000);
+  assert.equal(wallet.supportTotal, 1000);
+  assert.equal(context.recordBeneficiaryWalletSupport(wallet, 1000, { transactionId: 'gift-1' }).reason, 'duplicate_transaction');
+
+  const corrupted = { ...wallet, balance: 5900 };
+  const rejected = context.recordBeneficiaryWalletSupport(corrupted, 500, { transactionId: 'gift-2' });
+  assert.equal(rejected.reason, 'ledger_mismatch');
+  assert.equal(corrupted.balance, 5900, 'a failed transfer must not silently repair a corrupted wallet');
 });
