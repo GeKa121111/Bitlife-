@@ -1512,7 +1512,11 @@ function modal(icon,title,desc,choices,closable=true,extra=''){
  const hasRandomChoice=actualChoices.length>1||hasSelect;
  const showSurprise=hasRandomChoice&&!film&&!license;
  const hasQuestion=/(هتعمل إيه|ماذا ستفعل|ماذا ستختار|هتختار إيه|؟|\?)/.test(String(desc||''));
- const questionPrompt=!isNotice&&!hasSelect&&actualChoices.length>1&&!hasQuestion?'هتعمل إيه؟':'';
+ const questionPrompt=!isDrawer&&!isNotice&&!hasSelect&&actualChoices.length>1&&!hasQuestion?'هتعمل إيه؟':'';
+ const dialogDescriptionIds=[];
+ if(desc)dialogDescriptionIds.push('dialogDescription');
+ if(questionPrompt)dialogDescriptionIds.push('dialogQuestion');
+ const describedBy=dialogDescriptionIds.length?' aria-describedby="'+dialogDescriptionIds.join(' ')+'"':'';
  const list=choices.map((c,i)=>{
   if(c&&c.section)return '<div class="list-section" role="heading" aria-level="2">'+esc(c.title||'')+'</div>';
   if(c&&c.banner)return '<button class="drawer-action-banner" data-i="'+i+'"><span class="banner-emoji">'+(c.icon||'🛍️')+'</span><span class="banner-copy"><strong>'+esc(c.title||'تسوّق الآن')+'</strong>'+(c.desc?'<small>'+esc(c.desc)+'</small>':'')+'</span></button>';
@@ -1526,9 +1530,9 @@ function modal(icon,title,desc,choices,closable=true,extra=''){
   '</button>';
  }).join('');
  if(isDrawer){
-  root.innerHTML='<div class="overlay drawer-overlay" id="overlay"><section class="modal drawer'+(title==='School'?' school-screen':'')+(title==='Activities'?' activities-screen':'')+'" role="dialog" aria-modal="true" aria-labelledby="dialogTitle"'+(desc?' aria-describedby="dialogDescription"':'')+'><div class="modalhead drawer-head"><div class="modalicon">'+icon+'</div><div class="modaltitle" id="dialogTitle" role="heading" aria-level="2">'+esc(title)+'</div>'+(closable?'<button class="closebtn" id="closeModal" aria-label="إغلاق">×</button>':'')+'</div><div class="modalbody drawer-body">'+(desc?'<p class="desc" id="dialogDescription">'+esc(desc)+'</p>':'')+extra+'<div class="choicegrid">'+list+'</div></div></section></div>';
+  root.innerHTML='<div class="overlay drawer-overlay" id="overlay"><section class="modal drawer'+(title==='School'?' school-screen':'')+(title==='Activities'?' activities-screen':'')+'" role="dialog" aria-modal="true" aria-labelledby="dialogTitle"'+describedBy+'><div class="modalhead drawer-head"><div class="modalicon">'+icon+'</div><div class="modaltitle" id="dialogTitle" role="heading" aria-level="2">'+esc(title)+'</div>'+(closable?'<button class="closebtn" id="closeModal" aria-label="إغلاق">×</button>':'')+'</div><div class="modalbody drawer-body">'+(desc?'<p class="desc" id="dialogDescription">'+esc(desc)+'</p>':'')+extra+'<div class="choicegrid">'+list+'</div></div></section></div>';
  }else{
-  root.innerHTML='<div class="overlay event-overlay" id="overlay"><section class="modal event-modal banner-'+category+(isNotice?' notice-modal':'')+'" role="dialog" aria-modal="true" aria-labelledby="dialogTitle"'+(desc?' aria-describedby="dialogDescription"':'')+'><div class="event-banner banner-'+category+'"><span>'+categoryLabel+'</span>'+(closable?'<button class="closebtn" id="closeModal" aria-label="إغلاق">×</button>':'')+'</div><div class="event-summary"><div class="event-icon">'+icon+'</div><h2 class="event-title" id="dialogTitle">'+esc(title)+'</h2>'+(desc?'<p class="desc" id="dialogDescription">'+esc(desc)+'</p>':'')+(questionPrompt?'<div class="event-question">'+questionPrompt+'</div>':'')+'</div><div class="modalbody event-body">'+extra+'<div class="choicegrid">'+list+'</div>'+(showSurprise?'<button class="surprise-choice" id="surpriseChoice" type="button"><span aria-hidden="true">🎲</span> فاجئني!</button>':'')+'</div></section></div>';
+  root.innerHTML='<div class="overlay event-overlay" id="overlay"><section class="modal event-modal banner-'+category+(isNotice?' notice-modal':'')+'" role="dialog" aria-modal="true" aria-labelledby="dialogTitle"'+describedBy+'><div class="event-banner banner-'+category+'"><span>'+categoryLabel+'</span>'+(closable?'<button class="closebtn" id="closeModal" aria-label="إغلاق">×</button>':'')+'</div><div class="event-summary"><div class="event-icon">'+icon+'</div><h2 class="event-title" id="dialogTitle">'+esc(title)+'</h2>'+(desc?'<p class="desc" id="dialogDescription">'+esc(desc)+'</p>':'')+(questionPrompt?'<div class="event-question" id="dialogQuestion">'+questionPrompt+'</div>':'')+'</div><div class="modalbody event-body">'+extra+'<div class="choicegrid">'+list+'</div>'+(showSurprise?'<button class="surprise-choice" id="surpriseChoice" type="button"><span aria-hidden="true">🎲</span> فاجئني!</button>':'')+'</div></section></div>';
  }
  const overlay=$('overlay');
  overlay.addEventListener('click',e=>{if(e.target===overlay&&closable)closeModal();});
