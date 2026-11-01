@@ -509,6 +509,126 @@ test('ملخص صافي التركة يطابق حساب الإرث ويشمل �
   assert.equal(legacySnapshot.net, context.calculateInheritance(legacy, 1).totalEstateValue);
 });
 
+test('تسوية فروق التقريب تمنع إنشاء أو فقدان قيمة عند توريث أصول صغيرة متعددة', () => {
+  const context = makeContext();
+  const parent = makeParent();
+  parent.bank = 0;
+  parent.debt = 0;
+  parent.assets = [
+    { id: 'small-property-a', title: 'أصل صغير أ', kind: 'property', value: 1, upkeep: 1 },
+    { id: 'small-property-b', title: 'أصل صغير ب', kind: 'property', value: 1, upkeep: 1 },
+    { id: 'small-property-c', title: 'أصل صغير ج', kind: 'property', value: 1, upkeep: 1 },
+    { id: 'small-business-asset', title: 'شركة صغيرة', kind: 'business', value: 1, upkeep: 1 }
+  ];
+  parent.investments = [];
+  parent.business = {
+    id: 'small-business-asset',
+    assetId: 'small-business-asset',
+    title: 'شركة صغيرة',
+    value: 1,
+    treasuryMode: 'separate',
+    cashBalance: 0,
+    taxLiability: 0
+  };
+  parent.companies = [];
+  parent.partner = null;
+  parent.willDistribution = 'الشريك أولًا';
+  parent.children.push({ id: 'heir-2', name: 'عمر منصور', age: 22 });
+
+  const preview = context.buildInheritancePreview(parent);
+  assert.equal(preview.totalEstateValue, 4);
+  assert.equal(preview.perChildShare, 0.5);
+  assert.equal(preview.siblingAllocations[0].estimatedValue, 2);
+
+  const inherited = context.calculateInheritance(parent, preview.perChildShare, preview.siblingAllocations[0].estimatedValue);
+  const transferredAssetsValue = inherited.assets.reduce((sum, asset) => sum + asset.value, 0);
+  assert.equal(inherited.value, 2);
+  assert.equal(inherited.bank + transferredAssetsValue, 2);
+  assert.equal(inherited.roundingAdjustment, 0);
+  assert.ok(inherited.assets.every(asset => asset.value >= 0 && asset.upkeep >= 0));
+  const inheritedBusinessAsset = inherited.assets.find(asset => String(asset.id) === String(inherited.business.assetId));
+  assert.equal(inherited.business.value, inheritedBusinessAsset.value, 'the inherited company value must stay aligned with its backing asset');
+
+  const defaultTarget = context.calculateInheritance(parent, preview.perChildShare);
+  assert.equal(defaultTarget.value, Math.round(preview.totalEstateValue * preview.perChildShare));
+
+  const roundedUpParent = makeParent();
+  roundedUpParent.bank = 0;
+  roundedUpParent.debt = 0;
+  roundedUpParent.assets = Array.from({ length: 3 }, (_, index) => ({
+    id: 'round-up-asset-' + index,
+    title: 'أصل تقريب ' + index,
+    kind: 'property',
+    value: 1,
+    upkeep: 0
+  }));
+  roundedUpParent.investments = [];
+  roundedUpParent.business = null;
+  roundedUpParent.companies = [];
+  roundedUpParent.partner = null;
+  const roundedUp = context.calculateInheritance(roundedUpParent, 0.25);
+  assert.equal(roundedUp.value, 1);
+  assert.equal(roundedUp.bank, 1, 'a positive rounding residual should be kept as balancing cash');
+  assert.equal(roundedUp.roundingAdjustment, 0);
+  const invalidTarget = context.calculateInheritance(roundedUpParent, 0.25, NaN);
+  assert.equal(invalidTarget.value, 1, 'an invalid optional target should fall back to the calculated share');
+});
+
+test('اختيار الوارث يسوّي قيمة المنقول مع الحصة المعروضة في سجل الاستحقاقات', () => {
+  const context = makeContext();
+  const parent = makeParent();
+  parent.bank = 0;
+  parent.debt = 0;
+  parent.assets = Array.from({ length: 4 }, (_, index) => ({
+    id: 'succession-small-' + index,
+    title: 'أصل عائلي صغير ' + index,
+    kind: 'property',
+    value: 1,
+    upkeep: 0
+  }));
+  parent.investments = [];
+  parent.business = null;
+  parent.companies = [];
+  parent.partner = null;
+  parent.willDistribution = 'الشريك أولًا';
+  parent.children.push({ id: 'heir-2', name: 'عمر منصور', age: 22 });
+  context.state = parent;
+
+  vm.runInContext('startAsChild(0);', context);
+  const heir = context.state;
+  const distribution = heir.legacy.distribution;
+  const selectedAccount = distribution.beneficiaryAccounts.accounts.find(account => account.status === 'transferred');
+
+  assert.equal(heir.legacy.inheritance, distribution.siblingAllocations[0].estimatedValue);
+  assert.equal(selectedAccount.allocatedAmount, selectedAccount.settledAmount);
+  assert.equal(distribution.beneficiaryAccounts.reconciliationDelta, 0);
+  assert.equal(heir.legacy.inheritance, 2);
+});
+
+test('تاريخ الميراث يحتفظ بفرق التسوية في السجلات القديمة للمراجعة', () => {
+  const context = makeContext();
+  const record = context.createInheritanceHistoryRecord({
+    sourceLifeId: 'legacy-rounding-estate',
+    totalEstateValue: 100,
+    totalAllocated: 100,
+    totalReservedBalance: 0,
+    totalSettledAmount: 102,
+    accounts: [{
+      id: 'legacy-rounding-account',
+      beneficiaryId: 'heir',
+      kind: 'child',
+      allocatedAmount: 100,
+      balance: 0,
+      settledAmount: 102,
+      status: 'transferred'
+    }]
+  }, 'تركة قديمة', 70);
+
+  assert.equal(record.reconciliationDelta, 2);
+  const records = context.getInheritanceHistoryRecords({ inheritanceHistory: [record] });
+  assert.equal(records[0].reconciliationDelta, 2);
+});
+
 test('معاينة الإرث تستخدم نفس الحصص والقيم في شاشة الوفاة واستكمال السلالة دون تغيير الحفظ', () => {
   const context = makeContext();
   const policies = [
