@@ -22,10 +22,10 @@ function functionSource(name, nextName) {
 }
 
 test('اختصار لوحة المفاتيح يتجاوز الرأس وينقل التركيز إلى يوميات الحياة', () => {
-  assert.match(html, /<a class="skip-link" href="#lifeFeed">انتقل إلى يوميات الحياة<\\/a>/);
+  assert.ok(html.includes('<a class="skip-link" href="#lifeFeed">انتقل إلى يوميات الحياة</a>'));
   assert.match(html, /<main class="feed" id="lifeFeed"[^>]*tabindex="-1"/);
-  assert.match(css, /\\.skip-link:focus-visible\\{transform:translateY\\(0\\)/);
-  assert.match(css, /prefers-reduced-motion:reduce\\)\\{\\.skip-link\\{transition:none!important\\}\\}/);
+  assert.ok(css.includes('.skip-link:focus-visible{transform:translateY(0);'));
+  assert.ok(css.includes('@media(prefers-reduced-motion:reduce){.skip-link{transition:none!important}}'));
 });
 
 test('لون شريط المتصفح يطابق هوية حياة في الصفحة والـ PWA والإعدادات', () => {
@@ -47,7 +47,7 @@ test('واجهة حياة عربية RTL وتحافظ على اسمها المس
 });
 
 test('سجل الحياة لا يعيد قراءة التاريخ كاملًا ويعلن الأحداث الجديدة فقط لقارئ الشاشة', () => {
-  assert.ok(html.includes('<main class="feed" id="lifeFeed" aria-label="سجل الحياة والأحداث"></main>'));
+  assert.ok(html.includes('<main class="feed" id="lifeFeed" aria-label="سجل الحياة والأحداث" tabindex="-1"></main>'));
   assert.doesNotMatch(html, /id="lifeFeed"[^>]*aria-live=/);
   assert.match(html, /id="lifeAnnouncement" class="sr-only" role="status" aria-live="polite" aria-atomic="true"/);
 
