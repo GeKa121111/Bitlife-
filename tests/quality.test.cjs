@@ -1941,6 +1941,7 @@ test('دفتر الميراث يدقق نسب المستفيدين وهوية ا
   assert.match(historySource, /duplicate_beneficiary_id/);
   assert.match(historySource, /currency_mismatch/);
   assert.match(historySource, /source_life_mismatch/);
+  assert.match(historySource, /accountLedgerAmountIncompleteCount/);
   assert.match(menuSource, /issueReasonLabels/);
   assert.match(menuSource, /مجموع نسب المستفيدين/);
   assert.match(read('sw.js'), /hayah-shell-v89/);
