@@ -89,6 +89,7 @@ const seedSave = {
         totalAllocated: 100000,
         totalReservedBalance: 60000,
         totalSettledAmount: 40000,
+        reconciliationDelta: 7,
         accounts: [
           { id: 'estate-browser-sibling', beneficiaryId: 'sibling-1', name: 'الأخت مريم', kind: 'child', share: 0.4, allocatedAmount: 40000, balance: 40000, settledAmount: 0, status: 'reserved', currency: 'ج.م' },
           { id: 'estate-browser-current', beneficiaryId: 'current-heir', name: 'الشخصية الحالية', kind: 'child', share: 0.4, allocatedAmount: 40000, balance: 0, settledAmount: 40000, status: 'transferred', currency: 'ج.م' },
@@ -526,7 +527,8 @@ async function run() {
     assert.match(inheritanceLedgerText, /الأخت مريم/);
     assert.match(inheritanceLedgerText, /استحقاق محفوظ للأسرة/);
     assert.match(inheritanceLedgerText, /تم نقل الحصة إلى الحياة الحالية/);
-    assert.match(inheritanceLedgerText, /حصة الوارث متطابقة/);
+    assert.match(inheritanceLedgerText, /بيانات التسوية المسجلة لا تطابق تفاصيل المستفيدين/);
+    assert.doesNotMatch(inheritanceLedgerText, /حصة الوارث متطابقة/);
     assert.match(inheritanceLedgerText, /ليست محافظ قابلة للصرف للمستفيدين غير النشطين بعد/);
     await page.keyboard.press('Escape');
     await page.waitForFunction(() => !document.querySelector('#modalRoot [role="dialog"]'));

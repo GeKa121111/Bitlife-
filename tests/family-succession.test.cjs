@@ -629,6 +629,56 @@ test('تاريخ الميراث يحتفظ بفرق التسوية في السج
   assert.equal(records[0].reconciliationDelta, 2);
 });
 
+test('تفاصيل المستفيدين تكشف قيمة تسوية تاريخية قديمة غير متطابقة وتحافظ على التحذير بعد إعادة القراءة', () => {
+  const context = makeContext();
+  const staleZero = context.createInheritanceHistoryRecord({
+    sourceLifeId: 'stale-zero-reconciliation',
+    reconciliationDelta: 0,
+    totalEstateValue: 100,
+    totalAllocated: 100,
+    totalReservedBalance: 0,
+    totalSettledAmount: 102,
+    accounts: [{
+      id: 'stale-zero-account',
+      beneficiaryId: 'heir-a',
+      allocatedAmount: 100,
+      balance: 0,
+      settledAmount: 102,
+      status: 'transferred'
+    }]
+  }, 'تركة ذات ملخص قديم', 70);
+
+  assert.equal(staleZero.reconciliationDelta, 2, 'normalized account details must be the source of truth');
+  assert.equal(staleZero.reconciliationMetadataMismatch, true);
+  assert.equal(staleZero.reportedReconciliationDelta, 0);
+
+  const reloaded = context.getInheritanceHistoryRecords({ inheritanceHistory: [staleZero] })[0];
+  assert.equal(reloaded.reconciliationDelta, 2);
+  assert.equal(reloaded.reconciliationMetadataMismatch, true);
+  assert.equal(reloaded.reportedReconciliationDelta, 0);
+
+  const stalePositive = context.createInheritanceHistoryRecord({
+    sourceLifeId: 'stale-positive-reconciliation',
+    reconciliationDelta: 7,
+    totalEstateValue: 100,
+    totalAllocated: 100,
+    totalReservedBalance: 0,
+    totalSettledAmount: 100,
+    accounts: [{
+      id: 'stale-positive-account',
+      beneficiaryId: 'heir-b',
+      allocatedAmount: 100,
+      balance: 0,
+      settledAmount: 100,
+      status: 'transferred'
+    }]
+  }, 'تركة ذات ملخص زائد', 72);
+
+  assert.equal(stalePositive.reconciliationDelta, 0);
+  assert.equal(stalePositive.reconciliationMetadataMismatch, true);
+  assert.equal(stalePositive.reportedReconciliationDelta, 7);
+});
+
 test('معاينة الإرث تستخدم نفس الحصص والقيم في شاشة الوفاة واستكمال السلالة دون تغيير الحفظ', () => {
   const context = makeContext();
   const policies = [

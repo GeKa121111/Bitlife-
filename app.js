@@ -1722,7 +1722,9 @@ function inheritanceHistoryRecordMenu(recordId){
  opts.push(choice('↩️','رجوع لسجل مواريث العائلة','',inheritanceAccountsMenu));
  const currency=String(record.currency||state.place&&state.place.unit||'ج.م');
  const delta=Math.round(Number(record.reconciliationDelta)||0);
- const reconciliation=delta===0?' · حصة الوارث متطابقة':' · فرق تسوية حصة الوارث '+(delta>0?'+':'')+fmt(delta)+' '+currency+' يحتاج مراجعة';
+ const reportedDelta=record.reportedReconciliationDelta;
+ const mismatchDetail=reportedDelta!==null&&reportedDelta!==undefined&&Number.isFinite(Number(reportedDelta))?' (القيمة المسجلة '+(Number(reportedDelta)>0?'+':'')+fmt(reportedDelta)+' '+currency+')':'';
+ const reconciliation=record.reconciliationMetadataMismatch?' · بيانات التسوية المسجلة لا تطابق تفاصيل المستفيدين'+mismatchDetail+' وتحتاج مراجعة':delta===0?' · حصة الوارث متطابقة':' · فرق تسوية حصة الوارث '+(delta>0?'+':'')+fmt(delta)+' '+currency+' يحتاج مراجعة';
  const description='صافي التركة '+fmt(record.totalEstateValue)+' '+currency+' · إجمالي المخصص '+fmt(record.totalAllocated)+' '+currency+' · المحفوظ '+fmt(record.totalReservedBalance)+' '+currency+' · المنقول '+fmt(record.totalSettledAmount)+' '+currency+reconciliation+'. هذه بيانات تاريخية محفوظة وليست محافظ قابلة للصرف للمستفيدين غير النشطين بعد.';
  modal('📒','تركة '+(record.sourceName||'الجيل السابق'),description,opts);
 }
@@ -6021,9 +6023,20 @@ function createInheritanceHistoryRecord(registry,sourceName,sourceAge){
  const transferredAccounts=accounts.filter(account=>account.status==='transferred');
  const transferredAllocated=transferredAccounts.reduce((sum,account)=>sum+account.allocatedAmount,0);
  const transferredSettled=transferredAccounts.reduce((sum,account)=>sum+account.settledAmount,0);
- const reconciliationDelta=registry.reconciliationDelta!==undefined&&registry.reconciliationDelta!==null&&Number.isFinite(Number(registry.reconciliationDelta))
-  ?Math.round(Number(registry.reconciliationDelta))
-  :transferredSettled-transferredAllocated;
+ const calculatedReconciliationDelta=transferredSettled-transferredAllocated;
+ const declaredDeltaValue=registry.reconciliationDelta;
+ const hasDeclaredDelta=declaredDeltaValue!==undefined&&declaredDeltaValue!==null&&Number.isFinite(Number(declaredDeltaValue));
+ const declaredReconciliationDelta=hasDeclaredDelta?Math.round(Number(declaredDeltaValue)):null;
+ const priorReportedValue=registry.reportedReconciliationDelta;
+ const hasPriorReported=priorReportedValue!==undefined&&priorReportedValue!==null&&Number.isFinite(Number(priorReportedValue));
+ const priorReportedDelta=hasPriorReported?Math.round(Number(priorReportedValue)):null;
+ const reconciliationMetadataMismatch=registry.reconciliationMetadataMismatch===true
+  ||(hasDeclaredDelta&&declaredReconciliationDelta!==calculatedReconciliationDelta)
+  ||(hasPriorReported&&priorReportedDelta!==calculatedReconciliationDelta);
+ const reconciliationDelta=calculatedReconciliationDelta;
+ const reportedReconciliationDelta=reconciliationMetadataMismatch
+  ?(hasPriorReported?priorReportedDelta:hasDeclaredDelta?declaredReconciliationDelta:null)
+  :null;
  const ageValue=sourceAge===null||sourceAge===undefined?null:Number(sourceAge);
  return {
   id:String(registry.id||('estate-history-'+encodeURIComponent(sourceLifeId))),
@@ -6036,6 +6049,8 @@ function createInheritanceHistoryRecord(registry,sourceName,sourceAge){
   totalReservedBalance:safeMoney(registry.totalReservedBalance),
   totalSettledAmount:safeMoney(registry.totalSettledAmount),
   reconciliationDelta,
+  reconciliationMetadataMismatch,
+  reportedReconciliationDelta,
   accounts
  };
 }
