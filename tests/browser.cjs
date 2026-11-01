@@ -1079,7 +1079,24 @@ async function run() {
         independence: 35,
         educationStatus: 'خريج جامعي',
         interest: 'التقنية'
+      }, {
+        id: 'estate-sibling-test',
+        name: 'أخت اختبار',
+        gender: 'female',
+        age: 22,
+        relation: 'الابنة',
+        relationshipLevel: 85,
+        health: 82,
+        happiness: 75,
+        smart: 68,
+        looks: 64,
+        schoolPerformance: 78,
+        careerPotential: 72,
+        independence: 40,
+        educationStatus: 'خريجة جامعية',
+        interest: 'التصميم'
       }];
+      saved.partner = { id: 'estate-partner-test', name: 'شريكة اختبار', age: 58, relationshipLevel: 90 };
       saved.log = [{
         icon: '🧪',
         title: 'نهاية اختبار الإرث',
@@ -1107,6 +1124,47 @@ async function run() {
     await page.locator('#ageUpBtn').click();
     await page.locator('[data-heir="0"]').waitFor({ state: 'visible' });
     const deathDialog = page.locator('#modalRoot #deathDialog');
+    const expectedEstate = await page.evaluate(() => {
+      const saved = JSON.parse(localStorage.getItem('hekayat_hayah_save_v1') || 'null');
+      const assets = Array.isArray(saved.assets) ? saved.assets : [];
+      const investments = Array.isArray(saved.investments) ? saved.investments : [];
+      const businesses = [saved.business, ...(Array.isArray(saved.companies) ? saved.companies : [])]
+        .filter(item => item && typeof item === 'object');
+      const separate = businesses.filter(item => item.treasuryMode === 'separate');
+      const businessCash = separate.reduce((sum, item) => sum + Math.max(0, Number(item.cashBalance) || 0), 0);
+      const overdraft = separate.reduce((sum, item) => sum + Math.max(0, -(Number(item.cashBalance) || 0)), 0);
+      const taxAndCredit = businesses.reduce((sum, item) => {
+        const tax = Math.max(0, Number(item.taxLiability) || 0);
+        const credit = item.credit && typeof item.credit === 'object'
+          ? Math.max(0, Math.min(200000000,
+            Math.round(Number(item.credit.principal) || 0) + Math.round(Number(item.credit.accruedInterest) || 0)))
+          : 0;
+        return sum + tax + credit;
+      }, 0);
+      const gross = Math.max(0, Number(saved.bank) || 0)
+        + assets.reduce((sum, item) => sum + Math.max(0, Number(item.value) || 0), 0)
+        + investments.reduce((sum, item) => sum + Math.max(0, Number(item.value) || 0), 0)
+        + businessCash;
+      return Math.max(0, gross - Math.max(0, Number(saved.debt) || 0) - taxAndCredit - overdraft);
+    });
+    assert.equal(await deathDialog.locator('[data-estate-net]').getAttribute('data-estate-net'), String(expectedEstate),
+      'the death summary must include separate company cash, taxes, credit and overdrafts');
+    assert.equal(await deathDialog.locator('[data-inheritance-policy]').count(), 1);
+    const heirPreviews = await deathDialog.locator('[data-heir]').evaluateAll(buttons =>
+      buttons.map(button => ({
+        share: button.getAttribute('data-inheritance-share'),
+        estimate: Number(button.getAttribute('data-inheritance-estimate'))
+      }))
+    );
+    assert.equal(heirPreviews.length, 2, 'both children should be shown before choosing the continuing heir');
+    assert.deepEqual(heirPreviews.map(item => item.share), ['40', '40']);
+    const expectedChildPool = Math.round(expectedEstate * 0.8);
+    const expectedChildBase = Math.floor(expectedChildPool / 2);
+    const expectedChildRemainder = expectedChildPool - expectedChildBase * 2;
+    assert.deepEqual(heirPreviews.map(item => item.estimate), [
+      expectedChildBase + (expectedChildRemainder > 0 ? 1 : 0),
+      expectedChildBase
+    ], 'the preview should use the same rounded allocation as succession');
     assert.equal(await deathDialog.locator('[role="alert"]').count(), 1,
       'a failed cemetery write should be clearly announced instead of silently marked as saved');
     const pendingArchive = await page.evaluate(() => {
