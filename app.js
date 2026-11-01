@@ -97,7 +97,7 @@ function normalizeBusinessRivals(raw,business,industry,year,count,baselinePrice)
  if(!source.length)return createBusinessRivals(business,industry,year,count,baselinePrice);
  const templates=BUSINESS_RIVAL_SECTORS[businessRivalSectorKey(industry)]||BUSINESS_RIVAL_SECTORS.other;
  const identity=businessRivalIdentity(business);
- return source.map((rival,index)=>{
+ const normalized=source.map((rival,index)=>{
   const seed=businessRivalHash(identity+'|legacy-rival|'+index),template=templates[index%templates.length];
   const finite=(value,fallback)=>Number.isFinite(Number(value))?Number(value):fallback;
   return {id:String(rival.id||('rival-'+(index+1)+'-'+seed.toString(36))).slice(0,80),
@@ -115,6 +115,20 @@ function normalizeBusinessRivals(raw,business,industry,year,count,baselinePrice)
    decisionYear:Math.max(0,Math.min(200,Math.floor(finite(rival.decisionYear,year)))),
    losingYears:Math.max(0,Math.min(10,Math.floor(finite(rival.losingYears,0)))),active:rival.active!==false};
  });
+ // Preserve every valid legacy rival, but refill an undersized active roster when capacity remains.
+ const desiredCount=Math.max(2,Math.min(12,Math.floor(Number(count)||3)));
+ const knownIds=new Set(normalized.map(rival=>rival.id));
+ let activeCount=normalized.filter(rival=>rival.active!==false).length;
+ if(activeCount<desiredCount&&normalized.length<12){
+  const generated=createBusinessRivals(business,industry,year,desiredCount,baselinePrice);
+  generated.forEach(rival=>{
+   if(activeCount>=desiredCount||normalized.length>=12||knownIds.has(rival.id))return;
+   normalized.push(rival);
+   knownIds.add(rival.id);
+   activeCount++;
+  });
+ }
+ return normalized.slice(0,12);
 }
 function advanceBusinessRivals(raw,business,industry,year,profile,demandIndex){
  const previous=normalizeBusinessRivals(raw,business,industry,Math.max(0,year-1),Array.isArray(raw)?raw.length:3,profile.rivalPriceMin);
