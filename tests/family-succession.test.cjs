@@ -1657,3 +1657,50 @@ test('صيانة الحصة الموروثة تحدث القيمة الكامل�
   assert.equal(record.owners[0].share, 0.5);
   assert.equal(record.transactions[0].type, 'maintenance');
 });
+
+
+test('سجل ملكية غير متوازن يوقف بيع الحصة دون تغيير الملاك', () => {
+  const context = makeContext();
+  const record = {
+    id: 'family-home-invalid-sale', title: 'عقار يحتاج مراجعة', marketValue: 1000000,
+    encumberedShare: 0, auditStatus: 'needs_review',
+    owners: [{ beneficiaryId: 'invalid-owner', name: 'المالك', share: 0.7, status: 'active' }],
+    transactions: []
+  };
+  context.state = { lifeId: 'invalid-owner', name: 'المالك', age: 40,
+    legacy: { activeBeneficiaryId: 'invalid-owner', familyPropertyOwnership: [record] } };
+  const before = JSON.stringify(record);
+  const result = context.recordFamilyPropertySale({
+    familyAssetId: record.id, ownerBeneficiaryId: 'invalid-owner', kind: 'property', ownershipShare: 0.7
+  }, 500000);
+  assert.equal(result.ok, false);
+  assert.equal(result.reason, 'ownership_audit_incomplete');
+  assert.equal(JSON.stringify(record), before, 'a blocked sale must not mutate the ownership register');
+});
+
+test('سجل ملكية قديم ناقص المالك الحالي يتحول إلى مراجعة بدل إعادة توزيع حصص مجهولة', () => {
+  const context = makeContext();
+  const previous = {
+    lifeId: 'property-legacy-owner', name: 'المالك الحالي', age: 60, bank: 0,
+    assets: [{ id: 'legacy-home-share', familyAssetId: 'legacy-family-home', ownerBeneficiaryId: 'active-legacy-owner',
+      ownershipShare: 0.5, familyAssetOriginalValue: 1000000, title: 'بيت قديم', kind: 'property', value: 500000, upkeep: 10000 }],
+    investments: [], business: null, companies: [], debt: 0, place: { unit: 'جنيه' },
+    legacy: {
+      activeBeneficiaryId: 'active-legacy-owner',
+      familyPropertyOwnership: [{
+        id: 'legacy-family-home', familyAssetId: 'legacy-family-home', title: 'بيت قديم',
+        marketValue: 1000000, currency: 'جنيه', encumberedShare: 0, auditStatus: 'balanced',
+        owners: [{ beneficiaryId: 'unrelated-owner', name: 'مالك آخر', share: 1, status: 'reserved' }],
+        transactions: []
+      }]
+    }
+  };
+  const registry = {
+    sourceLifeId: 'legacy-property-estate', currency: 'جنيه',
+    accounts: [{ beneficiaryId: 'next-heir', name: 'الوارث', kind: 'child', share: 1, status: 'transferred' }]
+  };
+  const record = context.buildFamilyPropertyOwnership(previous, registry)[0];
+  assert.equal(record.auditStatus, 'needs_review');
+  assert.ok(record.auditIssues.includes('current_owner_missing'));
+  assert.equal(record.owners[0].beneficiaryId, 'unrelated-owner');
+});
