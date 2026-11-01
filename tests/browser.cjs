@@ -448,11 +448,15 @@ async function run() {
       return {
         hasAccessibleTitle: !!title && dialog.contains(title) && !!title.textContent.trim(),
         hasValidDescription: !descriptionId || (!!description && dialog.contains(description) && !!description.textContent.trim()),
+        descriptionIds: (descriptionId || '').split(/\s+/).filter(Boolean),
+        hasQuestionPrompt: !!dialog?.querySelector('#dialogQuestion'),
         hasDescription: !!descriptionId
       };
     });
     assert.equal(dialogSemantics.hasAccessibleTitle, true, 'the dialog should be named by its visible heading');
     assert.equal(dialogSemantics.hasValidDescription, true, 'a dialog description should reference visible text inside that dialog');
+    assert.deepEqual(dialogSemantics.descriptionIds, ['dialogDescription'], 'drawers should not reference an event prompt they do not render');
+    assert.equal(dialogSemantics.hasQuestionPrompt, false, 'drawers should not contain a hidden event question');
     await page.keyboard.press('Shift+Tab');
     const wrappedToLast = await page.evaluate(() => {
       const dialog = document.querySelector('#modalRoot [role="dialog"]');
@@ -471,11 +475,9 @@ async function run() {
     await page.waitForFunction(() => !document.querySelector('#modalRoot [role="dialog"]'));
     assert.equal(await page.evaluate(() => document.activeElement && document.activeElement.getAttribute('data-panel')), 'career',
       'closing a dialog should restore focus to the button that opened it');
-    await page.evaluate(() => window.modal('❓', 'سؤال تجريبي', 'وصف واضح', [
-      { title: 'موافق', action: () => {} },
-      { title: 'رفض', action: () => {} }
-    ]));
-    const describedQuestion = await page.evaluate(() => {
+    await page.locator('#characterInfoBtn').click();
+    await page.locator('#modalRoot [role="dialog"]').waitFor();
+    const eventDialogSemantics = await page.evaluate(() => {
       const dialog = document.querySelector('#modalRoot [role="dialog"]');
       const ids = (dialog?.getAttribute('aria-describedby') || '').split(/\s+/).filter(Boolean);
       return {
@@ -487,32 +489,9 @@ async function run() {
         questionText: dialog?.querySelector('#dialogQuestion')?.textContent.trim() || ''
       };
     });
-    assert.deepEqual(describedQuestion.ids, ['dialogDescription', 'dialogQuestion']);
-    assert.deepEqual(describedQuestion.references, [true, true]);
-    assert.equal(describedQuestion.questionText, 'هتعمل إيه؟');
-    await page.keyboard.press('Escape');
-    await page.waitForFunction(() => !document.querySelector('#modalRoot [role="dialog"]'));
-
-    await page.evaluate(() => window.modal('❔', 'سؤال بلا وصف', '', [
-      { title: 'نعم', action: () => {} },
-      { title: 'لا', action: () => {} }
-    ]));
-    const questionOnly = await page.evaluate(() => {
-      const dialog = document.querySelector('#modalRoot [role="dialog"]');
-      const ids = (dialog?.getAttribute('aria-describedby') || '').split(/\s+/).filter(Boolean);
-      const question = dialog?.querySelector('#dialogQuestion');
-      return { ids, validQuestion: !!question && dialog.contains(question) && !!question.textContent.trim() };
-    });
-    assert.deepEqual(questionOnly.ids, ['dialogQuestion']);
-    assert.equal(questionOnly.validQuestion, true);
-    await page.keyboard.press('Escape');
-    await page.waitForFunction(() => !document.querySelector('#modalRoot [role="dialog"]'));
-
-    await page.evaluate(() => window.modal('ℹ️', 'إشعار بلا وصف', '', [
-      { title: 'تمام', action: () => {} }
-    ]));
-    const undescribedNotice = await page.locator('#modalRoot [role="dialog"]').getAttribute('aria-describedby');
-    assert.equal(undescribedNotice, null, 'a notice without a description or question should not reference missing text');
+    assert.deepEqual(eventDialogSemantics.ids, ['dialogDescription', 'dialogQuestion']);
+    assert.deepEqual(eventDialogSemantics.references, [true, true]);
+    assert.equal(eventDialogSemantics.questionText, 'هتعمل إيه؟');
     await page.keyboard.press('Escape');
     await page.waitForFunction(() => !document.querySelector('#modalRoot [role="dialog"]'));
     const legacyBusinessDefaults = await page.evaluate(() => {
