@@ -1652,7 +1652,9 @@ function advanceChildren(){
 }
 function familyTreeNode(p){
  const gone=!!p.deceased,level=clamp(p.relationshipLevel??0);
- return '<article class="family-tree-node'+(gone?' family-tree-deceased':'')+'"><div class="family-tree-person"><span class="family-tree-avatar">'+esc(p.emoji||'👤')+'</span><span class="family-tree-copy"><strong>'+esc(p.name||'فرد من العائلة')+'</strong><small>'+esc(p.relation||'قريب')+(Number.isFinite(Number(p.age))?' · '+fmt(p.age)+' سنة':'')+(gone?' · متوفى':'')+'</small></span></div><div class="family-tree-meter"><span style="width:'+level+'%"></span></div><small class="family-tree-foot">العلاقة '+level+'%</small></article>';
+ const hasInheritance=!!p.inheritanceStatus&&Number.isFinite(Number(p.inheritanceShare));
+ const inheritanceNote=hasInheritance?'<small class="family-tree-foot">حصة الإرث '+Math.round(Number(p.inheritanceShare)*100)+'% · تقدير '+esc(cash(p.inheritanceEstimate||0))+'</small>':'';
+ return '<article class="family-tree-node'+(gone?' family-tree-deceased':'')+'"><div class="family-tree-person"><span class="family-tree-avatar">'+esc(p.emoji||'👤')+'</span><span class="family-tree-copy"><strong>'+esc(p.name||'فرد من العائلة')+'</strong><small>'+esc(p.relation||'قريب')+(Number.isFinite(Number(p.age))?' · '+fmt(p.age)+' سنة':'')+(gone?' · متوفى':'')+'</small></span></div><div class="family-tree-meter"><span style="width:'+level+'%"></span></div><small class="family-tree-foot">العلاقة '+level+'%</small>'+inheritanceNote+'</article>';
 }
 function familyTreeMenu(){
  if(!state)return;const fam=Array.isArray(state.family)?state.family:[],kids=Array.isArray(state.children)?state.children:[];
