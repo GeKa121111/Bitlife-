@@ -519,6 +519,9 @@ async function run() {
     await page.locator('[data-panel="relations"]').click();
     await page.locator('.choice').filter({ hasText: 'شجرة العائلة والإرث' }).click();
     await page.locator('.choice').filter({ hasText: 'سجل استحقاقات التركة' }).click();
+    const inheritanceHistoryText = await page.locator('#modalRoot [role="dialog"]').textContent();
+    assert.match(inheritanceHistoryText, /الجيل السابق/);
+    await page.locator('.choice').filter({ hasText: 'الجيل السابق' }).click();
     const inheritanceLedgerText = await page.locator('#modalRoot [role="dialog"]').textContent();
     assert.match(inheritanceLedgerText, /الأخت مريم/);
     assert.match(inheritanceLedgerText, /استحقاق محفوظ للأسرة/);
