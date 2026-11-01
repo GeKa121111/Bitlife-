@@ -1147,16 +1147,32 @@ async function run() {
         if (business.treasuryMode !== 'separate') return sum;
         return sum + Math.max(0, Number(business.cashBalance) || 0);
       }, 0);
+      const businessLiabilities = businesses.reduce((sum, business) => {
+        const tax = Math.max(0, Number(business.taxLiability) || 0);
+        const credit = business.credit && typeof business.credit === 'object'
+          ? Math.max(0, Math.min(200000000,
+            Math.round(Number(business.credit.principal) || 0)
+            + Math.round(Number(business.credit.accruedInterest) || 0)))
+          : 0;
+        const balance = Number(business.cashBalance);
+        const overdraft = business.treasuryMode === 'separate' && Number.isFinite(balance)
+          ? Math.max(0, -balance)
+          : 0;
+        return sum + tax + credit + overdraft;
+      }, 0);
+      const grossComponentValue = Number(saved.bank || 0)
+        + assets.reduce((sum, item) => sum + Math.max(0, Number(item.value) || 0), 0)
+        + investments.reduce((sum, item) => sum + Math.max(0, Number(item.value) || 0), 0)
+        + businessCash;
       return {
         archivedParent: cemetery.some(item => String(item.id) === String(parentId)),
         archivedParentBackup: cemeteryBackup.some(item => String(item.id) === String(parentId)),
         name: saved.name,
         sourceName: saved.legacy.name,
         legacyValue: saved.legacy.inheritance,
-        componentValue: Number(saved.bank || 0)
-          + assets.reduce((sum, item) => sum + Math.max(0, Number(item.value) || 0), 0)
-          + investments.reduce((sum, item) => sum + Math.max(0, Number(item.value) || 0), 0)
-          + businessCash,
+        grossComponentValue,
+        businessLiabilities,
+        componentValue: Math.max(0, grossComponentValue - businessLiabilities),
         bank: saved.bank,
         assetCount: assets.length,
         investmentCount: investments.length,
