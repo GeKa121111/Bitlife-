@@ -2089,7 +2089,7 @@ function distributeFamilyPropertyRent(asset,shareRent){
    reservedAmount+=currentAmount;
   }
  });
- if(normalized.some(item=>item.invalidRentOwed))return {ok:false,reason:'rent_arrears_overflow'};
+ if(allocations.some(item=>item.invalidRentOwed))return {ok:false,reason:'rent_arrears_overflow'};
  const nextReserveTotal=Number(record.rentReserveTotal||0)+reservedAmount;
  const nextReserveReleased=Number(record.rentReserveReleasedTotal||0)+arrearsReleased;
  const nextExternal=Number(record.externalRentPaidTotal||0)+externalAmount;
@@ -2097,7 +2097,7 @@ function distributeFamilyPropertyRent(asset,shareRent){
  const nextActivePaid=Number(record.activeRentPaidTotal||0)+activeAmount;
  if([nextReserveTotal,nextReserveReleased,nextExternal,nextWalletPaid,nextActivePaid].some(value=>!Number.isSafeInteger(value)||value<0)||!Number.isSafeInteger(bank+activeAmount))return {ok:false,reason:'ledger_overflow'};
  walletPlans.forEach(plan=>Object.assign(plan.wallet,plan.updated));
- normalized.forEach(item=>{item.owner.rentOwed=item.nextRentOwed===undefined?item.arrears:item.nextRentOwed;});
+ allocations.forEach(item=>{item.owner.rentOwed=item.nextRentOwed===undefined?item.arrears:item.nextRentOwed;});
  state.bank=bank+activeAmount;
  record.rentReserveTotal=nextReserveTotal;
  record.rentReserveReleasedTotal=nextReserveReleased;
