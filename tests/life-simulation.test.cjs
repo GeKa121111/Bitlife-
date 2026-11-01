@@ -18,6 +18,11 @@ function extractFunction(name) {
 }
 
 const ageSource = extractFunction('advanceAge');
+const propertyOwnershipSource = [
+  extractFunction('familyPropertyOwnershipRecords'),
+  extractFunction('safeFamilyOwnershipShare'),
+  extractFunction('syncFamilyPropertyMarketValue')
+].join('\n');
 const combatStart = app.indexOf('function normalizeCombatInjuryYears(');
 const combatEnd = app.indexOf('const combatMoveMasteryThresholds=', combatStart);
 assert.ok(combatStart >= 0 && combatEnd > combatStart, 'combat recovery helpers must exist');
@@ -283,7 +288,7 @@ function runCohort(count) {
 
 test('محاكاة 10,000 مسار تقدم سنوي حتمي تتحقق من ثوابت العمر والمال والصحة', { timeout: 120000 }, () => {
   const context = vm.createContext({});
-  vm.runInContext(combatRecoverySource + '\n' + ageSource + '\n' + harnessSource, context, {
+  vm.runInContext(combatRecoverySource + '\n' + propertyOwnershipSource + '\n' + ageSource + '\n' + harnessSource, context, {
     timeout: 120000,
     filename: 'hayah-life-simulation-harness.js'
   });
