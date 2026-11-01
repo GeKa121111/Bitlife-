@@ -1959,6 +1959,7 @@ test('محافظ الورثة تحفظ حصص الأسرة وتدعم المسا
   const walletTransactions = functionSource('beneficiaryWalletTransactionsMenu', 'supportBeneficiaryWallet');
   const familyMenu = functionSource('familyTreeMenu', 'inheritanceAccountsMenu');
   const annualAge = functionSource('advanceAge', 'ageUp');
+  const browserWalletTest = read('tests/browser.cjs');
   assert.match(walletBuilder, /status!=='reserved'/);
   assert.match(walletBuilder, /ledgerShareAuditComplete/);
   assert.match(walletBuilder, /rentalIncomeTotal/);
@@ -1975,6 +1976,8 @@ test('محافظ الورثة تحفظ حصص الأسرة وتدعم المسا
   assert.match(walletMenu, /محافظ الورثة/);
   assert.match(walletDetail, /دخل إيجار/);
   assert.match(walletTransactions, /دخل إيجار عقار/);
+  assert.match(browserWalletTest, /rental_income/);
+  assert.match(browserWalletTest, /دخل إيجار/);
   assert.match(familyMenu, /beneficiaryWalletsMenu/);
   assert.match(app, /const beneficiaryWallets=buildBeneficiaryWallets\(previous\.legacy,beneficiaryAccounts,previous\.name,previous\.age\)/);
   assert.match(app, /inheritanceHistory:buildInheritanceHistory\(previous,beneficiaryAccounts\),beneficiaryWallets,familyPropertyOwnership,distribution/);
