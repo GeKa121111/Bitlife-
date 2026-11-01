@@ -1857,7 +1857,9 @@ test('دخل الإيجار غير المدفوع يتراكم كمتأخرات 
     ownershipShare: 0.5, kind: 'property', value: 500000, rented: true };
   const first = context.distributeFamilyPropertyRent(asset, 10000);
   assert.equal(first.activeAmount, 10000);
-  assert.equal(record.owners.find(owner => owner.beneficiaryId === 'sibling-arrears-owner').rentOwed, 10000, JSON.stringify({ result: first, owner: record.owners.find(owner => owner.beneficiaryId === 'sibling-arrears-owner'), bank: context.state.bank }));
+  assert.equal(first.tracked, true);
+  assert.equal(first.reservedAmount, 10000);
+  assert.equal(record.owners.find(owner => owner.beneficiaryId === 'sibling-arrears-owner').rentOwed, 10000);
   assert.equal(record.rentReserveTotal, 10000);
 
   const wallet = {
