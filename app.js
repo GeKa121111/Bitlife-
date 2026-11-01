@@ -1693,7 +1693,7 @@ function inheritanceAccountsMenu(){
   const estate=Math.max(0,Math.round(Number(record.totalEstateValue)||0));
   const count=record.accounts.length;
   const age=record.sourceAge===null?'':' · العمر عند الوفاة '+fmt(record.sourceAge)+' سنة';
-  const description='صافي التركة '+cash(estate)+' '+currency+' · '+count+' مستفيد'+age;
+  const description='صافي التركة '+fmt(estate)+' '+currency+' · '+count+' مستفيد'+age;
   return choice('📜',record.sourceName||'الجيل السابق',description,()=>inheritanceHistoryRecordMenu(record.id));
  });
  opts.push(choice('↩️','رجوع لشجرة العائلة','',familyTreeMenu));
@@ -1716,12 +1716,12 @@ function inheritanceHistoryRecordMenu(recordId){
   const share=formatInheritancePercent(account.share);
   const status=statusLabels[account.status]||'قيد المراجعة';
   const currency=String(account.currency||record.currency||'ج.م');
-  const description='المبلغ المخصص '+cash(allocated)+' '+currency+' · '+share+'% · '+status+(balance>0?' · محفوظ '+cash(balance):'')+(settled>0?' · تمت تسوية '+cash(settled):'');
+  const description='المبلغ المخصص '+fmt(allocated)+' '+currency+' · '+share+'% · '+status+(balance>0?' · محفوظ '+fmt(balance)+' '+currency:'')+(settled>0?' · تمت تسوية '+fmt(settled)+' '+currency:'');
   return choice(icons[account.kind]||'📒',account.name||'مستفيد',description,()=>info('📒',account.name||'تفاصيل الاستحقاق',description+'. هذا سجل تاريخي للتوزيع، وليس تحويلًا نقديًا مستقلًا.'));
  });
  opts.push(choice('↩️','رجوع لسجل مواريث العائلة','',inheritanceAccountsMenu));
  const currency=String(record.currency||state.place&&state.place.unit||'ج.م');
- const description='صافي التركة '+cash(record.totalEstateValue)+' '+currency+' · إجمالي المخصص '+cash(record.totalAllocated)+' · المحفوظ '+cash(record.totalReservedBalance)+' · المنقول '+cash(record.totalSettledAmount)+'. هذه بيانات تاريخية محفوظة وليست محافظ قابلة للصرف للمستفيدين غير النشطين بعد.';
+ const description='صافي التركة '+fmt(record.totalEstateValue)+' '+currency+' · إجمالي المخصص '+fmt(record.totalAllocated)+' '+currency+' · المحفوظ '+fmt(record.totalReservedBalance)+' '+currency+' · المنقول '+fmt(record.totalSettledAmount)+' '+currency+'. هذه بيانات تاريخية محفوظة وليست محافظ قابلة للصرف للمستفيدين غير النشطين بعد.';
  modal('📒','تركة '+(record.sourceName||'الجيل السابق'),description,opts);
 }
 function recordBusinessFinancialReport(entity,report){
