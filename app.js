@@ -1762,6 +1762,184 @@ function buildBeneficiaryWallets(previousLegacy,currentRegistry,sourceName,sourc
  }
  return wallets;
 }
+function familyPropertyOwnershipRecords(legacy){
+ if(!legacy||typeof legacy!=='object'||!Array.isArray(legacy.familyPropertyOwnership))return [];
+ return legacy.familyPropertyOwnership.filter(record=>record&&typeof record==='object'&&!Array.isArray(record)&&String(record.id||record.familyAssetId||'').trim());
+}
+function buildFamilyPropertyOwnership(previous,beneficiaryRegistry){
+ const legacy=previous&&previous.legacy&&typeof previous.legacy==='object'?previous.legacy:{};
+ let records=[];
+ try{records=JSON.parse(JSON.stringify(Array.isArray(legacy.familyPropertyOwnership)?legacy.familyPropertyOwnership:[]));}catch(e){records=[];}
+ const registry=beneficiaryRegistry&&typeof beneficiaryRegistry==='object'?beneficiaryRegistry:{};
+ const accounts=Array.isArray(registry.accounts)?registry.accounts:[];
+ const estate=calculateEstateSnapshot(previous);
+ const transferableGross=Math.max(0,estate.gross-estate.businessLiabilities);
+ const estateFactor=transferableGross>0?Math.max(0,Math.min(1,estate.net/transferableGross)):0;
+ const sourceLifeId=String(registry.sourceLifeId??(previous&&previous.lifeId)??(previous&&previous.name)??'legacy');
+ const currency=String(registry.currency||previous&&previous.place&&previous.place.unit||'ج.م');
+ const safeMoney=value=>{const number=Number(value);return Number.isFinite(number)?Math.max(0,Math.round(number)):0;};
+ const safeShare=value=>{if(value===null||value===undefined||value==='')return null;const number=Number(value);return Number.isFinite(number)&&number>=0&&number<=1?number:null;};
+ const assets=Array.isArray(previous&&previous.assets)?previous.assets:[];
+ assets.forEach((asset,index)=>{
+  if(!asset||asset.kind!=='property')return;
+  const familyAssetId=String(asset.familyAssetId||('family-property-'+encodeURIComponent(String((previous&&previous.lifeId)??(previous&&previous.name)??'legacy'))+'-'+encodeURIComponent(String(asset.id??index))));
+  const ownerId=String(asset.ownerBeneficiaryId||legacy.activeBeneficiaryId||previous&&previous.lifeId||'life:'+String(previous&&previous.name||'owner'));
+  const existingIndex=records.findIndex(record=>String(record&&record.id||record&&record.familyAssetId||'')===familyAssetId);
+  const existed=existingIndex>=0;
+  let record=existed?records[existingIndex]:null;
+  const declaredShare=safeShare(asset.ownershipShare);
+  const currentOwners=record&&Array.isArray(record.owners)?record.owners:[];
+  const currentOwner=currentOwners.find(owner=>owner&&String(owner.beneficiaryId||'')===ownerId);
+  const recordedShare=currentOwner?safeShare(currentOwner.share):null;
+  const ownerShare=declaredShare!==null?declaredShare:(recordedShare!==null?recordedShare:1);
+  if(ownerShare<=0)return;
+  const valueOfAsset=safeMoney(asset.value);
+  const originalValue=safeMoney(asset.familyAssetOriginalValue);
+  const recordedMarketValue=record?safeMoney(record.marketValue):0;
+  const marketValue=recordedMarketValue||originalValue||Math.round(valueOfAsset/ownerShare);
+  if(!record){
+   record={
+    id:familyAssetId,familyAssetId,title:String(asset.title||'عقار عائلي'),emoji:String(asset.emoji||'🏠'),
+    currency,marketValue,upkeep:Math.round(Math.max(0,Number(asset.upkeep)||0)/ownerShare),
+    condition:Number.isFinite(Number(asset.condition))?Math.max(0,Math.min(100,Number(asset.condition))):100,
+    owners:[{beneficiaryId:ownerId,name:String(previous&&previous.name||'المالك السابق'),kind:'owner',share:ownerShare,status:'active',sourceLifeId:String(previous&&previous.lifeId||'')}],
+    encumberedShare:0,transactions:[],auditStatus:'balanced'
+   };
+  }else if(!currentOwner){
+   record.auditStatus='needs_review';
+   record.auditIssues=[...(Array.isArray(record.auditIssues)?record.auditIssues:[]),'current_owner_missing'];
+   return;
+  }else if(declaredShare!==null&&recordedShare!==null&&Math.abs(declaredShare-recordedShare)>.005){
+   record.auditStatus='needs_review';
+   record.auditIssues=[...(Array.isArray(record.auditIssues)?record.auditIssues:[]),'asset_share_mismatch'];
+   return;
+  }
+  if(record.auditStatus==='needs_review')return;
+  if(existed){
+   const existingIds=new Set();
+   const existingSharesValid=Array.isArray(record.owners)&&record.owners.every(owner=>{
+    const id=String(owner&&owner.beneficiaryId||'').trim(),share=safeShare(owner&&owner.share);
+    if(!id||share===null||existingIds.has(id))return false;
+    existingIds.add(id);return true;
+   });
+   const encumbered=record.encumberedShare===undefined?0:safeShare(record.encumberedShare);
+   const existingTotal=(Array.isArray(record.owners)?record.owners.reduce((sum,owner)=>sum+(safeShare(owner&&owner.share)||0),0):0)+(encumbered===null?0:encumbered);
+   if(!existingSharesValid||encumbered===null||Math.abs(existingTotal-1)>.005){
+    record.auditStatus='needs_review';
+    record.auditIssues=[...(Array.isArray(record.auditIssues)?record.auditIssues:[]),'existing_ownership_ledger_invalid'];
+    records[existingIndex]=record;
+    return;
+   }
+  }
+  const seenBeneficiaries=new Set();
+  let shareTotal=0,accountsValid=accounts.length>0;
+  accounts.forEach(account=>{
+   const share=safeShare(account&&account.share);
+   const beneficiaryId=String(account&&account.beneficiaryId||'').trim();
+   if(!account||!beneficiaryId||share===null||seenBeneficiaries.has(beneficiaryId)){accountsValid=false;return;}
+   seenBeneficiaries.add(beneficiaryId);shareTotal+=share;
+  });
+  if(!accountsValid||shareTotal<=0||Math.abs(shareTotal-1)>.005){
+   record.auditStatus='needs_review';
+   record.auditIssues=[...(Array.isArray(record.auditIssues)?record.auditIssues:[]),'beneficiary_shares_incomplete'];
+   if(existed)records[existingIndex]=record;else records.push(record);
+   return;
+  }
+  const ownerMap=new Map();
+  currentOwners.filter(owner=>owner&&String(owner.beneficiaryId||'')!==ownerId).forEach(owner=>{
+   const id=String(owner.beneficiaryId||'');
+   if(id)ownerMap.set(id,{...owner,share:safeShare(owner.share)??0});
+  });
+  let distributedShare=0;
+  accounts.forEach(account=>{
+   const ratio=Number(account.share)/shareTotal;
+   const share=Math.max(0,ownerShare*estateFactor*ratio);
+   if(share<=0)return;
+   const beneficiaryId=String(account.beneficiaryId);
+   const existing=ownerMap.get(beneficiaryId);
+   const combinedShare=share+(existing?safeShare(existing.share)??0:0);
+   const status=account.status==='transferred'?'active':account.status==='reserved'?'reserved':account.status==='earmarked'?'earmarked':'unassigned';
+   ownerMap.set(beneficiaryId,{
+    ...(existing||{}),
+    beneficiaryId,
+    name:String(account.name||'مستفيد'),
+    kind:String(account.kind||'other'),
+    share:Math.round(combinedShare*100000000)/100000000,
+    status,
+    sourceLifeId:String(registry.sourceLifeId||sourceLifeId)
+   });
+   distributedShare+=share;
+  });
+  const debtShare=Math.max(0,ownerShare-distributedShare);
+  record.id=familyAssetId;record.familyAssetId=familyAssetId;
+  record.title=String(asset.title||record.title||'عقار عائلي');
+  record.emoji=String(asset.emoji||record.emoji||'🏠');
+  record.currency=currency;
+  record.marketValue=marketValue;
+  record.upkeep=Math.round(Math.max(0,Number(asset.upkeep)||0)/ownerShare);
+  record.condition=Number.isFinite(Number(asset.condition))?Math.max(0,Math.min(100,Number(asset.condition))):Number(record.condition)||100;
+  record.owners=Array.from(ownerMap.values()).map(owner=>({...owner,allocatedValue:Math.round(marketValue*(safeShare(owner.share)||0))}));
+  record.encumberedShare=Math.round(((safeShare(record.encumberedShare)||0)+debtShare)*100000000)/100000000;
+  record.totalOwnershipShare=record.owners.reduce((sum,owner)=>sum+(safeShare(owner.share)||0),0)+record.encumberedShare;
+  record.auditStatus=Math.abs(record.totalOwnershipShare-1)<=.005?'balanced':'needs_review';
+  record.auditIssues=record.auditStatus==='balanced'?[]:[...(Array.isArray(record.auditIssues)?record.auditIssues:[]),'ownership_total_mismatch'];
+  record.lastSettlement={sourceLifeId,name:String(previous&&previous.name||'الجيل السابق'),age:Number.isFinite(Number(previous&&previous.age))?Number(previous.age):null,estateFactor};
+  if(!Array.isArray(record.transactions))record.transactions=[];
+  const transactionId='family-property-inheritance-'+encodeURIComponent(sourceLifeId)+'-'+encodeURIComponent(familyAssetId);
+  if(!record.transactions.some(transaction=>transaction&&transaction.id===transactionId)){
+   record.transactions.push({id:transactionId,type:'inheritance_split',sourceLifeId,sourceName:String(previous&&previous.name||'الجيل السابق'),ownerBeneficiaryId:ownerId,distributedShare:Math.round(distributedShare*100000000)/100000000,encumberedShare:debtShare,currency,age:Number.isFinite(Number(previous&&previous.age))?Number(previous.age):null});
+   record.transactions=record.transactions.slice(-100);
+  }
+  if(existed)records[existingIndex]=record;else records.push(record);
+ });
+ return records.slice(-100);
+}
+function recordFamilyPropertySale(asset,saleValue){
+ if(!state||!state.legacy||!asset||asset.kind!=='property')return {ok:true,tracked:false};
+ const record=familyPropertyOwnershipRecords(state.legacy).find(item=>String(item.id||item.familyAssetId)===String(asset.familyAssetId||''));
+ if(!record)return {ok:true,tracked:false};
+ if(record.auditStatus!=='balanced')return {ok:false,reason:'ownership_audit_incomplete'};
+ const ownerId=String(asset.ownerBeneficiaryId||state.legacy.activeBeneficiaryId||state.lifeId||'');
+ const ownerIndex=(record.owners||[]).findIndex(owner=>owner&&String(owner.beneficiaryId)===ownerId&&['active','reserved'].includes(String(owner.status||'active')));
+ if(ownerIndex<0)return {ok:false,reason:'owner_not_found'};
+ const owner=record.owners[ownerIndex],share=safeFamilyOwnershipShare(owner.share);
+ if(share===null||share<=0)return {ok:false,reason:'owner_share_invalid'};
+ const transactionId='family-property-sale-'+Date.now()+'-'+Math.random().toString(36).slice(2,8);
+ const buyerId='external-buyer-'+transactionId;
+ const nextOwners=record.owners.filter((item,index)=>index!==ownerIndex);
+ nextOwners.push({beneficiaryId:buyerId,name:'مشتري خارجي',kind:'external',share,status:'external',sourceLifeId:String(state.lifeId||''),allocatedValue:Math.round(Math.max(0,Number(record.marketValue)||0)*share)});
+ const nextTotal=nextOwners.reduce((sum,item)=>sum+(safeFamilyOwnershipShare(item.share)||0),0)+(safeFamilyOwnershipShare(record.encumberedShare)||0);
+ if(Math.abs(nextTotal-1)>.005)return {ok:false,reason:'ownership_total_mismatch'};
+ record.owners=nextOwners;
+ if(!Array.isArray(record.transactions))record.transactions=[];
+ record.transactions.push({id:transactionId,type:'sale',fromBeneficiaryId:ownerId,fromName:String(state.name||'المالك'),toBeneficiaryId:buyerId,share,amount:Math.max(0,Math.round(Number(saleValue)||0)),currency:String(record.currency||'ج.م'),age:Number.isFinite(Number(state.age))?Number(state.age):null});
+ record.transactions=record.transactions.slice(-100);
+ record.totalOwnershipShare=nextTotal;
+ record.auditStatus='balanced';
+ return {ok:true,tracked:true,reason:null};
+}
+function safeFamilyOwnershipShare(value){
+ if(value===null||value===undefined||value==='')return null;
+ const number=Number(value);
+ return Number.isFinite(number)&&number>=0&&number<=1?number:null;
+}
+function syncFamilyPropertyMarketValue(asset,transactionType,amount){
+ if(!state||!state.legacy||!asset||asset.kind!=='property')return false;
+ const record=familyPropertyOwnershipRecords(state.legacy).find(item=>String(item.id||item.familyAssetId)===String(asset.familyAssetId||''));
+ if(!record||record.auditStatus!=='balanced')return false;
+ const share=safeFamilyOwnershipShare(asset.ownershipShare)??1;
+ if(share<=0)return false;
+ record.marketValue=Math.max(0,Math.round((Number(asset.value)||0)/share));
+ record.upkeep=Math.max(0,Math.round((Number(asset.upkeep)||0)/share));
+ asset.familyAssetOriginalValue=record.marketValue;
+ record.condition=Number.isFinite(Number(asset.condition))?Math.max(0,Math.min(100,Number(asset.condition))):record.condition;
+ if(transactionType){
+  if(!Array.isArray(record.transactions))record.transactions=[];
+  record.transactions.push({id:'family-property-'+transactionType+'-'+Date.now()+'-'+Math.random().toString(36).slice(2,8),type:String(transactionType),beneficiaryId:String(asset.ownerBeneficiaryId||state.legacy.activeBeneficiaryId||state.lifeId||''),amount:Math.max(0,Math.round(Number(amount)||0)),marketValue:record.marketValue,currency:String(record.currency||'ج.م'),age:Number.isFinite(Number(state.age))?Number(state.age):null});
+  record.transactions=record.transactions.slice(-100);
+ }
+ return true;
+}
 function getBeneficiaryWallets(legacy){
  if(!legacy||typeof legacy!=='object')return [];
  const before=JSON.stringify(Array.isArray(legacy.beneficiaryWallets)?legacy.beneficiaryWallets:[]);
@@ -1925,10 +2103,44 @@ function familyTreeMenu(){
  if(state.partner)opts.push(choice('💞',state.partner.name+' · الشريك','العلاقة '+clamp(state.partner.relationshipLevel)+'%',()=>{closeModal();personModal(state.partner)}));
  kids.forEach((c,i)=>opts.push(choice(c.emoji||'🧒',c.name+' · '+childDevelopmentStage(c.age),'العمر '+fmt(c.age)+' سنة · التحصيل '+clamp(c.schoolPerformance??50)+'%',()=>{closeModal();childMenu(i)},clamp(c.relationshipLevel??0)+'%')));
  const walletCount=getBeneficiaryWallets(state.legacy).length;
- opts.push(choice('🏦','محافظ الورثة',walletCount?'إدارة '+walletCount+' محفظة مستقلة للمستفيدين.':'لا توجد محافظ موروثة قابلة للإدارة بعد.',beneficiaryWalletsMenu),choice('📒','سجل استحقاقات التركة','راجع الحصص المسجلة لكل مستفيد والمبالغ المنقولة للجيل الحالي.',inheritanceAccountsMenu),choice('📜','إدارة الوصية والإرث','',willMenu),choice('↩️','رجوع للعلاقات','',relations));
+ const propertyCount=familyPropertyOwnershipRecords(state.legacy).length;
+ opts.push(choice('🏦','محافظ الورثة',walletCount?'إدارة '+walletCount+' محفظة مستقلة للمستفيدين.':'لا توجد محافظ موروثة قابلة للإدارة بعد.',beneficiaryWalletsMenu),choice('🏘️','ملكية عقارات العائلة',propertyCount?'مراجعة حصص الملكية في '+propertyCount+' عقار عائلي.':'لا توجد عقارات مشتركة مسجلة حتى الآن.',familyPropertyOwnershipMenu),choice('📒','سجل استحقاقات التركة','راجع الحصص المسجلة لكل مستفيد والمبالغ المنقولة للجيل الحالي.',inheritanceAccountsMenu),choice('📜','إدارة الوصية والإرث','',willMenu),choice('↩️','رجوع للعلاقات','',relations));
  modal('🌳','شجرة العائلة','استعرض الجيل السابق وشخصيتك الحالية والشريك والأبناء، واضغط على فرد من القائمة لإدارة علاقتك به.',opts,true,extra);
 }
 
+function familyPropertyOwnershipMenu(){
+ if(!state||!state.legacy)return;
+ const records=familyPropertyOwnershipRecords(state.legacy);
+ if(!records.length){info('🏘️','لا توجد ملكية مشتركة','سيظهر سجل الملكية هنا عندما تنتقل حصة عقار إلى أكثر من مستفيد.');return;}
+ const opts=records.slice().reverse().map(record=>{
+  const owners=Array.isArray(record.owners)?record.owners:[];
+  const currency=String(record.currency||state.place&&state.place.unit||'ج.م');
+  const audit=record.auditStatus==='balanced'?'سجل الملكية متوازن':'السجل يحتاج مراجعة';
+  return choice('🏘️',String(record.title||'عقار عائلي'),'القيمة الكاملة '+fmt(record.marketValue||0)+' '+currency+' · '+owners.length+' مالك · '+audit,()=>familyPropertyOwnershipRecordMenu(record.id));
+ });
+ opts.push(choice('↩️','رجوع لشجرة العائلة','',familyTreeMenu));
+ modal('🏘️','ملكية عقارات العائلة','راجع حصص الأسرة في العقارات المشتركة. القيمة الكاملة للعقار لا تُضاف مرة ثانية إلى صافي ثروتك؛ كل حصة تُعرض داخل سجل الملكية.',opts);
+}
+function familyPropertyOwnershipRecordMenu(recordId){
+ if(!state||!state.legacy)return;
+ const record=familyPropertyOwnershipRecords(state.legacy).find(item=>String(item.id||item.familyAssetId)===String(recordId));
+ if(!record){familyPropertyOwnershipMenu();return;}
+ const currency=String(record.currency||state.place&&state.place.unit||'ج.م');
+ const owners=Array.isArray(record.owners)?record.owners:[];
+ const statusLabels={active:'المالك الحالي',reserved:'حصة محفوظة للوريث',earmarked:'حصة مخصصة للتبرع',unassigned:'مستفيد غير محدد',external:'مشتري خارجي'};
+ const opts=owners.map(owner=>{
+  const share=safeFamilyOwnershipShare(owner&&owner.share)||0;
+  const amount=Math.round(Math.max(0,Number(record.marketValue)||0)*share);
+  return choice(owner&&owner.kind==='external'?'🏠':'👤',String(owner&&owner.name||'مالك')+' · '+formatInheritancePercent(share)+'%',(statusLabels[owner&&owner.status]||'حصة مسجلة')+' · قيمة الحصة '+fmt(amount)+' '+currency,()=>info('📒',String(owner&&owner.name||'مالك'), 'الحصة '+formatInheritancePercent(share)+'% · القيمة المسجلة '+fmt(amount)+' '+currency+'.'));
+ });
+ const encumbered=safeFamilyOwnershipShare(record.encumberedShare)||0;
+ if(encumbered>0)opts.push(choice('⚠️','حصة مرتبطة بالتزامات التركة · '+formatInheritancePercent(encumbered)+'%','هذه الحصة لم تُسند إلى مستفيد بسبب التزامات أو بيانات توزيع تحتاج مراجعة.',()=>info('⚠️','حصة غير موزعة','هذه الحصة مرتبطة بالتزامات التركة أو بيانات تحتاج مراجعة قبل توزيعها.')));
+ const transactions=Array.isArray(record.transactions)?record.transactions.slice(-5).reverse():[];
+ transactions.forEach(transaction=>opts.push(choice('📜',transaction.type==='sale'?'نقل حصة إلى مشترٍ خارجي':transaction.type==='maintenance'?'تحديث قيمة العقار':'توزيع ملكية عائلية', 'تاريخ العملية '+(transaction.age===null||transaction.age===undefined?'غير مسجل':fmt(transaction.age))+' · '+(transaction.type==='sale'?'قيمة البيع '+fmt(transaction.amount||0)+' '+currency:'مصدر العملية '+String(transaction.sourceName||transaction.sourceLifeId||'سجل العائلة')),()=>info('📜','تفاصيل حركة الملكية',String(transaction.type||'حركة')+' · '+String(transaction.sourceName||transaction.fromName||'سجل العائلة')))));
+ opts.push(choice('↩️','رجوع للعقارات العائلية','',familyPropertyOwnershipMenu));
+ const audit=record.auditStatus==='balanced'?'إجمالي الحصص والالتزامات يساوي 100%.':'تنبيه: بيانات الملكية لا تتطابق بالكامل؛ تم إيقاف بيع الحصة لحماية حقوق بقية الملاك.';
+ modal('🏘️','ملاك '+String(record.title||'العقار'),'القيمة الكاملة '+fmt(record.marketValue||0)+' '+currency+' · الصيانة السنوية '+fmt(record.upkeep||0)+' '+currency+'. '+audit,opts);
+}
 function inheritanceAccountsMenu(){
  if(!state)return;
  const records=getInheritanceHistoryRecords(state.legacy);
@@ -2294,7 +2506,7 @@ function advanceAge(){
  if(state.prison&&state.prison.years>0){state.prison.years--;state.stats.happiness=clamp(state.stats.happiness-5);state.stats.health=clamp(state.stats.health-2);if(state.prison.years===0){log('🔓','انتهاء العقوبة','انتهت مدة العقوبة وعُدت لحياتك خارج السجن.','special');state.prison=null;}}
  const freeVehicleCare=perkEnabled('goldenWrench');
  const assetUpkeep=state.assets.reduce((s,a)=>s+(freeVehicleCare&&a.kind==='car'?0:(a.upkeep||0)),0);
- state.assets.forEach(a=>{const before=a.value||0;if(a.kind==='property'){a.condition=clamp((a.condition??100)-2);a.value=Math.round(before*(a.condition<25?1.005:1.025));}else if(a.kind==='car'){if(freeVehicleCare){a.condition=100;a.value=Math.round(before*.97);}else{a.condition=clamp((a.condition??100)-4);a.value=Math.round(before*.91);}}else if(a.kind==='business')a.value=Math.round(before*1.03);});
+ state.assets.forEach(a=>{const before=a.value||0;if(a.kind==='property'){a.condition=clamp((a.condition??100)-2);a.value=Math.round(before*(a.condition<25?1.005:1.025));syncFamilyPropertyMarketValue(a,null,0);}else if(a.kind==='car'){if(freeVehicleCare){a.condition=100;a.value=Math.round(before*.97);}else{a.condition=clamp((a.condition??100)-4);a.value=Math.round(before*.91);}}else if(a.kind==='business')a.value=Math.round(before*1.03);});
  if(state.job&&!state.retired){
    const job=ensureJobProgress(state.job,state.age);
    const salary=Math.round(job.salary*state.performance/100*careerIncomeMultiplier());state.bank+=salary;flash('+'+cash(salary));
@@ -3586,7 +3798,8 @@ function buyAsset(a){
  if(state.bank<a.value){info('💳','الرصيد مش كفاية','معاك '+cash(state.bank)+'، وسعر الأصل '+cash(a.value)+'.');return;}
  const assetId=Date.now()+Math.random();state.bank-=a.value;flash('-'+cash(a.value),true);
  const condition=(a.kind==='car'||a.kind==='property')?100:undefined;
- state.assets.push({id:assetId,title:a.title,emoji:a.emoji,kind:a.kind,value:a.value,upkeep:a.upkeep,bought:state.age,...(condition===undefined?{}:{condition})});
+ const propertyOwnership=a.kind==='property'?{familyAssetId:'family-property-'+encodeURIComponent(String(state.lifeId||state.name||'life'))+'-'+encodeURIComponent(String(assetId)),familyAssetOriginalValue:Math.round(a.value),ownershipShare:1,ownerBeneficiaryId:String(state.lifeId||state.name||'life')}:{};
+ state.assets.push({id:assetId,title:a.title,emoji:a.emoji,kind:a.kind,value:a.value,upkeep:a.upkeep,bought:state.age,...(condition===undefined?{}:{condition}),...propertyOwnership});
  if(a.kind==='business')state.business={assetId,title:a.title,value:a.value,level:1,treasuryMode:'separate',cashBalance:0,pendingOwnerContributions:0,pendingOwnerWithdrawals:0};
  stat('happiness',6);log(a.emoji,'اشتريت '+a.title,'دفعت '+cash(a.value)+'. خلي بالك من مصاريف الصيانة كل سنة.','good');achievement('امتلاك '+a.title);render();info('🎉','مبروك الأصل الجديد','الأصل اتضاف لممتلكاتك، وتقدر تبيعه لاحقًا حسب قيمته وحالته الحالية.');
 }
@@ -3645,6 +3858,10 @@ function sellAsset(index){
  closeModal();const a=state.assets[index];if(!a)return;
  const condition=(a.kind==='property'||a.kind==='car')?clamp(a.condition??100):null;
  const sale=Math.round(a.value*(condition===null?0.8:(.6+.004*condition)));
+ if(a.kind==='property'){
+  const ownershipSale=recordFamilyPropertySale(a,sale);
+  if(!ownershipSale.ok){info('⚠️','بيع العقار متوقف','سجل الملكية المشتركة غير مكتمل أو لا يطابق حصة المالك الحالية. راجع سجل ملكية عقارات العائلة قبل البيع.');return;}
+ }
  state.assets.splice(index,1);
  if(a.kind==='business'&&state.business&&state.business.assetId===a.id)state.business=null;
  state.bank+=sale;log('💵','بيع أصل','بعت '+a.title+' مقابل '+cash(sale)+'.','good');render();
@@ -3659,6 +3876,7 @@ function maintainAsset(index){
  if(state.bank<cost){info('💳','الرصيد مش كفاية','الصيانة أو التجديد تكلف '+cash(cost)+'. حاول توفر المبلغ الأول.');return;}
  const before=condition;state.bank-=cost;a.condition=100;
  a.value=Math.round(a.value*(1+missing*.0015));
+ if(a.kind==='property')syncFamilyPropertyMarketValue(a,'maintenance',cost);
  log(a.kind==='car'?'🔧':'🏠','صيانة / تجديد '+a.title,'دفعت '+cash(cost)+'، ورجّعت الحالة من '+before+'% إلى 100%. قيمة إعادة البيع المتوقعة اتحسنت.','good');
  render();info('🧰','الصيانة اكتملت',a.title+' بقى في حالة 100%، وتكلفة الصيانة اتخصمت من رصيدك.');
 }
@@ -5948,14 +6166,19 @@ function calculateInheritance(previous,share,targetValue){
   usedInheritanceIds.add(String(id));
   return id;
  };
- const inheritedAssets=factor>0?assets.map(item=>{
+ const inheritedAssets=factor>0?assets.map((item,index)=>{
   const id=createInheritanceId();
   inheritedAssetIds.set(item,id);
   if(item&&item.id!==undefined&&item.id!==null&&!assetIdMap.has(String(item.id)))assetIdMap.set(String(item.id),id);
+  const currentOwnershipShare=Number.isFinite(Number(item&&item.ownershipShare))&&Number(item.ownershipShare)>0&&Number(item.ownershipShare)<=1?Number(item.ownershipShare):1;
+  const familyAssetOriginalValue=Math.max(0,Math.round(Number(item&&item.familyAssetOriginalValue)||valueOf(item)/currentOwnershipShare));
+  const familyAssetId=String(item&&item.familyAssetId||('family-property-'+encodeURIComponent(String((previous&&previous.lifeId)??(previous&&previous.name)??'legacy'))+'-'+encodeURIComponent(String((item&&item.id)??index))));
+  const ownerBeneficiaryId=String(item&&item.ownerBeneficiaryId||previous&&previous.legacy&&previous.legacy.activeBeneficiaryId||previous&&previous.lifeId||'');
   return {
    ...item,
    value:Math.round(valueOf(item)*factor),
    upkeep:Math.round(Math.max(0,Number(item&&item.upkeep)||0)*factor),
+   ...(item&&item.kind==='property'?{familyAssetId,familyAssetOriginalValue,ownershipShare:Math.round(currentOwnershipShare*factor*100000000)/100000000,ownerBeneficiaryId}:{}),
    id
   };
  }):[];
@@ -6059,6 +6282,7 @@ function calculateInheritance(previous,share,targetValue){
     const available=Math.max(0,Math.round(Number(item&&item.value)||0));
     const reduction=Math.min(available,remaining);
     item.value=available-reduction;
+    if(item&&item.kind==='property'&&Number.isFinite(Number(item.familyAssetOriginalValue))&&Number(item.familyAssetOriginalValue)>0)item.ownershipShare=Math.max(0,Math.min(1,Math.round(item.value/Number(item.familyAssetOriginalValue)*100000000)/100000000));
     if(item&&item.upkeep!==undefined){
      const upkeep=Math.max(0,Number(item.upkeep)||0);
      item.upkeep=item.value>0&&available>0?Math.round(upkeep*item.value/available):0;
@@ -6483,11 +6707,12 @@ function startAsChild(index){
  const childAccounts=beneficiaryAccounts.accounts.filter(account=>account.kind==='child');
  const siblingAllocations=distributionPreview.siblingAllocations.map((allocation,i)=>({...allocation,selected:i===index,accountId:childAccounts[i]?childAccounts[i].id:null,accountStatus:i===index?'transferred':'reserved'}));
  if(siblingAllocations[index])siblingAllocations[index].actualValue=inheritance.value;
+ const familyPropertyOwnership=buildFamilyPropertyOwnership(previous,beneficiaryAccounts);
  const heir=newLife();ensureChildGrowthProfile(child);heir.name=child.name;heir.gender=child.gender||'male';heir.age=typeof child.age==='number'?child.age:18;heir.place={...previous.place};heir.bank=inheritance.bank;if(perkOwned('goldenPiggyBank'))heir.bank+=1000000;heir.stats={...heir.stats,health:clamp(child.health??heir.stats.health),happiness:clamp(child.happiness??heir.stats.happiness),smart:clamp(child.smart??heir.stats.smart),looks:clamp(child.looks??heir.stats.looks)};heir.reputation=clamp((Number(child.schoolPerformance)||50)*.35+(Number(child.careerPotential)||40)*.35+(Number(child.relationshipLevel)||50)*.3);
  heir.family=[...previous.family];previous.children.forEach((sibling,i)=>{if(i!==index){const allocation=siblingAllocations[i]||{};heir.family.push({...sibling,relation:'أخ/أخت',inheritanceShare:share,inheritanceEstimate:allocation.estimatedValue,inheritanceStatus:'مخصص من التركة',inheritanceAccountId:allocation.accountId,inheritanceAccountStatus:'استحقاق محفوظ'});}});heir.partner=null;heir.married=false;heir.children=[];
- heir.legacy={name:previous.name,inheritance:inheritance.value,heirloom:(previous.heirlooms||[])[0]?.name||null,inheritanceHistory:buildInheritanceHistory(previous,beneficiaryAccounts),beneficiaryWallets,distribution:{policy:previous.willDistribution||'الأسرة بالتساوي',childrenPoolShare:childPoolShare,perChildShare:share,childCount,selectedChildIndex:index,selectedChildName:child.name,totalEstateValue,childPoolValue,partnerShare:distributionPreview.partnerShare,partnerValue:distributionPreview.partnerValue,charitableShare:distributionPreview.charitableShare,charitableValue:distributionPreview.charitableValue,otherBeneficiaryShare:distributionPreview.otherBeneficiaryShare,otherBeneficiaryValue:distributionPreview.otherBeneficiaryValue,beneficiaryAllocations:distributionPreview.beneficiaryAllocations,beneficiarySummary:distributionPreview.beneficiarySummary,outsideChildrenPoolShare:distributionPreview.outsideChildrenPoolShare,outsideChildrenPoolValue:distributionPreview.outsideChildrenPoolValue,outsideChildrenPoolRecipient:distributionPreview.outsideChildrenPoolRecipient,siblingAllocations,beneficiaryAccounts,selectedAccountId:childAccounts[index]?childAccounts[index].id:null}};
+ heir.legacy={name:previous.name,activeBeneficiaryId:String(child.id||previous.lifeId||child.name||'heir'),inheritance:inheritance.value,heirloom:(previous.heirlooms||[])[0]?.name||null,inheritanceHistory:buildInheritanceHistory(previous,beneficiaryAccounts),beneficiaryWallets,familyPropertyOwnership,distribution:{policy:previous.willDistribution||'الأسرة بالتساوي',childrenPoolShare:childPoolShare,perChildShare:share,childCount,selectedChildIndex:index,selectedChildName:child.name,totalEstateValue,childPoolValue,partnerShare:distributionPreview.partnerShare,partnerValue:distributionPreview.partnerValue,charitableShare:distributionPreview.charitableShare,charitableValue:distributionPreview.charitableValue,otherBeneficiaryShare:distributionPreview.otherBeneficiaryShare,otherBeneficiaryValue:distributionPreview.otherBeneficiaryValue,beneficiaryAllocations:distributionPreview.beneficiaryAllocations,beneficiarySummary:distributionPreview.beneficiarySummary,outsideChildrenPoolShare:distributionPreview.outsideChildrenPoolShare,outsideChildrenPoolValue:distributionPreview.outsideChildrenPoolValue,outsideChildrenPoolRecipient:distributionPreview.outsideChildrenPoolRecipient,siblingAllocations,beneficiaryAccounts,selectedAccountId:childAccounts[index]?childAccounts[index].id:null}};
  heir.heirlooms=[...(previous.heirlooms||[])];heir.accomplishments=['بدأ حياة جديدة كامتداد لعائلة '+previous.name,'ورث '+cash(inheritance.value)];
- heir.job=null;heir.assets=inheritance.assets;heir.investments=inheritance.investments;heir.business=inheritance.business||null;heir.companies=Array.isArray(inheritance.companies)?inheritance.companies:[];
+ heir.job=null;heir.assets=inheritance.assets;heir.assets.forEach(asset=>{if(asset&&asset.kind==='property')asset.ownerBeneficiaryId=String(child.id||previous.lifeId||child.name||'heir');});heir.investments=inheritance.investments;heir.business=inheritance.business||null;heir.companies=Array.isArray(inheritance.companies)?inheritance.companies:[];
  heir.family.push({id:'legacy-parent-'+Date.now(),name:previous.name,relation:'والد/والدة متوفى',emoji:previous.gender==='male'?'👨‍🦳':'👩‍🦳',age:previous.age,job:previous.job?previous.job.title:'متوفى',relationshipLevel:100,personality:'موروث عائلي'});if(oldPartner){const partnerRecord={...oldPartner,relation:'الأم/الأب'};if(distributionPreview.partnerShare>0){const partnerAccount=beneficiaryAccounts.accounts.find(account=>account.kind==='partner');partnerRecord.inheritanceShare=distributionPreview.partnerShare;partnerRecord.inheritanceEstimate=distributionPreview.partnerValue;partnerRecord.inheritanceStatus='مخصص للشريك';partnerRecord.inheritanceAccountId=partnerAccount?partnerAccount.id:null;partnerRecord.inheritanceAccountStatus='استحقاق محفوظ';}heir.family.push(partnerRecord);}
  state=heir;dead=false;log('🌳','استمرار السلالة','بدأت حياة جديدة باسم '+state.name+'، وارثًا قصة '+previous.name+' وإرث العائلة.','special');
  log('📜','تقسيم حصة الأبناء','تُقسَّم حصة الأبناء البالغة '+Math.round(childPoolShare*100)+'% بالتساوي على '+childCount+' أبناء؛ نصيبك '+formatInheritancePercent(share)+'% من صافي التركة.','special');
@@ -6975,7 +7200,9 @@ function landlordPortfolioMenu(){
 }
 function buyLandlordProperty(title,emoji,value,upkeep){
  closeModal();if(state.age<18){info('🔒','الشراء بعد سن 18','');return;}if(state.bank<value){info('💳','الرصيد مش كفاية','شراء '+title+' يحتاج '+cash(value)+'.');return;}
- const id=Date.now()+Math.random();state.bank-=value;state.assets.push({id,title,emoji,kind:'property',value,upkeep,bought:state.age,condition:100,rented:false,tenant:null,amenities:[],futuristic:true});
+ const id=Date.now()+Math.random();state.bank-=value;
+ const propertyOwnership={familyAssetId:'family-property-'+encodeURIComponent(String(state.lifeId||state.name||'life'))+'-'+encodeURIComponent(String(id)),familyAssetOriginalValue:Math.round(value),ownershipShare:1,ownerBeneficiaryId:String(state.lifeId||state.name||'life')};
+ state.assets.push({id,title,emoji,kind:'property',value,upkeep,bought:state.age,condition:100,rented:false,tenant:null,amenities:[],futuristic:true,...propertyOwnership});
  log('🏘️','شراء عقار جديد','اشتريت '+title+' مقابل '+cash(value)+'. تقدر تضيف مرافق من قائمة إدارة العقار.','good');save();render();landlordPortfolioMenu();
 }
 function landlordPropertyMenu(index){

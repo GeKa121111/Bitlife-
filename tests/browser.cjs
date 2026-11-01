@@ -593,6 +593,36 @@ async function run() {
       if (window.__walletOriginalSetItem) Storage.prototype.setItem = window.__walletOriginalSetItem;
       delete window.__walletOriginalSetItem;
     });
+    await page.evaluate(() => {
+      const key = 'hekayat_hayah_save_v1';
+      const saved = JSON.parse(localStorage.getItem(key) || 'null');
+      saved.legacy.activeBeneficiaryId = 'current-heir';
+      saved.assets.push({
+        id: 'browser-family-home-share', familyAssetId: 'browser-family-home',
+        familyAssetOriginalValue: 1000000, ownershipShare: 0.5, ownerBeneficiaryId: 'current-heir',
+        title: 'بيت العائلة التجريبي', emoji: '🏡', kind: 'property', value: 500000,
+        upkeep: 10000, condition: 100
+      });
+      saved.legacy.familyPropertyOwnership = [{
+        id: 'browser-family-home', familyAssetId: 'browser-family-home', title: 'بيت العائلة التجريبي',
+        currency: 'ج.م', marketValue: 1000000, upkeep: 20000, encumberedShare: 0,
+        totalOwnershipShare: 1, auditStatus: 'balanced', owners: [
+          { beneficiaryId: 'current-heir', name: 'الشخصية الحالية', kind: 'child', share: 0.5, status: 'active' },
+          { beneficiaryId: 'sibling-1', name: 'الأخت مريم', kind: 'child', share: 0.5, status: 'reserved' }
+        ], transactions: []
+      }];
+      localStorage.setItem(key, JSON.stringify(saved));
+    });
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await page.locator('[data-panel="relations"]').click();
+    await page.locator('.choice').filter({ hasText: 'شجرة العائلة والإرث' }).click();
+    await page.locator('.choice').filter({ hasText: 'ملكية عقارات العائلة' }).click();
+    await page.locator('.choice').filter({ hasText: 'بيت العائلة التجريبي' }).click();
+    const familyPropertyOwnershipText = await page.locator('#modalRoot [role="dialog"]').textContent();
+    assert.match(familyPropertyOwnershipText, /الشخصية الحالية/);
+    assert.match(familyPropertyOwnershipText, /الأخت مريم/);
+    assert.match(familyPropertyOwnershipText, /50%/);
+    assert.match(familyPropertyOwnershipText, /القيمة الكاملة/);
     await page.evaluate(snapshot => {
       localStorage.setItem('hekayat_hayah_save_v1', snapshot.save);
       if (snapshot.backup === null) localStorage.removeItem('hekayat_hayah_save_backup_v1');
