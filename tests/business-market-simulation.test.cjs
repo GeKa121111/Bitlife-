@@ -58,8 +58,10 @@ function scanDeclarationEnd(source, start, stopAtSemicolon) {
       continue;
     }
     if (char === '{' || char === '[' || char === '(') depth++;
-    else if (char === '}' || char === ']' || char === ')') depth--;
-    else if (stopAtSemicolon && char === ';' && depth === 0) return index + 1;
+    else if (char === '}' || char === ']' || char === ')') {
+      depth--;
+      if (!stopAtSemicolon && char === '}' && depth === 0) return index + 1;
+    } else if (stopAtSemicolon && char === ';' && depth === 0) return index + 1;
   }
   return -1;
 }
