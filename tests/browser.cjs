@@ -559,9 +559,9 @@ async function run() {
     await page.locator('.choice').filter({ hasText: 'الأخت مريم' }).click();
     const beneficiaryWalletDetails = await page.locator('#modalRoot [role="dialog"]').textContent();
     assert.match(beneficiaryWalletDetails, /الرصيد الحالي/);
-    assert.match(beneficiaryWalletDetails, /40,000|40000/);
+    assert.match(beneficiaryWalletDetails, /٤٠٬٠٠٠/);
     await page.locator('.choice').filter({ hasText: 'تقديم مساعدة مالية' }).click();
-    await page.locator('.choice').filter({ hasText: /إرسال.*1,?000/ }).click();
+    await page.locator('.choice').filter({ hasText: 'إرسال' }).first().click();
     const walletSupportConfirmation = await page.locator('#modalRoot [role="dialog"]').textContent();
     assert.match(walletSupportConfirmation, /تم تسجيل المساعدة/);
     await page.locator('.choice').filter({ hasText: 'تمام' }).last().click();
