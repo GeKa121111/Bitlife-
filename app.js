@@ -1689,7 +1689,7 @@ function inheritanceAccountsMenu(){
   return;
  }
  const opts=records.slice().reverse().map(record=>{
-  const currency=String(record.currency||state.place.unit||'ج.م');
+  const currency=String(record.currency||state.place&&state.place.unit||'ج.م');
   const estate=Math.max(0,Math.round(Number(record.totalEstateValue)||0));
   const count=record.accounts.length;
   const age=record.sourceAge===null?'':' · العمر عند الوفاة '+fmt(record.sourceAge)+' سنة';
@@ -1720,8 +1720,8 @@ function inheritanceHistoryRecordMenu(recordId){
   return choice(icons[account.kind]||'📒',account.name||'مستفيد',description,()=>info('📒',account.name||'تفاصيل الاستحقاق',description+'. هذا سجل تاريخي للتوزيع، وليس تحويلًا نقديًا مستقلًا.'));
  });
  opts.push(choice('↩️','رجوع لسجل مواريث العائلة','',inheritanceAccountsMenu));
- const currency=String(record.currency||state.place.unit||'ج.م');
- const description='صافي التركة '+cash(record.totalEstateValue)+' '+currency+' · إجمالي المخصص '+cash(record.totalAllocated)+' · المحفوظ '+cash(record.totalReservedBalance)+' · المنقول '+cash(record.totalSettledAmount)+'. هذه بيانات تاريخية محفوظة وليست محافظ قابلة للصرف للمستفيدين غير النشطين.';
+ const currency=String(record.currency||state.place&&state.place.unit||'ج.م');
+ const description='صافي التركة '+cash(record.totalEstateValue)+' '+currency+' · إجمالي المخصص '+cash(record.totalAllocated)+' · المحفوظ '+cash(record.totalReservedBalance)+' · المنقول '+cash(record.totalSettledAmount)+'. هذه بيانات تاريخية محفوظة وليست محافظ قابلة للصرف للمستفيدين غير النشطين بعد.';
  modal('📒','تركة '+(record.sourceName||'الجيل السابق'),description,opts);
 }
 function recordBusinessFinancialReport(entity,report){
