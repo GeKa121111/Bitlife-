@@ -1116,6 +1116,11 @@ async function run() {
       const cemeteryBackup = JSON.parse(localStorage.getItem('hekayat_hayah_cemetery_backup_v1') || '[]');
       const assets = Array.isArray(saved.assets) ? saved.assets : [];
       const investments = Array.isArray(saved.investments) ? saved.investments : [];
+      const businesses = [saved.business, ...(Array.isArray(saved.companies) ? saved.companies : [])].filter(Boolean);
+      const businessCash = businesses.reduce((sum, business) => {
+        if (business.treasuryMode !== 'separate') return sum;
+        return sum + Math.max(0, Number(business.cashBalance) || 0);
+      }, 0);
       return {
         archivedParent: cemetery.some(item => String(item.id) === String(parentId)),
         archivedParentBackup: cemeteryBackup.some(item => String(item.id) === String(parentId)),
@@ -1124,7 +1129,8 @@ async function run() {
         legacyValue: saved.legacy.inheritance,
         componentValue: Number(saved.bank || 0)
           + assets.reduce((sum, item) => sum + Math.max(0, Number(item.value) || 0), 0)
-          + investments.reduce((sum, item) => sum + Math.max(0, Number(item.value) || 0), 0),
+          + investments.reduce((sum, item) => sum + Math.max(0, Number(item.value) || 0), 0)
+          + businessCash,
         bank: saved.bank,
         assetCount: assets.length,
         investmentCount: investments.length,
