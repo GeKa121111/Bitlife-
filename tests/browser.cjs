@@ -531,9 +531,60 @@ async function run() {
     assert.match(inheritanceLedgerText, /دفتر الاستحقاقات غير متوازن/);
     assert.match(inheritanceLedgerText, /الأخت مريم/);
     assert.doesNotMatch(inheritanceLedgerText, /حصة الوارث متطابقة/);
-    assert.match(inheritanceLedgerText, /ليست محافظ قابلة للصرف للمستفيدين غير النشطين بعد/);
+    assert.match(inheritanceLedgerText, /المحافظ الحالية وحركات المساندة تُعرض في قسم مستقل/);
     await page.keyboard.press('Escape');
     await page.waitForFunction(() => !document.querySelector('#modalRoot [role="dialog"]'));
+
+    const walletTestSnapshot = await page.evaluate(() => ({
+      save: localStorage.getItem('hekayat_hayah_save_v1'),
+      backup: localStorage.getItem('hekayat_hayah_save_backup_v1')
+    }));
+    await page.evaluate(() => {
+      const key = 'hekayat_hayah_save_v1';
+      const saved = JSON.parse(localStorage.getItem(key) || 'null');
+      const registry = saved && saved.legacy && saved.legacy.distribution && saved.legacy.distribution.beneficiaryAccounts;
+      const sibling = registry && registry.accounts.find(account => account.beneficiaryId === 'sibling-1');
+      if (!sibling) throw new Error('missing sibling inheritance fixture');
+      sibling.balance = sibling.allocatedAmount;
+      saved.bank = 42000;
+      localStorage.setItem(key, JSON.stringify(saved));
+    });
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await page.locator('[data-panel="relations"]').click();
+    await page.locator('.choice').filter({ hasText: 'شجرة العائلة والإرث' }).click();
+    await page.locator('.choice').filter({ hasText: 'محافظ الورثة' }).click();
+    const beneficiaryWalletList = await page.locator('#modalRoot [role="dialog"]').textContent();
+    assert.match(beneficiaryWalletList, /الأخت مريم/);
+    assert.match(beneficiaryWalletList, /الشريك/);
+    await page.locator('.choice').filter({ hasText: 'الأخت مريم' }).click();
+    const beneficiaryWalletDetails = await page.locator('#modalRoot [role="dialog"]').textContent();
+    assert.match(beneficiaryWalletDetails, /الرصيد الحالي/);
+    assert.match(beneficiaryWalletDetails, /40,000|40000/);
+    await page.locator('.choice').filter({ hasText: 'تقديم مساعدة مالية' }).click();
+    await page.locator('.choice').filter({ hasText: /إرسال.*1,?000/ }).click();
+    const walletSupportConfirmation = await page.locator('#modalRoot [role="dialog"]').textContent();
+    assert.match(walletSupportConfirmation, /تم تسجيل المساعدة/);
+    await page.locator('.choice').filter({ hasText: 'تمام' }).last().click();
+    const walletAfterSupport = await page.evaluate(() => {
+      const saved = JSON.parse(localStorage.getItem('hekayat_hayah_save_v1') || 'null');
+      const wallet = saved && saved.legacy && (saved.legacy.beneficiaryWallets || []).find(item => item.beneficiaryId === 'sibling-1');
+      return {
+        bank: saved && saved.bank,
+        balance: wallet && wallet.balance,
+        supportTotal: wallet && wallet.supportTotal,
+        transactionTypes: wallet && wallet.transactions.map(transaction => transaction.type)
+      };
+    });
+    assert.equal(walletAfterSupport.bank, 41000, 'the support transfer must debit the active heir');
+    assert.equal(walletAfterSupport.balance, 41000, 'the sibling wallet must receive the same amount');
+    assert.equal(walletAfterSupport.supportTotal, 1000);
+    assert.deepEqual(walletAfterSupport.transactionTypes, ['inheritance', 'support']);
+    await page.evaluate(snapshot => {
+      localStorage.setItem('hekayat_hayah_save_v1', snapshot.save);
+      if (snapshot.backup === null) localStorage.removeItem('hekayat_hayah_save_backup_v1');
+      else localStorage.setItem('hekayat_hayah_save_backup_v1', snapshot.backup);
+    }, walletTestSnapshot);
+    await page.reload({ waitUntil: 'domcontentloaded' });
     const legacyBusinessDefaults = await page.evaluate(() => {
       const saved = JSON.parse(localStorage.getItem('hekayat_hayah_save_v1') || 'null');
       return { products: saved.business.products, research: saved.business.productResearch, pendingCosts: saved.business.pendingProductCosts, facilities: saved.business.facilities, pendingFacilityCosts: saved.business.pendingFacilityCosts };
