@@ -2506,7 +2506,7 @@ function advanceAge(){
  if(state.prison&&state.prison.years>0){state.prison.years--;state.stats.happiness=clamp(state.stats.happiness-5);state.stats.health=clamp(state.stats.health-2);if(state.prison.years===0){log('🔓','انتهاء العقوبة','انتهت مدة العقوبة وعُدت لحياتك خارج السجن.','special');state.prison=null;}}
  const freeVehicleCare=perkEnabled('goldenWrench');
  const assetUpkeep=state.assets.reduce((s,a)=>s+(freeVehicleCare&&a.kind==='car'?0:(a.upkeep||0)),0);
- state.assets.forEach(a=>{const before=a.value||0;if(a.kind==='property'){a.condition=clamp((a.condition??100)-2);a.value=Math.round(before*(a.condition<25?1.005:1.025));}else if(a.kind==='car'){if(freeVehicleCare){a.condition=100;a.value=Math.round(before*.97);}else{a.condition=clamp((a.condition??100)-4);a.value=Math.round(before*.91);}}else if(a.kind==='business')a.value=Math.round(before*1.03);});
+ state.assets.forEach(a=>{const before=a.value||0;if(a.kind==='property'){a.condition=clamp((a.condition??100)-2);a.value=Math.round(before*(a.condition<25?1.005:1.025));syncFamilyPropertyMarketValue(a,null,0);}else if(a.kind==='car'){if(freeVehicleCare){a.condition=100;a.value=Math.round(before*.97);}else{a.condition=clamp((a.condition??100)-4);a.value=Math.round(before*.91);}}else if(a.kind==='business')a.value=Math.round(before*1.03);});
  if(state.job&&!state.retired){
    const job=ensureJobProgress(state.job,state.age);
    const salary=Math.round(job.salary*state.performance/100*careerIncomeMultiplier());state.bank+=salary;flash('+'+cash(salary));
