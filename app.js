@@ -1887,17 +1887,29 @@ function supportBeneficiaryWallet(walletId,amount){
  });
  if(!result.ok){info('⚠️','التحويل لم يتم',result.reason==='ledger_mismatch'?'دفتر المحفظة غير متوازن؛ راجع السجل قبل التحويل.':'تعذر تسجيل حركة المساعدة.');return;}
  state.bank=Math.round(bank-value);
- log('💝','مساعدة عائلية','حوّلت '+fmt(value)+' '+currency+' إلى محفظة '+wallet.name+'.','good');
+ if(!Array.isArray(state.log))state.log=[];
+ state.log.push({
+  age:state.age,
+  icon:'💝',
+  title:'مساعدة عائلية',
+  text:'حوّلت '+fmt(value)+' '+currency+' إلى محفظة '+wallet.name+'.',
+  tone:'good'
+ });
+ if(state.log.length>360)state.log=state.log.slice(-360);
+ // Persist the debit, credit, and life event together. Calling log() here would
+ // save once before the explicit save below and could leave a committed transfer
+ // behind if a later write failed and the in-memory state rolled back.
  if(!save()){
   state.bank=previousBank;
   Object.keys(wallet).forEach(key=>delete wallet[key]);
   Object.assign(wallet,walletSnapshot);
-  if(previousLog)state.log=previousLog;
+  if(previousLog)state.log=previousLog;else delete state.log;
+  renderHeader();renderStats();renderFeed();
   info('⚠️','تعذر حفظ التحويل','لم يتم تثبيت المساعدة لأن الحفظ المحلي لم ينجح. لم نحتسب التحويل.');
   return;
  }
  const newBalance=wallet.balance;
- render();closeModal();
+ renderHeader();renderStats();renderFeed();closeModal();
  info('💝','تم تسجيل المساعدة','أرسلت '+fmt(value)+' '+currency+' إلى محفظة '+wallet.name+'. الرصيد الجديد '+fmt(newBalance)+' '+currency+'.');
 }
 function familyTreeMenu(){
