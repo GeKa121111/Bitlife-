@@ -5708,7 +5708,7 @@ function calculateInheritance(previous,share){
   +inheritedInvestments.reduce((sum,item)=>sum+valueOf(item),0)
   +inheritedBusinessCash;
  const inheritedValue=Math.max(0,inheritedGrossValue-inheritedBusinessLiabilities);
- return {value:inheritedValue,bank:inheritedBank,assets:inheritedAssets,investments:inheritedInvestments,business:inheritedBusiness,companies:inheritedCompanies};
+ return {value:inheritedValue,totalEstateValue:net,bank:inheritedBank,assets:inheritedAssets,investments:inheritedInvestments,business:inheritedBusiness,companies:inheritedCompanies};
 }
 function childInheritancePoolShare(previous){
  const policy=String(previous&&previous.willDistribution||'الأسرة بالتساوي');
@@ -5731,8 +5731,8 @@ function startAsChild(index){
  }
  const previous=state,child=previous.children[index],oldPartner=previous.partner;
  const childPoolShare=childInheritancePoolShare(previous),share=calculateChildInheritanceShare(previous,index);
- const totalEstateValue=calculateInheritance(previous,1).value;
  const inheritance=calculateInheritance(previous,share);
+ const totalEstateValue=inheritance.totalEstateValue;
  const childCount=previous.children.length,childPoolValue=Math.round(totalEstateValue*childPoolShare);
  const baseChildValue=childCount?Math.floor(childPoolValue/childCount):0;
  const childValueRemainder=childCount?childPoolValue-baseChildValue*childCount:0;
