@@ -547,7 +547,7 @@ async function run() {
       if (!sibling) throw new Error('missing sibling inheritance fixture');
       sibling.balance = sibling.allocatedAmount;
       const currency = String(registry.currency || saved.place && saved.place.unit || 'ج.م');
-      const sourceLifeId = String(registry.sourceLifeId ?? registry.id ?? 'legacy');
+      const sourceLifeId = String(registry.sourceLifeId || registry.id || 'legacy');
       const walletId = 'beneficiary-wallet-' + encodeURIComponent(sourceLifeId) + '-' + encodeURIComponent(sibling.beneficiaryId);
       const openingBalance = Number(sibling.allocatedAmount);
       saved.legacy.beneficiaryWallets = [{
