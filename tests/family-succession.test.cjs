@@ -89,8 +89,11 @@ const runtime = [
   'beneficiaryWalletLedgerTotals',
   'recordBeneficiaryWalletSupport',
   'recordBeneficiaryWalletRentalIncome',
+  'recordBeneficiaryWalletPropertyExpense',
   'classifyFamilyPropertyRentResult',
   'distributeFamilyPropertyRent',
+  'distributeFamilyPropertyExpense',
+  'maintainAsset',
   'supportBeneficiaryWallet',
   'getInheritanceHistoryRecords',
   'buildInheritanceHistory',
@@ -1950,3 +1953,194 @@ test('الحفظ القديم لمحفظة الوريث دون حقل دخل ا�
   assert.equal(wallets[0].ledgerAuditComplete, true);
   assert.equal(wallets[0].ledgerMismatch, false);
 });
+
+test('محفظة الوارث تخصم مصروف العقار من الرصيد وتحمي دفتر الحركات من التكرار والعجز', () => {
+  const context = makeContext();
+  const wallet = {
+    id: 'wallet-expense-ledger', beneficiaryId: 'heir-expense-ledger', kind: 'child', currency: 'جنيه',
+    openingBalance: 10000, supportTotal: 0, rentalIncomeTotal: 0, propertyExpenseTotal: 0, balance: 10000,
+    transactions: [{ id: 'expense-ledger-inheritance', type: 'inheritance', amount: 10000, currency: 'جنيه' }],
+    ledgerAuditComplete: true, ledgerMismatch: false
+  };
+  const paid = context.recordBeneficiaryWalletPropertyExpense(wallet, 2500, {
+    transactionId: 'expense-ledger-1', currency: 'جنيه', familyAssetId: 'expense-flat', propertyTitle: 'شقة العائلة'
+  });
+  assert.equal(paid.ok, true);
+  assert.equal(wallet.balance, 7500);
+  assert.equal(wallet.propertyExpenseTotal, 2500);
+  assert.equal(context.beneficiaryWalletLedgerTotals(wallet).valid, true);
+  assert.equal(wallet.transactions.at(-1).type, 'property_expense');
+  const beforeDuplicate = JSON.stringify(wallet);
+  assert.equal(context.recordBeneficiaryWalletPropertyExpense(wallet, 2500, {
+    transactionId: 'expense-ledger-1', currency: 'جنيه'
+  }).reason, 'duplicate_transaction');
+  assert.equal(JSON.stringify(wallet), beforeDuplicate);
+  assert.equal(context.recordBeneficiaryWalletPropertyExpense(wallet, 8000, {
+    transactionId: 'expense-ledger-too-large', currency: 'جنيه'
+  }).reason, 'insufficient_funds');
+  assert.equal(wallet.balance, 7500);
+});
+
+test('مصروف صيانة العقار المشترك يتوزع حسب الملكية بين البنك ومحافظ الورثة', () => {
+  const context = makeContext();
+  const wallet = {
+    id: 'sibling-maintenance-wallet', beneficiaryId: 'sibling-maintenance', kind: 'child', currency: 'جنيه',
+    openingBalance: 30000, supportTotal: 0, rentalIncomeTotal: 0, propertyExpenseTotal: 0, balance: 30000,
+    transactions: [{ id: 'sibling-maintenance-inheritance', type: 'inheritance', amount: 30000, currency: 'جنيه' }],
+    ledgerAuditComplete: true, ledgerMismatch: false
+  };
+  const record = {
+    id: 'shared-maintenance-flat', familyAssetId: 'shared-maintenance-flat', title: 'شقة العائلة',
+    currency: 'جنيه', marketValue: 1000000, encumberedShare: 0, auditStatus: 'balanced',
+    owners: [
+      { beneficiaryId: 'active-maintenance', name: 'المالك الحالي', kind: 'child', status: 'active', share: 0.5 },
+      { beneficiaryId: 'sibling-maintenance', name: 'الأخت مريم', kind: 'child', status: 'reserved', share: 0.5 }
+    ],
+    transactions: []
+  };
+  context.state = {
+    lifeId: 'maintenance-life', name: 'المالك الحالي', age: 40, yearCount: 40, bank: 50000,
+    place: { unit: 'جنيه' },
+    legacy: { activeBeneficiaryId: 'active-maintenance', beneficiaryWallets: [wallet], familyPropertyOwnership: [record] }
+  };
+  const asset = { id: 'active-maintenance-share', familyAssetId: record.id, ownerBeneficiaryId: 'active-maintenance',
+    ownershipShare: 0.5, kind: 'property', value: 500000, condition: 50 };
+  const result = context.distributeFamilyPropertyExpense(asset, 20000, { action: 'maintenance', reason: 'صيانة / تجديد' });
+  assert.equal(result.ok, true);
+  assert.equal(result.grossCost, 20000);
+  assert.equal(result.activeAmount, 10000);
+  assert.equal(result.familyWalletAmount, 10000);
+  assert.equal(result.unpaidAmount, 0);
+  assert.equal(context.state.bank, 40000);
+  assert.equal(wallet.balance, 20000);
+  assert.equal(wallet.propertyExpenseTotal, 10000);
+  assert.equal(record.propertyExpenseTotal, 20000);
+  assert.equal(record.propertyExpensePaidTotal, 20000);
+  assert.equal(record.transactions[0].type, 'property_expense');
+  const replay = context.distributeFamilyPropertyExpense(asset, 20000, { action: 'maintenance', reason: 'صيانة / تجديد' });
+  assert.equal(replay.reason, 'duplicate_transaction');
+  assert.equal(context.state.bank, 40000);
+  assert.equal(wallet.balance, 20000);
+});
+
+test('حصة مصروف الشقيق غير القادر على الدفع تصبح متأخرات ثم تُحصّل عند توفر رصيد', () => {
+  const context = makeContext();
+  const wallet = {
+    id: 'sibling-arrears-expense-wallet', beneficiaryId: 'sibling-expense-arrears', kind: 'child', currency: 'جنيه',
+    openingBalance: 2000, supportTotal: 0, rentalIncomeTotal: 0, propertyExpenseTotal: 0, balance: 2000,
+    transactions: [{ id: 'sibling-expense-arrears-inheritance', type: 'inheritance', amount: 2000, currency: 'جنيه' }],
+    ledgerAuditComplete: true, ledgerMismatch: false
+  };
+  const record = {
+    id: 'shared-expense-arrears-flat', familyAssetId: 'shared-expense-arrears-flat', title: 'منزل الأسرة',
+    currency: 'جنيه', marketValue: 1000000, encumberedShare: 0, auditStatus: 'balanced',
+    owners: [
+      { beneficiaryId: 'active-expense-arrears', kind: 'child', status: 'active', share: 0.5 },
+      { beneficiaryId: 'sibling-expense-arrears', kind: 'child', status: 'reserved', share: 0.5 }
+    ],
+    transactions: []
+  };
+  context.state = {
+    lifeId: 'expense-arrears-life', name: 'المالك الحالي', age: 50, yearCount: 50, bank: 50000,
+    place: { unit: 'جنيه' },
+    legacy: { activeBeneficiaryId: 'active-expense-arrears', beneficiaryWallets: [wallet], familyPropertyOwnership: [record] }
+  };
+  const asset = { familyAssetId: record.id, ownerBeneficiaryId: 'active-expense-arrears', ownershipShare: 0.5, kind: 'property', value: 500000 };
+  const first = context.distributeFamilyPropertyExpense(asset, 10000, { action: 'maintenance' });
+  assert.equal(first.activeAmount, 5000);
+  assert.equal(first.familyWalletAmount, 0);
+  assert.equal(first.unpaidAmount, 5000);
+  assert.equal(record.owners[1].propertyExpenseOwed, 5000);
+  assert.equal(wallet.balance, 2000);
+  assert.equal(context.recordBeneficiaryWalletSupport(wallet, 10000, {
+    transactionId: 'sibling-expense-arrears-topup', currency: 'جنيه'
+  }).ok, true);
+  context.state.yearCount = 51;
+  context.state.age = 51;
+  const second = context.distributeFamilyPropertyExpense(asset, 10000, { action: 'maintenance' });
+  assert.equal(second.activeAmount, 5000);
+  assert.equal(second.familyWalletAmount, 10000);
+  assert.equal(record.owners[1].propertyExpenseOwed, 0);
+  assert.equal(wallet.balance, 2000);
+  assert.equal(second.arrearsReleased, 5000);
+});
+
+test('تدقيق الملكية أو نقص رصيد المالك النشط يوقف المصروف دون أي تعديل جزئي', () => {
+  const context = makeContext();
+  const wallet = {
+    id: 'sibling-safe-wallet', beneficiaryId: 'sibling-safe', kind: 'child', currency: 'جنيه',
+    openingBalance: 20000, supportTotal: 0, rentalIncomeTotal: 0, propertyExpenseTotal: 0, balance: 20000,
+    transactions: [{ id: 'sibling-safe-inheritance', type: 'inheritance', amount: 20000, currency: 'جنيه' }],
+    ledgerAuditComplete: true, ledgerMismatch: false
+  };
+  const record = {
+    id: 'shared-invalid-expense', familyAssetId: 'shared-invalid-expense', currency: 'جنيه',
+    marketValue: 1000000, encumberedShare: 0, auditStatus: 'balanced',
+    owners: [
+      { beneficiaryId: 'active-expense-poor', kind: 'child', status: 'active', share: 0.5 },
+      { beneficiaryId: 'sibling-safe', kind: 'child', status: 'reserved', share: 0.5 }
+    ],
+    transactions: []
+  };
+  context.state = {
+    lifeId: 'poor-maintenance-life', age: 40, yearCount: 40, bank: 1000, place: { unit: 'جنيه' },
+    legacy: { activeBeneficiaryId: 'active-expense-poor', beneficiaryWallets: [wallet], familyPropertyOwnership: [record] }
+  };
+  const asset = { familyAssetId: record.id, ownerBeneficiaryId: 'active-expense-poor', ownershipShare: 0.5, kind: 'property', value: 500000, condition: 50 };
+  const beforeRecord = JSON.stringify(record);
+  const beforeWallet = JSON.stringify(wallet);
+  const result = context.distributeFamilyPropertyExpense(asset, 15000, { action: 'maintenance' });
+  assert.equal(result.reason, 'insufficient_active_funds');
+  assert.equal(context.state.bank, 1000);
+  assert.equal(JSON.stringify(wallet), beforeWallet);
+  assert.equal(JSON.stringify(record), beforeRecord);
+  record.auditStatus = 'needs_review';
+  const invalid = context.distributeFamilyPropertyExpense(asset, 15000, { action: 'maintenance' });
+  assert.equal(invalid.reason, 'ownership_audit_incomplete');
+  assert.equal(context.state.bank, 1000);
+});
+
+test('صيانة عقار مشترك تخصم حصة اللاعب ومحفظة الشريك وتحدّث القيمة الكاملة', () => {
+  const context = makeContext();
+  const wallet = {
+    id: 'maintenance-ui-wallet', beneficiaryId: 'maintenance-ui-sibling', kind: 'child', currency: 'جنيه',
+    openingBalance: 20000, supportTotal: 0, rentalIncomeTotal: 0, propertyExpenseTotal: 0, balance: 20000,
+    transactions: [{ id: 'maintenance-ui-inheritance', type: 'inheritance', amount: 20000, currency: 'جنيه' }],
+    ledgerAuditComplete: true, ledgerMismatch: false
+  };
+  const record = {
+    id: 'maintenance-ui-property', familyAssetId: 'maintenance-ui-property', title: 'بيت العائلة',
+    currency: 'جنيه', marketValue: 1000000, upkeep: 20000, encumberedShare: 0, auditStatus: 'balanced',
+    owners: [
+      { beneficiaryId: 'maintenance-ui-active', kind: 'child', status: 'active', share: 0.5 },
+      { beneficiaryId: 'maintenance-ui-sibling', kind: 'child', status: 'reserved', share: 0.5 }
+    ],
+    transactions: []
+  };
+  const asset = { id: 'maintenance-ui-share', familyAssetId: record.id, ownerBeneficiaryId: 'maintenance-ui-active',
+    ownershipShare: 0.5, title: 'بيت العائلة', kind: 'property', value: 500000, upkeep: 10000, condition: 50 };
+  context.state = {
+    lifeId: 'maintenance-ui-life', name: 'المالك الحالي', age: 45, yearCount: 45, bank: 50000,
+    place: { unit: 'جنيه' }, assets: [asset],
+    legacy: { activeBeneficiaryId: 'maintenance-ui-active', beneficiaryWallets: [wallet], familyPropertyOwnership: [record] }
+  };
+  context.maintainAsset(0);
+  assert.equal(context.state.bank, 42500);
+  assert.equal(wallet.balance, 12500);
+  assert.equal(wallet.propertyExpenseTotal, 7500);
+  assert.equal(asset.condition, 100);
+  assert.equal(asset.value, 537500);
+  assert.equal(record.marketValue, 1075000);
+  assert.equal(record.propertyExpenseTotal, 15000);
+  assert.ok(context.infoMessages.some(message => String(message[2]||'').includes('دفعت حصتك')));
+});
+
+test('الصيانة القديمة لعقار بلا سجل ملكية مشتركة تظل بنفس مسار الخصم السابق', () => {
+  const context = makeContext();
+  const asset = { id: 'legacy-maintenance-flat', title: 'عقار قديم', kind: 'property', value: 500000, condition: 50 };
+  context.state = { bank: 10000, assets: [asset], legacy: {} };
+  context.maintainAsset(0);
+  assert.equal(context.state.bank, 2500);
+  assert.equal(asset.condition, 100);
+});
+
