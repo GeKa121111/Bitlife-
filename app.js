@@ -6085,9 +6085,7 @@ function createInheritanceHistoryRecord(registry,sourceName,sourceAge){
     allocatedAmount:account.allocatedAmount,balance:account.balance,settledAmount:account.settledAmount,
     delta:null,reason:'negative_amount'
    });
-  }else if(!account.ledgerAuditComplete){
-   accountLedgerIncompleteCount++;
-  }else{
+  }else if(account.ledgerAuditComplete){
    const delta=account.balance+account.settledAmount-account.allocatedAmount;
    const statusMismatch=account.status==='transferred'
     ?account.balance!==0||account.settledAmount!==account.allocatedAmount
@@ -6100,7 +6098,7 @@ function createInheritanceHistoryRecord(registry,sourceName,sourceAge){
     });
    }
   }
-  if(!account.ledgerShareAuditComplete)accountLedgerIncompleteCount++;
+  if(!account.ledgerAuditComplete||!account.ledgerShareAuditComplete)accountLedgerIncompleteCount++;
   if(account.ledgerShareAuditInvalid){
    accountLedgerIssues.push({
     accountId:account.id,name:account.name,status:account.status,
