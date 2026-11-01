@@ -546,6 +546,18 @@ async function run() {
       const sibling = registry && registry.accounts.find(account => account.beneficiaryId === 'sibling-1');
       if (!sibling) throw new Error('missing sibling inheritance fixture');
       sibling.balance = sibling.allocatedAmount;
+      const currency = String(saved.place && saved.place.unit || 'ج.م');
+      const openingBalance = Number(sibling.allocatedAmount);
+      saved.legacy.beneficiaryWallets = [{
+        id: 'browser-sibling-wallet', beneficiaryId: 'sibling-1', kind: 'child', currency,
+        openingBalance, supportTotal: 0, rentalIncomeTotal: 1500, balance: openingBalance + 1500,
+        transactions: [
+          { id: 'browser-sibling-inheritance', type: 'inheritance', amount: openingBalance, currency },
+          { id: 'browser-sibling-rent', type: 'rental_income', amount: 1500, currency,
+            familyAssetId: 'browser-rent-home', propertyTitle: 'بيت العائلة', age: 30, year: 30 }
+        ],
+        ledgerAuditComplete: true, ledgerMismatch: false
+      }];
       saved.bank = 42000;
       localStorage.setItem(key, JSON.stringify(saved));
     });
@@ -559,7 +571,9 @@ async function run() {
     await page.locator('.choice').filter({ hasText: 'الأخت مريم' }).click();
     const beneficiaryWalletDetails = await page.locator('#modalRoot [role="dialog"]').textContent();
     assert.match(beneficiaryWalletDetails, /الرصيد الحالي/);
-    assert.match(beneficiaryWalletDetails, /٤٠٬٠٠٠/);
+    assert.match(beneficiaryWalletDetails, /٤١٬٥٠٠/);
+    assert.match(beneficiaryWalletDetails, /دخل إيجار/);
+    assert.match(beneficiaryWalletDetails, /١٬٥٠٠/);
     await page.locator('.choice').filter({ hasText: 'تقديم مساعدة مالية' }).click();
     await page.evaluate(() => {
       window.__walletSaveWrites = 0;
@@ -580,14 +594,16 @@ async function run() {
         bank: saved && saved.bank,
         balance: wallet && wallet.balance,
         supportTotal: wallet && wallet.supportTotal,
+        rentalIncomeTotal: wallet && wallet.rentalIncomeTotal,
         transactionTypes: wallet && wallet.transactions.map(transaction => transaction.type),
         saveWrites: window.__walletSaveWrites
       };
     });
     assert.equal(walletAfterSupport.bank, 41000, 'the support transfer must debit the active heir');
-    assert.equal(walletAfterSupport.balance, 41000, 'the sibling wallet must receive the same amount');
+    assert.equal(walletAfterSupport.balance, 42500, 'the sibling wallet must retain rental income and receive the support transfer');
     assert.equal(walletAfterSupport.supportTotal, 1000);
-    assert.deepEqual(walletAfterSupport.transactionTypes, ['inheritance', 'support']);
+    assert.equal(walletAfterSupport.rentalIncomeTotal, 1500);
+    assert.deepEqual(walletAfterSupport.transactionTypes, ['inheritance', 'rental_income', 'support']);
     assert.equal(walletAfterSupport.saveWrites, 1, 'one wallet transfer should write the primary save exactly once');
     await page.evaluate(() => {
       if (window.__walletOriginalSetItem) Storage.prototype.setItem = window.__walletOriginalSetItem;
