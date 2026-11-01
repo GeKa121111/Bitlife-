@@ -74,6 +74,7 @@ const runtime = [
   'calculateInheritance',
   'childInheritancePoolShare',
   'calculateChildInheritanceShare',
+  'familyTreeNode',
   'startAsChild'
 ].map(findFunction);
 
@@ -88,6 +89,8 @@ const harness = [
   'function setSeed(seed) { randomState = (Number(seed) >>> 0) || 1; Math.random = seededRandom; }',
   'function chance(probability) { return Math.random() < Number(probability); }',
   'function pick(items) { return items[Math.floor(Math.random() * items.length)]; }',
+  'function esc(value) { return String(value ?? ""); }',
+  'function fmt(value) { return String(value ?? 0); }',
   'function cash(value) { return String(Math.round(Number(value) || 0)); }',
   'function perkOwned() { return false; }',
   'function archiveLife() { return true; }',
@@ -478,4 +481,20 @@ test('الابن الوحيد يحتفظ بالنسبة التاريخية نف�
   assert.equal(context.state.legacy.distribution.perChildShare, 0.8);
   assert.equal(context.state.legacy.distribution.childCount, 1);
   assert.equal(context.state.version, 1);
+});
+test('شجرة العائلة تعرض حصة الإرث التقديرية للأخوة بعد استكمال السلالة', () => {
+  const context = makeContext();
+  const sibling = {
+    id: 'sibling-legacy',
+    name: 'عمر منصور',
+    relation: 'أخ/أخت',
+    age: 21,
+    relationshipLevel: 80,
+    inheritanceShare: 0.4,
+    inheritanceEstimate: 12345,
+    inheritanceStatus: 'مخصص من التركة'
+  };
+  const markup = vm.runInContext('familyTreeNode(' + JSON.stringify(sibling) + ')', context);
+  assert.match(markup, /حصة الإرث 40%/);
+  assert.match(markup, /تقدير 12345/);
 });
