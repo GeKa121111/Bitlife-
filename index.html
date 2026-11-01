@@ -15,6 +15,7 @@
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
+<a class="skip-link" href="#lifeFeed">انتقل إلى يوميات الحياة</a>
 <div class="app" id="app">
   <header class="topbar">
     <button class="menu-trigger" id="menuBtn" type="button" aria-label="القائمة الرئيسية">☰</button>
@@ -55,7 +56,7 @@
     </div>
     <span id="lifeMeta" class="story-year" aria-live="polite">السنة الأولى</span>
   </div>
-  <main class="feed" id="lifeFeed" aria-label="سجل الحياة والأحداث"></main>
+  <main class="feed" id="lifeFeed" aria-label="سجل الحياة والأحداث" tabindex="-1"></main>
   <div id="lifeAnnouncement" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></div>
   <div class="bottom-dock">
     <nav class="nav" aria-label="القائمة الرئيسية">
