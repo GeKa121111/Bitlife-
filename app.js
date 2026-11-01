@@ -1678,16 +1678,20 @@ function buildBeneficiaryWallets(previousLegacy,currentRegistry,sourceName,sourc
   const transactions=Array.isArray(raw.transactions)?raw.transactions.slice(-100):[];
   const inferredOpening=transactions.filter(tx=>tx&&typeof tx==='object'&&tx.type==='inheritance').reduce((sum,tx)=>sum+safeAmount(tx.amount),0);
   const inferredSupport=transactions.filter(tx=>tx&&typeof tx==='object'&&tx.type==='support').reduce((sum,tx)=>sum+safeAmount(tx.amount),0);
-  const openingBalance=raw.openingBalance===undefined||raw.openingBalance===null?inferredOpening:safeAmount(raw.openingBalance);
-  const supportTotal=raw.supportTotal===undefined||raw.supportTotal===null?inferredSupport:safeAmount(raw.supportTotal);
-  const balance=safeAmount(raw.balance);
+  const openingValue=raw.openingBalance===undefined||raw.openingBalance===null?inferredOpening:Number(raw.openingBalance);
+  const supportValue=raw.supportTotal===undefined||raw.supportTotal===null?inferredSupport:Number(raw.supportTotal);
+  const balanceValue=Number(raw.balance);
+  const amountFieldsValid=Number.isSafeInteger(openingValue)&&openingValue>=0&&Number.isSafeInteger(supportValue)&&supportValue>=0&&Number.isSafeInteger(balanceValue)&&balanceValue>=0;
+  const openingBalance=safeAmount(openingValue);
+  const supportTotal=safeAmount(supportValue);
+  const balance=safeAmount(balanceValue);
   const transactionsValid=transactions.length>0&&transactions.every(tx=>{
    if(!tx||typeof tx!=='object'||Array.isArray(tx))return false;
    const amount=Number(tx.amount);
    return Number.isSafeInteger(amount)&&amount>=0&&['inheritance','support'].includes(String(tx.type||''))&&String(tx.currency||currency)===currency;
   });
   const balanceMatches=openingBalance+supportTotal===balance;
-  const ledgerAuditComplete=raw.ledgerAuditComplete!==false&&transactionsValid&&balanceMatches;
+  const ledgerAuditComplete=raw.ledgerAuditComplete!==false&&transactionsValid&&amountFieldsValid&&balanceMatches;
   wallets.push({
    ...raw,
    id,
@@ -1703,7 +1707,7 @@ function buildBeneficiaryWallets(previousLegacy,currentRegistry,sourceName,sourc
    balance,
    transactions,
    ledgerAuditComplete,
-   ledgerMismatch:raw.ledgerMismatch===true||!balanceMatches||!transactionsValid,
+   ledgerMismatch:raw.ledgerMismatch===true||!balanceMatches||!transactionsValid||!amountFieldsValid,
    sourceLedgerWarning:raw.sourceLedgerWarning===true
   });
   seen.add(id);
@@ -1751,12 +1755,12 @@ function buildBeneficiaryWallets(previousLegacy,currentRegistry,sourceName,sourc
     }],
     ledgerAuditComplete:true,
     ledgerMismatch:false,
-    sourceLedgerWarning:(record.accountLedgerSummaryIssues||[]).length>0||record.reconciliationMetadataMismatch===true
+    sourceLedgerWarning:record.accountLedgerMismatch===true||record.reconciliationMetadataMismatch===true
    });
    seen.add(id);
   });
  }
- return wallets.slice(-600);
+ return wallets;
 }
 function getBeneficiaryWallets(legacy){
  if(!legacy||typeof legacy!=='object')return [];
@@ -1809,8 +1813,8 @@ function beneficiaryWalletsMenu(){
  const opts=wallets.slice().reverse().map(wallet=>{
   const currency=String(wallet.currency||'ج.م');
   const warning=wallet.ledgerMismatch||!wallet.ledgerAuditComplete?' · بيانات المحفظة تحتاج مراجعة':wallet.sourceLedgerWarning?' · ملخص التركة الأصلية يحتاج مراجعة':'';
-  const description='الرصيد '+cash(wallet.balance)+' '+currency+' · '+(wallet.transactions||[]).length+' حركة'+warning;
-  return choice('👛',wallet.name+' · '+(wallet.kind==='partner'?'الشريك':'الأسرة'),description,()=>beneficiaryWalletMenu(wallet.id),cash(wallet.balance)+' '+currency);
+  const description='الرصيد '+fmt(wallet.balance)+' '+currency+' · '+(wallet.transactions||[]).length+' حركة'+warning;
+  return choice('👛',wallet.name+' · '+(wallet.kind==='partner'?'الشريك':'الأسرة'),description,()=>beneficiaryWalletMenu(wallet.id),fmt(wallet.balance)+' '+currency);
  });
  opts.push(choice('↩️','رجوع لشجرة العائلة','',familyTreeMenu));
  modal('🏦','محافظ الورثة','أرصدة مستقلة بدأت من حصص التركة المحفوظة. لا تدخل هذه الأرصدة ضمن ثروتك الشخصية.',opts);
@@ -1821,7 +1825,7 @@ function beneficiaryWalletMenu(walletId){
  if(!wallet){info('🏦','المحفظة غير متاحة','تعذر العثور على المحفظة في الحفظ الحالي.');return;}
  const currency=String(wallet.currency||'ج.م');
  const warning=wallet.ledgerMismatch||!wallet.ledgerAuditComplete?'بيانات المحفظة غير مكتملة؛ تم إيقاف التحويلات لحماية الرصيد.':wallet.sourceLedgerWarning?'ملخص التركة الأصلية يحتاج مراجعة، لكن رصيد الحساب الفردي محفوظ كما ورد.':'';
- const description='الرصيد الحالي '+cash(wallet.balance)+' '+currency+' · رصيد بداية التركة '+cash(wallet.openingBalance)+' '+currency+' · مساعدات لاحقة '+cash(wallet.supportTotal)+' '+currency+'. '+warning+' هذه محفظة محلية للمستفيد وليست ضمن رصيدك الشخصي.';
+ const description='الرصيد الحالي '+fmt(wallet.balance)+' '+currency+' · رصيد بداية التركة '+fmt(wallet.openingBalance)+' '+currency+' · مساعدات لاحقة '+fmt(wallet.supportTotal)+' '+currency+'. '+warning+' هذه محفظة محلية للمستفيد وليست ضمن رصيدك الشخصي.';
  const support=choice('💝','تقديم مساعدة مالية','تحويل مبلغ من رصيدك إلى هذه المحفظة.',()=>beneficiaryWalletSupportMenu(wallet.id));
  if(!wallet.ledgerAuditComplete||wallet.ledgerMismatch)support.disabled=true;
  const opts=[support,choice('📜','سجل الحركات','راجع مصدر الرصيد والمساعدات المسجلة.',()=>beneficiaryWalletTransactionsMenu(wallet.id)),choice('↩️','رجوع للمحافظ','',beneficiaryWalletsMenu)];
@@ -1836,7 +1840,7 @@ function beneficiaryWalletSupportMenu(walletId){
  if(String(wallet.currency||'ج.م')!==currency){info('💱','العملة مختلفة','عملة المحفظة '+wallet.currency+'، وعملة رصيدك '+currency+'. لا يمكن التحويل دون سعر صرف معتمد.');return;}
  const available=Math.max(0,Math.floor(Number(state.bank)||0));
  const amounts=[1000,5000,10000].filter(amount=>available>=amount);
- const opts=amounts.map(amount=>choice('💝','إرسال '+cash(amount)+' '+currency,'خصم فعلي من رصيدك وإضافة المبلغ إلى محفظة '+wallet.name+'.',()=>supportBeneficiaryWallet(wallet.id,amount)));
+ const opts=amounts.map(amount=>choice('💝','إرسال '+fmt(amount)+' '+currency,'خصم فعلي من رصيدك وإضافة المبلغ إلى محفظة '+wallet.name+'.',()=>supportBeneficiaryWallet(wallet.id,amount)));
  if(!opts.length){const unavailable=choice('⚠️','الرصيد غير كافٍ','تحتاج إلى 1,000 '+currency+' على الأقل لتقديم مساعدة.',()=>beneficiaryWalletMenu(wallet.id));unavailable.disabled=true;opts.push(unavailable);}
  opts.push(choice('↩️','رجوع للمحفظة','',()=>beneficiaryWalletMenu(wallet.id)));
  modal('💝','مساعدة مالية إلى '+wallet.name,'اختر مبلغًا متاحًا. سيُسجل التحويل في رصيدك وسجل المحفظة معًا.',opts);
@@ -1854,7 +1858,7 @@ function beneficiaryWalletTransactionsMenu(walletId){
   const detail=valid&&transaction.type==='support'
    ?'من '+String(transaction.fromName||'الحياة الحالية')+' · العمر '+(transaction.age===null||transaction.age===undefined?'غير مسجل':fmt(transaction.age))+' سنة'
    :'من تركة '+String(valid&&transaction.sourceName||wallet.sourceName||'الجيل السابق');
-  return choice(valid&&transaction.type==='inheritance'?'📜':'💝',title+' · '+cash(amount)+' '+currency,detail,()=>info('📒',title,detail+' · '+cash(amount)+' '+currency));
+  return choice(valid&&transaction.type==='inheritance'?'📜':'💝',title+' · '+fmt(amount)+' '+currency,detail,()=>info('📒',title,detail+' · '+fmt(amount)+' '+currency));
  });
  if(!opts.length)opts.push(choice('📭','لا توجد حركات','لم تُسجل معاملات في هذه المحفظة بعد.',()=>beneficiaryWalletMenu(wallet.id)));
  opts.push(choice('↩️','رجوع للمحفظة','',()=>beneficiaryWalletMenu(wallet.id)));
@@ -1866,9 +1870,10 @@ function supportBeneficiaryWallet(walletId,amount){
  if(!wallet){info('🏦','المحفظة غير متاحة','تعذر العثور على المحفظة المطلوبة.');return;}
  const currency=String(state.place&&state.place.unit||'ج.م');
  if(String(wallet.currency||'ج.م')!==currency){info('💱','العملة مختلفة','لا يمكن تحويل مبلغ بعملة مختلفة دون سعر صرف معتمد.');return;}
- const value=Number(amount),bank=Number(state.bank)||0;
+ const value=Number(amount),bank=Number(state.bank);
  if(!Number.isSafeInteger(value)||value<=0){info('⚠️','مبلغ غير صالح','اختر مبلغًا صحيحًا موجبًا.');return;}
- if(bank<value){info('💳','الرصيد غير كافٍ','رصيدك الحالي '+cash(bank)+' '+currency+'، ولا يكفي للتحويل.');return;}
+ if(!Number.isSafeInteger(bank)||bank<0){info('⚠️','رصيد غير صالح','تعذر التحقق من رصيدك الحالي؛ لم يتم التحويل.');return;}
+ if(bank<value){info('💳','الرصيد غير كافٍ','رصيدك الحالي '+fmt(bank)+' '+currency+'، ولا يكفي للتحويل.');return;}
  const previousBank=state.bank;
  const previousLog=Array.isArray(state.log)?state.log.slice():null;
  let walletSnapshot;
@@ -1893,7 +1898,7 @@ function supportBeneficiaryWallet(walletId,amount){
  }
  const newBalance=wallet.balance;
  render();closeModal();
- info('💝','تم تسجيل المساعدة','أرسلت '+cash(value)+' '+currency+' إلى محفظة '+wallet.name+'. الرصيد الجديد '+cash(newBalance)+' '+currency+'.');
+ info('💝','تم تسجيل المساعدة','أرسلت '+fmt(value)+' '+currency+' إلى محفظة '+wallet.name+'. الرصيد الجديد '+fmt(newBalance)+' '+currency+'.');
 }
 function familyTreeMenu(){
  if(!state)return;const fam=Array.isArray(state.family)?state.family:[],kids=Array.isArray(state.children)?state.children:[];
