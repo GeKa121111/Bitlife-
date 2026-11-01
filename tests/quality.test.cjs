@@ -2010,7 +2010,7 @@ test('سجل الملكية المشتركة يحافظ على حصص الأسر
   assert.match(details, /حصة محفوظة للوريث/);
   assert.match(app, /buildFamilyPropertyOwnership\(previous,beneficiaryAccounts\)/);
   assert.match(app, /recordFamilyPropertySale\(a,sale\)/);
-  assert.match(app, /syncFamilyPropertyMarketValue\(a,'maintenance',cost\)/);
+  assert.match(app, /distributeFamilyPropertyExpense\(a,fullCost/);
   assert.match(read('sw.js'), /hayah-shell-v94/);
 });
 
