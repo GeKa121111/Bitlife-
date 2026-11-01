@@ -471,6 +471,50 @@ async function run() {
     await page.waitForFunction(() => !document.querySelector('#modalRoot [role="dialog"]'));
     assert.equal(await page.evaluate(() => document.activeElement && document.activeElement.getAttribute('data-panel')), 'career',
       'closing a dialog should restore focus to the button that opened it');
+    await page.evaluate(() => window.modal('❓', 'سؤال تجريبي', 'وصف واضح', [
+      { title: 'موافق', action: () => {} },
+      { title: 'رفض', action: () => {} }
+    ]));
+    const describedQuestion = await page.evaluate(() => {
+      const dialog = document.querySelector('#modalRoot [role="dialog"]');
+      const ids = (dialog?.getAttribute('aria-describedby') || '').split(/\s+/).filter(Boolean);
+      return {
+        ids,
+        references: ids.map(id => {
+          const node = document.getElementById(id);
+          return !!node && dialog.contains(node) && !!node.textContent.trim();
+        }),
+        questionText: dialog?.querySelector('#dialogQuestion')?.textContent.trim() || ''
+      };
+    });
+    assert.deepEqual(describedQuestion.ids, ['dialogDescription', 'dialogQuestion']);
+    assert.deepEqual(describedQuestion.references, [true, true]);
+    assert.equal(describedQuestion.questionText, 'هتعمل إيه؟');
+    await page.keyboard.press('Escape');
+    await page.waitForFunction(() => !document.querySelector('#modalRoot [role="dialog"]'));
+
+    await page.evaluate(() => window.modal('❔', 'سؤال بلا وصف', '', [
+      { title: 'نعم', action: () => {} },
+      { title: 'لا', action: () => {} }
+    ]));
+    const questionOnly = await page.evaluate(() => {
+      const dialog = document.querySelector('#modalRoot [role="dialog"]');
+      const ids = (dialog?.getAttribute('aria-describedby') || '').split(/\s+/).filter(Boolean);
+      const question = dialog?.querySelector('#dialogQuestion');
+      return { ids, validQuestion: !!question && dialog.contains(question) && !!question.textContent.trim() };
+    });
+    assert.deepEqual(questionOnly.ids, ['dialogQuestion']);
+    assert.equal(questionOnly.validQuestion, true);
+    await page.keyboard.press('Escape');
+    await page.waitForFunction(() => !document.querySelector('#modalRoot [role="dialog"]'));
+
+    await page.evaluate(() => window.modal('ℹ️', 'إشعار بلا وصف', '', [
+      { title: 'تمام', action: () => {} }
+    ]));
+    const undescribedNotice = await page.locator('#modalRoot [role="dialog"]').getAttribute('aria-describedby');
+    assert.equal(undescribedNotice, null, 'a notice without a description or question should not reference missing text');
+    await page.keyboard.press('Escape');
+    await page.waitForFunction(() => !document.querySelector('#modalRoot [role="dialog"]'));
     const legacyBusinessDefaults = await page.evaluate(() => {
       const saved = JSON.parse(localStorage.getItem('hekayat_hayah_save_v1') || 'null');
       return { products: saved.business.products, research: saved.business.productResearch, pendingCosts: saved.business.pendingProductCosts, facilities: saved.business.facilities, pendingFacilityCosts: saved.business.pendingFacilityCosts };
