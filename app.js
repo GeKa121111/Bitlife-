@@ -2015,6 +2015,18 @@ function recordBeneficiaryWalletRentalIncome(wallet,amount,source){
  wallet.ledgerMismatch=false;
  return {ok:true,balance:wallet.balance};
 }
+function classifyFamilyPropertyRentResult(result,fallbackAmount){
+ const fallback=Number(fallbackAmount),legacyAmount=Number.isSafeInteger(fallback)&&fallback>0?fallback:0;
+ if(result&&result.reason==='duplicate_transaction')return {kind:'duplicate',activeAmount:0,familyWalletAmount:0};
+ if(result&&result.ok===true&&result.tracked===true){
+  const activeAmount=Number(result.activeAmount),familyWalletAmount=Number(result.familyWalletAmount);
+  if(!Number.isSafeInteger(activeAmount)||activeAmount<0||!Number.isSafeInteger(familyWalletAmount)||familyWalletAmount<0)return {kind:'blocked',activeAmount:0,familyWalletAmount:0};
+  return {kind:'distributed',activeAmount,familyWalletAmount};
+ }
+ if(result&&result.ok===true&&result.tracked===false)return {kind:'legacy',activeAmount:legacyAmount,familyWalletAmount:0};
+ return {kind:'blocked',activeAmount:0,familyWalletAmount:0};
+}
+
 function distributeFamilyPropertyRent(asset,shareRent){
  if(!state||!state.legacy||!asset||asset.kind!=='property')return {ok:true,tracked:false,activeAmount:Math.max(0,Math.round(Number(shareRent)||0))};
  const record=familyPropertyOwnershipRecords(state.legacy).find(item=>String(item.id||item.familyAssetId)===String(asset.familyAssetId||''));
@@ -2670,15 +2682,15 @@ function advanceAge(){
  let rentReceived=0,rentWalletPaid=0,rentWarnings=0;
  rentEntries.forEach(entry=>{
   const result=distributeFamilyPropertyRent(entry.asset,entry.amount);
-  if(result.reason==='duplicate_transaction')return;
-  if(result.ok&&result.tracked){rentReceived+=result.activeAmount;rentWalletPaid+=result.familyWalletAmount;}
-  else if(result.ok&&!result.tracked){state.bank+=entry.amount;rentReceived+=entry.amount;}
-  else if(result.reason==='currency_mismatch'){rentWarnings++;}
-  else{state.bank+=entry.amount;rentReceived+=entry.amount;rentWarnings++;}
+  const settlement=classifyFamilyPropertyRentResult(result,entry.amount);
+  if(settlement.kind==='duplicate')return;
+  if(settlement.kind==='distributed'){rentReceived+=settlement.activeAmount;rentWalletPaid+=settlement.familyWalletAmount;}
+  else if(settlement.kind==='legacy'){state.bank+=settlement.activeAmount;rentReceived+=settlement.activeAmount;}
+  else{rentWarnings++;}
  });
  if(rentReceived>0)log('🏠','دخل إيجار سنوي','دخل لك '+cash(rentReceived)+' من حصتك في العقارات المؤجرة.','good');
  if(rentWalletPaid>0)log('👛','دخل إيجار لملاك العائلة','تم إضافة '+cash(rentWalletPaid)+' إلى محافظ أفراد الأسرة حسب نسب ملكيتهم.','good');
- if(rentWarnings>0)log('⚠️','تعذر توزيع بعض دخل الإيجار','تم احتساب دخل حصتك فقط حيث أمكن؛ راجع سجل ملكية عقارات العائلة لتسوية حصص بقية الملاك.','bad');
+ if(rentWarnings>0)log('⚠️','تعذر توزيع بعض دخل الإيجار','تم إيقاف دخل العقار الذي تعذر تدقيق ملكيته بدل تحويله لأي مالك؛ راجع سجل ملكية عقارات العائلة لتسوية الحصص.','bad');
  if(state.debt>0){const interest=Math.max(100,Math.round(state.debt*.08));state.debt+=interest;log('🏦','فوائد الديون','زادت ديونك بمقدار '+cash(interest)+' بسبب الفوائد. إجمالي الدين '+cash(state.debt)+'.','bad');}
  if((state.investments||[]).length){let totalGain=0;state.investments.forEach(inv=>{const before=inv.value;let move=inv.kind==='عملات رقمية'?(Math.random()*.9-.35):inv.kind==='أسهم'?(Math.random()*.3-.09):inv.kind==='سندات'?(Math.random()*.08-.02):inv.kind==='مخاطرة عالية'?(Math.random()*.46-.18):(Math.random()*.24-.04);if(inv.strategy==='long')move=move*.62+.008;else if(inv.strategy==='short')move=move*1.2;if(state.investmentAdvisor&&state.investmentAdvisor.hired)move=move>=0?move*1.08:move*.72;inv.value=Math.max(0,Math.round(inv.value*(1+move)));totalGain+=inv.value-before;});if(totalGain)log('📈','تقرير الاستثمارات',(totalGain>=0?'استثماراتك زادت بقيمة ':'استثماراتك خسرت بقيمة ')+cash(Math.abs(totalGain))+'. السوق بيتحرك صعودًا وهبوطًا. ',totalGain>=0?'good':'bad');}
  if(state.business)simulateBusinessEntityYear(state.business,'business');
