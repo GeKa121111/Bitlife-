@@ -246,6 +246,7 @@ test('حساب الإرث يضم خزائن الشركات وخصومها مع �
   assert.equal(inheritance.business.taxLiability, Math.round(5000 * expectedFactor));
   assert.equal(inheritance.business.credit.principal, Math.round(10000 * expectedFactor));
   assert.equal(inheritance.business.credit.accruedInterest, Math.round(1000 * expectedFactor));
+  assert.equal(inheritance.totalEstateValue, context.calculateInheritance(parent, 1).value);
   assert.equal(inheritance.companies.length, 1);
   assert.equal(inheritance.companies[0].cashBalance, Math.round(40000 * expectedFactor));
   assert.equal(inheritance.companies[0].taxLiability, Math.round(10000 * expectedFactor));
