@@ -75,6 +75,7 @@ const runtime = [
   'calculateInheritance',
   'childInheritancePoolShare',
   'calculateChildInheritanceShare',
+  'formatInheritancePercent',
   'buildInheritancePreview',
   'familyTreeNode',
   'startAsChild'
@@ -580,6 +581,26 @@ test('شجرة العائلة تعرض حصة الإرث التقديرية لل
   assert.match(markup, /حصة الإرث 40%/);
   assert.match(markup, /تقدير 12345/);
 });
+test('عرض نسب الإرث يحافظ على الكسور بدل تقريب حصة 22.5% إلى 23%', () => {
+  const context = makeContext();
+  assert.equal(context.formatInheritancePercent(0.225), '22.5');
+  assert.equal(context.formatInheritancePercent(0.4), '40');
+  assert.equal(context.formatInheritancePercent(0.55555), '55.56');
+  assert.equal(context.formatInheritancePercent(-0.1), '0');
+  assert.equal(context.formatInheritancePercent(2), '100');
+
+  const sibling = {
+    name: 'أخ',
+    relation: 'أخ/أخت',
+    relationshipLevel: 80,
+    inheritanceShare: 0.225,
+    inheritanceEstimate: 1000,
+    inheritanceStatus: 'مخصص من التركة'
+  };
+  const markup = vm.runInContext('familyTreeNode(' + JSON.stringify(sibling) + ')', context);
+  assert.match(markup, /حصة الإرث 22\.5%/);
+});
+
 test('وصية الشريك أولًا تخصص 55% للشريك وتقسم 45% بالتساوي بين الأبناء', () => {
   const context = makeContext();
   const parent = makeParent();
@@ -594,6 +615,7 @@ test('وصية الشريك أولًا تخصص 55% للشريك وتقسم 45% 
   assert.equal(heir.legacy.distribution.perChildShare, 0.225);
   const partner = heir.family.find(member => member.id === 'partner-first');
   assert.equal(partner.inheritanceShare, 0.55);
+  assert.equal(partner.inheritanceEstimate, heir.legacy.distribution.outsideChildrenPoolValue);
   assert.equal(partner.inheritanceStatus, 'مخصص للشريك');
 });
 
