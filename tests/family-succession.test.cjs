@@ -72,6 +72,8 @@ const runtime = [
   'businessUsesSeparateTreasury',
   'businessCreditBalance',
   'calculateInheritance',
+  'childInheritancePoolShare',
+  'calculateChildInheritanceShare',
   'startAsChild'
 ].map(findFunction);
 
@@ -383,4 +385,97 @@ test('استمرار السلالة لأكثر من جيل يحتفظ بسجلا
   assert.equal(findBusinessAsset(secondHeir, secondHeir.business.assetId).value, secondHeir.business.value);
   assert.equal(findBusinessAsset(secondHeir, secondHeir.companies[0].id).value, secondHeir.companies[0].value);
   assert.equal(new Set(secondHeir.assets.map(asset => String(asset.id))).size, secondHeir.assets.length);
+});
+
+test('حصة الأبناء تُقسَّم بالتساوي عبر الوصايا القديمة والجديدة', () => {
+  const context = makeContext();
+  const policies = [
+    ['الأسرة بالتساوي', 0.8],
+    ['الأبناء أولًا', 0.9],
+    ['الشريك أولًا', 0.55],
+    ['التبرع بجزء', 0.65],
+    [undefined, 0.8]
+  ];
+
+  for (const [policy, poolShare] of policies) {
+    for (const count of [1, 2, 5]) {
+      const previous = {
+        willDistribution: policy,
+        children: Array.from({ length: count }, (_, index) => ({ id: 'child-' + index, name: 'ابن ' + index }))
+      };
+      context.state = previous;
+      const shares = previous.children.map((_, index) =>
+        vm.runInContext('calculateChildInheritanceShare(state, ' + index + ')', context));
+      const expected = poolShare / count;
+      for (const share of shares) assert.ok(Math.abs(share - expected) < 1e-12);
+      assert.ok(Math.abs(shares.reduce((sum, share) => sum + share, 0) - poolShare) < 1e-12);
+    }
+  }
+
+  context.state = { children: [] };
+  assert.equal(vm.runInContext('calculateChildInheritanceShare(state, 0)', context), 0);
+  context.state = { children: [{ id: 'only-child' }] };
+  assert.equal(vm.runInContext('calculateChildInheritanceShare(state, -1)', context), 0);
+  assert.equal(vm.runInContext('calculateChildInheritanceShare(state, 1)', context), 0);
+});
+
+test('بدء حياة أحد الأبناء ينقل حصته فقط ويسجل حصص الإخوة بالتساوي', () => {
+  const context = makeContext();
+  const parent = makeParent();
+  parent.children.push({
+    id: 'heir-2',
+    name: 'عمر منصور',
+    gender: 'male',
+    age: 21,
+    smart: 75,
+    health: 86,
+    happiness: 78,
+    schoolPerformance: 84,
+    careerPotential: 79,
+    independence: 82,
+    relationshipLevel: 87,
+    interest: 'الأعمال'
+  });
+  parent.willDistribution = 'الأسرة بالتساوي';
+  const totalEstate = context.calculateInheritance(parent, 1).value;
+  const expectedSelectedInheritance = context.calculateInheritance(parent, 0.4).value;
+  context.state = parent;
+
+  vm.runInContext('startAsChild(0);', context);
+  const heir = context.state;
+  const distribution = heir.legacy.distribution;
+
+  assert.equal(distribution.policy, 'الأسرة بالتساوي');
+  assert.equal(distribution.childrenPoolShare, 0.8);
+  assert.equal(distribution.childCount, 2);
+  assert.equal(distribution.perChildShare, 0.4);
+  assert.equal(distribution.selectedChildIndex, 0);
+  assert.equal(distribution.totalEstateValue, totalEstate);
+  assert.equal(distribution.childPoolValue, Math.round(totalEstate * 0.8));
+  assert.equal(heir.legacy.inheritance, expectedSelectedInheritance);
+  assert.equal(distribution.siblingAllocations.length, 2);
+  assert.ok(distribution.siblingAllocations.every(item => item.share === 0.4));
+  assert.equal(distribution.siblingAllocations.reduce((sum, item) => sum + item.estimatedValue, 0), distribution.childPoolValue);
+  assert.equal(distribution.siblingAllocations[0].actualValue, expectedSelectedInheritance);
+
+  const sibling = heir.family.find(member => member.id === 'heir-2');
+  assert.ok(sibling);
+  assert.equal(sibling.relation, 'أخ/أخت');
+  assert.equal(sibling.inheritanceShare, 0.4);
+  assert.equal(sibling.inheritanceEstimate, distribution.siblingAllocations[1].estimatedValue);
+  assert.equal(sibling.inheritanceStatus, 'مخصص من التركة');
+  assert.equal(parent.children[1].inheritanceShare, undefined, 'the archived parent\'s child record must not be mutated');
+});
+
+test('الابن الوحيد يحتفظ بالنسبة التاريخية نفسها ولا يتغير الحفظ القديم', () => {
+  const context = makeContext();
+  const parent = makeParent();
+  const expected = context.calculateInheritance(parent, 0.8).value;
+  context.state = parent;
+
+  vm.runInContext('startAsChild(0);', context);
+  assert.equal(context.state.legacy.inheritance, expected);
+  assert.equal(context.state.legacy.distribution.perChildShare, 0.8);
+  assert.equal(context.state.legacy.distribution.childCount, 1);
+  assert.equal(context.state.version, 1);
 });
