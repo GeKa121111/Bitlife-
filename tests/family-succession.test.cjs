@@ -1704,3 +1704,59 @@ test('سجل ملكية قديم ناقص المالك الحالي يتحول �
   assert.ok(record.auditIssues.includes('current_owner_missing'));
   assert.equal(record.owners[0].beneficiaryId, 'unrelated-owner');
 });
+
+
+test('ملكية عقار واحد تظل متوازنة عبر خمسة أجيال مع بقاء حصص الإخوة السابقين', () => {
+  const context = makeContext();
+  let currentBeneficiaryId = 'founder';
+  let currentShare = 1;
+  let record = null;
+
+  for (let generation = 1; generation <= 5; generation++) {
+    const previous = {
+      lifeId: 'property-generation-' + generation,
+      name: 'الجيل ' + generation,
+      age: 70,
+      bank: 0,
+      assets: [{
+        id: 'property-share-' + generation,
+        familyAssetId: 'family-home-five-generations',
+        familyAssetOriginalValue: 1000000,
+        ownerBeneficiaryId: currentBeneficiaryId,
+        ownershipShare: currentShare,
+        title: 'بيت العائلة',
+        kind: 'property',
+        value: Math.round(1000000 * currentShare),
+        upkeep: Math.round(20000 * currentShare),
+        condition: 100
+      }],
+      investments: [], business: null, companies: [], debt: 0,
+      place: { unit: 'جنيه' },
+      legacy: {
+        activeBeneficiaryId: currentBeneficiaryId,
+        familyPropertyOwnership: record ? [record] : []
+      }
+    };
+    const nextHeirId = 'heir-generation-' + generation;
+    const registry = {
+      sourceLifeId: 'estate-generation-' + generation,
+      currency: 'جنيه',
+      accounts: [
+        { beneficiaryId: nextHeirId, name: 'الوارث ' + generation, kind: 'child', share: 0.5, status: 'transferred' },
+        { beneficiaryId: 'sibling-generation-' + generation, name: 'أخ الجيل ' + generation, kind: 'child', share: 0.5, status: 'reserved' }
+      ]
+    };
+
+    record = context.buildFamilyPropertyOwnership(previous, registry)[0];
+    assert.equal(record.auditStatus, 'balanced', 'generation ' + generation + ' should remain balanced');
+    assert.ok(Math.abs(record.totalOwnershipShare - 1) < 0.000001, 'generation ' + generation + ' must preserve 100% ownership');
+    const activeOwner = record.owners.find(owner => owner.beneficiaryId === nextHeirId);
+    assert.ok(activeOwner, 'the active heir must receive a traceable share in generation ' + generation);
+    currentBeneficiaryId = nextHeirId;
+    currentShare = activeOwner.share;
+  }
+
+  assert.equal(record.owners.length, 6);
+  assert.equal(currentShare, 0.03125);
+  assert.equal(record.totalOwnershipShare, 1);
+});
