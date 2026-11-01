@@ -299,6 +299,25 @@ test('بدء حياة الابن ينقل الشركات التشغيلية وي
   assert.equal(parent.companies[0].value, 200000);
 });
 
+test('معرّفات الأصول الموروثة تظل فريدة حتى مع ساعة وعشوائية ثابتتين', () => {
+  const context = makeContext();
+  context.state = makeParent();
+  vm.runInContext('Date.now = () => 1700000000000; Math.random = () => 0.99; startAsChild(0);', context);
+  const heir = context.state;
+  const assetIds = heir.assets.map(asset => String(asset.id));
+  assert.equal(new Set(assetIds).size, assetIds.length, 'every inherited asset must receive a unique id');
+
+  const primaryAsset = heir.assets.find(asset => asset.kind === 'business' && asset.title === heir.business.title);
+  const portfolioAsset = heir.assets.find(asset => asset.kind === 'business' && asset.companyPortfolio && asset.title === heir.companies[0].title);
+  assert.ok(primaryAsset, 'primary company must retain its own backing asset');
+  assert.ok(portfolioAsset, 'portfolio company must retain its own backing asset');
+  assert.equal(String(heir.business.assetId), String(primaryAsset.id));
+  assert.equal(String(heir.companies[0].id), String(portfolioAsset.id));
+  assert.equal(heir.business.value, primaryAsset.value);
+  assert.equal(heir.companies[0].value, portfolioAsset.value);
+  assert.notEqual(String(primaryAsset.id), String(portfolioAsset.id));
+});
+
 test('استمرار السلالة لأكثر من جيل يحتفظ بسجلات الشركات دون تكرار الأصول', () => {
   const context = makeContext();
   context.state = makeParent();
