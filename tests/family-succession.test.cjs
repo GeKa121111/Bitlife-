@@ -72,6 +72,7 @@ const runtime = [
   'businessUsesSeparateTreasury',
   'businessCreditBalance',
   'calculateEstateSnapshot',
+  'inheritanceBeneficiaryShares',
   'calculateInheritance',
   'childInheritancePoolShare',
   'calculateChildInheritanceShare',
@@ -408,6 +409,7 @@ test('حصة الأبناء تُقسَّم بالتساوي عبر الوصاي�
     for (const count of [1, 2, 5]) {
       const previous = {
         willDistribution: policy,
+        partner: { id: 'partner-' + String(policy || 'default') },
         children: Array.from({ length: count }, (_, index) => ({ id: 'child-' + index, name: 'ابن ' + index }))
       };
       context.state = previous;
@@ -424,6 +426,60 @@ test('حصة الأبناء تُقسَّم بالتساوي عبر الوصاي�
   context.state = { children: [{ id: 'only-child' }] };
   assert.equal(vm.runInContext('calculateChildInheritanceShare(state, -1)', context), 0);
   assert.equal(vm.runInContext('calculateChildInheritanceShare(state, 1)', context), 0);
+});
+
+test('الوصية تعيد توزيع الحصص على المستفيدين الموجودين فقط دون ترك نسبة معلّقة', () => {
+  const context = makeContext();
+  const cases = [
+    { policy: 'الأسرة بالتساوي', children: 2, partner: false, expected: { children: 1, partner: 0, charity: 0, other: 0 } },
+    { policy: 'الأبناء أولًا', children: 2, partner: false, expected: { children: 1, partner: 0, charity: 0, other: 0 } },
+    { policy: 'الشريك أولًا', children: 2, partner: false, expected: { children: 1, partner: 0, charity: 0, other: 0 } },
+    { policy: 'الأسرة بالتساوي', children: 0, partner: true, expected: { children: 0, partner: 1, charity: 0, other: 0 } },
+    { policy: 'الشريك أولًا', children: 0, partner: true, expected: { children: 0, partner: 1, charity: 0, other: 0 } },
+    { policy: 'التبرع بجزء', children: 0, partner: true, expected: { children: 0, partner: 0.65, charity: 0.35, other: 0 } },
+    { policy: 'التبرع بجزء', children: 0, partner: false, expected: { children: 0, partner: 0, charity: 0.35, other: 0.65 } },
+    { policy: 'الأسرة بالتساوي', children: 0, partner: false, expected: { children: 0, partner: 0, charity: 0, other: 1 } },
+    { policy: 'الأسرة بالتساوي', children: 2, partner: true, expected: { children: 0.8, partner: 0.2, charity: 0, other: 0 } },
+    { policy: 'الشريك أولًا', children: 2, partner: true, expected: { children: 0.45, partner: 0.55, charity: 0, other: 0 } }
+  ];
+  for (const scenario of cases) {
+    const previous = {
+      willDistribution: scenario.policy,
+      bank: 10001,
+      debt: 0,
+      assets: [{ id: 'estate-home', kind: 'property', title: 'منزل', value: 9999 }],
+      investments: [],
+      children: Array.from({ length: scenario.children }, (_, index) => ({ id: 'child-' + index, name: 'ابن ' + index })),
+      partner: scenario.partner ? { id: 'partner', name: 'الشريك' } : null
+    };
+    const shares = context.inheritanceBeneficiaryShares(previous);
+    assert.equal(shares.childPoolShare, scenario.expected.children, scenario.policy + ' child pool');
+    assert.equal(shares.partnerShare, scenario.expected.partner, scenario.policy + ' partner pool');
+    assert.equal(shares.charitableShare, scenario.expected.charity, scenario.policy + ' charity pool');
+    assert.equal(shares.otherBeneficiaryShare, scenario.expected.other, scenario.policy + ' other pool');
+    const preview = context.buildInheritancePreview(previous);
+    assert.equal(preview.childPoolValue + preview.partnerValue + preview.charitableValue + preview.otherBeneficiaryValue, preview.totalEstateValue);
+    assert.equal(preview.outsideChildrenPoolValue, preview.partnerValue + preview.charitableValue + preview.otherBeneficiaryValue);
+    assert.ok(preview.beneficiarySummary.length > 0);
+  }
+});
+
+test('وصية الشريك أولًا لا تترك حصة الشريك معلّقة إذا لم يوجد شريك حي', () => {
+  const context = makeContext();
+  const parent = makeParent();
+  parent.children.push({ id: 'heir-2', name: 'عمر منصور', age: 21, health: 80 });
+  parent.partner = null;
+  parent.willDistribution = 'الشريك أولًا';
+  context.state = parent;
+  vm.runInContext('startAsChild(0);', context);
+  const heir = context.state;
+  assert.equal(heir.legacy.distribution.childrenPoolShare, 1);
+  assert.equal(heir.legacy.distribution.perChildShare, 0.5);
+  assert.equal(heir.legacy.distribution.partnerShare, 0);
+  assert.equal(heir.legacy.distribution.outsideChildrenPoolShare, 0);
+  const sibling = heir.family.find(member => member.id === 'heir-2');
+  assert.equal(sibling.inheritanceShare, 0.5);
+  assert.equal(sibling.inheritanceStatus, 'مخصص من التركة');
 });
 
 test('ملخص صافي التركة يطابق حساب الإرث ويشمل خزائن الشركات وخصومها', () => {
