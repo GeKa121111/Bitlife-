@@ -1727,9 +1727,22 @@ function inheritanceHistoryRecordMenu(recordId){
  const reconciliation=record.reconciliationMetadataMismatch?' · بيانات التسوية المسجلة لا تطابق تفاصيل المستفيدين'+mismatchDetail+' وتحتاج مراجعة':delta===0?' · حصة الوارث متطابقة':' · فرق تسوية حصة الوارث '+(delta>0?'+':'')+fmt(delta)+' '+currency+' يحتاج مراجعة';
  const firstAccountIssue=Array.isArray(record.accountLedgerIssues)?record.accountLedgerIssues[0]:null;
  const firstSummaryIssue=Array.isArray(record.accountLedgerSummaryIssues)?record.accountLedgerSummaryIssues[0]:null;
- const accountIssueDetail=firstAccountIssue?'؛ '+firstAccountIssue.name+(firstAccountIssue.delta!==null&&firstAccountIssue.delta!==undefined&&Number.isFinite(Number(firstAccountIssue.delta))?'، فرق '+fmt(firstAccountIssue.delta)+' '+currency:''):firstSummaryIssue?'؛ '+firstSummaryIssue.label:'';
+ const issueReasonLabels={
+  negative_amount:'مبلغ سالب',
+  invalid_share:'نسبة مستفيد غير صالحة',
+  share_total_mismatch:'مجموع النسب لا يساوي 100%',
+  duplicate_account_id:'معرّف حساب مكرر',
+  duplicate_beneficiary_id:'المستفيد مسجل أكثر من مرة',
+  currency_mismatch:'عملة الحساب مختلفة',
+  source_life_mismatch:'الحساب مرتبط بتركة أخرى',
+  balance_mismatch:'الرصيد لا يطابق المخصص',
+  status_mismatch:'حالة الحساب لا تطابق المبالغ'
+ };
+ const accountIssueReason=firstAccountIssue?issueReasonLabels[firstAccountIssue.reason]||'تعارض في بيانات الحساب':'';
+ const accountIssueDetail=firstAccountIssue?'؛ '+firstAccountIssue.name+(accountIssueReason?' ('+accountIssueReason+')':'')+(firstAccountIssue.delta!==null&&firstAccountIssue.delta!==undefined&&Number.isFinite(Number(firstAccountIssue.delta))?'، فرق '+fmt(firstAccountIssue.delta)+' '+currency:''):firstSummaryIssue?'؛ '+firstSummaryIssue.label:'';
+ const shareAuditText=record.accountLedgerShareTotal!==null&&record.accountLedgerShareTotal!==undefined?' · مجموع نسب المستفيدين '+formatInheritancePercent(record.accountLedgerShareTotal)+'%':'';
  const accountLedgerText=record.accountLedgerMismatch?' · دفتر الاستحقاقات غير متوازن ('+record.accountLedgerIssueCount+' ملاحظة'+accountIssueDetail+')':Number(record.accountLedgerIncompleteCount)>0?' · تعذر التحقق الكامل من دفتر الاستحقاقات في '+record.accountLedgerIncompleteCount+' بند قديم':' · دفتر الاستحقاقات متوازن';
- const description='صافي التركة '+fmt(record.totalEstateValue)+' '+currency+' · إجمالي المخصص '+fmt(record.totalAllocated)+' '+currency+' · المحفوظ '+fmt(record.totalReservedBalance)+' '+currency+' · المنقول '+fmt(record.totalSettledAmount)+' '+currency+reconciliation+accountLedgerText+'. هذه بيانات تاريخية محفوظة وليست محافظ قابلة للصرف للمستفيدين غير النشطين بعد.';
+ const description='صافي التركة '+fmt(record.totalEstateValue)+' '+currency+' · إجمالي المخصص '+fmt(record.totalAllocated)+' '+currency+' · المحفوظ '+fmt(record.totalReservedBalance)+' '+currency+' · المنقول '+fmt(record.totalSettledAmount)+' '+currency+shareAuditText+reconciliation+accountLedgerText+'. هذه بيانات تاريخية محفوظة وليست محافظ قابلة للصرف للمستفيدين غير النشطين بعد.';
  modal('📒','تركة '+(record.sourceName||'الجيل السابق'),description,opts);
 }
 function recordBusinessFinancialReport(entity,report){
@@ -6009,27 +6022,44 @@ function createInheritanceHistoryRecord(registry,sourceName,sourceAge){
  const currency=String(registry.currency||'ج.م');
  const knownAccountStatuses=new Set(['transferred','reserved','earmarked','unassigned']);
  const accounts=registry.accounts.filter(account=>account&&typeof account==='object').map((account,index)=>{
-  const shareValue=Number(account.share);
+  const rawShare=account.share;
+  const sharePresent=rawShare!==undefined&&rawShare!==null&&!(typeof rawShare==='string'&&rawShare.trim()==='');
+  const shareTypeValid=typeof rawShare==='number'||typeof rawShare==='string';
+  let shareValue=NaN;
+  if(shareTypeValid){try{shareValue=Number(rawShare);}catch(e){}}
+  const shareFinite=sharePresent&&shareTypeValid&&Number.isFinite(shareValue);
+  const shareInRange=shareFinite&&shareValue>=0&&shareValue<=1;
   const ledgerKeys=['allocatedAmount','balance','settledAmount'];
   const ledgerAmountsPresent=ledgerKeys.every(key=>account[key]!==undefined&&account[key]!==null&&String(account[key]).trim()!=='');
   const ledgerAmountsFinite=ledgerAmountsPresent&&ledgerKeys.every(key=>Number.isFinite(Number(account[key])));
   const ledgerAmountsNonNegative=ledgerAmountsFinite&&ledgerKeys.every(key=>Number(account[key])>=0);
   const statusValue=String(account.status||'');
+  const accountCurrencyPresent=account.currency!==undefined&&account.currency!==null&&String(account.currency).trim()!=='';
+  const accountCurrency=accountCurrencyPresent?String(account.currency):currency;
+  const accountSourcePresent=account.sourceLifeId!==undefined&&account.sourceLifeId!==null&&String(account.sourceLifeId).trim()!=='';
+  const accountSourceLifeId=accountSourcePresent?String(account.sourceLifeId):sourceLifeId;
+  const ledgerShareAuditInvalid=account.ledgerShareAuditInvalid===true||(sharePresent&&(!shareFinite||!shareInRange));
+  const reportedShareValue=typeof rawShare==='number'&&!Number.isFinite(rawShare)?String(rawShare):rawShare;
   return {
    ...account,
    id:String(account.id||('estate-account-'+sourceLifeId+'-'+index)),
    beneficiaryId:String(account.beneficiaryId??account.id??('beneficiary-'+index)),
    name:String(account.name||'مستفيد'),
    kind:String(account.kind||'other'),
-   share:Number.isFinite(shareValue)?Math.min(1,Math.max(0,shareValue)):0,
+   share:shareFinite?Math.min(1,Math.max(0,shareValue)):0,
+   reportedShare:ledgerShareAuditInvalid?(account.reportedShare!==undefined?account.reportedShare:reportedShareValue):null,
    allocatedAmount:safeMoney(account.allocatedAmount),
    balance:safeMoney(account.balance),
    settledAmount:safeMoney(account.settledAmount),
    status:statusValue||'reserved',
-   currency:String(account.currency||currency),
-   sourceLifeId:String(account.sourceLifeId||sourceLifeId),
+   currency:accountCurrency,
+   sourceLifeId:accountSourceLifeId,
    ledgerAuditComplete:account.ledgerAuditComplete!==false&&ledgerAmountsNonNegative&&knownAccountStatuses.has(statusValue),
-   ledgerAuditInvalid:ledgerAmountsPresent&&ledgerAmountsFinite&&!ledgerAmountsNonNegative
+   ledgerAuditInvalid:account.ledgerAuditInvalid===true||(ledgerAmountsPresent&&ledgerAmountsFinite&&!ledgerAmountsNonNegative),
+   ledgerShareAuditComplete:account.ledgerShareAuditComplete!==false&&shareFinite,
+   ledgerShareAuditInvalid,
+   ledgerCurrencyMismatch:account.ledgerCurrencyMismatch===true||(accountCurrencyPresent&&accountCurrency!==currency),
+   ledgerSourceMismatch:account.ledgerSourceMismatch===true||(accountSourcePresent&&accountSourceLifeId!==sourceLifeId)
   };
  });
  const transferredAccounts=accounts.filter(account=>account.status==='transferred');
@@ -6050,7 +6080,8 @@ function createInheritanceHistoryRecord(registry,sourceName,sourceAge){
   ?(hasPriorReported?priorReportedDelta:hasDeclaredDelta?declaredReconciliationDelta:null)
   :null;
  const accountLedgerIssues=[];
- let accountLedgerIncompleteCount=0;
+ let accountLedgerIncompleteCount=0,accountLedgerAmountIncompleteCount=0;
+ const seenAccountIds=new Set(),seenBeneficiaryIds=new Set();
  accounts.forEach(account=>{
   if(account.ledgerAuditInvalid){
    accountLedgerIssues.push({
@@ -6058,26 +6089,58 @@ function createInheritanceHistoryRecord(registry,sourceName,sourceAge){
     allocatedAmount:account.allocatedAmount,balance:account.balance,settledAmount:account.settledAmount,
     delta:null,reason:'negative_amount'
    });
-   return;
+  }else if(account.ledgerAuditComplete){
+   const delta=account.balance+account.settledAmount-account.allocatedAmount;
+   const statusMismatch=account.status==='transferred'
+    ?account.balance!==0||account.settledAmount!==account.allocatedAmount
+    :account.settledAmount!==0||account.balance!==account.allocatedAmount;
+   if(delta!==0||statusMismatch){
+    accountLedgerIssues.push({
+     accountId:account.id,name:account.name,status:account.status,
+     allocatedAmount:account.allocatedAmount,balance:account.balance,settledAmount:account.settledAmount,
+     delta,reason:statusMismatch?'status_mismatch':'balance_mismatch'
+    });
+   }
   }
-  if(!account.ledgerAuditComplete){
-   accountLedgerIncompleteCount++;
-   return;
-  }
-  const delta=account.balance+account.settledAmount-account.allocatedAmount;
-  const statusMismatch=account.status==='transferred'
-   ?account.balance!==0||account.settledAmount!==account.allocatedAmount
-   :account.settledAmount!==0||account.balance!==account.allocatedAmount;
-  if(delta!==0||statusMismatch){
+  if(!account.ledgerAuditComplete)accountLedgerAmountIncompleteCount++;
+  if(!account.ledgerAuditComplete||!account.ledgerShareAuditComplete)accountLedgerIncompleteCount++;
+  if(account.ledgerShareAuditInvalid){
    accountLedgerIssues.push({
     accountId:account.id,name:account.name,status:account.status,
-    allocatedAmount:account.allocatedAmount,balance:account.balance,settledAmount:account.settledAmount,
-    delta,reason:statusMismatch?'status_mismatch':'balance_mismatch'
+    reportedShare:account.reportedShare,delta:null,reason:'invalid_share'
    });
   }
+  if(account.ledgerCurrencyMismatch){
+   accountLedgerIssues.push({
+    accountId:account.id,name:account.name,status:account.status,
+    currency:account.currency,expectedCurrency:currency,delta:null,reason:'currency_mismatch'
+   });
+  }
+  if(account.ledgerSourceMismatch){
+   accountLedgerIssues.push({
+    accountId:account.id,name:account.name,status:account.status,
+    sourceLifeId:account.sourceLifeId,expectedSourceLifeId:sourceLifeId,delta:null,reason:'source_life_mismatch'
+   });
+  }
+  if(seenAccountIds.has(account.id)){
+   accountLedgerIssues.push({accountId:account.id,name:account.name,delta:null,reason:'duplicate_account_id'});
+  }else seenAccountIds.add(account.id);
+  if(seenBeneficiaryIds.has(account.beneficiaryId)){
+   accountLedgerIssues.push({accountId:account.id,name:account.name,beneficiaryId:account.beneficiaryId,delta:null,reason:'duplicate_beneficiary_id'});
+  }else seenBeneficiaryIds.add(account.beneficiaryId);
  });
+ const completeShares=accounts.length>0&&accounts.every(account=>account.ledgerShareAuditComplete&&!account.ledgerShareAuditInvalid);
+ const accountLedgerShareTotal=completeShares?accounts.reduce((sum,account)=>sum+account.share,0):null;
+ if(completeShares&&Math.abs(accountLedgerShareTotal-1)>1e-9){
+  accountLedgerIssues.push({
+   accountId:null,name:'إجمالي نسب المستفيدين',reportedShare:accountLedgerShareTotal,
+   delta:null,reason:'share_total_mismatch'
+  });
+ }
+ const accountLedgerShareIncompleteCount=accounts.filter(account=>!account.ledgerShareAuditComplete).length;
+ const accountLedgerShareMismatch=accountLedgerIssues.some(issue=>['invalid_share','share_total_mismatch'].includes(issue.reason));
  const accountLedgerSummaryIssues=[];
- if(accountLedgerIncompleteCount===0){
+ if(accountLedgerAmountIncompleteCount===0){
   const calculatedAllocated=accounts.reduce((sum,account)=>sum+account.allocatedAmount,0);
   const calculatedBalance=accounts.reduce((sum,account)=>sum+account.balance,0);
   const calculatedSettled=accounts.reduce((sum,account)=>sum+account.settledAmount,0);
@@ -6118,6 +6181,10 @@ function createInheritanceHistoryRecord(registry,sourceName,sourceAge){
   accountLedgerMismatch,
   accountLedgerIssueCount,
   accountLedgerIncompleteCount,
+  accountLedgerAmountIncompleteCount,
+  accountLedgerShareTotal,
+  accountLedgerShareIncompleteCount,
+  accountLedgerShareMismatch,
   accountLedgerIssues:accountLedgerIssues.slice(0,10),
   accountLedgerSummaryIssues:accountLedgerSummaryIssues.slice(0,4),
   accounts

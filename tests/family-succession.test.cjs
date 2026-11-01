@@ -1157,3 +1157,179 @@ test('سجل التركة يرفض المبالغ السالبة بدل تحوي
   assert.equal(record.accountLedgerIssues[0].reason, 'negative_amount');
   assert.equal(record.accountLedgerIssues[0].delta, null);
 });
+
+
+test('دفتر الميراث يرفض نسبة مستفيد خارج النطاق ويحافظ على القيمة الأصلية عند إعادة القراءة', () => {
+  const context = makeContext();
+  const record = context.createInheritanceHistoryRecord({
+    sourceLifeId: 'invalid-beneficiary-share',
+    currency: 'جنيه',
+    totalEstateValue: 100,
+    totalAllocated: 100,
+    totalReservedBalance: 100,
+    totalSettledAmount: 0,
+    accounts: [{
+      id: 'invalid-share-account',
+      beneficiaryId: 'invalid-share-heir',
+      name: 'وارث بنسبة غير صالحة',
+      kind: 'child',
+      share: 1.2,
+      allocatedAmount: 100,
+      balance: 100,
+      settledAmount: 0,
+      status: 'reserved',
+      currency: 'جنيه'
+    }]
+  }, 'تركة نسبة غير صالحة', 70);
+
+  assert.equal(record.accountLedgerMismatch, true);
+  assert.equal(record.accountLedgerShareMismatch, true);
+  assert.equal(record.accountLedgerIssues[0].reason, 'invalid_share');
+  assert.equal(record.accounts[0].share, 1, 'the runtime share remains safely clamped');
+  assert.equal(record.accounts[0].reportedShare, 1.2, 'the invalid source value remains auditable');
+
+  const reloaded = context.getInheritanceHistoryRecords({ inheritanceHistory: [record] })[0];
+  assert.equal(reloaded.accountLedgerMismatch, true);
+  assert.equal(reloaded.accountLedgerIssues[0].reason, 'invalid_share');
+  assert.equal(reloaded.accounts[0].reportedShare, 1.2);
+});
+
+test('دفتر الميراث يتحقق من أن مجموع نسب المستفيدين يساوي كامل التركة', () => {
+  const context = makeContext();
+  const record = context.createInheritanceHistoryRecord({
+    sourceLifeId: 'share-total-gap',
+    currency: 'جنيه',
+    totalEstateValue: 100,
+    totalAllocated: 100,
+    totalReservedBalance: 100,
+    totalSettledAmount: 0,
+    accounts: [
+      { id: 'share-a', beneficiaryId: 'heir-a', name: 'الابن الأول', share: 0.4, allocatedAmount: 50, balance: 50, settledAmount: 0, status: 'reserved', currency: 'جنيه' },
+      { id: 'share-b', beneficiaryId: 'heir-b', name: 'الابن الثاني', share: 0.4, allocatedAmount: 50, balance: 50, settledAmount: 0, status: 'reserved', currency: 'جنيه' }
+    ]
+  }, 'تركة نسب ناقصة', 72);
+
+  assert.equal(record.accountLedgerMismatch, true);
+  assert.equal(record.accountLedgerShareTotal, 0.8);
+  assert.equal(record.accountLedgerShareMismatch, true);
+  assert.ok(record.accountLedgerIssues.some(issue => issue.reason === 'share_total_mismatch'));
+});
+
+test('دفتر الميراث يكشف تكرار المستفيد ومعرّف الحساب واختلاف العملة ومصدر التركة', () => {
+  const context = makeContext();
+  const record = context.createInheritanceHistoryRecord({
+    sourceLifeId: 'identity-currency-gap',
+    currency: 'جنيه',
+    totalEstateValue: 100,
+    totalAllocated: 100,
+    totalReservedBalance: 100,
+    totalSettledAmount: 0,
+    accounts: [
+      { id: 'duplicate-account', beneficiaryId: 'same-heir', name: 'مستفيد أول', share: 0.5, allocatedAmount: 50, balance: 50, settledAmount: 0, status: 'reserved', currency: 'جنيه', sourceLifeId: 'identity-currency-gap' },
+      { id: 'duplicate-account', beneficiaryId: 'same-heir', name: 'مستفيد مكرر', share: 0.5, allocatedAmount: 50, balance: 50, settledAmount: 0, status: 'reserved', currency: 'دولار', sourceLifeId: 'another-estate' }
+    ]
+  }, 'تركة بهوية متعارضة', 71);
+
+  const reasons = record.accountLedgerIssues.map(issue => issue.reason);
+  assert.ok(reasons.includes('duplicate_account_id'));
+  assert.ok(reasons.includes('duplicate_beneficiary_id'));
+  assert.ok(reasons.includes('currency_mismatch'));
+  assert.ok(reasons.includes('source_life_mismatch'));
+  assert.equal(record.accountLedgerMismatch, true);
+});
+
+test('الحساب القديم الذي يفتقد نسبة المستفيد يظل قابلًا للعرض دون إعلان سلامة غير مستحقة', () => {
+  const context = makeContext();
+  const record = context.createInheritanceHistoryRecord({
+    sourceLifeId: 'legacy-share-missing',
+    currency: 'جنيه',
+    totalEstateValue: 100,
+    totalAllocated: 100,
+    totalReservedBalance: 100,
+    totalSettledAmount: 0,
+    accounts: [{
+      id: 'legacy-share-account',
+      beneficiaryId: 'legacy-share-heir',
+      name: 'وارث قديم',
+      allocatedAmount: 100,
+      balance: 100,
+      settledAmount: 0,
+      status: 'reserved'
+    }]
+  }, 'تركة قديمة ناقصة النسبة', 70);
+
+  assert.equal(record.accountLedgerMismatch, false);
+  assert.equal(record.accountLedgerIncompleteCount, 1);
+  assert.equal(record.accountLedgerShareTotal, null);
+  assert.equal(record.accountLedgerShareIncompleteCount, 1);
+});
+
+
+test('دفتر الميراث يرفض النسب النصية غير الرقمية والقيم المنطقية وغير المنتهية ويحفظ أصل المخالفة', () => {
+  const context = makeContext();
+  const cases = [
+    { name: 'نسبة نصية غير رقمية', share: 'نسبة غير معروفة', reported: 'نسبة غير معروفة' },
+    { name: 'نسبة منطقية', share: true, reported: true },
+    { name: 'قيمة غير رقمية', share: NaN, reported: 'NaN' },
+    { name: 'نسبة غير منتهية', share: Infinity, reported: 'Infinity' }
+  ];
+
+  for (const scenario of cases) {
+    const record = context.createInheritanceHistoryRecord({
+      sourceLifeId: 'malformed-share-' + scenario.name,
+      currency: 'جنيه',
+      totalEstateValue: 100,
+      totalAllocated: 100,
+      totalReservedBalance: 100,
+      totalSettledAmount: 0,
+      accounts: [{
+        id: 'malformed-share-account',
+        beneficiaryId: 'malformed-share-heir',
+        name: scenario.name,
+        share: scenario.share,
+        allocatedAmount: 100,
+        balance: 100,
+        settledAmount: 0,
+        status: 'reserved',
+        currency: 'جنيه'
+      }]
+    }, 'تركة بنسبة غير رقمية', 70);
+
+    assert.equal(record.accountLedgerMismatch, true, scenario.name);
+    assert.equal(record.accountLedgerShareMismatch, true, scenario.name);
+    assert.ok(record.accountLedgerIssues.some(issue => issue.reason === 'invalid_share'), scenario.name);
+    assert.equal(record.accounts[0].share, 0, 'invalid values must not enter runtime allocation math');
+    assert.equal(record.accounts[0].reportedShare, scenario.reported, 'the original invalid value must remain auditable');
+
+    const reloaded = context.getInheritanceHistoryRecords({ inheritanceHistory: [record] })[0];
+    assert.equal(reloaded.accountLedgerMismatch, true, 'the warning must survive reload');
+    assert.equal(reloaded.accounts[0].reportedShare, scenario.reported);
+  }
+});
+
+test('النسبة الرقمية المحفوظة كنص تظل مقروءة للتوافق ولا تُعامل كقيمة تالفة', () => {
+  const context = makeContext();
+  const record = context.createInheritanceHistoryRecord({
+    sourceLifeId: 'numeric-string-share',
+    currency: 'جنيه',
+    totalEstateValue: 100,
+    totalAllocated: 100,
+    totalReservedBalance: 100,
+    totalSettledAmount: 0,
+    accounts: [{
+      id: 'numeric-string-account',
+      beneficiaryId: 'numeric-string-heir',
+      name: 'وارث بنسبة رقمية نصية',
+      share: '1',
+      allocatedAmount: 100,
+      balance: 100,
+      settledAmount: 0,
+      status: 'reserved',
+      currency: 'جنيه'
+    }]
+  }, 'تركة بنسبة رقمية نصية', 70);
+
+  assert.equal(record.accountLedgerMismatch, false);
+  assert.equal(record.accounts[0].share, 1);
+  assert.equal(record.accounts[0].ledgerShareAuditComplete, true);
+});
