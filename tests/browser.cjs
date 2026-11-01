@@ -641,6 +641,45 @@ async function run() {
     assert.match(familyPropertyOwnershipText, /الأخت مريم/);
     assert.match(familyPropertyOwnershipText, /50%/);
     assert.match(familyPropertyOwnershipText, /القيمة الكاملة/);
+    await page.evaluate(() => {
+      const key = 'hekayat_hayah_save_v1';
+      const saved = JSON.parse(localStorage.getItem(key) || 'null');
+      const asset = (saved.assets || []).find(item => item.familyAssetId === 'browser-family-home');
+      const record = (saved.legacy.familyPropertyOwnership || []).find(item => item.familyAssetId === 'browser-family-home');
+      const wallet = (saved.legacy.beneficiaryWallets || []).find(item => item.beneficiaryId === 'sibling-1');
+      if (!asset || !record || !wallet) throw new Error('shared-property maintenance fixture is incomplete');
+      saved.bank = 50000;
+      asset.condition = 50;
+      wallet.propertyExpenseTotal = 0;
+      localStorage.setItem(key, JSON.stringify(saved));
+    });
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await page.locator('[data-panel="assets"]').click();
+    await page.locator('.choice').filter({ hasText: 'ممتلكاتي' }).click();
+    await page.locator('.choice').filter({ hasText: 'بيت العائلة التجريبي' }).click();
+    await page.locator('.choice').filter({ hasText: 'صيانة / تجديد' }).click();
+    const sharedMaintenanceConfirmation = await page.locator('#modalRoot [role="dialog"]').textContent();
+    assert.match(sharedMaintenanceConfirmation, /دفعت حصتك/);
+    const sharedMaintenanceState = await page.evaluate(() => {
+      const saved = JSON.parse(localStorage.getItem('hekayat_hayah_save_v1') || 'null');
+      const asset = (saved.assets || []).find(item => item.familyAssetId === 'browser-family-home');
+      const record = (saved.legacy.familyPropertyOwnership || []).find(item => item.familyAssetId === 'browser-family-home');
+      const wallet = (saved.legacy.beneficiaryWallets || []).find(item => item.beneficiaryId === 'sibling-1');
+      return {
+        bank: saved.bank,
+        condition: asset && asset.condition,
+        walletBalance: wallet && wallet.balance,
+        walletExpense: wallet && wallet.propertyExpenseTotal,
+        walletLastTransaction: wallet && wallet.transactions[wallet.transactions.length - 1].type,
+        propertyExpenseTotal: record && record.propertyExpenseTotal
+      };
+    });
+    assert.equal(sharedMaintenanceState.bank, 42500, 'the active owner should pay only their 50% share');
+    assert.equal(sharedMaintenanceState.condition, 100);
+    assert.equal(sharedMaintenanceState.walletBalance, 35000);
+    assert.equal(sharedMaintenanceState.walletExpense, 7500);
+    assert.equal(sharedMaintenanceState.walletLastTransaction, 'property_expense');
+    assert.equal(sharedMaintenanceState.propertyExpenseTotal, 15000);
     await page.evaluate(snapshot => {
       localStorage.setItem('hekayat_hayah_save_v1', snapshot.save);
       if (snapshot.backup === null) localStorage.removeItem('hekayat_hayah_save_backup_v1');
