@@ -1131,3 +1131,29 @@ test('سجل التركة يكتشف تعارض ملخص الأرصدة مع م�
   assert.equal(record.accountLedgerSummaryIssues[0].field, 'totalReservedBalance');
   assert.equal(record.accountLedgerSummaryIssues[0].delta, 10);
 });
+
+
+test('سجل التركة يرفض المبالغ السالبة بدل تحويلها بصمت إلى صفر', () => {
+  const context = makeContext();
+  const record = context.createInheritanceHistoryRecord({
+    sourceLifeId: 'negative-ledger-amount',
+    totalEstateValue: 0,
+    totalAllocated: 0,
+    totalReservedBalance: 0,
+    totalSettledAmount: 0,
+    accounts: [{
+      id: 'negative-account',
+      beneficiaryId: 'negative-heir',
+      name: 'مستفيد بقيمة غير صالحة',
+      allocatedAmount: -10,
+      balance: 0,
+      settledAmount: 0,
+      status: 'reserved'
+    }]
+  }, 'تركة ببيانات غير صالحة', 70);
+
+  assert.equal(record.accountLedgerMismatch, true);
+  assert.equal(record.accountLedgerIssueCount, 1);
+  assert.equal(record.accountLedgerIssues[0].reason, 'negative_amount');
+  assert.equal(record.accountLedgerIssues[0].delta, null);
+});
