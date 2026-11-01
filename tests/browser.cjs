@@ -439,6 +439,20 @@ async function run() {
       return !!dialog && dialog.contains(document.activeElement);
     });
     assert.equal(initialDialogFocus, true, 'opening a dialog should move keyboard focus inside it');
+    const dialogSemantics = await page.evaluate(() => {
+      const dialog = document.querySelector('#modalRoot [role="dialog"]');
+      const titleId = dialog?.getAttribute('aria-labelledby');
+      const descriptionId = dialog?.getAttribute('aria-describedby');
+      const title = titleId ? document.getElementById(titleId) : null;
+      const description = descriptionId ? document.getElementById(descriptionId) : null;
+      return {
+        hasAccessibleTitle: !!title && dialog.contains(title) && !!title.textContent.trim(),
+        hasValidDescription: !descriptionId || (!!description && dialog.contains(description) && !!description.textContent.trim()),
+        hasDescription: !!descriptionId
+      };
+    });
+    assert.equal(dialogSemantics.hasAccessibleTitle, true, 'the dialog should be named by its visible heading');
+    assert.equal(dialogSemantics.hasValidDescription, true, 'a dialog description should reference visible text inside that dialog');
     await page.keyboard.press('Shift+Tab');
     const wrappedToLast = await page.evaluate(() => {
       const dialog = document.querySelector('#modalRoot [role="dialog"]');
