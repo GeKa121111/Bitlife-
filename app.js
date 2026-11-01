@@ -5739,7 +5739,8 @@ function calculateChildInheritanceShare(previous,index){
 function formatInheritancePercent(share){
  const ratio=Number(share);
  const percent=Number.isFinite(ratio)?Math.max(0,Math.min(100,ratio*100)):0;
- return String(Number(percent.toFixed(2)));
+ const rounded=Math.round((percent+Number.EPSILON*Math.max(1,Math.abs(percent)))*100)/100;
+ return String(rounded);
 }
 function buildInheritancePreview(previous){
  const children=Array.isArray(previous&&previous.children)?previous.children:[];
