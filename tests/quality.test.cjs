@@ -69,6 +69,16 @@ test('سجل الحياة لا يعيد قراءة التاريخ كاملًا �
     'a history refresh with no appended entries must not announce anything');
 });
 
+test('سجل الميراث يعيد حساب فرق التسوية من حسابات المستفيدين ولا يثق بملخص قديم', () => {
+  const historyMenu = functionSource('inheritanceHistoryRecordMenu', 'recordBusinessFinancialReport');
+  const historyRecord = functionSource('createInheritanceHistoryRecord', 'getInheritanceHistoryRecords');
+  assert.match(historyRecord, /calculatedReconciliationDelta=transferredSettled-transferredAllocated/);
+  assert.match(historyRecord, /reconciliationMetadataMismatch/);
+  assert.match(historyRecord, /reportedReconciliationDelta/);
+  assert.match(historyMenu, /record\.reconciliationMetadataMismatch/);
+  assert.match(historyMenu, /بيانات التسوية المسجلة لا تطابق تفاصيل المستفيدين/);
+});
+
 test('ملفات الواجهة الأساسية موجودة ومربوطة محليًا', () => {
   assert.match(html, /href="style\.css"/);
   assert.match(html, /src="app\.js"/);
