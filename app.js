@@ -1778,7 +1778,7 @@ function buildFamilyPropertyOwnership(previous,beneficiaryRegistry){
  const sourceLifeId=String(registry.sourceLifeId??(previous&&previous.lifeId)??(previous&&previous.name)??'legacy');
  const currency=String(registry.currency||previous&&previous.place&&previous.place.unit||'ج.م');
  const safeMoney=value=>{const number=Number(value);return Number.isFinite(number)?Math.max(0,Math.round(number)):0;};
- const safeShare=value=>{const number=Number(value);return Number.isFinite(number)&&number>=0&&number<=1?number:null;};
+ const safeShare=value=>{if(value===null||value===undefined||value==='')return null;const number=Number(value);return Number.isFinite(number)&&number>=0&&number<=1?number:null;};
  const assets=Array.isArray(previous&&previous.assets)?previous.assets:[];
  assets.forEach((asset,index)=>{
   if(!asset||asset.kind!=='property')return;
@@ -1815,6 +1815,22 @@ function buildFamilyPropertyOwnership(previous,beneficiaryRegistry){
    return;
   }
   if(record.auditStatus==='needs_review')return;
+  if(existed){
+   const existingIds=new Set();
+   const existingSharesValid=Array.isArray(record.owners)&&record.owners.every(owner=>{
+    const id=String(owner&&owner.beneficiaryId||'').trim(),share=safeShare(owner&&owner.share);
+    if(!id||share===null||existingIds.has(id))return false;
+    existingIds.add(id);return true;
+   });
+   const encumbered=record.encumberedShare===undefined?0:safeShare(record.encumberedShare);
+   const existingTotal=(Array.isArray(record.owners)?record.owners.reduce((sum,owner)=>sum+(safeShare(owner&&owner.share)||0),0):0)+(encumbered===null?0:encumbered);
+   if(!existingSharesValid||encumbered===null||Math.abs(existingTotal-1)>.005){
+    record.auditStatus='needs_review';
+    record.auditIssues=[...(Array.isArray(record.auditIssues)?record.auditIssues:[]),'existing_ownership_ledger_invalid'];
+    records[existingIndex]=record;
+    return;
+   }
+  }
   const seenBeneficiaries=new Set();
   let shareTotal=0,accountsValid=accounts.length>0;
   accounts.forEach(account=>{
@@ -1890,16 +1906,20 @@ function recordFamilyPropertySale(asset,saleValue){
  if(share===null||share<=0)return {ok:false,reason:'owner_share_invalid'};
  const transactionId='family-property-sale-'+Date.now()+'-'+Math.random().toString(36).slice(2,8);
  const buyerId='external-buyer-'+transactionId;
- record.owners.splice(ownerIndex,1);
- record.owners.push({beneficiaryId:buyerId,name:'مشتري خارجي',kind:'external',share,status:'external',sourceLifeId:String(state.lifeId||''),allocatedValue:Math.round(Math.max(0,Number(record.marketValue)||0)*share)});
+ const nextOwners=record.owners.filter((item,index)=>index!==ownerIndex);
+ nextOwners.push({beneficiaryId:buyerId,name:'مشتري خارجي',kind:'external',share,status:'external',sourceLifeId:String(state.lifeId||''),allocatedValue:Math.round(Math.max(0,Number(record.marketValue)||0)*share)});
+ const nextTotal=nextOwners.reduce((sum,item)=>sum+(safeFamilyOwnershipShare(item.share)||0),0)+(safeFamilyOwnershipShare(record.encumberedShare)||0);
+ if(Math.abs(nextTotal-1)>.005)return {ok:false,reason:'ownership_total_mismatch'};
+ record.owners=nextOwners;
  if(!Array.isArray(record.transactions))record.transactions=[];
  record.transactions.push({id:transactionId,type:'sale',fromBeneficiaryId:ownerId,fromName:String(state.name||'المالك'),toBeneficiaryId:buyerId,share,amount:Math.max(0,Math.round(Number(saleValue)||0)),currency:String(record.currency||'ج.م'),age:Number.isFinite(Number(state.age))?Number(state.age):null});
  record.transactions=record.transactions.slice(-100);
- record.totalOwnershipShare=record.owners.reduce((sum,item)=>sum+(safeFamilyOwnershipShare(item.share)||0),0)+(safeFamilyOwnershipShare(record.encumberedShare)||0);
- record.auditStatus=Math.abs(record.totalOwnershipShare-1)<=.005?'balanced':'needs_review';
- return {ok:record.auditStatus==='balanced',tracked:true,reason:record.auditStatus==='balanced'?null:'ownership_total_mismatch'};
+ record.totalOwnershipShare=nextTotal;
+ record.auditStatus='balanced';
+ return {ok:true,tracked:true,reason:null};
 }
 function safeFamilyOwnershipShare(value){
+ if(value===null||value===undefined||value==='')return null;
  const number=Number(value);
  return Number.isFinite(number)&&number>=0&&number<=1?number:null;
 }
