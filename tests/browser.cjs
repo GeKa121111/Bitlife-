@@ -448,11 +448,15 @@ async function run() {
       return {
         hasAccessibleTitle: !!title && dialog.contains(title) && !!title.textContent.trim(),
         hasValidDescription: !descriptionId || (!!description && dialog.contains(description) && !!description.textContent.trim()),
+        descriptionIds: (descriptionId || '').split(/\s+/).filter(Boolean),
+        hasQuestionPrompt: !!dialog?.querySelector('#dialogQuestion'),
         hasDescription: !!descriptionId
       };
     });
     assert.equal(dialogSemantics.hasAccessibleTitle, true, 'the dialog should be named by its visible heading');
     assert.equal(dialogSemantics.hasValidDescription, true, 'a dialog description should reference visible text inside that dialog');
+    assert.deepEqual(dialogSemantics.descriptionIds, ['dialogDescription'], 'drawers should not reference an event prompt they do not render');
+    assert.equal(dialogSemantics.hasQuestionPrompt, false, 'drawers should not contain a hidden event question');
     await page.keyboard.press('Shift+Tab');
     const wrappedToLast = await page.evaluate(() => {
       const dialog = document.querySelector('#modalRoot [role="dialog"]');
@@ -471,6 +475,25 @@ async function run() {
     await page.waitForFunction(() => !document.querySelector('#modalRoot [role="dialog"]'));
     assert.equal(await page.evaluate(() => document.activeElement && document.activeElement.getAttribute('data-panel')), 'career',
       'closing a dialog should restore focus to the button that opened it');
+    await page.locator('#characterInfoBtn').click();
+    await page.locator('#modalRoot [role="dialog"]').waitFor();
+    const eventDialogSemantics = await page.evaluate(() => {
+      const dialog = document.querySelector('#modalRoot [role="dialog"]');
+      const ids = (dialog?.getAttribute('aria-describedby') || '').split(/\s+/).filter(Boolean);
+      return {
+        ids,
+        references: ids.map(id => {
+          const node = document.getElementById(id);
+          return !!node && dialog.contains(node) && !!node.textContent.trim();
+        }),
+        questionText: dialog?.querySelector('#dialogQuestion')?.textContent.trim() || ''
+      };
+    });
+    assert.deepEqual(eventDialogSemantics.ids, ['dialogDescription', 'dialogQuestion']);
+    assert.deepEqual(eventDialogSemantics.references, [true, true]);
+    assert.equal(eventDialogSemantics.questionText, 'هتعمل إيه؟');
+    await page.keyboard.press('Escape');
+    await page.waitForFunction(() => !document.querySelector('#modalRoot [role="dialog"]'));
     const legacyBusinessDefaults = await page.evaluate(() => {
       const saved = JSON.parse(localStorage.getItem('hekayat_hayah_save_v1') || 'null');
       return { products: saved.business.products, research: saved.business.productResearch, pendingCosts: saved.business.pendingProductCosts, facilities: saved.business.facilities, pendingFacilityCosts: saved.business.pendingFacilityCosts };
