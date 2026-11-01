@@ -5546,30 +5546,126 @@ function calculateInheritance(previous,share){
  const assets=Array.isArray(previous&&previous.assets)?previous.assets:[];
  const investments=Array.isArray(previous&&previous.investments)?previous.investments:[];
  const valueOf=item=>Math.max(0,Number(item&&item.value)||0);
+ const businessEntries=[],businessKeys=new Set();
+ const addBusiness=(entity,type)=>{
+  if(!entity||typeof entity!=='object'||Array.isArray(entity))return;
+  const id=entity.assetId??entity.id,key=id!==undefined&&id!==null?'id:'+String(id):'entry:'+businessEntries.length;
+  if(businessKeys.has(key))return;
+  businessKeys.add(key);businessEntries.push({entity,type});
+ };
+ addBusiness(previous&&previous.business,'primary');
+ (Array.isArray(previous&&previous.companies)?previous.companies:[]).forEach(company=>addBusiness(company,'portfolio'));
+ const backingAssetFor=entity=>{
+  const id=entity.assetId??entity.id;
+  if(id!==undefined&&id!==null){
+   const found=assets.find(item=>item&&String(item.id)===String(id));
+   if(found)return found;
+  }
+  const matches=assets.filter(item=>item&&item.kind==='business'&&entity.title&&String(item.title)===String(entity.title));
+  return matches.length===1?matches[0]:null;
+ };
  const assetValue=assets.reduce((sum,item)=>sum+valueOf(item),0);
  const investmentValue=investments.reduce((sum,item)=>sum+valueOf(item),0);
- const gross=bank+assetValue+investmentValue;
- const debt=Math.max(0,Number(previous&&previous.debt)||0);
+ const unbackedBusinessValue=businessEntries.reduce((sum,entry)=>sum+(backingAssetFor(entry.entity)?0:valueOf(entry.entity)),0);
+ const businessCash=businessEntries.reduce((sum,entry)=>{
+  if(!businessUsesSeparateTreasury(entry.entity))return sum;
+  const balance=Number(entry.entity.cashBalance);
+  return sum+(Number.isFinite(balance)?Math.max(0,balance):0);
+ },0);
+ const businessOverdraft=businessEntries.reduce((sum,entry)=>{
+  if(!businessUsesSeparateTreasury(entry.entity))return sum;
+  const balance=Number(entry.entity.cashBalance);
+  return sum+(Number.isFinite(balance)?Math.max(0,-balance):0);
+ },0);
+ const businessLiabilities=businessEntries.reduce((sum,entry)=>{
+  const tax=Math.max(0,Number(entry.entity.taxLiability)||0);
+  return sum+tax+businessCreditBalance(entry.entity);
+ },0)+businessOverdraft;
+ const gross=bank+assetValue+investmentValue+businessCash+unbackedBusinessValue;
+ const debt=Math.max(0,Number(previous&&previous.debt)||0)+businessLiabilities;
  const net=Math.max(0,gross-debt);
  const shareRate=Math.max(0,Math.min(1,Number(share)||0));
  const netRate=gross>0?net/gross:0;
  const factor=shareRate*netRate;
- const inheritedAssets=factor>0?assets.map(item=>({
-  ...item,
-  value:Math.round(valueOf(item)*factor),
-  upkeep:Math.round(Math.max(0,Number(item&&item.upkeep)||0)*factor),
-  id:Date.now()+Math.random()
- })):[];
+ const assetIdMap=new Map();
+ const inheritedAssets=factor>0?assets.map(item=>{
+  const id=Date.now()+Math.random();
+  if(item&&item.id!==undefined&&item.id!==null)assetIdMap.set(String(item.id),id);
+  return {
+   ...item,
+   value:Math.round(valueOf(item)*factor),
+   upkeep:Math.round(Math.max(0,Number(item&&item.upkeep)||0)*factor),
+   id
+  };
+ }):[];
  const inheritedInvestments=factor>0?investments.map(item=>({
   ...item,
   value:Math.round(valueOf(item)*factor),
   id:Date.now()+Math.random()
  })):[];
+
+ const usedBusinessAssetIds=new Set();
+ const inheritBusinessEntity=entry=>{
+  let copy;
+  try{copy=JSON.parse(JSON.stringify(entry.entity));}catch(e){return null;}
+  if(!copy||typeof copy!=='object'||Array.isArray(copy))return null;
+  const originalId=copy.assetId??copy.id;
+  let nextId=originalId!==undefined&&originalId!==null?assetIdMap.get(String(originalId)):undefined;
+  let asset=nextId!==undefined?inheritedAssets.find(item=>item&&String(item.id)===String(nextId)):null;
+  if(!asset){
+   const fallback=backingAssetFor(entry.entity);
+   if(fallback&&!usedBusinessAssetIds.has(String(fallback.id))){
+    nextId=assetIdMap.get(String(fallback.id));
+    asset=nextId!==undefined?inheritedAssets.find(item=>item&&String(item.id)===String(nextId)):null;
+   }
+  }
+  if(!asset){
+   nextId=Date.now()+Math.random();
+   asset={
+    id:nextId,
+    title:copy.title||'شركة موروثة',
+    emoji:copy.emoji||'🏢',
+    kind:'business',
+    value:Math.round(valueOf(copy)*factor),
+    upkeep:Math.round(Math.max(0,Number(copy.upkeep)||0)*factor),
+    bought:Math.max(0,Number(previous&&previous.age)||0)
+   };
+   if(entry.type==='portfolio')asset.companyPortfolio=true;
+   inheritedAssets.push(asset);
+   if(originalId!==undefined&&originalId!==null)assetIdMap.set(String(originalId),nextId);
+  }
+  usedBusinessAssetIds.add(String(asset.id));
+  if(copy.id!==undefined||entry.type==='portfolio')copy.id=asset.id;
+  copy.assetId=asset.id;
+  copy.value=asset.value;
+  if(businessUsesSeparateTreasury(copy)){
+   const balance=Number(copy.cashBalance);
+   copy.cashBalance=Math.round((Number.isFinite(balance)?balance:0)*factor);
+  }
+  if(Number.isFinite(Number(copy.taxLiability)))copy.taxLiability=Math.round(Math.max(0,Number(copy.taxLiability))*factor);
+  if(copy.credit&&typeof copy.credit==='object'){
+   copy.credit={...copy.credit};
+   ['principal','accruedInterest'].forEach(key=>{
+    const amount=Number(copy.credit[key]);
+    if(Number.isFinite(amount))copy.credit[key]=Math.round(Math.max(0,amount)*factor);
+   });
+  }
+  ['pendingTaxPayments','pendingFacilityCosts','pendingProductCosts','pendingOwnerContributions','pendingOwnerWithdrawals'].forEach(key=>{
+   const amount=Number(copy[key]);
+   if(Number.isFinite(amount))copy[key]=Math.round(amount*factor);
+  });
+  return copy;
+ };
+ const inheritedRecords=factor>0?businessEntries.map(entry=>({type:entry.type,entity:inheritBusinessEntity(entry)})).filter(entry=>entry.entity):[];
+ const inheritedBusiness=(inheritedRecords.find(entry=>entry.type==='primary')||{}).entity||null;
+ const inheritedCompanies=inheritedRecords.filter(entry=>entry.type==='portfolio').map(entry=>entry.entity);
  const inheritedBank=Math.round(bank*factor);
+ const inheritedBusinessCash=Math.round(businessCash*factor);
  const inheritedValue=inheritedBank
   +inheritedAssets.reduce((sum,item)=>sum+valueOf(item),0)
-  +inheritedInvestments.reduce((sum,item)=>sum+valueOf(item),0);
- return {value:inheritedValue,bank:inheritedBank,assets:inheritedAssets,investments:inheritedInvestments};
+  +inheritedInvestments.reduce((sum,item)=>sum+valueOf(item),0)
+  +inheritedBusinessCash;
+ return {value:inheritedValue,bank:inheritedBank,assets:inheritedAssets,investments:inheritedInvestments,business:inheritedBusiness,companies:inheritedCompanies};
 }
 function startAsChild(index){
  if(!state||!Array.isArray(state.children)||!state.children[index])return;
@@ -5583,9 +5679,12 @@ function startAsChild(index){
  const heir=newLife();ensureChildGrowthProfile(child);heir.name=child.name;heir.gender=child.gender||'male';heir.age=typeof child.age==='number'?child.age:18;heir.place={...previous.place};heir.bank=inheritance.bank;if(perkOwned('goldenPiggyBank'))heir.bank+=1000000;heir.stats={...heir.stats,health:clamp(child.health??heir.stats.health),happiness:clamp(child.happiness??heir.stats.happiness),smart:clamp(child.smart??heir.stats.smart),looks:clamp(child.looks??heir.stats.looks)};heir.reputation=clamp((Number(child.schoolPerformance)||50)*.35+(Number(child.careerPotential)||40)*.35+(Number(child.relationshipLevel)||50)*.3);
  heir.family=[...previous.family];previous.children.forEach((sibling,i)=>{if(i!==index)heir.family.push({...sibling,relation:'أخ/أخت'});});heir.partner=null;heir.married=false;heir.children=[];heir.legacy={name:previous.name,inheritance:inheritance.value,heirloom:(previous.heirlooms||[])[0]?.name||null};
  heir.heirlooms=[...(previous.heirlooms||[])];heir.accomplishments=['بدأ حياة جديدة كامتداد لعائلة '+previous.name,'ورث '+cash(inheritance.value)];
- heir.job=null;heir.assets=inheritance.assets;heir.investments=inheritance.investments;
+ heir.job=null;heir.assets=inheritance.assets;heir.investments=inheritance.investments;heir.business=inheritance.business||null;heir.companies=Array.isArray(inheritance.companies)?inheritance.companies:[];
  heir.family.push({id:'legacy-parent-'+Date.now(),name:previous.name,relation:'والد/والدة متوفى',emoji:previous.gender==='male'?'👨‍🦳':'👩‍🦳',age:previous.age,job:previous.job?previous.job.title:'متوفى',relationshipLevel:100,personality:'موروث عائلي'});if(oldPartner)heir.family.push({...oldPartner,relation:'الأم/الأب'});
- state=heir;dead=false;log('🌳','استمرار السلالة','بدأت حياة جديدة باسم '+state.name+'، وارثًا قصة '+previous.name+' وإرث العائلة.','special');render();closeModal();info('🌳','جيل جديد','ورثت ثروة تقديرية '+cash(inheritance.value)+' بعد احتساب الوصية والالتزامات. تبدأ الآن مرحلة مستقلة باختياراتك.');
+ state=heir;dead=false;log('🌳','استمرار السلالة','بدأت حياة جديدة باسم '+state.name+'، وارثًا قصة '+previous.name+' وإرث العائلة.','special');
+ const inheritedCompanyCount=(heir.business?1:0)+(heir.companies||[]).length;
+ if(inheritedCompanyCount)log('🏢','استمرار نشاط العائلة','انتقلت إليك '+inheritedCompanyCount+' من أنشطة العائلة مع بيانات التشغيل والموظفين والمنتجات والالتزامات.','special');
+ render();closeModal();info('🌳','جيل جديد','ورثت ثروة تقديرية '+cash(inheritance.value)+(inheritedCompanyCount?'، واستلمت '+inheritedCompanyCount+' نشاطًا عائليًا ببيانات تشغيله.':'')+'. تبدأ الآن مرحلة مستقلة باختياراتك.');
 }
 function applyUiSettings(){
  const body=document.body;
