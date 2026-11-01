@@ -89,6 +89,7 @@ const runtime = [
   'beneficiaryWalletLedgerTotals',
   'recordBeneficiaryWalletSupport',
   'recordBeneficiaryWalletRentalIncome',
+  'classifyFamilyPropertyRentResult',
   'distributeFamilyPropertyRent',
   'supportBeneficiaryWallet',
   'getInheritanceHistoryRecords',
@@ -1902,6 +1903,34 @@ test('سجل ملكية غير صالح يوقف توزيع دخل الإيجا�
   assert.equal(JSON.stringify(record), before);
 });
 
+
+test('فشل تدقيق ملكية العقار يمنع تحويل الإيجار إلى البنك، مع إبقاء المسار القديم للعقار غير المسجل', () => {
+  const context = makeContext();
+  const blocked = context.classifyFamilyPropertyRentResult({ ok: false, reason: 'ownership_audit_incomplete' }, 18000);
+  assert.equal(blocked.kind, 'blocked');
+  assert.equal(blocked.activeAmount, 0);
+  assert.equal(blocked.familyWalletAmount, 0);
+
+  const currencyBlocked = context.classifyFamilyPropertyRentResult({ ok: false, reason: 'currency_mismatch' }, 18000);
+  assert.equal(currencyBlocked.kind, 'blocked');
+  assert.equal(currencyBlocked.activeAmount, 0);
+
+  const legacy = context.classifyFamilyPropertyRentResult({ ok: true, tracked: false }, 18000);
+  assert.equal(legacy.kind, 'legacy');
+  assert.equal(legacy.activeAmount, 18000);
+
+  const distributed = context.classifyFamilyPropertyRentResult({ ok: true, tracked: true, activeAmount: 7200, familyWalletAmount: 10800 }, 18000);
+  assert.equal(distributed.kind, 'distributed');
+  assert.equal(distributed.activeAmount, 7200);
+  assert.equal(distributed.familyWalletAmount, 10800);
+
+  const duplicate = context.classifyFamilyPropertyRentResult({ ok: false, reason: 'duplicate_transaction' }, 18000);
+  assert.equal(duplicate.kind, 'duplicate');
+  assert.equal(duplicate.activeAmount, 0);
+
+  assert.match(app, /classifyFamilyPropertyRentResult\(result,entry\.amount\)/);
+  assert.doesNotMatch(app, /else\{state\.bank\+=entry\.amount;rentReceived\+=entry\.amount;rentWarnings\+\+;\}/);
+});
 
 test('الحفظ القديم لمحفظة الوريث دون حقل دخل الإيجار يظل صالحًا ويبدأ من صفر', () => {
   const context = makeContext();
