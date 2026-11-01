@@ -49,6 +49,10 @@ jobs:
         run: node --check tests/business-lifecycle.test.cjs
       - name: Run 30-year integrated business-lifecycle tests
         run: node --test tests/business-lifecycle.test.cjs
+      - name: Check family-succession test syntax
+        run: node --check tests/family-succession.test.cjs
+      - name: Run family development and business-succession tests
+        run: node --test tests/family-succession.test.cjs
       - name: Test offline service-worker behavior
         run: node --test tests/service-worker.test.cjs
       - name: Install Playwright and Chromium
