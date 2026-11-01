@@ -551,7 +551,7 @@ async function run() {
       const walletId = 'beneficiary-wallet-' + encodeURIComponent(sourceLifeId) + '-' + encodeURIComponent(sibling.beneficiaryId);
       const openingBalance = Number(sibling.allocatedAmount);
       saved.legacy.beneficiaryWallets = [{
-        id: walletId, beneficiaryId: 'sibling-1', kind: 'child', currency,
+        id: walletId, beneficiaryId: 'sibling-1', name: 'الأخت مريم', kind: 'child', currency,
         openingBalance, supportTotal: 0, rentalIncomeTotal: 1500, balance: openingBalance + 1500,
         transactions: [
           { id: 'browser-sibling-inheritance', type: 'inheritance', amount: openingBalance, currency },
