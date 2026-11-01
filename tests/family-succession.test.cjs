@@ -395,7 +395,7 @@ test('حصة الأبناء تُقسَّم بالتساوي عبر الوصاي�
   const policies = [
     ['الأسرة بالتساوي', 0.8],
     ['الأبناء أولًا', 0.9],
-    ['الشريك أولًا', 0.55],
+    ['الشريك أولًا', 0.45],
     ['التبرع بجزء', 0.65],
     [undefined, 0.8]
   ];
@@ -440,6 +440,7 @@ test('بدء حياة أحد الأبناء ينقل حصته فقط ويسجل 
     interest: 'الأعمال'
   });
   parent.willDistribution = 'الأسرة بالتساوي';
+  parent.partner = { id: 'partner-1', name: 'سارة منصور', age: 60, relationshipLevel: 90 };
   const totalEstate = context.calculateInheritance(parent, 1).value;
   const expectedSelectedInheritance = context.calculateInheritance(parent, 0.4).value;
   context.state = parent;
@@ -467,6 +468,11 @@ test('بدء حياة أحد الأبناء ينقل حصته فقط ويسجل 
   assert.equal(sibling.inheritanceShare, 0.4);
   assert.equal(sibling.inheritanceEstimate, distribution.siblingAllocations[1].estimatedValue);
   assert.equal(sibling.inheritanceStatus, 'مخصص من التركة');
+  const partner = heir.family.find(member => member.id === 'partner-1');
+  assert.ok(partner);
+  assert.equal(partner.inheritanceShare, 0.2);
+  assert.equal(partner.inheritanceStatus, 'مخصص للشريك');
+  assert.equal(distribution.outsideChildrenPoolRecipient, 'الشريك');
   assert.equal(parent.children[1].inheritanceShare, undefined, 'the archived parent\'s child record must not be mutated');
 });
 
@@ -497,4 +503,38 @@ test('شجرة العائلة تعرض حصة الإرث التقديرية لل
   const markup = vm.runInContext('familyTreeNode(' + JSON.stringify(sibling) + ')', context);
   assert.match(markup, /حصة الإرث 40%/);
   assert.match(markup, /تقدير 12345/);
+});
+test('وصية الشريك أولًا تخصص 55% للشريك وتقسم 45% بالتساوي بين الأبناء', () => {
+  const context = makeContext();
+  const parent = makeParent();
+  parent.children.push({ id: 'heir-2', name: 'عمر منصور', age: 21, health: 80 });
+  parent.partner = { id: 'partner-first', name: 'سارة', age: 58, relationshipLevel: 95 };
+  parent.willDistribution = 'الشريك أولًا';
+  context.state = parent;
+
+  vm.runInContext('startAsChild(0);', context);
+  const heir = context.state;
+  assert.equal(heir.legacy.distribution.childrenPoolShare, 0.45);
+  assert.equal(heir.legacy.distribution.perChildShare, 0.225);
+  const partner = heir.family.find(member => member.id === 'partner-first');
+  assert.equal(partner.inheritanceShare, 0.55);
+  assert.equal(partner.inheritanceStatus, 'مخصص للشريك');
+});
+
+test('وصية التبرع تسجل الجزء الخيري خارج حصة الأبناء', () => {
+  const context = makeContext();
+  const parent = makeParent();
+  parent.willDistribution = 'التبرع بجزء';
+  parent.partner = { id: 'partner-donation', name: 'سارة', age: 58, relationshipLevel: 95 };
+  context.state = parent;
+
+  vm.runInContext('startAsChild(0);', context);
+  const distribution = context.state.legacy.distribution;
+  assert.equal(distribution.childrenPoolShare, 0.65);
+  assert.equal(distribution.perChildShare, 0.65);
+  assert.equal(distribution.outsideChildrenPoolShare, 0.35);
+  assert.equal(distribution.outsideChildrenPoolRecipient, 'تبرع خيري');
+  const partner = context.state.family.find(member => member.id === 'partner-donation');
+  assert.ok(partner);
+  assert.equal(partner.inheritanceShare, undefined, 'the charitable remainder must not be recorded as a spouse allocation');
 });
