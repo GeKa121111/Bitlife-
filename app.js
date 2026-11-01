@@ -6022,9 +6022,12 @@ function createInheritanceHistoryRecord(registry,sourceName,sourceAge){
  const currency=String(registry.currency||'ج.م');
  const knownAccountStatuses=new Set(['transferred','reserved','earmarked','unassigned']);
  const accounts=registry.accounts.filter(account=>account&&typeof account==='object').map((account,index)=>{
-  const sharePresent=account.share!==undefined&&account.share!==null&&String(account.share).trim()!=='';
-  const shareValue=Number(account.share);
-  const shareFinite=sharePresent&&Number.isFinite(shareValue);
+  const rawShare=account.share;
+  const sharePresent=rawShare!==undefined&&rawShare!==null&&!(typeof rawShare==='string'&&rawShare.trim()==='');
+  const shareTypeValid=typeof rawShare==='number'||typeof rawShare==='string';
+  let shareValue=NaN;
+  if(shareTypeValid){try{shareValue=Number(rawShare);}catch(e){}}
+  const shareFinite=sharePresent&&shareTypeValid&&Number.isFinite(shareValue);
   const shareInRange=shareFinite&&shareValue>=0&&shareValue<=1;
   const ledgerKeys=['allocatedAmount','balance','settledAmount'];
   const ledgerAmountsPresent=ledgerKeys.every(key=>account[key]!==undefined&&account[key]!==null&&String(account[key]).trim()!=='');
@@ -6035,7 +6038,8 @@ function createInheritanceHistoryRecord(registry,sourceName,sourceAge){
   const accountCurrency=accountCurrencyPresent?String(account.currency):currency;
   const accountSourcePresent=account.sourceLifeId!==undefined&&account.sourceLifeId!==null&&String(account.sourceLifeId).trim()!=='';
   const accountSourceLifeId=accountSourcePresent?String(account.sourceLifeId):sourceLifeId;
-  const ledgerShareAuditInvalid=account.ledgerShareAuditInvalid===true||(shareFinite&&!shareInRange);
+  const ledgerShareAuditInvalid=account.ledgerShareAuditInvalid===true||(sharePresent&&(!shareFinite||!shareInRange));
+  const reportedShareValue=typeof rawShare==='number'&&!Number.isFinite(rawShare)?String(rawShare):rawShare;
   return {
    ...account,
    id:String(account.id||('estate-account-'+sourceLifeId+'-'+index)),
@@ -6043,7 +6047,7 @@ function createInheritanceHistoryRecord(registry,sourceName,sourceAge){
    name:String(account.name||'مستفيد'),
    kind:String(account.kind||'other'),
    share:shareFinite?Math.min(1,Math.max(0,shareValue)):0,
-   reportedShare:ledgerShareAuditInvalid?(account.reportedShare!==undefined?account.reportedShare:shareValue):null,
+   reportedShare:ledgerShareAuditInvalid?(account.reportedShare!==undefined?account.reportedShare:reportedShareValue):null,
    allocatedAmount:safeMoney(account.allocatedAmount),
    balance:safeMoney(account.balance),
    settledAmount:safeMoney(account.settledAmount),
