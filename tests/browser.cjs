@@ -561,6 +561,14 @@ async function run() {
     assert.match(beneficiaryWalletDetails, /الرصيد الحالي/);
     assert.match(beneficiaryWalletDetails, /٤٠٬٠٠٠/);
     await page.locator('.choice').filter({ hasText: 'تقديم مساعدة مالية' }).click();
+    await page.evaluate(() => {
+      window.__walletSaveWrites = 0;
+      window.__walletOriginalSetItem = Storage.prototype.setItem;
+      Storage.prototype.setItem = function(key, value) {
+        if (key === 'hekayat_hayah_save_v1') window.__walletSaveWrites += 1;
+        return window.__walletOriginalSetItem.call(this, key, value);
+      };
+    });
     await page.locator('.choice').filter({ hasText: 'إرسال' }).first().click();
     const walletSupportConfirmation = await page.locator('#modalRoot [role="dialog"]').textContent();
     assert.match(walletSupportConfirmation, /تم تسجيل المساعدة/);
@@ -572,13 +580,19 @@ async function run() {
         bank: saved && saved.bank,
         balance: wallet && wallet.balance,
         supportTotal: wallet && wallet.supportTotal,
-        transactionTypes: wallet && wallet.transactions.map(transaction => transaction.type)
+        transactionTypes: wallet && wallet.transactions.map(transaction => transaction.type),
+        saveWrites: window.__walletSaveWrites
       };
     });
     assert.equal(walletAfterSupport.bank, 41000, 'the support transfer must debit the active heir');
     assert.equal(walletAfterSupport.balance, 41000, 'the sibling wallet must receive the same amount');
     assert.equal(walletAfterSupport.supportTotal, 1000);
     assert.deepEqual(walletAfterSupport.transactionTypes, ['inheritance', 'support']);
+    assert.equal(walletAfterSupport.saveWrites, 1, 'one wallet transfer should write the primary save exactly once');
+    await page.evaluate(() => {
+      if (window.__walletOriginalSetItem) Storage.prototype.setItem = window.__walletOriginalSetItem;
+      delete window.__walletOriginalSetItem;
+    });
     await page.evaluate(snapshot => {
       localStorage.setItem('hekayat_hayah_save_v1', snapshot.save);
       if (snapshot.backup === null) localStorage.removeItem('hekayat_hayah_save_backup_v1');
