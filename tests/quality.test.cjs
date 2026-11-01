@@ -1955,7 +1955,7 @@ test('محافظ الورثة تحفظ حصص الأسرة وتدعم المسا
   const familyMenu = functionSource('familyTreeMenu', 'inheritanceAccountsMenu');
   assert.match(walletBuilder, /status!=='reserved'/);
   assert.match(walletBuilder, /ledgerShareAuditComplete/);
-  assert.match(walletSupport, /openingBalance\+support/);
+  assert.match(walletSupport, /opening\+support/);
   assert.match(walletSupport, /duplicate_transaction/);
   assert.match(walletMenu, /محافظ الورثة/);
   assert.match(familyMenu, /beneficiaryWalletsMenu/);
