@@ -78,6 +78,7 @@ const runtime = [
   'calculateChildInheritanceShare',
   'formatInheritancePercent',
   'buildInheritancePreview',
+  'buildInheritanceAccounts',
   'familyTreeNode',
   'startAsChild'
 ].map(findFunction);
@@ -601,10 +602,25 @@ test('بدء حياة أحد الأبناء ينقل حصته فقط ويسجل 
   assert.equal(sibling.inheritanceShare, 0.4);
   assert.equal(sibling.inheritanceEstimate, distribution.siblingAllocations[1].estimatedValue);
   assert.equal(sibling.inheritanceStatus, 'مخصص من التركة');
+  assert.equal(sibling.inheritanceAccountStatus, 'استحقاق محفوظ');
+  const siblingAccount = distribution.beneficiaryAccounts.accounts.find(account => account.beneficiaryId === 'heir-2');
+  assert.equal(sibling.inheritanceAccountId, siblingAccount.id);
+  assert.equal(siblingAccount.status, 'reserved');
+  assert.equal(siblingAccount.balance, siblingAccount.allocatedAmount);
+  const selectedAccount = distribution.beneficiaryAccounts.accounts.find(account => account.beneficiaryId === 'heir-1');
+  assert.equal(distribution.selectedAccountId, selectedAccount.id);
+  assert.equal(selectedAccount.status, 'transferred');
+  assert.equal(selectedAccount.balance, 0);
+  assert.equal(selectedAccount.settledAmount, expectedSelectedInheritance);
   const partner = heir.family.find(member => member.id === 'partner-1');
   assert.ok(partner);
   assert.equal(partner.inheritanceShare, 0.2);
   assert.equal(partner.inheritanceStatus, 'مخصص للشريك');
+  assert.equal(partner.inheritanceAccountStatus, 'استحقاق محفوظ');
+  const partnerAccount = distribution.beneficiaryAccounts.accounts.find(account => account.kind === 'partner');
+  assert.equal(partner.inheritanceAccountId, partnerAccount.id);
+  assert.equal(partnerAccount.balance, partnerAccount.allocatedAmount);
+  assert.equal(distribution.beneficiaryAccounts.totalAllocated, totalEstate);
   assert.equal(distribution.outsideChildrenPoolRecipient, 'الشريك');
   assert.equal(parent.children[1].inheritanceShare, undefined, 'the archived parent\'s child record must not be mutated');
 });
@@ -636,6 +652,8 @@ test('شجرة العائلة تعرض حصة الإرث التقديرية لل
   const markup = vm.runInContext('familyTreeNode(' + JSON.stringify(sibling) + ')', context);
   assert.match(markup, /حصة الإرث 40%/);
   assert.match(markup, /تقدير 12345/);
+  const linkedMarkup = vm.runInContext('familyTreeNode(' + JSON.stringify({...sibling,inheritanceAccountStatus:'استحقاق محفوظ'}) + ')', context);
+  assert.match(linkedMarkup, /استحقاق محفوظ/);
 });
 test('عرض نسب الإرث يحافظ على الكسور بدل تقريب حصة 22.5% إلى 23%', () => {
   const context = makeContext();
@@ -691,4 +709,58 @@ test('وصية التبرع تسجل الجزء الخيري خارج حصة ا�
   const partner = context.state.family.find(member => member.id === 'partner-donation');
   assert.ok(partner);
   assert.equal(partner.inheritanceShare, undefined, 'the charitable remainder must not be recorded as a spouse allocation');
+});
+
+test('سجل استحقاقات الإرث ينشئ قيدًا منفصلًا لكل ابن وشريك ويطابق إجمالي التركة', () => {
+  const context = makeContext();
+  const parent = makeParent();
+  parent.children.push({ id: 'heir-2', name: 'عمر منصور', age: 21 });
+  parent.children.push({ id: 'heir-3', name: 'مريم منصور', age: 19 });
+  parent.partner = { id: 'partner-ledger', name: 'سارة منصور', age: 60 };
+  const preview = context.buildInheritancePreview(parent);
+  const transferred = context.calculateInheritance(parent, preview.perChildShare).value;
+  const registry = context.buildInheritanceAccounts(parent, preview, 0, transferred);
+  const childAccounts = registry.accounts.filter(account => account.kind === 'child');
+  const partnerAccount = registry.accounts.find(account => account.kind === 'partner');
+
+  assert.equal(childAccounts.length, 3);
+  assert.equal(childAccounts[0].status, 'transferred');
+  assert.equal(childAccounts[0].balance, 0);
+  assert.equal(childAccounts[0].settledAmount, transferred);
+  assert.equal(childAccounts[1].status, 'reserved');
+  assert.equal(childAccounts[1].balance, childAccounts[1].allocatedAmount);
+  assert.equal(partnerAccount.status, 'reserved');
+  assert.equal(partnerAccount.balance, preview.partnerValue);
+  assert.equal(registry.totalAllocated, preview.totalEstateValue);
+  assert.equal(registry.totalReservedBalance, registry.accounts.reduce((sum, account) => sum + account.balance, 0));
+  assert.equal(registry.totalSettledAmount, transferred);
+  assert.equal(new Set(registry.accounts.map(account => account.id)).size, registry.accounts.length);
+  assert.equal(parent.children[1].inheritanceAccountId, undefined, 'building the ledger must not mutate the archived family');
+});
+
+test('سجل الوصية يميز المبلغ الخيري والمستفيدين الآخرين دون تحويلهما إلى أموال اللاعب', () => {
+  const context = makeContext();
+  const parent = makeParent();
+  parent.willDistribution = 'التبرع بجزء';
+  parent.partner = null;
+  const preview = context.buildInheritancePreview(parent);
+  const registry = context.buildInheritanceAccounts(parent, preview, 0, context.calculateInheritance(parent, preview.perChildShare).value);
+  const charity = registry.accounts.find(account => account.kind === 'charity');
+  const child = registry.accounts.find(account => account.kind === 'child');
+
+  assert.ok(charity);
+  assert.equal(charity.status, 'earmarked');
+  assert.equal(charity.balance, preview.charitableValue);
+  assert.equal(child.status, 'transferred');
+  assert.equal(registry.accounts.some(account => account.kind === 'other'), false);
+  assert.equal(registry.totalAllocated, preview.totalEstateValue);
+
+  parent.children = [];
+  const noFamilyPreview = context.buildInheritancePreview(parent);
+  const noFamilyRegistry = context.buildInheritanceAccounts(parent, noFamilyPreview, -1, 0);
+  const other = noFamilyRegistry.accounts.find(account => account.kind === 'other');
+  assert.ok(other);
+  assert.equal(other.status, 'unassigned');
+  assert.equal(other.balance, noFamilyPreview.otherBeneficiaryValue);
+  assert.equal(noFamilyRegistry.totalAllocated, noFamilyPreview.totalEstateValue);
 });

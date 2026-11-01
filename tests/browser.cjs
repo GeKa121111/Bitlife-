@@ -75,7 +75,28 @@ const seedSave = {
   dailyRewardDate: null,
   dailyChallenges: null,
   timeMachineSnapshots: [],
-  legacy: { name: null, inheritance: 0, heirloom: null },
+  legacy: {
+    name: null,
+    inheritance: 0,
+    heirloom: null,
+    distribution: {
+      policy: 'الأسرة بالتساوي',
+      beneficiaryAccounts: {
+        version: 1,
+        sourceLifeId: 'browser-legacy-life',
+        currency: 'ج.م',
+        totalEstateValue: 100000,
+        totalAllocated: 100000,
+        totalReservedBalance: 60000,
+        totalSettledAmount: 40000,
+        accounts: [
+          { id: 'estate-browser-sibling', beneficiaryId: 'sibling-1', name: 'الأخت مريم', kind: 'child', share: 0.4, allocatedAmount: 40000, balance: 40000, settledAmount: 0, status: 'reserved', currency: 'ج.م' },
+          { id: 'estate-browser-current', beneficiaryId: 'current-heir', name: 'الشخصية الحالية', kind: 'child', share: 0.4, allocatedAmount: 40000, balance: 0, settledAmount: 40000, status: 'transferred', currency: 'ج.م' },
+          { id: 'estate-browser-partner', beneficiaryId: 'partner-1', name: 'الشريك', kind: 'partner', share: 0.2, allocatedAmount: 20000, balance: 20000, settledAmount: 0, status: 'reserved', currency: 'ج.م' }
+        ]
+      }
+    }
+  },
   driversLicense: false,
   travelHistory: [],
   log: [{ icon: '🧪', title: 'بداية اختبار المتصفح', text: 'حفظ تجريبي لاختبار التقدم والاستعادة.', type: 'special', age: 30 }],
@@ -492,6 +513,17 @@ async function run() {
     assert.deepEqual(eventDialogSemantics.ids, ['dialogDescription', 'dialogQuestion']);
     assert.deepEqual(eventDialogSemantics.references, [true, true]);
     assert.equal(eventDialogSemantics.questionText, 'هتعمل إيه؟');
+    await page.keyboard.press('Escape');
+    await page.waitForFunction(() => !document.querySelector('#modalRoot [role="dialog"]'));
+
+    await page.locator('[data-panel="relations"]').click();
+    await page.locator('.choice').filter({ hasText: 'شجرة العائلة والإرث' }).click();
+    await page.locator('.choice').filter({ hasText: 'سجل استحقاقات التركة' }).click();
+    const inheritanceLedgerText = await page.locator('#modalRoot [role="dialog"]').textContent();
+    assert.match(inheritanceLedgerText, /الأخت مريم/);
+    assert.match(inheritanceLedgerText, /استحقاق محفوظ للأسرة/);
+    assert.match(inheritanceLedgerText, /تم نقل الحصة إلى حياتك/);
+    assert.match(inheritanceLedgerText, /ليست محافظ قابلة للصرف للمستفيدين غير النشطين بعد/);
     await page.keyboard.press('Escape');
     await page.waitForFunction(() => !document.querySelector('#modalRoot [role="dialog"]'));
     const legacyBusinessDefaults = await page.evaluate(() => {
