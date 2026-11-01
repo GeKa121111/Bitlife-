@@ -246,7 +246,7 @@ test('حساب الإرث يضم خزائن الشركات وخصومها مع �
   assert.equal(inheritance.business.taxLiability, Math.round(5000 * expectedFactor));
   assert.equal(inheritance.business.credit.principal, Math.round(10000 * expectedFactor));
   assert.equal(inheritance.business.credit.accruedInterest, Math.round(1000 * expectedFactor));
-  assert.equal(inheritance.totalEstateValue, context.calculateInheritance(parent, 1).value);
+  assert.equal(inheritance.totalEstateValue, context.calculateInheritance(parent, 1).totalEstateValue);
   assert.equal(inheritance.companies.length, 1);
   assert.equal(inheritance.companies[0].cashBalance, Math.round(40000 * expectedFactor));
   assert.equal(inheritance.companies[0].taxLiability, Math.round(10000 * expectedFactor));
@@ -442,7 +442,7 @@ test('بدء حياة أحد الأبناء ينقل حصته فقط ويسجل 
   });
   parent.willDistribution = 'الأسرة بالتساوي';
   parent.partner = { id: 'partner-1', name: 'سارة منصور', age: 60, relationshipLevel: 90 };
-  const totalEstate = context.calculateInheritance(parent, 1).value;
+  const totalEstate = context.calculateInheritance(parent, 1).totalEstateValue;
   const expectedSelectedInheritance = context.calculateInheritance(parent, 0.4).value;
   context.state = parent;
 
