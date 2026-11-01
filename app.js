@@ -5734,13 +5734,20 @@ function inheritanceBeneficiaryShares(previous){
   if(hasChildren)childPoolShare=.65;
   else if(hasPartner)partnerShare=.65;
   else otherBeneficiaryShare=.65;
- }else{
-  const preferredChildPool=policy==='الأبناء أولًا'?.9:policy==='الشريك أولًا'?.45:.8;
-  const preferredPartnerPool=policy==='الأبناء أولًا'?.1:policy==='الشريك أولًا'?.55:.2;
-  if(hasChildren&&hasPartner){childPoolShare=preferredChildPool;partnerShare=preferredPartnerPool;}
-  else if(hasChildren)childPoolShare=1;
-  else if(hasPartner)partnerShare=1;
+ }else if(!hasChildren){
+  if(hasPartner)partnerShare=1;
   else otherBeneficiaryShare=1;
+ }else if(policy==='الشريك أولًا'){
+  if(hasPartner){childPoolShare=.45;partnerShare=.55;}
+  else childPoolShare=1;
+ }else if(policy==='الأبناء أولًا'){
+  childPoolShare=.9;
+  if(hasPartner)partnerShare=.1;
+  else otherBeneficiaryShare=.1;
+ }else{
+  childPoolShare=.8;
+  if(hasPartner)partnerShare=.2;
+  else otherBeneficiaryShare=.2;
  }
  return {childPoolShare,partnerShare,charitableShare,otherBeneficiaryShare};
 }
@@ -5792,7 +5799,7 @@ function buildInheritancePreview(previous){
  const outsideChildrenPoolValue=amounts.partner+amounts.charity+amounts.other;
  const recipientParts=[];
  if(partnerShare>0)recipientParts.push('الشريك');
- if(charitableShare>0)recipientParts.push('التبرع الخيري');
+ if(charitableShare>0)recipientParts.push('تبرع خيري');
  if(otherBeneficiaryShare>0)recipientParts.push('مستفيدون آخرون');
  const outsideChildrenPoolRecipient=recipientParts.join(' و ')||'لا يوجد مستفيد خارج حصة الأبناء';
  const summaryParts=[];
