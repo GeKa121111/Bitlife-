@@ -1832,7 +1832,7 @@ test('دخل إيجار العقار المشترك يتوزع على الملا
   assert.equal(record.familyWalletRentPaidTotal, 13500);
   assert.equal(record.activeRentPaidTotal, 18000);
   assert.equal(record.transactions[0].type, 'rent_distribution');
-  assert.equal(record.totalOwnershipShare, 1);
+  assert.ok(Math.abs(record.totalOwnershipShare - 1) < 1e-9);
   assert.equal(context.distributeFamilyPropertyRent(asset, 18000).reason, 'duplicate_transaction');
   assert.equal(context.state.bank, 13000, 'replaying the same annual distribution must not pay twice');
 });
