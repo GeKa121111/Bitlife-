@@ -1164,6 +1164,8 @@ async function run() {
         { id: 'insolvent-car', kind: 'car', title: 'سيارة قديمة', value: 20000, upkeep: 0, condition: 100 }
       ];
       saved.investments = [{ id: 'insolvent-investment', kind: 'low-risk', title: 'محفظة صغيرة', value: 15000 }];
+      saved.business = null;
+      saved.companies = [];
       saved.debt = 500000;
       saved.willDistribution = 'الأسرة بالتساوي';
       saved.timeMachineSnapshots = [];
