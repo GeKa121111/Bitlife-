@@ -2198,9 +2198,9 @@ function distributeFamilyPropertyExpense(asset,totalCost,source){
   if(!Number.isSafeInteger(due)||due<0)return {ok:false,reason:'property_expense_arrears_overflow'};
   if(item.id===activeOwnerId){activeAmount=due;arrearsReleased+=item.arrears;item.nextExpenseOwed=0;continue;}
   const owner=item.owner;
-  if(owner.kind==='external'||owner.status==='external'){externalOwed+=item.amount;unpaidAmount+=due;item.nextExpenseOwed=due;continue;}
+  if(owner.kind==='external'||owner.status==='external'){externalOwed+=item.amount;unpaidAmount+=item.amount;item.nextExpenseOwed=due;continue;}
   const familyOwner=['child','partner'].includes(String(owner.kind||''))||owner.status==='reserved';
-  if(!familyOwner){item.nextExpenseOwed=due;unpaidAmount+=due;reservedAmount+=item.amount;continue;}
+  if(!familyOwner){item.nextExpenseOwed=due;unpaidAmount+=item.amount;reservedAmount+=item.amount;continue;}
   const matches=wallets.filter(wallet=>wallet&&String(wallet.beneficiaryId||'')===item.id);
   const wallet=matches.length===1?matches[0]:null,ledger=wallet?beneficiaryWalletLedgerTotals(wallet):null;
   const walletTransactionId=transactionId+'-'+encodeURIComponent(item.id);
@@ -2213,7 +2213,7 @@ function distributeFamilyPropertyExpense(asset,totalCost,source){
     walletPlans.push({wallet,updated:preview});familyWalletAmount+=due;arrearsReleased+=item.arrears;item.nextExpenseOwed=0;continue;
    }
   }
-  item.nextExpenseOwed=due;unpaidAmount+=due;
+  item.nextExpenseOwed=due;unpaidAmount+=item.amount;
  }
  if(activeAmount>bank)return {ok:false,reason:'insufficient_active_funds',required:activeAmount,available:bank};
  const nextTotal=Number(record.propertyExpenseTotal||0)+grossCost;
