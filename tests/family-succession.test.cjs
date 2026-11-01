@@ -235,7 +235,7 @@ test('حساب الإرث يضم خزائن الشركات وخصومها مع �
   const context = makeContext();
   const parent = makeParent();
   const inheritance = context.calculateInheritance(parent, 0.8);
-  const expectedFactor = 0.8 * ((800000 - 68000) / 800000);
+  const expectedFactor = 0.8 * ((800000 - 68000) / (800000 - 48000));
 
   assert.equal(inheritance.business.cashBalance, Math.round(50000 * expectedFactor));
   assert.equal(inheritance.business.taxLiability, Math.round(5000 * expectedFactor));
@@ -244,7 +244,22 @@ test('حساب الإرث يضم خزائن الشركات وخصومها مع �
   assert.equal(inheritance.companies.length, 1);
   assert.equal(inheritance.companies[0].cashBalance, Math.round(40000 * expectedFactor));
   assert.equal(inheritance.companies[0].taxLiability, Math.round(10000 * expectedFactor));
-  assert.equal(inheritance.value, Math.round((100000 + 610000 + 90000) * expectedFactor));
+  const inheritedBusinesses = [inheritance.business, ...inheritance.companies].filter(Boolean);
+  const inheritedBusinessCash = inheritedBusinesses.reduce((sum, business) =>
+    sum + (business.treasuryMode === 'separate' ? Math.max(0, Number(business.cashBalance) || 0) : 0), 0);
+  const inheritedBusinessLiabilities = inheritedBusinesses.reduce((sum, business) =>
+    sum + Math.max(0, Number(business.taxLiability) || 0)
+      + Math.max(0, Math.round(Number(business.credit && business.credit.principal) || 0)
+        + Math.round(Number(business.credit && business.credit.accruedInterest) || 0))
+      + (business.treasuryMode === 'separate' ? Math.max(0, -Number(business.cashBalance) || 0) : 0), 0);
+  const inheritedGross = inheritance.bank
+    + inheritance.assets.reduce((sum, item) => sum + Math.max(0, Number(item.value) || 0), 0)
+    + inheritance.investments.reduce((sum, item) => sum + Math.max(0, Number(item.value) || 0), 0)
+    + inheritedBusinessCash;
+  assert.equal(inheritance.value, Math.max(0, inheritedGross - inheritedBusinessLiabilities),
+    'the recorded inheritance must equal transferred assets after transferred business liabilities');
+  assert.ok(Math.abs(inheritance.value - 585600) <= 3,
+    'the heir should receive 80% of the parent net estate after company liabilities are carried forward');
 
   const legacy = {
     bank: 20000,
@@ -263,9 +278,11 @@ test('حساب الإرث يضم خزائن الشركات وخصومها مع �
   assert.equal(legacyInheritance.business.cashBalance, 7777,
     'a v1 shared-treasury record must keep its legacy cashBalance field unchanged');
   assert.equal(legacyInheritance.business.value, legacyInheritance.assets[0].value);
+  assert.equal(legacyInheritance.value, 56000, 'legacy shared cash is not treated as a separate company treasury');
   assert.equal(legacyInheritance.companies.length, 0);
 
   const noBusiness = context.calculateInheritance({ bank: 1000, assets: [], investments: [], debt: 0 }, 0.8);
+  assert.equal(noBusiness.value, 800);
   assert.equal(noBusiness.business, null);
   assert.deepEqual(Array.from(noBusiness.companies), []);
 });
