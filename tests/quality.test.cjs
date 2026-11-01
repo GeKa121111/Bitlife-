@@ -1880,7 +1880,7 @@ test('النوافذ الحوارية تعلن العنوان والوصف وا�
 });
 
 
-test('سجل استحقاقات التركة قابل للمراجعة ولا يوهم بأن حصص الأقارب محافظ قابلة للصرف', () => {
+test('سجل استحقاقات التركة يظل تاريخيًا بينما المحافظ الحالية تُدار بشكل منفصل', () => {
   const builder = functionSource('buildInheritanceAccounts', 'startAsChild');
   const familyTree = functionSource('familyTreeMenu', 'recordBusinessFinancialReport');
   const ledgerMenu = functionSource('inheritanceAccountsMenu', 'recordBusinessFinancialReport');
@@ -1888,7 +1888,7 @@ test('سجل استحقاقات التركة قابل للمراجعة ولا ي
   assert.match(builder, /totalAllocated/);
   assert.match(builder, /totalReservedBalance/);
   assert.match(familyTree, /سجل استحقاقات التركة/);
-  assert.match(ledgerMenu, /ليست محافظ قابلة للصرف للمستفيدين غير النشطين بعد/);
+  assert.match(ledgerMenu, /المحافظ الحالية وحركات المساندة تُعرض في قسم مستقل/);
   assert.match(app, /beneficiaryAccounts,selectedAccountId/);
 });
 
@@ -1953,7 +1953,7 @@ test('محافظ الورثة تحفظ حصص الأسرة وتدعم المسا
   const walletSupport = functionSource('recordBeneficiaryWalletSupport', 'beneficiaryWalletsMenu');
   const walletMenu = functionSource('beneficiaryWalletsMenu', 'beneficiaryWalletMenu');
   const familyMenu = functionSource('familyTreeMenu', 'inheritanceAccountsMenu');
-  assert.match(walletBuilder, /status==='reserved'/);
+  assert.match(walletBuilder, /status!=='reserved'/);
   assert.match(walletBuilder, /ledgerShareAuditComplete/);
   assert.match(walletSupport, /openingBalance\+support/);
   assert.match(walletSupport, /duplicate_transaction/);
