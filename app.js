@@ -1679,21 +1679,24 @@ function buildBeneficiaryWallets(previousLegacy,currentRegistry,sourceName,sourc
   const inferredOpening=transactions.filter(tx=>tx&&typeof tx==='object'&&tx.type==='inheritance').reduce((sum,tx)=>sum+safeAmount(tx.amount),0);
   const inferredSupport=transactions.filter(tx=>tx&&typeof tx==='object'&&tx.type==='support').reduce((sum,tx)=>sum+safeAmount(tx.amount),0);
   const inferredRentalIncome=transactions.filter(tx=>tx&&typeof tx==='object'&&tx.type==='rental_income').reduce((sum,tx)=>sum+safeAmount(tx.amount),0);
+  const inferredPropertyExpense=transactions.filter(tx=>tx&&typeof tx==='object'&&tx.type==='property_expense').reduce((sum,tx)=>sum+safeAmount(tx.amount),0);
   const openingValue=raw.openingBalance===undefined||raw.openingBalance===null?inferredOpening:Number(raw.openingBalance);
   const supportValue=raw.supportTotal===undefined||raw.supportTotal===null?inferredSupport:Number(raw.supportTotal);
   const rentalIncomeValue=raw.rentalIncomeTotal===undefined||raw.rentalIncomeTotal===null?inferredRentalIncome:Number(raw.rentalIncomeTotal);
+  const propertyExpenseValue=raw.propertyExpenseTotal===undefined||raw.propertyExpenseTotal===null?inferredPropertyExpense:Number(raw.propertyExpenseTotal);
   const balanceValue=Number(raw.balance);
-  const amountFieldsValid=Number.isSafeInteger(openingValue)&&openingValue>=0&&Number.isSafeInteger(supportValue)&&supportValue>=0&&Number.isSafeInteger(rentalIncomeValue)&&rentalIncomeValue>=0&&Number.isSafeInteger(balanceValue)&&balanceValue>=0;
+  const amountFieldsValid=Number.isSafeInteger(openingValue)&&openingValue>=0&&Number.isSafeInteger(supportValue)&&supportValue>=0&&Number.isSafeInteger(rentalIncomeValue)&&rentalIncomeValue>=0&&Number.isSafeInteger(propertyExpenseValue)&&propertyExpenseValue>=0&&Number.isSafeInteger(balanceValue)&&balanceValue>=0;
   const openingBalance=safeAmount(openingValue);
   const supportTotal=safeAmount(supportValue);
   const rentalIncomeTotal=safeAmount(rentalIncomeValue);
+  const propertyExpenseTotal=safeAmount(propertyExpenseValue);
   const balance=safeAmount(balanceValue);
   const transactionsValid=transactions.length>0&&transactions.every(tx=>{
    if(!tx||typeof tx!=='object'||Array.isArray(tx))return false;
    const amount=Number(tx.amount);
-   return Number.isSafeInteger(amount)&&amount>=0&&['inheritance','support','rental_income'].includes(String(tx.type||''))&&String(tx.currency||currency)===currency;
+   return Number.isSafeInteger(amount)&&amount>=0&&['inheritance','support','rental_income','property_expense'].includes(String(tx.type||''))&&String(tx.currency||currency)===currency;
   });
-  const balanceMatches=openingBalance+supportTotal+rentalIncomeTotal===balance;
+  const balanceMatches=openingBalance+supportTotal+rentalIncomeTotal-propertyExpenseTotal===balance;
   const ledgerAuditComplete=raw.ledgerAuditComplete!==false&&transactionsValid&&amountFieldsValid&&balanceMatches;
   wallets.push({
    ...raw,
@@ -1708,6 +1711,7 @@ function buildBeneficiaryWallets(previousLegacy,currentRegistry,sourceName,sourc
    openingBalance,
    supportTotal,
    rentalIncomeTotal,
+   propertyExpenseTotal,
    balance,
    transactions,
    ledgerAuditComplete,
@@ -1748,6 +1752,7 @@ function buildBeneficiaryWallets(previousLegacy,currentRegistry,sourceName,sourc
     openingBalance:amount,
     supportTotal:0,
     rentalIncomeTotal:0,
+    propertyExpenseTotal:0,
     balance:amount,
     transactions:[{
      id:id+'-inheritance',
@@ -1958,16 +1963,20 @@ function getBeneficiaryWallets(legacy){
 function beneficiaryWalletLedgerTotals(wallet){
  if(!wallet||typeof wallet!=='object'||Array.isArray(wallet))return null;
  const currency=String(wallet.currency||'ج.م');
- const opening=Number(wallet.openingBalance),support=Number(wallet.supportTotal),rentalIncome=wallet.rentalIncomeTotal===undefined||wallet.rentalIncomeTotal===null?0:Number(wallet.rentalIncomeTotal),balance=Number(wallet.balance);
+ const opening=Number(wallet.openingBalance),support=Number(wallet.supportTotal);
  const transactions=Array.isArray(wallet.transactions)?wallet.transactions:[];
- const amountFieldsValid=Number.isSafeInteger(opening)&&opening>=0&&Number.isSafeInteger(support)&&support>=0&&Number.isSafeInteger(rentalIncome)&&rentalIncome>=0&&Number.isSafeInteger(balance)&&balance>=0;
+ const inferredExpense=transactions.filter(tx=>tx&&typeof tx==='object'&&tx.type==='property_expense').reduce((sum,tx)=>sum+(Number.isSafeInteger(Number(tx.amount))&&Number(tx.amount)>0?Number(tx.amount):0),0);
+ const rentalIncome=wallet.rentalIncomeTotal===undefined||wallet.rentalIncomeTotal===null?0:Number(wallet.rentalIncomeTotal);
+ const propertyExpense=wallet.propertyExpenseTotal===undefined||wallet.propertyExpenseTotal===null?inferredExpense:Number(wallet.propertyExpenseTotal);
+ const balance=Number(wallet.balance);
+ const amountFieldsValid=Number.isSafeInteger(opening)&&opening>=0&&Number.isSafeInteger(support)&&support>=0&&Number.isSafeInteger(rentalIncome)&&rentalIncome>=0&&Number.isSafeInteger(propertyExpense)&&propertyExpense>=0&&Number.isSafeInteger(balance)&&balance>=0;
  const transactionsValid=transactions.length>0&&transactions.every(tx=>{
   if(!tx||typeof tx!=='object'||Array.isArray(tx))return false;
   const amount=Number(tx.amount);
-  return Number.isSafeInteger(amount)&&amount>=0&&['inheritance','support','rental_income'].includes(String(tx.type||''))&&String(tx.currency||currency)===currency;
+  return Number.isSafeInteger(amount)&&amount>=0&&['inheritance','support','rental_income','property_expense'].includes(String(tx.type||''))&&String(tx.currency||currency)===currency;
  });
- const balanceMatches=amountFieldsValid&&opening+support+rentalIncome===balance;
- return {valid:wallet.ledgerAuditComplete===true&&wallet.ledgerMismatch!==true&&amountFieldsValid&&transactionsValid&&balanceMatches,currency,opening,support,rentalIncome,balance,transactions,transactionsValid,balanceMatches};
+ const balanceMatches=amountFieldsValid&&opening+support+rentalIncome-propertyExpense===balance;
+ return {valid:wallet.ledgerAuditComplete===true&&wallet.ledgerMismatch!==true&&amountFieldsValid&&transactionsValid&&balanceMatches,currency,opening,support,rentalIncome,propertyExpense,balance,transactions,transactionsValid,balanceMatches};
 }
 function recordBeneficiaryWalletSupport(wallet,amount,source){
  if(!wallet||typeof wallet!=='object')return {ok:false,reason:'wallet_missing'};
@@ -1978,18 +1987,19 @@ function recordBeneficiaryWalletSupport(wallet,amount,source){
  const transactionId=String(sourceData.transactionId||'').trim();
  if(!transactionId||ledger.transactions.some(tx=>tx&&String(tx.id)===transactionId))return {ok:false,reason:'duplicate_transaction'};
  const nextSupport=ledger.support+value;
- if(!Number.isSafeInteger(nextSupport)||!Number.isSafeInteger(ledger.opening+nextSupport+ledger.rentalIncome))return {ok:false,reason:'amount_overflow'};
+ const nextBalance=ledger.opening+nextSupport+ledger.rentalIncome-ledger.propertyExpense;
+ if(!Number.isSafeInteger(nextSupport)||!Number.isSafeInteger(nextBalance)||nextBalance<0)return {ok:false,reason:'amount_overflow'};
  wallet.supportTotal=nextSupport;
  wallet.rentalIncomeTotal=ledger.rentalIncome;
- wallet.balance=ledger.opening+nextSupport+ledger.rentalIncome;
+ wallet.propertyExpenseTotal=ledger.propertyExpense;
+ wallet.balance=nextBalance;
  wallet.transactions=[...ledger.transactions,{
   id:transactionId,type:'support',amount:value,currency:ledger.currency,
   fromLifeId:String(sourceData.lifeId||''),fromName:String(sourceData.name||''),
   age:Number.isFinite(Number(sourceData.age))?Math.max(0,Math.round(Number(sourceData.age))):null,
   year:Number.isFinite(Number(sourceData.year))?Math.max(0,Math.round(Number(sourceData.year))):null
  }].slice(-100);
- wallet.ledgerAuditComplete=true;
- wallet.ledgerMismatch=false;
+ wallet.ledgerAuditComplete=true;wallet.ledgerMismatch=false;
  return {ok:true,balance:wallet.balance};
 }
 function recordBeneficiaryWalletRentalIncome(wallet,amount,source){
@@ -2003,16 +2013,37 @@ function recordBeneficiaryWalletRentalIncome(wallet,amount,source){
  if(sourceData.currency&&String(sourceData.currency)!==ledger.currency)return {ok:false,reason:'currency_mismatch'};
  const nextRentalIncome=ledger.rentalIncome+value,nextBalance=ledger.balance+value;
  if(!Number.isSafeInteger(nextRentalIncome)||!Number.isSafeInteger(nextBalance))return {ok:false,reason:'amount_overflow'};
- wallet.rentalIncomeTotal=nextRentalIncome;
- wallet.balance=nextBalance;
+ wallet.rentalIncomeTotal=nextRentalIncome;wallet.propertyExpenseTotal=ledger.propertyExpense;wallet.balance=nextBalance;
  wallet.transactions=[...ledger.transactions,{
   id:transactionId,type:'rental_income',amount:value,currency:ledger.currency,
   familyAssetId:String(sourceData.familyAssetId||''),propertyTitle:String(sourceData.propertyTitle||'عقار عائلي'),
   age:Number.isFinite(Number(sourceData.age))?Math.max(0,Math.round(Number(sourceData.age))):null,
   year:Number.isFinite(Number(sourceData.year))?Math.max(0,Math.round(Number(sourceData.year))):null
  }].slice(-100);
- wallet.ledgerAuditComplete=true;
- wallet.ledgerMismatch=false;
+ wallet.ledgerAuditComplete=true;wallet.ledgerMismatch=false;
+ return {ok:true,balance:wallet.balance};
+}
+function recordBeneficiaryWalletPropertyExpense(wallet,amount,source){
+ if(!wallet||typeof wallet!=='object')return {ok:false,reason:'wallet_missing'};
+ const value=Number(amount),ledger=beneficiaryWalletLedgerTotals(wallet);
+ if(!Number.isSafeInteger(value)||value<=0)return {ok:false,reason:'invalid_amount'};
+ if(!ledger||!ledger.valid)return {ok:false,reason:'ledger_mismatch'};
+ if(ledger.balance<value)return {ok:false,reason:'insufficient_funds'};
+ const sourceData=source&&typeof source==='object'?source:{};
+ const transactionId=String(sourceData.transactionId||'').trim();
+ if(!transactionId||ledger.transactions.some(tx=>tx&&String(tx.id)===transactionId))return {ok:false,reason:'duplicate_transaction'};
+ if(sourceData.currency&&String(sourceData.currency)!==ledger.currency)return {ok:false,reason:'currency_mismatch'};
+ const nextPropertyExpense=ledger.propertyExpense+value,nextBalance=ledger.balance-value;
+ if(!Number.isSafeInteger(nextPropertyExpense)||!Number.isSafeInteger(nextBalance)||nextBalance<0)return {ok:false,reason:'amount_overflow'};
+ wallet.propertyExpenseTotal=nextPropertyExpense;wallet.rentalIncomeTotal=ledger.rentalIncome;wallet.balance=nextBalance;
+ wallet.transactions=[...ledger.transactions,{
+  id:transactionId,type:'property_expense',amount:value,currency:ledger.currency,
+  familyAssetId:String(sourceData.familyAssetId||''),propertyTitle:String(sourceData.propertyTitle||'عقار عائلي'),
+  reason:String(sourceData.reason||'صيانة عقار'),
+  age:Number.isFinite(Number(sourceData.age))?Math.max(0,Math.round(Number(sourceData.age))):null,
+  year:Number.isFinite(Number(sourceData.year))?Math.max(0,Math.round(Number(sourceData.year))):null
+ }].slice(-100);
+ wallet.ledgerAuditComplete=true;wallet.ledgerMismatch=false;
  return {ok:true,balance:wallet.balance};
 }
 function classifyFamilyPropertyRentResult(result,fallbackAmount){
@@ -2123,6 +2154,89 @@ function distributeFamilyPropertyRent(asset,shareRent){
  return {ok:true,tracked:true,grossRent:fullRent,activeAmount,familyWalletAmount,externalAmount,reservedAmount,arrearsReleased};
 }
 
+function distributeFamilyPropertyExpense(asset,totalCost,source){
+ if(!state||!state.legacy||!asset||asset.kind!=='property')return {ok:true,tracked:false,activeAmount:Math.max(0,Math.round(Number(totalCost)||0))};
+ const record=familyPropertyOwnershipRecords(state.legacy).find(item=>String(item.id||item.familyAssetId)===String(asset.familyAssetId||''));
+ if(!record)return {ok:true,tracked:false,activeAmount:Math.max(0,Math.round(Number(totalCost)||0))};
+ if(record.auditStatus!=='balanced')return {ok:false,reason:'ownership_audit_incomplete'};
+ const currency=String(record.currency||state.place&&state.place.unit||'ج.م');
+ if(state.place&&state.place.unit&&String(state.place.unit)!==currency)return {ok:false,reason:'currency_mismatch'};
+ const grossCost=Number(totalCost),bank=Number(state.bank);
+ if(!Number.isSafeInteger(grossCost)||grossCost<=0||!Number.isSafeInteger(bank))return {ok:false,reason:'invalid_amount'};
+ const activeOwnerId=String(asset.ownerBeneficiaryId||state.legacy.activeBeneficiaryId||state.lifeId||'');
+ const owners=Array.isArray(record.owners)?record.owners:[];
+ const ids=new Set();let totalShare=0;
+ const normalized=owners.map(owner=>{
+  if(!owner||typeof owner!=='object'||Array.isArray(owner))return null;
+  const id=String(owner.beneficiaryId||'').trim(),share=safeFamilyOwnershipShare(owner.share);
+  if(!id||share===null||ids.has(id))return null;
+  ids.add(id);totalShare+=share;
+  return {owner,id,share,arrears:Number(owner.propertyExpenseOwed===undefined?0:owner.propertyExpenseOwed)};
+ });
+ if(!normalized.length||normalized.some(item=>!item)||!normalized.some(item=>item.id===activeOwnerId))return {ok:false,reason:'owner_not_found'};
+ if(normalized.some(item=>!Number.isSafeInteger(item.arrears)||item.arrears<0))return {ok:false,reason:'property_expense_arrears_invalid'};
+ const activeEntry=normalized.find(item=>item.id===activeOwnerId);
+ if(activeEntry.share<=0)return {ok:false,reason:'owner_share_invalid'};
+ const declaredShare=asset.ownershipShare===undefined||asset.ownershipShare===null?activeEntry.share:safeFamilyOwnershipShare(asset.ownershipShare);
+ if(declaredShare===null||Math.abs(declaredShare-activeEntry.share)>.005)return {ok:false,reason:'asset_share_mismatch'};
+ const encumbered=record.encumberedShare===undefined||record.encumberedShare===null?0:safeFamilyOwnershipShare(record.encumberedShare);
+ if(encumbered===null||Math.abs(totalShare+encumbered-1)>.005)return {ok:false,reason:'ownership_total_mismatch'};
+ const src=source&&typeof source==='object'?source:{},action=String(src.action||'maintenance'),year=String(state.yearCount??state.age??0);
+ const transactionId='family-property-expense-'+encodeURIComponent(String(asset.familyAssetId))+'-'+encodeURIComponent(String(state.lifeId||state.name||'life'))+'-'+encodeURIComponent(year)+'-'+encodeURIComponent(action);
+ if((Array.isArray(record.transactions)?record.transactions:[]).some(item=>item&&String(item.id)===transactionId))return {ok:false,reason:'duplicate_transaction'};
+ const allocations=normalized.map(item=>({...item,amount:Math.round(grossCost*item.share)}));
+ const encumberedAmount=Math.round(grossCost*encumbered);
+ const roundingDelta=grossCost-(allocations.reduce((sum,item)=>sum+item.amount,0)+encumberedAmount);
+ const activeAllocation=allocations.find(item=>item.id===activeOwnerId);
+ activeAllocation.amount+=roundingDelta;
+ if(activeAllocation.amount<0)return {ok:false,reason:'rounding_invalid'};
+ const wallets=Array.isArray(state.legacy.beneficiaryWallets)?state.legacy.beneficiaryWallets:[];
+ const walletPlans=[];
+ let activeAmount=0,familyWalletAmount=0,unpaidAmount=0,externalOwed=0,reservedAmount=encumberedAmount,arrearsReleased=0;
+ for(const item of allocations){
+  const due=item.arrears+item.amount;
+  if(!Number.isSafeInteger(due)||due<0)return {ok:false,reason:'property_expense_arrears_overflow'};
+  if(item.id===activeOwnerId){activeAmount=due;arrearsReleased+=item.arrears;item.nextExpenseOwed=0;continue;}
+  const owner=item.owner;
+  if(owner.kind==='external'||owner.status==='external'){externalOwed+=item.amount;unpaidAmount+=due;item.nextExpenseOwed=due;continue;}
+  const familyOwner=['child','partner'].includes(String(owner.kind||''))||owner.status==='reserved';
+  if(!familyOwner){item.nextExpenseOwed=due;unpaidAmount+=due;reservedAmount+=item.amount;continue;}
+  const matches=wallets.filter(wallet=>wallet&&String(wallet.beneficiaryId||'')===item.id);
+  const wallet=matches.length===1?matches[0]:null,ledger=wallet?beneficiaryWalletLedgerTotals(wallet):null;
+  const walletTransactionId=transactionId+'-'+encodeURIComponent(item.id);
+  if(ledger&&ledger.valid&&ledger.currency===currency&&due>0){
+   if(ledger.transactions.some(tx=>tx&&String(tx.id)===walletTransactionId))return {ok:false,reason:'wallet_transaction_conflict'};
+   if(ledger.balance>=due){
+    const preview={...wallet,transactions:ledger.transactions.slice()};
+    const payment=recordBeneficiaryWalletPropertyExpense(preview,due,{transactionId:walletTransactionId,currency,familyAssetId:asset.familyAssetId,propertyTitle:record.title,reason:String(src.reason||'صيانة عقار'),age:state.age,year:state.yearCount});
+    if(!payment.ok)return {ok:false,reason:payment.reason||'wallet_expense_failed'};
+    walletPlans.push({wallet,updated:preview});familyWalletAmount+=due;arrearsReleased+=item.arrears;item.nextExpenseOwed=0;continue;
+   }
+  }
+  item.nextExpenseOwed=due;unpaidAmount+=due;
+ }
+ if(activeAmount>bank)return {ok:false,reason:'insufficient_active_funds',required:activeAmount,available:bank};
+ const nextTotal=Number(record.propertyExpenseTotal||0)+grossCost;
+ const nextPaid=Number(record.propertyExpensePaidTotal||0)+activeAmount+familyWalletAmount;
+ const nextOwed=Math.max(0,Number(record.propertyExpenseOwedTotal||0)+unpaidAmount-arrearsReleased);
+ const nextExternalOwed=Number(record.propertyExpenseExternalOwedTotal||0)+externalOwed;
+ const nextReserve=Number(record.propertyExpenseReserveTotal||0)+reservedAmount;
+ const nextActive=Number(record.propertyExpenseActivePaidTotal||0)+activeAmount;
+ const nextWallet=Number(record.propertyExpenseWalletPaidTotal||0)+familyWalletAmount;
+ const nextBank=bank-activeAmount;
+ if([nextTotal,nextPaid,nextOwed,nextExternalOwed,nextReserve,nextActive,nextWallet,nextBank].some(value=>!Number.isSafeInteger(value)||value<0))return {ok:false,reason:'ledger_overflow'};
+ walletPlans.forEach(plan=>Object.assign(plan.wallet,plan.updated));
+ allocations.forEach(item=>{item.owner.propertyExpenseOwed=item.nextExpenseOwed===undefined?item.arrears:item.nextExpenseOwed;});
+ state.bank=nextBank;
+ record.propertyExpenseTotal=nextTotal;record.propertyExpensePaidTotal=nextPaid;record.propertyExpenseOwedTotal=nextOwed;
+ record.propertyExpenseExternalOwedTotal=nextExternalOwed;record.propertyExpenseReserveTotal=nextReserve;
+ record.propertyExpenseActivePaidTotal=nextActive;record.propertyExpenseWalletPaidTotal=nextWallet;
+ record.totalOwnershipShare=totalShare+encumbered;
+ if(!Array.isArray(record.transactions))record.transactions=[];
+ record.transactions.push({id:transactionId,type:'property_expense',grossCost,activeAmount,familyWalletAmount,unpaidAmount,externalOwed,reservedAmount,arrearsReleased,currency,reason:String(src.reason||'صيانة عقار'),age:Number.isFinite(Number(state.age))?Number(state.age):null,year:Number.isFinite(Number(state.yearCount))?Number(state.yearCount):null});
+ record.transactions=record.transactions.slice(-100);
+ return {ok:true,tracked:true,grossCost,activeAmount,familyWalletAmount,unpaidAmount,externalOwed,reservedAmount,arrearsReleased};
+}
 function beneficiaryWalletsMenu(){
  if(!state)return;
  const wallets=getBeneficiaryWallets(state.legacy);
@@ -2133,7 +2247,7 @@ function beneficiaryWalletsMenu(){
  const opts=wallets.slice().reverse().map(wallet=>{
   const currency=String(wallet.currency||'ج.م');
   const warning=wallet.ledgerMismatch||!wallet.ledgerAuditComplete?' · بيانات المحفظة تحتاج مراجعة':wallet.sourceLedgerWarning?' · ملخص التركة الأصلية يحتاج مراجعة':'';
-  const description='الرصيد '+fmt(wallet.balance)+' '+currency+' · دخل إيجار '+fmt(wallet.rentalIncomeTotal||0)+' '+currency+' · '+(wallet.transactions||[]).length+' حركة'+warning;
+  const description='الرصيد '+fmt(wallet.balance)+' '+currency+' · دخل إيجار '+fmt(wallet.rentalIncomeTotal||0)+' '+currency+' · مصروفات عقارية '+fmt(wallet.propertyExpenseTotal||0)+' '+currency+' · '+(wallet.transactions||[]).length+' حركة'+warning;
   return choice('👛',wallet.name+' · '+(wallet.kind==='partner'?'الشريك':'الأسرة'),description,()=>beneficiaryWalletMenu(wallet.id),fmt(wallet.balance)+' '+currency);
  });
  opts.push(choice('↩️','رجوع لشجرة العائلة','',familyTreeMenu));
@@ -2145,7 +2259,7 @@ function beneficiaryWalletMenu(walletId){
  if(!wallet){info('🏦','المحفظة غير متاحة','تعذر العثور على المحفظة في الحفظ الحالي.');return;}
  const currency=String(wallet.currency||'ج.م');
  const warning=wallet.ledgerMismatch||!wallet.ledgerAuditComplete?'بيانات المحفظة غير مكتملة؛ تم إيقاف التحويلات لحماية الرصيد.':wallet.sourceLedgerWarning?'ملخص التركة الأصلية يحتاج مراجعة، لكن رصيد الحساب الفردي محفوظ كما ورد.':'';
- const description='الرصيد الحالي '+fmt(wallet.balance)+' '+currency+' · رصيد بداية التركة '+fmt(wallet.openingBalance)+' '+currency+' · مساعدات لاحقة '+fmt(wallet.supportTotal)+' '+currency+' · دخل إيجار '+fmt(wallet.rentalIncomeTotal||0)+' '+currency+'. '+warning+' هذه محفظة محلية للمستفيد وليست ضمن رصيدك الشخصي.';
+ const description='الرصيد الحالي '+fmt(wallet.balance)+' '+currency+' · رصيد بداية التركة '+fmt(wallet.openingBalance)+' '+currency+' · مساعدات لاحقة '+fmt(wallet.supportTotal)+' '+currency+' · دخل إيجار '+fmt(wallet.rentalIncomeTotal||0)+' '+currency+' · مصروفات عقارية '+fmt(wallet.propertyExpenseTotal||0)+' '+currency+'. '+warning+' هذه محفظة محلية للمستفيد وليست ضمن رصيدك الشخصي.';
  const support=choice('💝','تقديم مساعدة مالية','تحويل مبلغ من رصيدك إلى هذه المحفظة.',()=>beneficiaryWalletSupportMenu(wallet.id));
  if(!wallet.ledgerAuditComplete||wallet.ledgerMismatch)support.disabled=true;
  const opts=[support,choice('📜','سجل الحركات','راجع مصدر الرصيد والمساعدات المسجلة.',()=>beneficiaryWalletTransactionsMenu(wallet.id)),choice('↩️','رجوع للمحافظ','',beneficiaryWalletsMenu)];
@@ -2175,13 +2289,13 @@ function beneficiaryWalletTransactionsMenu(walletId){
   const valid=transaction&&typeof transaction==='object';
   const amount=valid&&Number.isFinite(Number(transaction.amount))?Math.max(0,Math.round(Number(transaction.amount))):0;
   const currency=String(valid&&transaction.currency||wallet.currency||'ج.م');
-  const title=valid&&transaction.type==='inheritance'?'حصة من التركة':valid&&transaction.type==='rental_income'?'دخل إيجار عقار':'مساعدة مالية';
+  const title=valid&&transaction.type==='inheritance'?'حصة من التركة':valid&&transaction.type==='rental_income'?'دخل إيجار عقار':valid&&transaction.type==='property_expense'?'مساهمة صيانة عقار':'مساعدة مالية';
   const detail=valid&&transaction.type==='support'
    ?'من '+String(transaction.fromName||'الحياة الحالية')+' · العمر '+(transaction.age===null||transaction.age===undefined?'غير مسجل':fmt(transaction.age))+' سنة'
-   :valid&&transaction.type==='rental_income'
-    ?String(transaction.propertyTitle||'عقار عائلي')+' · السنة '+(transaction.year===null||transaction.year===undefined?'غير مسجلة':fmt(transaction.year))
+   :valid&&(transaction.type==='rental_income'||transaction.type==='property_expense')
+    ?String(transaction.propertyTitle||'عقار عائلي')+' · '+(transaction.type==='property_expense'?String(transaction.reason||'صيانة عقار')+' · ':'')+'السنة '+(transaction.year===null||transaction.year===undefined?'غير مسجلة':fmt(transaction.year))
     :'من تركة '+String(valid&&transaction.sourceName||wallet.sourceName||'الجيل السابق');
-  const icon=valid&&transaction.type==='inheritance'?'📜':valid&&transaction.type==='rental_income'?'🏠':'💝';
+  const icon=valid&&transaction.type==='inheritance'?'📜':valid&&transaction.type==='rental_income'?'🏠':valid&&transaction.type==='property_expense'?'🧰':'💝';
   return choice(icon,title+' · '+fmt(amount)+' '+currency,detail,()=>info('📒',title,detail+' · '+fmt(amount)+' '+currency));
  });
  if(!opts.length)opts.push(choice('📭','لا توجد حركات','لم تُسجل معاملات في هذه المحفظة بعد.',()=>beneficiaryWalletMenu(wallet.id)));
@@ -4038,13 +4152,34 @@ function maintainAsset(index){
  if(a.kind!=='property'&&a.kind!=='car'){info('🧰','الصيانة غير متاحة','النوع ده ملوش نظام حالة في النسخة الحالية.');return;}
  const condition=clamp(a.condition??100),missing=100-condition;
  if(missing===0){info('✅','الأصل في أفضل حالة','مش محتاج صيانة دلوقتي.');return;}
- const cost=Math.max(500,Math.round(a.value*(a.kind==='car'?.018:.03)*(missing/100)));
- if(state.bank<cost){info('💳','الرصيد مش كفاية','الصيانة أو التجديد تكلف '+cash(cost)+'. حاول توفر المبلغ الأول.');return;}
- const before=condition;state.bank-=cost;a.condition=100;
- a.value=Math.round(a.value*(1+missing*.0015));
- if(a.kind==='property')syncFamilyPropertyMarketValue(a,'maintenance',cost);
- log(a.kind==='car'?'🔧':'🏠','صيانة / تجديد '+a.title,'دفعت '+cash(cost)+'، ورجّعت الحالة من '+before+'% إلى 100%. قيمة إعادة البيع المتوقعة اتحسنت.','good');
- render();info('🧰','الصيانة اكتملت',a.title+' بقى في حالة 100%، وتكلفة الصيانة اتخصمت من رصيدك.');
+ const before=condition;
+ let cost=Math.max(500,Math.round(a.value*(a.kind==='car'?.018:.03)*(missing/100)));
+ let expenseResult=null;
+ if(a.kind==='property'&&state.legacy){
+  const familyRecord=familyPropertyOwnershipRecords(state.legacy).find(item=>String(item.id||item.familyAssetId)===String(a.familyAssetId||''));
+  if(familyRecord){
+   const fullValue=Number(familyRecord.marketValue);
+   if(!Number.isSafeInteger(fullValue)||fullValue<=0){info('⚠️','تعذر تدقيق قيمة العقار','قيمة العقار المشتركة غير صالحة؛ لم يتم خصم أي مبلغ أو تغيير حالة الأصل.');return;}
+   const fullCost=Math.max(500,Math.round(fullValue*.03*(missing/100)));
+   expenseResult=distributeFamilyPropertyExpense(a,fullCost,{action:'maintenance',reason:'صيانة / تجديد'});
+   if(!expenseResult.ok){
+    const message=expenseResult.reason==='insufficient_active_funds'?'رصيدك لا يكفي لحصتك من الصيانة والمتأخرات المستحقة عليك. لم يتم خصم أي مبلغ.':'تعذر تدقيق الملكية أو دفتر المصروفات؛ تم إيقاف الصيانة دون تغيير الأرصدة.';
+    info('💳','الصيانة المشتركة متوقفة',message);return;
+   }
+   cost=expenseResult.activeAmount;
+  }else{
+   if(state.bank<cost){info('💳','الرصيد مش كفاية','الصيانة أو التجديد تكلف '+cash(cost)+'. حاول توفر المبلغ الأول.');return;}
+   state.bank-=cost;
+  }
+ }else{
+  if(state.bank<cost){info('💳','الرصيد مش كفاية','الصيانة أو التجديد تكلف '+cash(cost)+'. حاول توفر المبلغ الأول.');return;}
+  state.bank-=cost;
+ }
+ a.condition=100;a.value=Math.round(a.value*(1+missing*.0015));
+ if(a.kind==='property')syncFamilyPropertyMarketValue(a,null,0);
+ const detail=expenseResult&&expenseResult.tracked?'دفعت حصتك '+cash(expenseResult.activeAmount)+'، وساهمت محافظ الأسرة بـ '+cash(expenseResult.familyWalletAmount)+'. المبالغ غير المسددة '+cash(expenseResult.unpaidAmount)+' اتسجلت كالتزامات على أصحابها. إجمالي الصيانة '+cash(expenseResult.grossCost)+'.':'دفعت '+cash(cost)+'، ورجّعت الحالة من '+before+'% إلى 100%. قيمة إعادة البيع المتوقعة اتحسنت.';
+ log(a.kind==='car'?'🔧':'🏠','صيانة / تجديد '+a.title,detail,'good');
+ render();info('🧰','الصيانة اكتملت',a.title+' بقى في حالة 100%. '+detail);
 }
 function person(gender,relation,emoji,age,level){return {id:relation+'-'+Math.random().toString(36).slice(2,8),name:pick(names[gender])+' '+pick(names.family),relation,emoji,age,job:pick(['طالب','محاسب','مصمم','مدرس','موظف','مطور']),generosity:25+Math.floor(Math.random()*76),craziness:Math.floor(Math.random()*101),money:Math.floor(Math.random()*101),petulance:Math.floor(Math.random()*101),loyalty:25+Math.floor(Math.random()*76),jealousy:Math.floor(Math.random()*101),reliability:25+Math.floor(Math.random()*76),interactions:[],relationshipLevel:level,personality:pick(['حنون','عملي','مرح','جاد','طموح','فضولي'])};}
 function relations(){
