@@ -1661,7 +1661,8 @@ function advanceChildren(){
 function familyTreeNode(p){
  const gone=!!p.deceased,level=clamp(p.relationshipLevel??0);
  const hasInheritance=!!p.inheritanceStatus&&Number.isFinite(Number(p.inheritanceShare));
- const inheritanceNote=hasInheritance?'<small class="family-tree-foot">حصة الإرث '+formatInheritancePercent(p.inheritanceShare)+'% · تقدير '+esc(cash(p.inheritanceEstimate||0))+'</small>':'';
+ const inheritanceStatus=String(p.inheritanceAccountStatus||p.inheritanceStatus||'استحقاق مسجل');
+ const inheritanceNote=hasInheritance?'<small class="family-tree-foot">حصة الإرث '+formatInheritancePercent(p.inheritanceShare)+'% · تقدير '+esc(cash(p.inheritanceEstimate||0))+' · '+esc(inheritanceStatus)+'</small>':'';
  return '<article class="family-tree-node'+(gone?' family-tree-deceased':'')+'"><div class="family-tree-person"><span class="family-tree-avatar">'+esc(p.emoji||'👤')+'</span><span class="family-tree-copy"><strong>'+esc(p.name||'فرد من العائلة')+'</strong><small>'+esc(p.relation||'قريب')+(Number.isFinite(Number(p.age))?' · '+fmt(p.age)+' سنة':'')+(gone?' · متوفى':'')+'</small></span></div><div class="family-tree-meter"><span style="width:'+level+'%"></span></div><small class="family-tree-foot">العلاقة '+level+'%</small>'+inheritanceNote+'</article>';
 }
 function familyTreeMenu(){
@@ -1676,10 +1677,35 @@ function familyTreeMenu(){
  [...parents,...others,...siblings,...ex].forEach(p=>opts.push(choice(p.deceased?'🕯️':(p.emoji||'👤'),(p.name||'فرد من العائلة')+' · '+(p.relation||'قريب'),'العمر '+fmt(p.age||0)+' · العلاقة '+clamp(p.relationshipLevel??0)+'%',()=>{closeModal();if(p.deceased)info('🕯️',p.name||'ذكرى عائلية','الشخص ده محفوظ في سجل الأسرة.');else personModal(p);},clamp(p.relationshipLevel??0)+'%')));
  if(state.partner)opts.push(choice('💞',state.partner.name+' · الشريك','العلاقة '+clamp(state.partner.relationshipLevel)+'%',()=>{closeModal();personModal(state.partner)}));
  kids.forEach((c,i)=>opts.push(choice(c.emoji||'🧒',c.name+' · '+childDevelopmentStage(c.age),'العمر '+fmt(c.age)+' سنة · التحصيل '+clamp(c.schoolPerformance??50)+'%',()=>{closeModal();childMenu(i)},clamp(c.relationshipLevel??0)+'%')));
- opts.push(choice('📜','إدارة الوصية والإرث','',willMenu),choice('↩️','رجوع للعلاقات','',relations));
+ opts.push(choice('📒','سجل استحقاقات التركة','راجع الحصص المسجلة لكل مستفيد والمبالغ المنقولة للجيل الحالي.',inheritanceAccountsMenu),choice('📜','إدارة الوصية والإرث','',willMenu),choice('↩️','رجوع للعلاقات','',relations));
  modal('🌳','شجرة العائلة','استعرض الجيل السابق وشخصيتك الحالية والشريك والأبناء، واضغط على فرد من القائمة لإدارة علاقتك به.',opts,true,extra);
 }
 
+function inheritanceAccountsMenu(){
+ const distribution=state&&state.legacy&&state.legacy.distribution;
+ const registry=distribution&&distribution.beneficiaryAccounts;
+ if(!registry||!Array.isArray(registry.accounts)||!registry.accounts.length){
+  info('📒','لا يوجد سجل استحقاقات محفوظ','الحفظ الحالي لا يحتوي على سجل حصص منفصل. تفاصيل التوزيع القديمة تظل محفوظة في ملخص الجيل.');
+  return;
+ }
+ const statusLabels={transferred:'تم نقل الحصة إلى حياتك',reserved:'استحقاق محفوظ للأسرة',earmarked:'مخصص للتبرع الخيري',unassigned:'مخصص لمستفيدين آخرين'};
+ const icons={child:'👤',partner:'💞',charity:'🤲',other:'📌'};
+ const opts=registry.accounts.map(account=>{
+  const allocated=Math.max(0,Math.round(Number(account.allocatedAmount)||0));
+  const balance=Math.max(0,Math.round(Number(account.balance)||0));
+  const share=formatInheritancePercent(account.share);
+  const status=statusLabels[account.status]||'قيد المراجعة';
+  const currency=String(account.currency||state.place.unit||'ج.م');
+  const description='المبلغ المخصص '+cash(allocated)+' '+currency+' · '+share+'% · '+status+(balance>0?' · محفوظ '+cash(balance):'');
+  return choice(icons[account.kind]||'📒',account.name||'مستفيد',description,()=>info('📒',account.name||'تفاصيل الاستحقاق',description+'. هذا سجل توزيع، وليس تحويلًا نقديًا مستقلًا.'));
+ });
+ opts.push(choice('↩️','رجوع لشجرة العائلة','',familyTreeMenu));
+ const currency=String(registry.currency||state.place.unit||'ج.م');
+ const reserved=Math.max(0,Math.round(Number(registry.totalReservedBalance)||0));
+ const settled=Math.max(0,Math.round(Number(registry.totalSettledAmount)||0));
+ const description='إجمالي التركة '+cash(registry.totalEstateValue)+' '+currency+' · المحفوظ للمستفيدين '+cash(reserved)+' · المنقول للحياة الحالية '+cash(settled)+'. هذه سجلات استحقاق داخل الحفظ، وليست محافظ قابلة للصرف للمستفيدين غير النشطين بعد.';
+ modal('📒','سجل استحقاقات التركة',description,opts);
+}
 function recordBusinessFinancialReport(entity,report){
  if(!entity||typeof entity!=='object')return;
  const history=Array.isArray(entity.financialHistory)?entity.financialHistory:[];
@@ -5829,6 +5855,70 @@ function buildInheritancePreview(previous){
   outsideChildrenPoolShare,outsideChildrenPoolValue,outsideChildrenPoolRecipient
  };
 }
+function buildInheritanceAccounts(previous,preview,selectedIndex,transferredValue){
+ const sourceLifeId=String(previous&&previous.lifeId!==undefined?previous.lifeId:previous&&previous.name||'legacy');
+ const currency=String(previous&&previous.place&&previous.place.unit||'ج.م');
+ const children=Array.isArray(previous&&previous.children)?previous.children:[];
+ const accounts=[];
+ const createId=(kind,index,beneficiaryId)=>'estate-'+encodeURIComponent(sourceLifeId)+'-'+kind+'-'+index+'-'+encodeURIComponent(String(beneficiaryId??''));
+ const addAccount=(kind,index,beneficiaryId,name,share,amount,status,settledAmount=0)=>{
+  const allocatedAmount=Math.max(0,Math.round(Number(amount)||0));
+  const settled=Math.max(0,Math.round(Number(settledAmount)||0));
+  accounts.push({
+   id:createId(kind,index,beneficiaryId),
+   beneficiaryId:String(beneficiaryId??kind),
+   name:String(name||'مستفيد'),
+   kind,
+   share:Math.max(0,Number(share)||0),
+   allocatedAmount,
+   balance:status==='transferred'?0:allocatedAmount,
+   settledAmount:settled,
+   status,
+   currency,
+   sourceLifeId
+  });
+ };
+ const childAllocations=Array.isArray(preview&&preview.siblingAllocations)?preview.siblingAllocations:[];
+ childAllocations.forEach((allocation,index)=>{
+  const child=children[index]||{};
+  const selected=index===Number(selectedIndex);
+  addAccount(
+   'child',
+   index,
+   allocation.childId??child.id??'child-'+index,
+   allocation.name||child.name||'ابن/ابنة',
+   allocation.share,
+   allocation.estimatedValue,
+   selected?'transferred':'reserved',
+   selected?transferredValue:0
+  );
+ });
+ if(Number(preview&&preview.partnerShare)>0){
+  const partner=previous&&previous.partner||{};
+  addAccount('partner',0,partner.id??'partner',partner.name||'الشريك',preview.partnerShare,preview.partnerValue,'reserved');
+ }
+ if(Number(preview&&preview.charitableShare)>0){
+  addAccount('charity',0,'charity','صندوق التبرع الخيري',preview.charitableShare,preview.charitableValue,'earmarked');
+ }
+ if(Number(preview&&preview.otherBeneficiaryShare)>0){
+  addAccount('other',0,'other-beneficiaries','مستفيدون آخرون',preview.otherBeneficiaryShare,preview.otherBeneficiaryValue,'unassigned');
+ }
+ const totalEstateValue=Math.max(0,Math.round(Number(preview&&preview.totalEstateValue)||0));
+ const totalAllocated=accounts.reduce((sum,account)=>sum+account.allocatedAmount,0);
+ const totalReservedBalance=accounts.reduce((sum,account)=>sum+account.balance,0);
+ const totalSettledAmount=accounts.reduce((sum,account)=>sum+account.settledAmount,0);
+ return {
+  version:1,
+  sourceLifeId,
+  currency,
+  totalEstateValue,
+  totalAllocated,
+  totalReservedBalance,
+  totalSettledAmount,
+  reconciliationDelta:totalSettledAmount-accounts.filter(account=>account.status==='transferred').reduce((sum,account)=>sum+account.allocatedAmount,0),
+  accounts
+ };
+}
 function startAsChild(index){
  if(!state||!Array.isArray(state.children)||!state.children[index])return;
  if(!archiveLife()){
@@ -5841,14 +5931,16 @@ function startAsChild(index){
  const inheritance=calculateInheritance(previous,share);
  const totalEstateValue=distributionPreview.totalEstateValue;
  const childCount=distributionPreview.childCount,childPoolValue=distributionPreview.childPoolValue;
- const siblingAllocations=distributionPreview.siblingAllocations.map((allocation,i)=>({...allocation,selected:i===index}));
+ const beneficiaryAccounts=buildInheritanceAccounts(previous,distributionPreview,index,inheritance.value);
+ const childAccounts=beneficiaryAccounts.accounts.filter(account=>account.kind==='child');
+ const siblingAllocations=distributionPreview.siblingAllocations.map((allocation,i)=>({...allocation,selected:i===index,accountId:childAccounts[i]?childAccounts[i].id:null,accountStatus:i===index?'transferred':'reserved'}));
  if(siblingAllocations[index])siblingAllocations[index].actualValue=inheritance.value;
  const heir=newLife();ensureChildGrowthProfile(child);heir.name=child.name;heir.gender=child.gender||'male';heir.age=typeof child.age==='number'?child.age:18;heir.place={...previous.place};heir.bank=inheritance.bank;if(perkOwned('goldenPiggyBank'))heir.bank+=1000000;heir.stats={...heir.stats,health:clamp(child.health??heir.stats.health),happiness:clamp(child.happiness??heir.stats.happiness),smart:clamp(child.smart??heir.stats.smart),looks:clamp(child.looks??heir.stats.looks)};heir.reputation=clamp((Number(child.schoolPerformance)||50)*.35+(Number(child.careerPotential)||40)*.35+(Number(child.relationshipLevel)||50)*.3);
- heir.family=[...previous.family];previous.children.forEach((sibling,i)=>{if(i!==index){const allocation=siblingAllocations[i]||{};heir.family.push({...sibling,relation:'أخ/أخت',inheritanceShare:share,inheritanceEstimate:allocation.estimatedValue,inheritanceStatus:'مخصص من التركة'});}});heir.partner=null;heir.married=false;heir.children=[];
- heir.legacy={name:previous.name,inheritance:inheritance.value,heirloom:(previous.heirlooms||[])[0]?.name||null,distribution:{policy:previous.willDistribution||'الأسرة بالتساوي',childrenPoolShare:childPoolShare,perChildShare:share,childCount,selectedChildIndex:index,selectedChildName:child.name,totalEstateValue,childPoolValue,partnerShare:distributionPreview.partnerShare,partnerValue:distributionPreview.partnerValue,charitableShare:distributionPreview.charitableShare,charitableValue:distributionPreview.charitableValue,otherBeneficiaryShare:distributionPreview.otherBeneficiaryShare,otherBeneficiaryValue:distributionPreview.otherBeneficiaryValue,beneficiaryAllocations:distributionPreview.beneficiaryAllocations,beneficiarySummary:distributionPreview.beneficiarySummary,outsideChildrenPoolShare:distributionPreview.outsideChildrenPoolShare,outsideChildrenPoolValue:distributionPreview.outsideChildrenPoolValue,outsideChildrenPoolRecipient:distributionPreview.outsideChildrenPoolRecipient,siblingAllocations}};
+ heir.family=[...previous.family];previous.children.forEach((sibling,i)=>{if(i!==index){const allocation=siblingAllocations[i]||{};heir.family.push({...sibling,relation:'أخ/أخت',inheritanceShare:share,inheritanceEstimate:allocation.estimatedValue,inheritanceStatus:'مخصص من التركة',inheritanceAccountId:allocation.accountId,inheritanceAccountStatus:'استحقاق محفوظ'});}});heir.partner=null;heir.married=false;heir.children=[];
+ heir.legacy={name:previous.name,inheritance:inheritance.value,heirloom:(previous.heirlooms||[])[0]?.name||null,distribution:{policy:previous.willDistribution||'الأسرة بالتساوي',childrenPoolShare:childPoolShare,perChildShare:share,childCount,selectedChildIndex:index,selectedChildName:child.name,totalEstateValue,childPoolValue,partnerShare:distributionPreview.partnerShare,partnerValue:distributionPreview.partnerValue,charitableShare:distributionPreview.charitableShare,charitableValue:distributionPreview.charitableValue,otherBeneficiaryShare:distributionPreview.otherBeneficiaryShare,otherBeneficiaryValue:distributionPreview.otherBeneficiaryValue,beneficiaryAllocations:distributionPreview.beneficiaryAllocations,beneficiarySummary:distributionPreview.beneficiarySummary,outsideChildrenPoolShare:distributionPreview.outsideChildrenPoolShare,outsideChildrenPoolValue:distributionPreview.outsideChildrenPoolValue,outsideChildrenPoolRecipient:distributionPreview.outsideChildrenPoolRecipient,siblingAllocations,beneficiaryAccounts,selectedAccountId:childAccounts[index]?childAccounts[index].id:null}};
  heir.heirlooms=[...(previous.heirlooms||[])];heir.accomplishments=['بدأ حياة جديدة كامتداد لعائلة '+previous.name,'ورث '+cash(inheritance.value)];
  heir.job=null;heir.assets=inheritance.assets;heir.investments=inheritance.investments;heir.business=inheritance.business||null;heir.companies=Array.isArray(inheritance.companies)?inheritance.companies:[];
- heir.family.push({id:'legacy-parent-'+Date.now(),name:previous.name,relation:'والد/والدة متوفى',emoji:previous.gender==='male'?'👨‍🦳':'👩‍🦳',age:previous.age,job:previous.job?previous.job.title:'متوفى',relationshipLevel:100,personality:'موروث عائلي'});if(oldPartner){const partnerRecord={...oldPartner,relation:'الأم/الأب'};if(distributionPreview.partnerShare>0){partnerRecord.inheritanceShare=distributionPreview.partnerShare;partnerRecord.inheritanceEstimate=distributionPreview.partnerValue;partnerRecord.inheritanceStatus='مخصص للشريك';}heir.family.push(partnerRecord);}
+ heir.family.push({id:'legacy-parent-'+Date.now(),name:previous.name,relation:'والد/والدة متوفى',emoji:previous.gender==='male'?'👨‍🦳':'👩‍🦳',age:previous.age,job:previous.job?previous.job.title:'متوفى',relationshipLevel:100,personality:'موروث عائلي'});if(oldPartner){const partnerRecord={...oldPartner,relation:'الأم/الأب'};if(distributionPreview.partnerShare>0){const partnerAccount=beneficiaryAccounts.accounts.find(account=>account.kind==='partner');partnerRecord.inheritanceShare=distributionPreview.partnerShare;partnerRecord.inheritanceEstimate=distributionPreview.partnerValue;partnerRecord.inheritanceStatus='مخصص للشريك';partnerRecord.inheritanceAccountId=partnerAccount?partnerAccount.id:null;partnerRecord.inheritanceAccountStatus='استحقاق محفوظ';}heir.family.push(partnerRecord);}
  state=heir;dead=false;log('🌳','استمرار السلالة','بدأت حياة جديدة باسم '+state.name+'، وارثًا قصة '+previous.name+' وإرث العائلة.','special');
  log('📜','تقسيم حصة الأبناء','تُقسَّم حصة الأبناء البالغة '+Math.round(childPoolShare*100)+'% بالتساوي على '+childCount+' أبناء؛ نصيبك '+formatInheritancePercent(share)+'% من صافي التركة.','special');
  const inheritedCompanyCount=(heir.business?1:0)+(heir.companies||[]).length;
