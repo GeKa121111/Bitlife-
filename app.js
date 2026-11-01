@@ -5558,13 +5558,13 @@ function calculateInheritance(previous,share){
  const backingAssetFor=entity=>{
   const id=entity.assetId??entity.id;
   if(id!==undefined&&id!==null){
-   const foundByIdAndTitle=assets.find(item=>item&&String(item.id)===String(id)&&(!entity.title||String(item.title)===String(entity.title)));
+   const foundByIdAndTitle=assets.find(item=>item&&item.kind==='business'&&String(item.id)===String(id)&&(!entity.title||String(item.title)===String(entity.title)));
    if(foundByIdAndTitle)return foundByIdAndTitle;
   }
   const matches=assets.filter(item=>item&&item.kind==='business'&&entity.title&&String(item.title)===String(entity.title));
   if(matches.length===1)return matches[0];
   if(id!==undefined&&id!==null){
-   const foundById=assets.find(item=>item&&String(item.id)===String(id));
+   const foundById=assets.find(item=>item&&item.kind==='business'&&String(item.id)===String(id));
    if(foundById)return foundById;
   }
   return null;
