@@ -1048,3 +1048,86 @@ test('حفظ v84 القديم يُعرض ويُرحّل إلى تاريخ الأ
   assert.equal(history[1].sourceName, 'الأب الحالي');
   assert.equal(legacy.inheritanceHistory, undefined, 'reading an old save must not mutate it');
 });
+
+
+test('سجل التركة يكشف نقص الرصيد المحجوز داخل حساب مستفيد ويحتفظ بالتنبيه بعد إعادة القراءة', () => {
+  const context = makeContext();
+  const record = context.createInheritanceHistoryRecord({
+    sourceLifeId: 'reserved-account-gap',
+    currency: 'جنيه',
+    totalEstateValue: 100,
+    totalAllocated: 100,
+    totalReservedBalance: 90,
+    totalSettledAmount: 0,
+    accounts: [{
+      id: 'reserved-gap-account',
+      beneficiaryId: 'sibling-gap',
+      name: 'الأخت مريم',
+      kind: 'child',
+      share: 1,
+      allocatedAmount: 100,
+      balance: 90,
+      settledAmount: 0,
+      status: 'reserved'
+    }]
+  }, 'تركة غير متوازنة', 70);
+
+  assert.equal(record.accountLedgerMismatch, true);
+  assert.equal(record.accountLedgerIssueCount, 1);
+  assert.equal(record.accountLedgerIncompleteCount, 0);
+  assert.equal(record.accountLedgerIssues[0].name, 'الأخت مريم');
+  assert.equal(record.accountLedgerIssues[0].delta, -10);
+
+  const reloaded = context.getInheritanceHistoryRecords({ inheritanceHistory: [record] })[0];
+  assert.equal(reloaded.accountLedgerMismatch, true);
+  assert.equal(reloaded.accountLedgerIssueCount, 1);
+  assert.equal(reloaded.accountLedgerIssues[0].delta, -10);
+});
+
+test('سجل التركة يميز بيانات الحساب القديمة الناقصة عن وجود خلل مالي مؤكد', () => {
+  const context = makeContext();
+  const record = context.createInheritanceHistoryRecord({
+    sourceLifeId: 'legacy-incomplete-account',
+    totalEstateValue: 100,
+    totalAllocated: 100,
+    totalReservedBalance: 100,
+    totalSettledAmount: 0,
+    accounts: [{
+      id: 'legacy-incomplete',
+      beneficiaryId: 'legacy-heir',
+      name: 'وارث قديم',
+      allocatedAmount: 100,
+      status: 'reserved'
+    }]
+  }, 'تركة قديمة', 68);
+
+  assert.equal(record.accountLedgerMismatch, false);
+  assert.equal(record.accountLedgerIssueCount, 0);
+  assert.equal(record.accountLedgerIncompleteCount, 1);
+  assert.equal(record.accounts[0].ledgerAuditComplete, false);
+});
+
+test('سجل التركة يكتشف تعارض ملخص الأرصدة مع مجموع حسابات المستفيدين', () => {
+  const context = makeContext();
+  const record = context.createInheritanceHistoryRecord({
+    sourceLifeId: 'estate-summary-gap',
+    totalEstateValue: 100,
+    totalAllocated: 100,
+    totalReservedBalance: 90,
+    totalSettledAmount: 0,
+    accounts: [{
+      id: 'balanced-reserved',
+      beneficiaryId: 'heir-summary',
+      name: 'الابن',
+      allocatedAmount: 100,
+      balance: 100,
+      settledAmount: 0,
+      status: 'reserved'
+    }]
+  }, 'تركة بملخص متعارض', 70);
+
+  assert.equal(record.accountLedgerMismatch, true);
+  assert.equal(record.accountLedgerIssueCount, 1);
+  assert.equal(record.accountLedgerSummaryIssues[0].field, 'totalReservedBalance');
+  assert.equal(record.accountLedgerSummaryIssues[0].delta, 10);
+});
