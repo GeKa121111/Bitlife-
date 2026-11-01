@@ -651,8 +651,8 @@ assert.ok(app.includes('source_life_mismatch'), 'inheritance auditing should det
 
 assert.ok(app.includes('accountLedgerAmountIncompleteCount'), 'missing share data must not suppress independent amount-summary auditing');
 
-assert.match(app, /function buildBeneficiaryWallets\\(/, 'reserved child and partner inheritance shares should become separate local wallets');
-assert.match(app, /function supportBeneficiaryWallet\\(/, 'the active heir should be able to record a real support transfer');
-assert.match(app, /function recordBeneficiaryWalletSupport\\(/, 'wallet transfers should update a bounded auditable transaction ledger');
-assert.match(app, /beneficiaryWallets:buildBeneficiaryWallets\\(previous\\.legacy,beneficiaryAccounts,previous\\.name,previous\\.age\\)/,
+assert.match(app, /function buildBeneficiaryWallets\(/, 'reserved child and partner inheritance shares should become separate local wallets');
+assert.match(app, /function supportBeneficiaryWallet\(/, 'the active heir should be able to record a real support transfer');
+assert.match(app, /function recordBeneficiaryWalletSupport\(/, 'wallet transfers should update a bounded auditable transaction ledger');
+assert.match(app, /beneficiaryWallets:buildBeneficiaryWallets\(previous\.legacy,beneficiaryAccounts,previous\.name,previous\.age\)/,
   'wallets should survive when the family advances to the next generation');
