@@ -6076,7 +6076,7 @@ function createInheritanceHistoryRecord(registry,sourceName,sourceAge){
   ?(hasPriorReported?priorReportedDelta:hasDeclaredDelta?declaredReconciliationDelta:null)
   :null;
  const accountLedgerIssues=[];
- let accountLedgerIncompleteCount=0;
+ let accountLedgerIncompleteCount=0,accountLedgerAmountIncompleteCount=0;
  const seenAccountIds=new Set(),seenBeneficiaryIds=new Set();
  accounts.forEach(account=>{
   if(account.ledgerAuditInvalid){
@@ -6098,6 +6098,7 @@ function createInheritanceHistoryRecord(registry,sourceName,sourceAge){
     });
    }
   }
+  if(!account.ledgerAuditComplete)accountLedgerAmountIncompleteCount++;
   if(!account.ledgerAuditComplete||!account.ledgerShareAuditComplete)accountLedgerIncompleteCount++;
   if(account.ledgerShareAuditInvalid){
    accountLedgerIssues.push({
@@ -6135,7 +6136,7 @@ function createInheritanceHistoryRecord(registry,sourceName,sourceAge){
  const accountLedgerShareIncompleteCount=accounts.filter(account=>!account.ledgerShareAuditComplete).length;
  const accountLedgerShareMismatch=accountLedgerIssues.some(issue=>['invalid_share','share_total_mismatch'].includes(issue.reason));
  const accountLedgerSummaryIssues=[];
- if(accountLedgerIncompleteCount===0){
+ if(accountLedgerAmountIncompleteCount===0){
   const calculatedAllocated=accounts.reduce((sum,account)=>sum+account.allocatedAmount,0);
   const calculatedBalance=accounts.reduce((sum,account)=>sum+account.balance,0);
   const calculatedSettled=accounts.reduce((sum,account)=>sum+account.settledAmount,0);
@@ -6176,6 +6177,7 @@ function createInheritanceHistoryRecord(registry,sourceName,sourceAge){
   accountLedgerMismatch,
   accountLedgerIssueCount,
   accountLedgerIncompleteCount,
+  accountLedgerAmountIncompleteCount,
   accountLedgerShareTotal,
   accountLedgerShareIncompleteCount,
   accountLedgerShareMismatch,
