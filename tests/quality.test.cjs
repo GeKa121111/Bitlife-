@@ -1960,7 +1960,7 @@ test('محافظ الورثة تحفظ حصص الأسرة وتدعم المسا
   assert.match(walletMenu, /محافظ الورثة/);
   assert.match(familyMenu, /beneficiaryWalletsMenu/);
   assert.match(app, /const beneficiaryWallets=buildBeneficiaryWallets\(previous\.legacy,beneficiaryAccounts,previous\.name,previous\.age\)/);
-  assert.match(app, /inheritanceHistory:buildInheritanceHistory\(previous,beneficiaryAccounts\),beneficiaryWallets,distribution/);
+  assert.match(app, /inheritanceHistory:buildInheritanceHistory\(previous,beneficiaryAccounts\),beneficiaryWallets,familyPropertyOwnership,distribution/);
   assert.match(app, /hekayat_hayah_save_v1/);
   assert.match(read('sw.js'), /hayah-shell-v92/);
 });
