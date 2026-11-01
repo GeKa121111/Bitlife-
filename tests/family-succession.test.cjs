@@ -82,6 +82,7 @@ const runtime = [
   'createInheritanceHistoryRecord',
   'buildBeneficiaryWallets',
   'recordBeneficiaryWalletSupport',
+  'supportBeneficiaryWallet',
   'getInheritanceHistoryRecords',
   'buildInheritanceHistory',
   'familyTreeNode',
@@ -106,9 +107,18 @@ const harness = [
   'function archiveLife() { return true; }',
   'function newLife() { return { version: 1, lifeId: "new-heir", stats: { health: 80, happiness: 70, smart: 50, looks: 50 }, family: [], children: [], assets: [], investments: [], business: null, companies: [], heirlooms: [], accomplishments: [], legacy: {} }; }',
   'function log(icon, title, description, type) { logs.push({ icon, title, description, type }); }',
+  'var saveCalls = 0;',
+  'var saveResult = true;',
+  'var renderCalls = { header: 0, stats: 0, feed: 0 };',
+  'var infoMessages = [];',
+  'var closeModalCalls = 0;',
+  'function save() { saveCalls += 1; return saveResult; }',
+  'function renderHeader() { renderCalls.header += 1; }',
+  'function renderStats() { renderCalls.stats += 1; }',
+  'function renderFeed() { renderCalls.feed += 1; }',
   'function render() {}',
-  'function closeModal() {}',
-  'function info() {}',
+  'function closeModal() { closeModalCalls += 1; }',
+  'function info(...args) { infoMessages.push(args); }',
   'Math.random = seededRandom;'
 ].join('\n');
 
@@ -1438,4 +1448,64 @@ test('تحويل المساعدة إلى محفظة الوريث يرفض الم
   const rejected = context.recordBeneficiaryWalletSupport(corrupted, 500, { transactionId: 'gift-2' });
   assert.equal(rejected.reason, 'ledger_mismatch');
   assert.equal(corrupted.balance, 5900, 'a failed transfer must not silently repair a corrupted wallet');
+});
+
+test('تحويل مساعدة الوريث يحفظ الخصم والإضافة وسجل الحياة بعملية حفظ واحدة', () => {
+  const context = makeContext();
+  const wallet = {
+    id: 'wallet-atomic-success', beneficiaryId: 'sibling-atomic', name: 'الأخت سلمى', kind: 'child', currency: 'جنيه',
+    sourceLifeId: 'estate-atomic', sourceName: 'الجيل السابق', openingBalance: 5000, supportTotal: 0, balance: 5000,
+    transactions: [{ id: 'wallet-atomic-inheritance', type: 'inheritance', amount: 5000, currency: 'جنيه' }],
+    ledgerAuditComplete: true, ledgerMismatch: false
+  };
+  context.state = {
+    lifeId: 'active-atomic-life', name: 'ليلى', age: 31, yearCount: 31, bank: 10000,
+    place: { unit: 'جنيه' }, log: [{ age: 30, icon: '🌱', title: 'حدث سابق', text: 'بداية مستقرة', tone: 'good' }],
+    legacy: { beneficiaryWallets: [wallet] }
+  };
+  context.getBeneficiaryWallets = () => [wallet];
+
+  context.supportBeneficiaryWallet(wallet.id, 1000);
+
+  assert.equal(context.saveCalls, 1, 'the transfer should commit through one primary save');
+  assert.equal(context.state.bank, 9000, 'the active heir should be debited once');
+  assert.equal(wallet.balance, 6000, 'the beneficiary wallet should be credited once');
+  assert.equal(wallet.supportTotal, 1000);
+  assert.equal(context.state.log.length, 2, 'the transfer event should be committed with the balances');
+  assert.equal(context.state.log[1].title, 'مساعدة عائلية');
+  assert.deepEqual(JSON.parse(JSON.stringify(context.renderCalls)), { header: 1, stats: 1, feed: 1 });
+  assert.equal(context.closeModalCalls, 1);
+  assert.equal(context.infoMessages.at(-1)[1], 'تم تسجيل المساعدة');
+});
+
+test('فشل حفظ تحويل المساعدة يعيد الرصيد والمحفظة وسجل الحياة دون كتابة جزئية ثانية', () => {
+  const context = makeContext();
+  const wallet = {
+    id: 'wallet-atomic-failure', beneficiaryId: 'sibling-atomic-failure', name: 'الأخ كريم', kind: 'child', currency: 'جنيه',
+    sourceLifeId: 'estate-atomic-failure', sourceName: 'الجيل السابق', openingBalance: 7000, supportTotal: 500, balance: 7500,
+    transactions: [
+      { id: 'wallet-atomic-failure-inheritance', type: 'inheritance', amount: 7000, currency: 'جنيه' },
+      { id: 'wallet-atomic-failure-support', type: 'support', amount: 500, currency: 'جنيه' }
+    ],
+    ledgerAuditComplete: true, ledgerMismatch: false
+  };
+  const walletBefore = JSON.stringify(wallet);
+  const logBefore = [{ age: 30, icon: '📚', title: 'حدث سابق', text: 'سجل محفوظ', tone: '' }];
+  context.state = {
+    lifeId: 'active-atomic-failure-life', name: 'ليلى', age: 32, yearCount: 32, bank: 12000,
+    place: { unit: 'جنيه' }, log: logBefore.slice(), legacy: { beneficiaryWallets: [wallet] }
+  };
+  context.getBeneficiaryWallets = () => [wallet];
+  context.saveResult = false;
+
+  context.supportBeneficiaryWallet(wallet.id, 1000);
+
+  assert.equal(context.saveCalls, 1, 'a failed transfer should not perform a second hidden save through log()');
+  assert.equal(context.state.bank, 12000, 'the active heir debit must be rolled back');
+  assert.equal(JSON.stringify(wallet), walletBefore, 'the beneficiary wallet credit and transaction must be rolled back');
+  assert.deepEqual(JSON.parse(JSON.stringify(context.state.log)), logBefore, 'the life diary event must be rolled back');
+  assert.equal(context.closeModalCalls, 0, 'the transfer screen should remain available after a failed save');
+  assert.equal(context.infoMessages.at(-1)[1], 'تعذر حفظ التحويل');
+  assert.deepEqual(JSON.parse(JSON.stringify(context.renderCalls)), { header: 1, stats: 1, feed: 1 },
+    'the visible balances and diary should be restored after rollback');
 });
