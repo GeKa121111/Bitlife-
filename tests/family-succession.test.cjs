@@ -86,7 +86,10 @@ const runtime = [
   'safeFamilyOwnershipShare',
   'recordFamilyPropertySale',
   'syncFamilyPropertyMarketValue',
+  'beneficiaryWalletLedgerTotals',
   'recordBeneficiaryWalletSupport',
+  'recordBeneficiaryWalletRentalIncome',
+  'distributeFamilyPropertyRent',
   'supportBeneficiaryWallet',
   'getInheritanceHistoryRecords',
   'buildInheritanceHistory',
@@ -1759,4 +1762,160 @@ test('ملكية عقار واحد تظل متوازنة عبر خمسة أجي�
   assert.equal(record.owners.length, 6);
   assert.equal(currentShare, 0.03125);
   assert.equal(record.totalOwnershipShare, 1);
+});
+
+
+test('محفظة الوريث تسجل دخل الإيجار وتحافظ على معادلة الرصيد مع المساعدات', () => {
+  const context = makeContext();
+  const wallet = {
+    id: 'rent-wallet-one', beneficiaryId: 'sibling-rent-one', kind: 'child', currency: 'جنيه',
+    openingBalance: 10000, supportTotal: 500, rentalIncomeTotal: 0, balance: 10500,
+    transactions: [
+      { id: 'rent-wallet-one-inheritance', type: 'inheritance', amount: 10000, currency: 'جنيه' },
+      { id: 'rent-wallet-one-support', type: 'support', amount: 500, currency: 'جنيه' }
+    ],
+    ledgerAuditComplete: true, ledgerMismatch: false
+  };
+  const result = context.recordBeneficiaryWalletRentalIncome(wallet, 2500, {
+    transactionId: 'rent-wallet-one-year-31', currency: 'جنيه',
+    familyAssetId: 'family-flat-one', propertyTitle: 'شقة العائلة', age: 31, year: 31
+  });
+  assert.equal(result.ok, true);
+  assert.equal(wallet.rentalIncomeTotal, 2500);
+  assert.equal(wallet.balance, 13000);
+  assert.equal(wallet.transactions.at(-1).type, 'rental_income');
+  assert.equal(context.recordBeneficiaryWalletRentalIncome(wallet, 2500, {
+    transactionId: 'rent-wallet-one-year-31', currency: 'جنيه'
+  }).reason, 'duplicate_transaction');
+  assert.equal(context.recordBeneficiaryWalletSupport(wallet, 1000, { transactionId: 'rent-wallet-one-support-two' }).ok, true);
+  assert.equal(wallet.balance, 14000);
+  assert.equal(wallet.rentalIncomeTotal, 2500);
+});
+
+test('دخل إيجار العقار المشترك يتوزع على الملاك والمحافظ والخارج والحصة المعلقة دون مضاعفة حصة اللاعب', () => {
+  const context = makeContext();
+  const wallet = {
+    id: 'sibling-rent-wallet', beneficiaryId: 'sibling-rent-owner', kind: 'child', currency: 'جنيه',
+    openingBalance: 10000, supportTotal: 0, rentalIncomeTotal: 0, balance: 10000,
+    transactions: [{ id: 'sibling-rent-inheritance', type: 'inheritance', amount: 10000, currency: 'جنيه' }],
+    ledgerAuditComplete: true, ledgerMismatch: false
+  };
+  const record = {
+    id: 'family-flat-rent', familyAssetId: 'family-flat-rent', title: 'شقة العائلة',
+    currency: 'جنيه', marketValue: 1000000, encumberedShare: 0.1, auditStatus: 'balanced',
+    owners: [
+      { beneficiaryId: 'active-rent-owner', name: 'المالك الحالي', kind: 'child', status: 'active', share: 0.4 },
+      { beneficiaryId: 'sibling-rent-owner', name: 'الأخت مريم', kind: 'child', status: 'reserved', share: 0.3 },
+      { beneficiaryId: 'outside-rent-owner', name: 'مالك خارجي', kind: 'external', status: 'external', share: 0.2 }
+    ],
+    transactions: []
+  };
+  context.state = {
+    lifeId: 'active-rent-life', name: 'المالك الحالي', age: 35, yearCount: 35, bank: -5000,
+    place: { unit: 'جنيه' },
+    legacy: { activeBeneficiaryId: 'active-rent-owner', beneficiaryWallets: [wallet], familyPropertyOwnership: [record] }
+  };
+  const asset = { id: 'active-flat-share', familyAssetId: 'family-flat-rent', ownerBeneficiaryId: 'active-rent-owner',
+    ownershipShare: 0.4, kind: 'property', value: 400000, rented: true };
+  const result = context.distributeFamilyPropertyRent(asset, 18000);
+  assert.equal(result.ok, true);
+  assert.equal(result.grossRent, 45000);
+  assert.equal(result.activeAmount, 18000);
+  assert.equal(result.familyWalletAmount, 13500);
+  assert.equal(result.externalAmount, 9000);
+  assert.equal(result.reservedAmount, 4500);
+  assert.equal(context.state.bank, 13000);
+  assert.equal(wallet.balance, 23500);
+  assert.equal(wallet.rentalIncomeTotal, 13500);
+  assert.equal(record.rentReserveTotal, 4500);
+  assert.equal(record.externalRentPaidTotal, 9000);
+  assert.equal(record.familyWalletRentPaidTotal, 13500);
+  assert.equal(record.activeRentPaidTotal, 18000);
+  assert.equal(record.transactions[0].type, 'rent_distribution');
+  assert.equal(record.totalOwnershipShare, 1);
+  assert.equal(context.distributeFamilyPropertyRent(asset, 18000).reason, 'duplicate_transaction');
+  assert.equal(context.state.bank, 13000, 'replaying the same annual distribution must not pay twice');
+});
+
+test('دخل الإيجار غير المدفوع يتراكم كمتأخرات ثم ينتقل لمحفظة الوارث عند توفرها', () => {
+  const context = makeContext();
+  const record = {
+    id: 'family-flat-arrears', familyAssetId: 'family-flat-arrears', title: 'منزل العائلة',
+    currency: 'جنيه', marketValue: 1000000, encumberedShare: 0, auditStatus: 'balanced',
+    owners: [
+      { beneficiaryId: 'active-arrears-owner', name: 'المالك الحالي', kind: 'child', status: 'active', share: 0.5 },
+      { beneficiaryId: 'sibling-arrears-owner', name: 'الأخ كريم', kind: 'child', status: 'reserved', share: 0.5 }
+    ],
+    transactions: []
+  };
+  context.state = {
+    lifeId: 'arrears-life', name: 'المالك الحالي', age: 40, yearCount: 40, bank: 50000,
+    place: { unit: 'جنيه' },
+    legacy: { activeBeneficiaryId: 'active-arrears-owner', beneficiaryWallets: [], familyPropertyOwnership: [record] }
+  };
+  const asset = { id: 'arrears-flat-share', familyAssetId: 'family-flat-arrears', ownerBeneficiaryId: 'active-arrears-owner',
+    ownershipShare: 0.5, kind: 'property', value: 500000, rented: true };
+  const first = context.distributeFamilyPropertyRent(asset, 10000);
+  assert.equal(first.activeAmount, 10000);
+  assert.equal(record.owners.find(owner => owner.beneficiaryId === 'sibling-arrears-owner').rentOwed, 10000);
+  assert.equal(record.rentReserveTotal, 10000);
+
+  const wallet = {
+    id: 'sibling-arrears-wallet', beneficiaryId: 'sibling-arrears-owner', kind: 'child', currency: 'جنيه',
+    openingBalance: 5000, supportTotal: 0, rentalIncomeTotal: 0, balance: 5000,
+    transactions: [{ id: 'sibling-arrears-inheritance', type: 'inheritance', amount: 5000, currency: 'جنيه' }],
+    ledgerAuditComplete: true, ledgerMismatch: false
+  };
+  context.state.legacy.beneficiaryWallets.push(wallet);
+  context.state.yearCount = 41;
+  context.state.age = 41;
+  const second = context.distributeFamilyPropertyRent(asset, 10000);
+  assert.equal(second.familyWalletAmount, 20000, 'the wallet should receive current rent plus the unpaid prior year');
+  assert.equal(wallet.balance, 25000);
+  assert.equal(wallet.rentalIncomeTotal, 20000);
+  assert.equal(record.owners.find(owner => owner.beneficiaryId === 'sibling-arrears-owner').rentOwed, 0);
+  assert.equal(record.rentReserveReleasedTotal, 10000);
+  assert.equal(record.rentReserveTotal - record.rentReserveReleasedTotal, 0);
+});
+
+test('سجل ملكية غير صالح يوقف توزيع دخل الإيجار دون تغيير الرصيد أو السجل', () => {
+  const context = makeContext();
+  const record = {
+    id: 'family-flat-invalid-rent', familyAssetId: 'family-flat-invalid-rent', currency: 'جنيه',
+    auditStatus: 'needs_review', encumberedShare: 0,
+    owners: [{ beneficiaryId: 'active-invalid-rent', share: 1, kind: 'child', status: 'active' }],
+    transactions: []
+  };
+  context.state = {
+    lifeId: 'invalid-rent-life', age: 40, yearCount: 40, bank: 20000, place: { unit: 'جنيه' },
+    legacy: { activeBeneficiaryId: 'active-invalid-rent', familyPropertyOwnership: [record], beneficiaryWallets: [] }
+  };
+  const before = JSON.stringify(record);
+  const result = context.distributeFamilyPropertyRent({
+    familyAssetId: record.id, ownerBeneficiaryId: 'active-invalid-rent', ownershipShare: 1, kind: 'property'
+  }, 900);
+  assert.equal(result.ok, false);
+  assert.equal(result.reason, 'ownership_audit_incomplete');
+  assert.equal(context.state.bank, 20000);
+  assert.equal(JSON.stringify(record), before);
+});
+
+
+test('الحفظ القديم لمحفظة الوريث دون حقل دخل الإيجار يظل صالحًا ويبدأ من صفر', () => {
+  const context = makeContext();
+  const legacyWallet = {
+    id: 'legacy-wallet-without-rent-total', beneficiaryId: 'legacy-rent-heir', kind: 'child', currency: 'جنيه',
+    openingBalance: 7000, supportTotal: 1200, balance: 8200,
+    transactions: [
+      { id: 'legacy-rent-inheritance', type: 'inheritance', amount: 7000, currency: 'جنيه' },
+      { id: 'legacy-rent-support', type: 'support', amount: 1200, currency: 'جنيه' }
+    ],
+    ledgerAuditComplete: true, ledgerMismatch: false
+  };
+  const wallets = context.buildBeneficiaryWallets({ beneficiaryWallets: [legacyWallet] }, null, 'الجيل السابق', 62);
+  assert.equal(wallets.length, 1);
+  assert.equal(wallets[0].balance, 8200);
+  assert.equal(wallets[0].rentalIncomeTotal, 0);
+  assert.equal(wallets[0].ledgerAuditComplete, true);
+  assert.equal(wallets[0].ledgerMismatch, false);
 });
