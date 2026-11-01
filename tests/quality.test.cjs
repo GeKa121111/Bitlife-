@@ -1974,6 +1974,7 @@ test('سجل الملكية المشتركة يحافظ على حصص الأسر
   const familyTree = functionSource('familyTreeMenu', 'familyPropertyOwnershipMenu');
   const menu = functionSource('familyPropertyOwnershipMenu', 'familyPropertyOwnershipRecordMenu');
   const details = functionSource('familyPropertyOwnershipRecordMenu', 'inheritanceAccountsMenu');
+  const annualAge = functionSource('advanceAge', 'ageUp');
   assert.match(builder, /estateFactor/);
   assert.match(builder, /encumberedShare/);
   assert.match(builder, /beneficiary_shares_incomplete/);
@@ -1981,6 +1982,7 @@ test('سجل الملكية المشتركة يحافظ على حصص الأسر
   assert.match(sale, /ownership_audit_incomplete/);
   assert.match(sale, /external-buyer-/);
   assert.match(sync, /record\.marketValue/);
+  assert.match(annualAge, /syncFamilyPropertyMarketValue\(a,null,0\)/);
   assert.match(inheritance, /familyAssetOriginalValue/);
   assert.match(inheritance, /ownershipShare/);
   assert.match(familyTree, /ملكية عقارات العائلة/);
