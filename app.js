@@ -1473,6 +1473,12 @@ function closeModal(){
 }
 function section(title){return {section:true,title};}
 function choice(icon,title,desc,action,price='',progress=null,locked=false){return {icon,title,desc,action,price,progress,locked};}
+function buildDialogDescriptionIds(desc,questionPrompt){
+ const ids=[];
+ if(desc)ids.push('dialogDescription');
+ if(questionPrompt)ids.push('dialogQuestion');
+ return ids;
+}
 function modal(icon,title,desc,choices,closable=true,extra=''){
  const root=$('modalRoot');
  const activeElement=document.activeElement;
@@ -1513,9 +1519,7 @@ function modal(icon,title,desc,choices,closable=true,extra=''){
  const showSurprise=hasRandomChoice&&!film&&!license;
  const hasQuestion=/(هتعمل إيه|ماذا ستفعل|ماذا ستختار|هتختار إيه|؟|\?)/.test(String(desc||''));
  const questionPrompt=!isDrawer&&!isNotice&&!hasSelect&&actualChoices.length>1&&!hasQuestion?'هتعمل إيه؟':'';
- const dialogDescriptionIds=[];
- if(desc)dialogDescriptionIds.push('dialogDescription');
- if(questionPrompt)dialogDescriptionIds.push('dialogQuestion');
+ const dialogDescriptionIds=buildDialogDescriptionIds(desc,questionPrompt);
  const describedBy=dialogDescriptionIds.length?' aria-describedby="'+dialogDescriptionIds.join(' ')+'"':'';
  const list=choices.map((c,i)=>{
   if(c&&c.section)return '<div class="list-section" role="heading" aria-level="2">'+esc(c.title||'')+'</div>';
