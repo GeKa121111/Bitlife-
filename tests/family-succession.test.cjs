@@ -81,6 +81,11 @@ const runtime = [
   'buildInheritanceAccounts',
   'createInheritanceHistoryRecord',
   'buildBeneficiaryWallets',
+  'familyPropertyOwnershipRecords',
+  'buildFamilyPropertyOwnership',
+  'safeFamilyOwnershipShare',
+  'recordFamilyPropertySale',
+  'syncFamilyPropertyMarketValue',
   'recordBeneficiaryWalletSupport',
   'supportBeneficiaryWallet',
   'getInheritanceHistoryRecords',
@@ -1508,4 +1513,147 @@ test('فشل حفظ تحويل المساعدة يعيد الرصيد والمح
   assert.equal(context.infoMessages.at(-1)[1], 'تعذر حفظ التحويل');
   assert.deepEqual(JSON.parse(JSON.stringify(context.renderCalls)), { header: 1, stats: 1, feed: 1 },
     'the visible balances and diary should be restored after rollback');
+});
+
+
+test('ملكية العقار العائلي تتوزع على المستفيدين دون تكرار قيمة الأصل', () => {
+  const context = makeContext();
+  const previous = {
+    lifeId: 'property-parent-life',
+    name: 'الوالد',
+    age: 72,
+    bank: 0,
+    assets: [{ id: 'family-home-1', title: 'بيت العائلة', kind: 'property', value: 1000000, upkeep: 20000, condition: 100 }],
+    investments: [],
+    business: null,
+    companies: [],
+    debt: 0,
+    place: { unit: 'جنيه' },
+    legacy: { activeBeneficiaryId: 'parent-owner' }
+  };
+  const registry = {
+    sourceLifeId: 'property-estate-one',
+    currency: 'جنيه',
+    accounts: [
+      { beneficiaryId: 'active-heir', name: 'الابن الحالي', kind: 'child', share: 0.5, status: 'transferred' },
+      { beneficiaryId: 'sibling-heir', name: 'الأخت مريم', kind: 'child', share: 0.5, status: 'reserved' }
+    ]
+  };
+
+  const inherited = context.calculateInheritance(previous, 0.5, 500000);
+  assert.equal(inherited.assets[0].familyAssetId, 'family-property-property-parent-life-family-home-1');
+  assert.equal(inherited.assets[0].ownershipShare, 0.5);
+  assert.equal(inherited.assets[0].familyAssetOriginalValue, 1000000);
+
+  const records = context.buildFamilyPropertyOwnership(previous, registry);
+  assert.equal(records.length, 1);
+  const record = records[0];
+  assert.equal(record.auditStatus, 'balanced');
+  assert.equal(record.marketValue, 1000000);
+  assert.equal(record.owners.length, 2);
+  assert.equal(record.owners.find(owner => owner.beneficiaryId === 'active-heir').share, 0.5);
+  assert.equal(record.owners.find(owner => owner.beneficiaryId === 'sibling-heir').share, 0.5);
+  assert.equal(record.totalOwnershipShare, 1);
+});
+
+test('التزامات التركة تظهر كحصة غير موزعة ولا تختفي من سجل الملكية', () => {
+  const context = makeContext();
+  const previous = {
+    lifeId: 'property-debt-life', name: 'صاحب العقار', age: 68, bank: 0,
+    assets: [{ id: 'debt-home', title: 'منزل عليه التزامات', kind: 'property', value: 1000000, upkeep: 12000 }],
+    investments: [], business: null, companies: [], debt: 200000,
+    place: { unit: 'جنيه' }, legacy: { activeBeneficiaryId: 'debt-owner' }
+  };
+  const registry = {
+    sourceLifeId: 'property-debt-estate', currency: 'جنيه',
+    accounts: [
+      { beneficiaryId: 'debt-heir-a', name: 'الابن الأول', kind: 'child', share: 0.5, status: 'transferred' },
+      { beneficiaryId: 'debt-heir-b', name: 'الابن الثاني', kind: 'child', share: 0.5, status: 'reserved' }
+    ]
+  };
+  const record = context.buildFamilyPropertyOwnership(previous, registry)[0];
+  assert.equal(record.auditStatus, 'balanced');
+  assert.equal(record.owners.find(owner => owner.beneficiaryId === 'debt-heir-a').share, 0.4);
+  assert.equal(record.owners.find(owner => owner.beneficiaryId === 'debt-heir-b').share, 0.4);
+  assert.equal(record.encumberedShare, 0.2);
+  assert.equal(record.totalOwnershipShare, 1);
+});
+
+test('ملكية الإخوة القديمة تظل محفوظة عند توريث حصة الجيل الحالي مرة أخرى', () => {
+  const context = makeContext();
+  const previous = {
+    lifeId: 'property-generation-two', name: 'الوارث الحالي', age: 45, bank: 0,
+    assets: [{
+      id: 'inherited-home-share', familyAssetId: 'family-home-stable', familyAssetOriginalValue: 1000000,
+      ownerBeneficiaryId: 'active-owner', ownershipShare: 0.5, title: 'بيت العائلة',
+      kind: 'property', value: 500000, upkeep: 10000
+    }],
+    investments: [], business: null, companies: [], debt: 0, place: { unit: 'جنيه' },
+    legacy: {
+      activeBeneficiaryId: 'active-owner',
+      familyPropertyOwnership: [{
+        id: 'family-home-stable', familyAssetId: 'family-home-stable', title: 'بيت العائلة',
+        currency: 'جنيه', marketValue: 1000000, upkeep: 20000, encumberedShare: 0,
+        auditStatus: 'balanced', owners: [
+          { beneficiaryId: 'active-owner', name: 'الوارث الحالي', kind: 'child', share: 0.5, status: 'active' },
+          { beneficiaryId: 'older-sibling', name: 'الأخ كريم', kind: 'child', share: 0.5, status: 'reserved' }
+        ], transactions: []
+      }]
+    }
+  };
+  const registry = {
+    sourceLifeId: 'property-estate-generation-three', currency: 'جنيه',
+    accounts: [
+      { beneficiaryId: 'grandchild-a', name: 'الحفيد الأول', kind: 'child', share: 0.5, status: 'transferred' },
+      { beneficiaryId: 'grandchild-b', name: 'الحفيدة الثانية', kind: 'child', share: 0.5, status: 'reserved' }
+    ]
+  };
+  const record = context.buildFamilyPropertyOwnership(previous, registry)[0];
+  assert.equal(record.auditStatus, 'balanced');
+  assert.equal(record.owners.find(owner => owner.beneficiaryId === 'older-sibling').share, 0.5);
+  assert.equal(record.owners.find(owner => owner.beneficiaryId === 'grandchild-a').share, 0.25);
+  assert.equal(record.owners.find(owner => owner.beneficiaryId === 'grandchild-b').share, 0.25);
+  assert.equal(record.totalOwnershipShare, 1);
+});
+
+test('بيع حصة العقار ينقلها إلى مالك خارجي ويحافظ على حصص بقية الأسرة', () => {
+  const context = makeContext();
+  const record = {
+    id: 'family-home-sale', title: 'بيت عائلي', marketValue: 1000000, currency: 'جنيه',
+    encumberedShare: 0, auditStatus: 'balanced', owners: [
+      { beneficiaryId: 'active-seller', name: 'المالك الحالي', share: 0.4, status: 'active' },
+      { beneficiaryId: 'sibling-owner', name: 'الأخت مريم', share: 0.6, status: 'reserved' }
+    ], transactions: []
+  };
+  context.state = {
+    lifeId: 'active-seller', name: 'المالك الحالي', age: 42,
+    legacy: { activeBeneficiaryId: 'active-seller', familyPropertyOwnership: [record] }
+  };
+  const asset = { id: 'shared-home-share', familyAssetId: 'family-home-sale', ownerBeneficiaryId: 'active-seller',
+    kind: 'property', ownershipShare: 0.4, value: 400000 };
+  const result = context.recordFamilyPropertySale(asset, 300000);
+  assert.equal(result.ok, true);
+  assert.equal(record.owners.find(owner => owner.beneficiaryId === 'sibling-owner').share, 0.6);
+  assert.equal(record.owners.find(owner => owner.kind === 'external').share, 0.4);
+  assert.equal(record.transactions[0].type, 'sale');
+  assert.equal(record.totalOwnershipShare, 1);
+});
+
+test('صيانة الحصة الموروثة تحدث القيمة الكاملة للعقار دون تغيير نسب الملاك', () => {
+  const context = makeContext();
+  const record = {
+    id: 'family-home-maintenance', title: 'بيت العائلة', marketValue: 1000000, currency: 'جنيه',
+    upkeep: 20000, encumberedShare: 0, auditStatus: 'balanced',
+    owners: [{ beneficiaryId: 'maintenance-owner', name: 'المالك', share: 0.5, status: 'active' }],
+    transactions: []
+  };
+  context.state = { lifeId: 'maintenance-owner', name: 'المالك', age: 35,
+    legacy: { activeBeneficiaryId: 'maintenance-owner', familyPropertyOwnership: [record] } };
+  const asset = { familyAssetId: 'family-home-maintenance', ownerBeneficiaryId: 'maintenance-owner',
+    kind: 'property', ownershipShare: 0.5, value: 550000, upkeep: 10000, condition: 100 };
+  assert.equal(context.syncFamilyPropertyMarketValue(asset, 'maintenance', 5000), true);
+  assert.equal(record.marketValue, 1100000);
+  assert.equal(record.upkeep, 20000);
+  assert.equal(record.owners[0].share, 0.5);
+  assert.equal(record.transactions[0].type, 'maintenance');
 });
