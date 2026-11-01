@@ -5590,8 +5590,10 @@ function calculateInheritance(previous,share){
  const debt=Math.max(0,Number(previous&&previous.debt)||0)+businessLiabilities;
  const net=Math.max(0,gross-debt);
  const shareRate=Math.max(0,Math.min(1,Number(share)||0));
- const netRate=gross>0?net/gross:0;
- const factor=shareRate*netRate;
+ // Company liabilities travel with the operating business, so only personal debt
+ // reduces the transferable gross before the proportional inheritance is applied.
+ const transferableGross=Math.max(0,gross-businessLiabilities);
+ const factor=transferableGross>0?shareRate*net/transferableGross:0;
  const assetIdMap=new Map(),inheritedAssetIds=new Map(),usedInheritanceIds=new Set();
  const rememberSourceId=item=>{
   if(!item||typeof item!=='object')return;
@@ -5685,11 +5687,25 @@ function calculateInheritance(previous,share){
  const inheritedBusiness=(inheritedRecords.find(entry=>entry.type==='primary')||{}).entity||null;
  const inheritedCompanies=inheritedRecords.filter(entry=>entry.type==='portfolio').map(entry=>entry.entity);
  const inheritedBank=Math.round(bank*factor);
- const inheritedBusinessCash=Math.round(businessCash*factor);
- const inheritedValue=inheritedBank
+ const inheritedBusinessCash=inheritedRecords.reduce((sum,entry)=>{
+  const business=entry.entity;
+  if(!businessUsesSeparateTreasury(business))return sum;
+  const balance=Number(business.cashBalance);
+  return sum+(Number.isFinite(balance)?Math.max(0,balance):0);
+ },0);
+ const inheritedBusinessLiabilities=inheritedRecords.reduce((sum,entry)=>{
+  const business=entry.entity;
+  const tax=Math.max(0,Number(business.taxLiability)||0);
+  const credit=businessCreditBalance(business);
+  const balance=Number(business.cashBalance);
+  const overdraft=businessUsesSeparateTreasury(business)&&Number.isFinite(balance)?Math.max(0,-balance):0;
+  return sum+tax+credit+overdraft;
+ },0);
+ const inheritedGrossValue=inheritedBank
   +inheritedAssets.reduce((sum,item)=>sum+valueOf(item),0)
   +inheritedInvestments.reduce((sum,item)=>sum+valueOf(item),0)
   +inheritedBusinessCash;
+ const inheritedValue=Math.max(0,inheritedGrossValue-inheritedBusinessLiabilities);
  return {value:inheritedValue,bank:inheritedBank,assets:inheritedAssets,investments:inheritedInvestments,business:inheritedBusiness,companies:inheritedCompanies};
 }
 function startAsChild(index){
