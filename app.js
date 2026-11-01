@@ -1775,14 +1775,14 @@ function buildFamilyPropertyOwnership(previous,beneficiaryRegistry){
  const estate=calculateEstateSnapshot(previous);
  const transferableGross=Math.max(0,estate.gross-estate.businessLiabilities);
  const estateFactor=transferableGross>0?Math.max(0,Math.min(1,estate.net/transferableGross)):0;
- const sourceLifeId=String(registry.sourceLifeId??previous&&previous.lifeId??previous&&previous.name??'legacy');
+ const sourceLifeId=String(registry.sourceLifeId??(previous&&previous.lifeId)??(previous&&previous.name)??'legacy');
  const currency=String(registry.currency||previous&&previous.place&&previous.place.unit||'ج.م');
  const safeMoney=value=>{const number=Number(value);return Number.isFinite(number)?Math.max(0,Math.round(number)):0;};
  const safeShare=value=>{const number=Number(value);return Number.isFinite(number)&&number>=0&&number<=1?number:null;};
  const assets=Array.isArray(previous&&previous.assets)?previous.assets:[];
  assets.forEach((asset,index)=>{
   if(!asset||asset.kind!=='property')return;
-  const familyAssetId=String(asset.familyAssetId||('family-property-'+encodeURIComponent(String(previous&&previous.lifeId??previous&&previous.name??'legacy'))+'-'+encodeURIComponent(String(asset.id??index))));
+  const familyAssetId=String(asset.familyAssetId||('family-property-'+encodeURIComponent(String((previous&&previous.lifeId)??(previous&&previous.name)??'legacy'))+'-'+encodeURIComponent(String(asset.id??index))));
   const ownerId=String(asset.ownerBeneficiaryId||legacy.activeBeneficiaryId||previous&&previous.lifeId||'life:'+String(previous&&previous.name||'owner'));
   const existingIndex=records.findIndex(record=>String(record&&record.id||record&&record.familyAssetId||'')===familyAssetId);
   const existed=existingIndex>=0;
@@ -6152,7 +6152,7 @@ function calculateInheritance(previous,share,targetValue){
   if(item&&item.id!==undefined&&item.id!==null&&!assetIdMap.has(String(item.id)))assetIdMap.set(String(item.id),id);
   const currentOwnershipShare=Number.isFinite(Number(item&&item.ownershipShare))&&Number(item.ownershipShare)>0&&Number(item.ownershipShare)<=1?Number(item.ownershipShare):1;
   const familyAssetOriginalValue=Math.max(0,Math.round(Number(item&&item.familyAssetOriginalValue)||valueOf(item)/currentOwnershipShare));
-  const familyAssetId=String(item&&item.familyAssetId||('family-property-'+encodeURIComponent(String(previous&&previous.lifeId??previous&&previous.name??'legacy'))+'-'+encodeURIComponent(String(item&&item.id??index))));
+  const familyAssetId=String(item&&item.familyAssetId||('family-property-'+encodeURIComponent(String((previous&&previous.lifeId)??(previous&&previous.name)??'legacy'))+'-'+encodeURIComponent(String((item&&item.id)??index))));
   const ownerBeneficiaryId=String(item&&item.ownerBeneficiaryId||previous&&previous.legacy&&previous.legacy.activeBeneficiaryId||previous&&previous.lifeId||'');
   return {
    ...item,
