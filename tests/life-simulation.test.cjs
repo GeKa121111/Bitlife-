@@ -24,8 +24,10 @@ const propertyOwnershipSource = [
   extractFunction('syncFamilyPropertyMarketValue'),
   extractFunction('beneficiaryWalletLedgerTotals'),
   extractFunction('recordBeneficiaryWalletRentalIncome'),
+  extractFunction('recordBeneficiaryWalletPropertyExpense'),
   extractFunction('classifyFamilyPropertyRentResult'),
-  extractFunction('distributeFamilyPropertyRent')
+  extractFunction('distributeFamilyPropertyRent'),
+  extractFunction('distributeFamilyPropertyExpense')
 ].join('\n');
 const combatStart = app.indexOf('function normalizeCombatInjuryYears(');
 const combatEnd = app.indexOf('const combatMoveMasteryThresholds=', combatStart);
@@ -289,6 +291,101 @@ function runCohort(count) {
   };
 }
 `;
+
+test('الصيانة السنوية للعقار المشترك تتوزع تلقائيًا حسب الملكية دون خصم مزدوج', () => {
+  const context = vm.createContext({});
+  vm.runInContext(combatRecoverySource + '\n' + propertyOwnershipSource + '\n' + ageSource + '\n' + harnessSource, context, {
+    timeout: 120000,
+    filename: 'hayah-shared-property-upkeep-harness.js'
+  });
+
+  const result = vm.runInContext(`(() => {
+    state = makeState();
+    state.age = 40;
+    state.yearCount = 40;
+    state.bank = 50000;
+    state.place = { unit: 'جنيه' };
+    const wallet = {
+      id: 'annual-upkeep-wallet',
+      beneficiaryId: 'annual-upkeep-sibling',
+      kind: 'child',
+      currency: 'جنيه',
+      openingBalance: 30000,
+      supportTotal: 0,
+      rentalIncomeTotal: 0,
+      propertyExpenseTotal: 0,
+      balance: 30000,
+      transactions: [{ id: 'annual-upkeep-inheritance', type: 'inheritance', amount: 30000, currency: 'جنيه' }],
+      ledgerAuditComplete: true,
+      ledgerMismatch: false
+    };
+    const record = {
+      id: 'annual-upkeep-flat',
+      familyAssetId: 'annual-upkeep-flat',
+      title: 'بيت العائلة',
+      currency: 'جنيه',
+      marketValue: 1000000,
+      upkeep: 20000,
+      encumberedShare: 0,
+      auditStatus: 'balanced',
+      owners: [
+        { beneficiaryId: 'annual-upkeep-active', kind: 'child', status: 'active', share: 0.5 },
+        { beneficiaryId: 'annual-upkeep-sibling', kind: 'child', status: 'reserved', share: 0.5 }
+      ],
+      transactions: []
+    };
+    const asset = {
+      id: 'annual-upkeep-active-share',
+      familyAssetId: record.id,
+      ownerBeneficiaryId: 'annual-upkeep-active',
+      familyAssetOriginalValue: 1000000,
+      ownershipShare: 0.5,
+      kind: 'property',
+      title: 'بيت العائلة',
+      value: 500000,
+      upkeep: 10000,
+      condition: 100
+    };
+    state.assets = [asset];
+    state.legacy = {
+      activeBeneficiaryId: 'annual-upkeep-active',
+      beneficiaryWallets: [wallet],
+      familyPropertyOwnership: [record]
+    };
+    advanceAge();
+    const bankAfterYear = state.bank;
+    const walletAfterYear = wallet.balance;
+    const duplicate = distributeFamilyPropertyExpense(state.assets[0], 20000, {
+      action: 'annual-upkeep',
+      reason: 'الصيانة السنوية للعقار'
+    });
+    return {
+      age: state.age,
+      yearCount: state.yearCount,
+      bankAfterYear,
+      walletAfterYear,
+      propertyExpenseTotal: record.propertyExpenseTotal,
+      activePaid: record.propertyExpenseActivePaidTotal,
+      walletPaid: record.propertyExpenseWalletPaidTotal,
+      expenseTransactions: record.transactions.filter(item => item && item.type === 'property_expense').length,
+      duplicateReason: duplicate.reason,
+      bankAfterDuplicate: state.bank,
+      walletAfterDuplicate: wallet.balance
+    };
+  })()`, context, { timeout: 120000 });
+
+  assert.equal(result.age, 41);
+  assert.equal(result.yearCount, 41);
+  assert.equal(result.bankAfterYear, 23620, 'bank should pay living costs plus only the active owner share');
+  assert.equal(result.walletAfterYear, 20000, 'the sibling wallet should pay its own 50% share');
+  assert.equal(result.propertyExpenseTotal, 20000);
+  assert.equal(result.activePaid, 10000);
+  assert.equal(result.walletPaid, 10000);
+  assert.equal(result.expenseTransactions, 1);
+  assert.equal(result.duplicateReason, 'duplicate_transaction');
+  assert.equal(result.bankAfterDuplicate, result.bankAfterYear);
+  assert.equal(result.walletAfterDuplicate, result.walletAfterYear);
+});
 
 test('محاكاة 10,000 مسار تقدم سنوي حتمي تتحقق من ثوابت العمر والمال والصحة', { timeout: 120000 }, () => {
   const context = vm.createContext({});
