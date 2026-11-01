@@ -5560,11 +5560,14 @@ function calculateInheritance(previous,share){
   if(id!==undefined&&id!==null){
    const foundByIdAndTitle=assets.find(item=>item&&String(item.id)===String(id)&&(!entity.title||String(item.title)===String(entity.title)));
    if(foundByIdAndTitle)return foundByIdAndTitle;
+  }
+  const matches=assets.filter(item=>item&&item.kind==='business'&&entity.title&&String(item.title)===String(entity.title));
+  if(matches.length===1)return matches[0];
+  if(id!==undefined&&id!==null){
    const foundById=assets.find(item=>item&&String(item.id)===String(id));
    if(foundById)return foundById;
   }
-  const matches=assets.filter(item=>item&&item.kind==='business'&&entity.title&&String(item.title)===String(entity.title));
-  return matches.length===1?matches[0]:null;
+  return null;
  };
  const assetValue=assets.reduce((sum,item)=>sum+valueOf(item),0);
  const investmentValue=investments.reduce((sum,item)=>sum+valueOf(item),0);
@@ -5589,7 +5592,7 @@ function calculateInheritance(previous,share){
  const shareRate=Math.max(0,Math.min(1,Number(share)||0));
  const netRate=gross>0?net/gross:0;
  const factor=shareRate*netRate;
- const assetIdMap=new Map(),usedInheritanceIds=new Set();
+ const assetIdMap=new Map(),inheritedAssetIds=new Map(),usedInheritanceIds=new Set();
  const rememberSourceId=item=>{
   if(!item||typeof item!=='object')return;
   [item.id,item.assetId].forEach(id=>{if(id!==undefined&&id!==null)usedInheritanceIds.add(String(id));});
@@ -5608,6 +5611,7 @@ function calculateInheritance(previous,share){
  };
  const inheritedAssets=factor>0?assets.map(item=>{
   const id=createInheritanceId();
+  inheritedAssetIds.set(item,id);
   if(item&&item.id!==undefined&&item.id!==null&&!assetIdMap.has(String(item.id)))assetIdMap.set(String(item.id),id);
   return {
    ...item,
@@ -5628,16 +5632,16 @@ function calculateInheritance(previous,share){
   try{copy=JSON.parse(JSON.stringify(entry.entity));}catch(e){return null;}
   if(!copy||typeof copy!=='object'||Array.isArray(copy))return null;
   const originalId=copy.assetId??copy.id;
-  let nextId=originalId!==undefined&&originalId!==null?assetIdMap.get(String(originalId)):undefined;
-  let asset=nextId!==undefined?inheritedAssets.find(item=>item&&String(item.id)===String(nextId)&&(!copy.title||String(item.title)===String(copy.title))):null;
-  if(!asset){
-   const fallback=backingAssetFor(entry.entity);
-   if(fallback){
-    const mappedFallbackId=assetIdMap.get(String(fallback.id));
-    if(mappedFallbackId!==undefined&&!usedBusinessAssetIds.has(String(mappedFallbackId))){
-     nextId=mappedFallbackId;
-     asset=inheritedAssets.find(item=>item&&String(item.id)===String(nextId)&&(!copy.title||String(item.title)===String(copy.title)));
-    }
+  const sourceAsset=backingAssetFor(entry.entity);
+  let nextId=sourceAsset?inheritedAssetIds.get(sourceAsset):(originalId!==undefined&&originalId!==null?assetIdMap.get(String(originalId)):undefined);
+  let asset=nextId!==undefined&&!usedBusinessAssetIds.has(String(nextId))
+   ?inheritedAssets.find(item=>item&&String(item.id)===String(nextId)&&(!copy.title||String(item.title)===String(copy.title)))
+   :null;
+  if(!asset&&sourceAsset){
+   const mappedSourceId=inheritedAssetIds.get(sourceAsset);
+   if(mappedSourceId!==undefined&&!usedBusinessAssetIds.has(String(mappedSourceId))){
+    nextId=mappedSourceId;
+    asset=inheritedAssets.find(item=>item&&String(item.id)===String(nextId));
    }
   }
   if(!asset){
