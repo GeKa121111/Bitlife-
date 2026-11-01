@@ -21,7 +21,11 @@ const ageSource = extractFunction('advanceAge');
 const propertyOwnershipSource = [
   extractFunction('familyPropertyOwnershipRecords'),
   extractFunction('safeFamilyOwnershipShare'),
-  extractFunction('syncFamilyPropertyMarketValue')
+  extractFunction('syncFamilyPropertyMarketValue'),
+  extractFunction('beneficiaryWalletLedgerTotals'),
+  extractFunction('recordBeneficiaryWalletRentalIncome'),
+  extractFunction('classifyFamilyPropertyRentResult'),
+  extractFunction('distributeFamilyPropertyRent')
 ].join('\n');
 const combatStart = app.indexOf('function normalizeCombatInjuryYears(');
 const combatEnd = app.indexOf('const combatMoveMasteryThresholds=', combatStart);
