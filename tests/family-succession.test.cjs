@@ -1356,7 +1356,7 @@ test('محافظ الورثة تنشأ للحصص المحفوظة للأبنا�
 
   const wallets = context.buildBeneficiaryWallets({}, registry, 'صاحب التركة', 72);
   assert.equal(wallets.length, 2);
-  assert.deepEqual(wallets.map(wallet => wallet.kind).sort(), ['child', 'partner']);
+  assert.deepEqual(Array.from(wallets, wallet => wallet.kind).sort(), ['child', 'partner']);
   assert.ok(wallets.every(wallet => wallet.ledgerAuditComplete && !wallet.ledgerMismatch));
   assert.equal(wallets.find(wallet => wallet.beneficiaryId === 'sibling-wallet-1').balance, 40000);
   assert.equal(wallets.find(wallet => wallet.beneficiaryId === 'partner-wallet-1').balance, 20000);
@@ -1365,7 +1365,7 @@ test('محافظ الورثة تنشأ للحصص المحفوظة للأبنا�
 
   const reloaded = context.buildBeneficiaryWallets({ beneficiaryWallets: wallets }, registry, 'صاحب التركة', 72);
   assert.equal(reloaded.length, 2, 'rebuilding the same estate must not duplicate wallets');
-  assert.deepEqual(reloaded.map(wallet => wallet.id), wallets.map(wallet => wallet.id));
+  assert.deepEqual(Array.from(reloaded, wallet => wallet.id), Array.from(wallets, wallet => wallet.id));
 });
 
 test('محفظة الوارث تحتفظ برصيدها وحركات المساندة عند إضافة تركة من جيل لاحق', () => {
