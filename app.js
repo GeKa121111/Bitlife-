@@ -2778,7 +2778,14 @@ function advanceAge(){
  }
  if(state.prison&&state.prison.years>0){state.prison.years--;state.stats.happiness=clamp(state.stats.happiness-5);state.stats.health=clamp(state.stats.health-2);if(state.prison.years===0){log('🔓','انتهاء العقوبة','انتهت مدة العقوبة وعُدت لحياتك خارج السجن.','special');state.prison=null;}}
  const freeVehicleCare=perkEnabled('goldenWrench');
- const assetUpkeep=state.assets.reduce((s,a)=>s+(freeVehicleCare&&a.kind==='car'?0:(a.upkeep||0)),0);
+ const sharedPropertyUpkeepEntries=[];
+ const assetUpkeep=state.assets.reduce((sum,a)=>{
+  if(a.kind==='property'&&state.legacy){
+   const familyRecord=familyPropertyOwnershipRecords(state.legacy).find(item=>String(item.id||item.familyAssetId)===String(a.familyAssetId||''));
+   if(familyRecord){sharedPropertyUpkeepEntries.push({asset:a,record:familyRecord});return sum;}
+  }
+  return sum+(freeVehicleCare&&a.kind==='car'?0:(a.upkeep||0));
+ },0);
  state.assets.forEach(a=>{const before=a.value||0;if(a.kind==='property'){a.condition=clamp((a.condition??100)-2);a.value=Math.round(before*(a.condition<25?1.005:1.025));syncFamilyPropertyMarketValue(a,null,0);}else if(a.kind==='car'){if(freeVehicleCare){a.condition=100;a.value=Math.round(before*.97);}else{a.condition=clamp((a.condition??100)-4);a.value=Math.round(before*.91);}}else if(a.kind==='business')a.value=Math.round(before*1.03);});
  if(state.job&&!state.retired){
    const job=ensureJobProgress(state.job,state.age);
@@ -2793,7 +2800,22 @@ function advanceAge(){
    log('🧾','مصاريف المعيشة','دفعت '+cash(living)+' لمصاريف السنة من أكل ومواصلات واحتياجات أساسية.');
  }
  const childCosts=(state.children||[]).reduce((sum,c)=>{const base=(c.age||0)<6?4500:((c.age||0)<18?7500:0);if(!base)return sum;const plan=(state.coParentingPlans||[]).find(p=>p&&p.active!==false&&(p.childIds||[]).includes(c.id||c.name));if(!plan)return sum+base;if(plan.mode==='shared')return sum+Math.round(base*.6);if(plan.mode==='other')return sum+Math.round(base*.2);return sum+base;},0);if(childCosts>0){state.bank-=childCosts;log('🧸','مصاريف الأبناء','احتياجات وتعليم ورعاية الأبناء كلّفتك '+cash(childCosts)+' هذا العام بعد احتساب ترتيبات الرعاية.','bad');}applyCoParentingAnnualEffects();
- if(assetUpkeep){state.bank-=assetUpkeep;flash('-'+cash(assetUpkeep),true);log('🔧','صيانة الأصول','صيانة ممتلكاتك كلّفتك '+cash(assetUpkeep)+'.','bad');}
+ if(assetUpkeep){state.bank-=assetUpkeep;flash('-'+cash(assetUpkeep),true);log('🔧','صيانة الأصول','صيانة الأصول غير المشتركة كلّفتك '+cash(assetUpkeep)+'.','bad');}
+ let sharedPropertyUpkeepGross=0,sharedPropertyUpkeepActivePaid=0,sharedPropertyUpkeepWalletPaid=0,sharedPropertyUpkeepUnpaid=0,sharedPropertyUpkeepWarnings=0;
+ sharedPropertyUpkeepEntries.forEach(entry=>{
+  const annualCost=Number(entry.record.upkeep);
+  if(!Number.isSafeInteger(annualCost)||annualCost<0){sharedPropertyUpkeepWarnings++;return;}
+  if(annualCost===0)return;
+  const result=distributeFamilyPropertyExpense(entry.asset,annualCost,{action:'annual-upkeep',reason:'الصيانة السنوية للعقار'});
+  if(result&&result.reason==='duplicate_transaction')return;
+  if(!result||result.ok!==true||result.tracked!==true){sharedPropertyUpkeepWarnings++;return;}
+  sharedPropertyUpkeepGross+=result.grossCost;
+  sharedPropertyUpkeepActivePaid+=result.activeAmount;
+  sharedPropertyUpkeepWalletPaid+=result.familyWalletAmount;
+  sharedPropertyUpkeepUnpaid+=result.unpaidAmount;
+ });
+ if(sharedPropertyUpkeepGross>0)log('🏘️','الصيانة السنوية للعقارات العائلية','إجمالي المصروف '+cash(sharedPropertyUpkeepGross)+' · حصتك '+cash(sharedPropertyUpkeepActivePaid)+' · محافظ الأسرة '+cash(sharedPropertyUpkeepWalletPaid)+' · متأخرات الملاك '+cash(sharedPropertyUpkeepUnpaid)+'.',sharedPropertyUpkeepUnpaid>0?'bad':'good');
+ if(sharedPropertyUpkeepWarnings>0)log('⚠️','تعذر تسوية صيانة بعض العقارات','تم إيقاف '+sharedPropertyUpkeepWarnings+' تسوية سنوية دون خصم جزئي؛ راجع سجل ملكية عقارات العائلة.','bad');
  const rentEntries=(state.assets||[]).filter(a=>a.kind==='property'&&a.rented).map(asset=>({asset,amount:Math.max(0,Math.round(asset.tenant&&perkOwned('landlordPack')?(asset.tenant.rent||asset.value*.045):(asset.value||0)*.045))})).filter(entry=>entry.amount>0);
  (state.assets||[]).forEach(a=>{if(a.kind==='property'&&a.tenant&&perkOwned('landlordPack')){a.tenant.yearsLeft=Math.max(0,(a.tenant.yearsLeft||0)-1);if(a.tenant.yearsLeft===0&&chance(.25)){a.rented=false;a.tenant=null;log('🏠','انتهاء عقد الإيجار','غادر المستأجر أحد عقاراتك بعد انتهاء العقد. افتح إدارة المستأجرين للبحث عن مستأجر جديد.','bad');}else if(a.tenant&&a.tenant.yearsLeft===0)a.tenant.yearsLeft=1;}});
  if(state.zoo&&state.zoo.opened)advanceZooSystem();if(state.cult&&state.cult.founded)advanceCultSystem();if(state.casino&&state.casino.opened)advanceCasinoSystem();if(state.dealer&&state.dealer.joined)advanceDealerSystem();advanceInvestmentAdvisor();
