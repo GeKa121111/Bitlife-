@@ -1722,7 +1722,7 @@ function inheritanceHistoryRecordMenu(recordId){
  opts.push(choice('↩️','رجوع لسجل مواريث العائلة','',inheritanceAccountsMenu));
  const currency=String(record.currency||state.place&&state.place.unit||'ج.م');
  const delta=Math.round(Number(record.reconciliationDelta)||0);
- const reconciliation=delta===0?' · الحساب متطابق':' · فرق تسوية '+(delta>0?'+':'')+fmt(delta)+' '+currency+' يحتاج مراجعة';
+ const reconciliation=delta===0?' · حصة الوارث متطابقة':' · فرق تسوية حصة الوارث '+(delta>0?'+':'')+fmt(delta)+' '+currency+' يحتاج مراجعة';
  const description='صافي التركة '+fmt(record.totalEstateValue)+' '+currency+' · إجمالي المخصص '+fmt(record.totalAllocated)+' '+currency+' · المحفوظ '+fmt(record.totalReservedBalance)+' '+currency+' · المنقول '+fmt(record.totalSettledAmount)+' '+currency+reconciliation+'. هذه بيانات تاريخية محفوظة وليست محافظ قابلة للصرف للمستفيدين غير النشطين بعد.';
  modal('📒','تركة '+(record.sourceName||'الجيل السابق'),description,opts);
 }
@@ -5778,7 +5778,8 @@ function calculateInheritance(previous,share,targetValue){
  const requestedValue=targetValue===undefined||targetValue===null
   ?Math.round(net*shareRate)
   :Number(targetValue);
- const targetInheritanceValue=Math.max(0,Math.min(Math.round(net),Math.round(Number.isFinite(requestedValue)?requestedValue:0)));
+ const safeRequestedValue=Number.isFinite(requestedValue)?requestedValue:Math.round(net*shareRate);
+ const targetInheritanceValue=Math.max(0,Math.min(Math.round(net),Math.round(safeRequestedValue)));
  const currentInheritanceValue=Math.max(0,Math.round(inheritedGrossValue()-inheritedBusinessLiabilities));
  let roundingAdjustment=targetInheritanceValue-currentInheritanceValue;
  if(roundingAdjustment>0){

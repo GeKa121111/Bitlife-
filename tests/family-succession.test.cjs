@@ -551,6 +551,27 @@ test('تسوية فروق التقريب تمنع إنشاء أو فقدان ق�
 
   const defaultTarget = context.calculateInheritance(parent, preview.perChildShare);
   assert.equal(defaultTarget.value, Math.round(preview.totalEstateValue * preview.perChildShare));
+
+  const roundedUpParent = makeParent();
+  roundedUpParent.bank = 0;
+  roundedUpParent.debt = 0;
+  roundedUpParent.assets = Array.from({ length: 3 }, (_, index) => ({
+    id: 'round-up-asset-' + index,
+    title: 'أصل تقريب ' + index,
+    kind: 'property',
+    value: 1,
+    upkeep: 0
+  }));
+  roundedUpParent.investments = [];
+  roundedUpParent.business = null;
+  roundedUpParent.companies = [];
+  roundedUpParent.partner = null;
+  const roundedUp = context.calculateInheritance(roundedUpParent, 0.25);
+  assert.equal(roundedUp.value, 1);
+  assert.equal(roundedUp.bank, 1, 'a positive rounding residual should be kept as balancing cash');
+  assert.equal(roundedUp.roundingAdjustment, 0);
+  const invalidTarget = context.calculateInheritance(roundedUpParent, 0.25, NaN);
+  assert.equal(invalidTarget.value, 1, 'an invalid optional target should fall back to the calculated share');
 });
 
 test('اختيار الوارث يسوّي قيمة المنقول مع الحصة المعروضة في سجل الاستحقاقات', () => {
