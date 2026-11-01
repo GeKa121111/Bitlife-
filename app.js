@@ -5850,7 +5850,7 @@ function startAsChild(index){
 function applyUiSettings(){
  const body=document.body;
  if(body&&body.classList){body.classList.toggle('theme-dark',uiSettings.theme==='dark');body.classList.toggle('theme-gold',uiSettings.theme==='gold');body.classList.toggle('text-large',uiSettings.textScale==='large');}
- if(typeof document.querySelector==='function'){const themeMeta=document.querySelector('meta[name="theme-color"]');if(themeMeta)themeMeta.setAttribute('content',uiSettings.theme==='dark'?'#17232c':uiSettings.theme==='gold'?'#c3982a':'#E53935');}
+ if(typeof document.querySelector==='function'){const themeMeta=document.querySelector('meta[name="theme-color"]');if(themeMeta)themeMeta.setAttribute('content',uiSettings.theme==='dark'?'#17232c':uiSettings.theme==='gold'?'#c3982a':'#123e3a');}
 }
 
 function normalizeUiSettings(raw){

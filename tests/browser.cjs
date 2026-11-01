@@ -181,6 +181,25 @@ async function run() {
     const origin = 'http://127.0.0.1:' + address.port;
     await page.goto(origin + '/', { waitUntil: 'domcontentloaded' });
     await page.locator('#characterName').waitFor();
+    await page.keyboard.press('Tab');
+    assert.equal(await page.evaluate(() => document.activeElement?.classList.contains('skip-link')), true,
+      'the first keyboard stop should expose the Arabic skip link');
+    await page.waitForFunction(() => {
+      const element = document.querySelector('.skip-link');
+      if (!element) return false;
+      const rect = element.getBoundingClientRect();
+      return rect.top >= 0 && rect.bottom <= window.innerHeight;
+    });
+    const skipLinkVisible = await page.locator('.skip-link').evaluate(element => {
+      const rect = element.getBoundingClientRect();
+      return rect.top >= 0 && rect.bottom <= window.innerHeight;
+    });
+    assert.equal(skipLinkVisible, true, 'the skip link should become visible when focused');
+    await page.keyboard.press('Enter');
+    await page.waitForFunction(() => document.activeElement?.id === 'lifeFeed');
+    assert.equal(await page.evaluate(() => location.hash), '#lifeFeed',
+      'activating the skip link should move keyboard focus to the life diary');
+    await page.evaluate(() => { history.replaceState(null, '', location.pathname); window.scrollTo(0, 0); });
     assert.equal(await page.locator('#adSlot, #closeAdSlot, .ad-slot').count(), 0,
       'the trial advertising placeholder should not render in the mobile UI');
 
