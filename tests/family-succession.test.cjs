@@ -431,8 +431,8 @@ test('حصة الأبناء تُقسَّم بالتساوي عبر الوصاي�
 test('الوصية تعيد توزيع الحصص على المستفيدين الموجودين فقط دون ترك نسبة معلّقة', () => {
   const context = makeContext();
   const cases = [
-    { policy: 'الأسرة بالتساوي', children: 2, partner: false, expected: { children: 1, partner: 0, charity: 0, other: 0 } },
-    { policy: 'الأبناء أولًا', children: 2, partner: false, expected: { children: 1, partner: 0, charity: 0, other: 0 } },
+    { policy: 'الأسرة بالتساوي', children: 2, partner: false, expected: { children: 0.8, partner: 0, charity: 0, other: 0.2 } },
+    { policy: 'الأبناء أولًا', children: 2, partner: false, expected: { children: 0.9, partner: 0, charity: 0, other: 0.1 } },
     { policy: 'الشريك أولًا', children: 2, partner: false, expected: { children: 1, partner: 0, charity: 0, other: 0 } },
     { policy: 'الأسرة بالتساوي', children: 0, partner: true, expected: { children: 0, partner: 1, charity: 0, other: 0 } },
     { policy: 'الشريك أولًا', children: 0, partner: true, expected: { children: 0, partner: 1, charity: 0, other: 0 } },
