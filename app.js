@@ -1721,7 +1721,9 @@ function inheritanceHistoryRecordMenu(recordId){
  });
  opts.push(choice('↩️','رجوع لسجل مواريث العائلة','',inheritanceAccountsMenu));
  const currency=String(record.currency||state.place&&state.place.unit||'ج.م');
- const description='صافي التركة '+fmt(record.totalEstateValue)+' '+currency+' · إجمالي المخصص '+fmt(record.totalAllocated)+' '+currency+' · المحفوظ '+fmt(record.totalReservedBalance)+' '+currency+' · المنقول '+fmt(record.totalSettledAmount)+' '+currency+'. هذه بيانات تاريخية محفوظة وليست محافظ قابلة للصرف للمستفيدين غير النشطين بعد.';
+ const delta=Math.round(Number(record.reconciliationDelta)||0);
+ const reconciliation=delta===0?' · الحساب متطابق':' · فرق تسوية '+(delta>0?'+':'')+fmt(delta)+' '+currency+' يحتاج مراجعة';
+ const description='صافي التركة '+fmt(record.totalEstateValue)+' '+currency+' · إجمالي المخصص '+fmt(record.totalAllocated)+' '+currency+' · المحفوظ '+fmt(record.totalReservedBalance)+' '+currency+' · المنقول '+fmt(record.totalSettledAmount)+' '+currency+reconciliation+'. هذه بيانات تاريخية محفوظة وليست محافظ قابلة للصرف للمستفيدين غير النشطين بعد.';
  modal('📒','تركة '+(record.sourceName||'الجيل السابق'),description,opts);
 }
 function recordBusinessFinancialReport(entity,report){
@@ -5654,7 +5656,7 @@ function calculateEstateSnapshot(previous){
  const net=Math.max(0,gross-personalDebt-businessLiabilities);
  return {bank,assets,investments,valueOf,businessEntries,backingAssetFor,businessCash,businessOverdraft,businessLiabilities,gross,personalDebt,net};
 }
-function calculateInheritance(previous,share){
+function calculateInheritance(previous,share,targetValue){
  const estate=calculateEstateSnapshot(previous);
  const {bank,assets,investments,valueOf,businessEntries,backingAssetFor,businessLiabilities,gross,net}=estate;
  const shareRate=Math.max(0,Math.min(1,Number(share)||0));
@@ -5754,13 +5756,7 @@ function calculateInheritance(previous,share){
  const inheritedRecords=factor>0?businessEntries.map(entry=>({type:entry.type,entity:inheritBusinessEntity(entry)})).filter(entry=>entry.entity):[];
  const inheritedBusiness=(inheritedRecords.find(entry=>entry.type==='primary')||{}).entity||null;
  const inheritedCompanies=inheritedRecords.filter(entry=>entry.type==='portfolio').map(entry=>entry.entity);
- const inheritedBank=Math.round(bank*factor);
- const inheritedBusinessCash=inheritedRecords.reduce((sum,entry)=>{
-  const business=entry.entity;
-  if(!businessUsesSeparateTreasury(business))return sum;
-  const balance=Number(business.cashBalance);
-  return sum+(Number.isFinite(balance)?Math.max(0,balance):0);
- },0);
+ let inheritedBank=Math.round(bank*factor);
  const inheritedBusinessLiabilities=inheritedRecords.reduce((sum,entry)=>{
   const business=entry.entity;
   const tax=Math.max(0,Number(business.taxLiability)||0);
@@ -5769,12 +5765,74 @@ function calculateInheritance(previous,share){
   const overdraft=businessUsesSeparateTreasury(business)&&Number.isFinite(balance)?Math.max(0,-balance):0;
   return sum+tax+credit+overdraft;
  },0);
- const inheritedGrossValue=inheritedBank
+ const inheritedBusinessCash=()=>inheritedRecords.reduce((sum,entry)=>{
+  const business=entry.entity;
+  if(!businessUsesSeparateTreasury(business))return sum;
+  const balance=Number(business.cashBalance);
+  return sum+(Number.isFinite(balance)?Math.max(0,balance):0);
+ },0);
+ const inheritedGrossValue=()=>inheritedBank
   +inheritedAssets.reduce((sum,item)=>sum+valueOf(item),0)
   +inheritedInvestments.reduce((sum,item)=>sum+valueOf(item),0)
-  +inheritedBusinessCash;
- const inheritedValue=Math.max(0,inheritedGrossValue-inheritedBusinessLiabilities);
- return {value:inheritedValue,totalEstateValue:net,bank:inheritedBank,assets:inheritedAssets,investments:inheritedInvestments,business:inheritedBusiness,companies:inheritedCompanies};
+  +inheritedBusinessCash();
+ const requestedValue=targetValue===undefined||targetValue===null
+  ?Math.round(net*shareRate)
+  :Number(targetValue);
+ const targetInheritanceValue=Math.max(0,Math.min(Math.round(net),Math.round(Number.isFinite(requestedValue)?requestedValue:0)));
+ const currentInheritanceValue=Math.max(0,Math.round(inheritedGrossValue()-inheritedBusinessLiabilities));
+ let roundingAdjustment=targetInheritanceValue-currentInheritanceValue;
+ if(roundingAdjustment>0){
+  inheritedBank+=roundingAdjustment;
+ }else if(roundingAdjustment<0){
+  let remaining=-roundingAdjustment;
+  const reduceCollection=items=>{
+   for(let index=items.length-1;index>=0&&remaining>0;index--){
+    const item=items[index];
+    const available=Math.max(0,Math.round(Number(item&&item.value)||0));
+    const reduction=Math.min(available,remaining);
+    item.value=available-reduction;
+    if(item&&item.upkeep!==undefined){
+     const upkeep=Math.max(0,Number(item.upkeep)||0);
+     item.upkeep=item.value>0&&available>0?Math.round(upkeep*item.value/available):0;
+    }
+    remaining-=reduction;
+   }
+  };
+  const bankReduction=Math.min(inheritedBank,remaining);
+  inheritedBank-=bankReduction;
+  remaining-=bankReduction;
+  reduceCollection(inheritedInvestments);
+  reduceCollection(inheritedAssets);
+  for(let index=inheritedRecords.length-1;index>=0&&remaining>0;index--){
+   const business=inheritedRecords[index].entity;
+   if(!businessUsesSeparateTreasury(business))continue;
+   const balance=Number(business.cashBalance);
+   if(!Number.isFinite(balance)||balance<=0)continue;
+   const available=Math.max(0,Math.round(balance));
+   const reduction=Math.min(available,remaining);
+   business.cashBalance=available-reduction;
+   remaining-=reduction;
+  }
+ }
+ inheritedRecords.forEach(entry=>{
+  const business=entry.entity,id=business.assetId??business.id;
+  if(id===undefined||id===null)return;
+  const backing=inheritedAssets.find(item=>item&&String(item.id)===String(id)&&(!business.title||String(item.title)===String(business.title)));
+  if(backing)business.value=backing.value;
+ });
+ const finalGrossValue=inheritedGrossValue();
+ const inheritedValue=Math.max(0,Math.round(finalGrossValue-inheritedBusinessLiabilities));
+ roundingAdjustment=targetInheritanceValue-inheritedValue;
+ return {
+  value:inheritedValue,
+  totalEstateValue:net,
+  bank:inheritedBank,
+  assets:inheritedAssets,
+  investments:inheritedInvestments,
+  business:inheritedBusiness,
+  companies:inheritedCompanies,
+  roundingAdjustment
+ };
 }
 function inheritanceBeneficiaryShares(previous){
  const children=Array.isArray(previous&&previous.children)?previous.children:[];
@@ -5959,6 +6017,12 @@ function createInheritanceHistoryRecord(registry,sourceName,sourceAge){
    sourceLifeId:String(account.sourceLifeId||sourceLifeId)
   };
  });
+ const transferredAccounts=accounts.filter(account=>account.status==='transferred');
+ const transferredAllocated=transferredAccounts.reduce((sum,account)=>sum+account.allocatedAmount,0);
+ const transferredSettled=transferredAccounts.reduce((sum,account)=>sum+account.settledAmount,0);
+ const reconciliationDelta=registry.reconciliationDelta!==undefined&&registry.reconciliationDelta!==null&&Number.isFinite(Number(registry.reconciliationDelta))
+  ?Math.round(Number(registry.reconciliationDelta))
+  :transferredSettled-transferredAllocated;
  const ageValue=sourceAge===null||sourceAge===undefined?null:Number(sourceAge);
  return {
   id:String(registry.id||('estate-history-'+encodeURIComponent(sourceLifeId))),
@@ -5970,6 +6034,7 @@ function createInheritanceHistoryRecord(registry,sourceName,sourceAge){
   totalAllocated:safeMoney(registry.totalAllocated),
   totalReservedBalance:safeMoney(registry.totalReservedBalance),
   totalSettledAmount:safeMoney(registry.totalSettledAmount),
+  reconciliationDelta,
   accounts
  };
 }
@@ -6009,7 +6074,8 @@ function startAsChild(index){
  const previous=state,child=previous.children[index],oldPartner=previous.partner;
  const distributionPreview=buildInheritancePreview(previous);
  const childPoolShare=distributionPreview.childPoolShare,share=distributionPreview.perChildShare;
- const inheritance=calculateInheritance(previous,share);
+ const selectedAllocation=distributionPreview.siblingAllocations[index];
+ const inheritance=calculateInheritance(previous,share,selectedAllocation&&selectedAllocation.estimatedValue);
  const totalEstateValue=distributionPreview.totalEstateValue;
  const childCount=distributionPreview.childCount,childPoolValue=distributionPreview.childPoolValue;
  const beneficiaryAccounts=buildInheritanceAccounts(previous,distributionPreview,index,inheritance.value);
