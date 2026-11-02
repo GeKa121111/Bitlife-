@@ -31,7 +31,12 @@ const propertyOwnershipSource = [
   extractFunction('familyPropertyTaxRateBps'),
   extractFunction('formatFamilyPropertyTaxRate'),
   extractFunction('calculateFamilyPropertyAnnualTax'),
-  extractFunction('setFamilyPropertyTaxRateBps')
+  extractFunction('setFamilyPropertyTaxRateBps'),
+  extractFunction('familyPropertyInsurancePolicy'),
+  extractFunction('setFamilyPropertyInsurancePolicy'),
+  extractFunction('calculateFamilyPropertyAnnualInsurancePremium'),
+  extractFunction('calculateFamilyPropertyInsuranceClaim'),
+  extractFunction('recordFamilyPropertyInsuranceClaim')
 ].join('\n');
 const combatStart = app.indexOf('function normalizeCombatInjuryYears(');
 const combatEnd = app.indexOf('const combatMoveMasteryThresholds=', combatStart);
@@ -331,6 +336,7 @@ test('الصيانة والضريبة السنوية للعقار المشترك
       marketValue: 1000000,
       upkeep: 20000,
       annualTaxRateBps: 50,
+      insurancePolicy: { enabled: true, plan: 'standard', coverageBps: 7500, annualPremiumRateBps: 50, deductible: 3000 },
       encumberedShare: 0,
       auditStatus: 'balanced',
       owners: [
@@ -361,6 +367,7 @@ test('الصيانة والضريبة السنوية للعقار المشترك
     const bankAfterYear = state.bank;
     const walletAfterYear = wallet.balance;
     const taxAssessment = calculateFamilyPropertyAnnualTax(record);
+    const insuranceAssessment = calculateFamilyPropertyAnnualInsurancePremium(record);
     const upkeepDuplicate = distributeFamilyPropertyExpense(state.assets[0], 20000, {
       action: 'annual-upkeep',
       reason: 'الصيانة السنوية للعقار'
@@ -368,6 +375,10 @@ test('الصيانة والضريبة السنوية للعقار المشترك
     const taxDuplicate = distributeFamilyPropertyExpense(state.assets[0], taxAssessment.amount, {
       action: 'annual-property-tax',
       reason: 'الضريبة العقارية السنوية'
+    });
+    const insuranceDuplicate = distributeFamilyPropertyExpense(state.assets[0], insuranceAssessment.amount, {
+      action: 'annual-insurance-premium',
+      reason: 'قسط التأمين العقاري السنوي', requireFullPayment: true
     });
     return {
       age: state.age,
@@ -377,12 +388,16 @@ test('الصيانة والضريبة السنوية للعقار المشترك
       marketValue: record.marketValue,
       taxRateBps: taxAssessment.rateBps,
       taxAmount: taxAssessment.amount,
+      insurancePremiumAmount: insuranceAssessment.amount,
+      insurancePremiumPaidYear: record.insurancePremiumPaidYear,
+      insurancePremiumPaidLifeId: record.insurancePremiumPaidLifeId,
       propertyExpenseTotal: record.propertyExpenseTotal,
       activePaid: record.propertyExpenseActivePaidTotal,
       walletPaid: record.propertyExpenseWalletPaidTotal,
       expenseTransactions: record.transactions.filter(item => item && item.type === 'property_expense').length,
       upkeepDuplicateReason: upkeepDuplicate.reason,
       taxDuplicateReason: taxDuplicate.reason,
+      insuranceDuplicateReason: insuranceDuplicate.reason,
       bankAfterDuplicate: state.bank,
       walletAfterDuplicate: wallet.balance
     };
@@ -393,14 +408,18 @@ test('الصيانة والضريبة السنوية للعقار المشترك
   assert.equal(result.marketValue, 1025000);
   assert.equal(result.taxRateBps, 50);
   assert.equal(result.taxAmount, 5125);
-  assert.equal(result.bankAfterYear, 21058, 'the active owner pays only their maintenance and tax shares plus living costs');
-  assert.equal(result.walletAfterYear, 17437, 'the sibling wallet pays only its own maintenance and tax shares');
-  assert.equal(result.propertyExpenseTotal, 25125);
-  assert.equal(result.activePaid, 12562);
-  assert.equal(result.walletPaid, 12563);
-  assert.equal(result.expenseTransactions, 2);
+  assert.equal(result.insurancePremiumAmount, 5125);
+  assert.equal(result.insurancePremiumPaidYear, 41);
+  assert.equal(result.insurancePremiumPaidLifeId, 'life');
+  assert.equal(result.bankAfterYear, 18496, 'the active owner pays only their maintenance, tax, insurance and living shares');
+  assert.equal(result.walletAfterYear, 14874, 'the sibling wallet pays only its own maintenance, tax and insurance shares');
+  assert.equal(result.propertyExpenseTotal, 30250);
+  assert.equal(result.activePaid, 15124);
+  assert.equal(result.walletPaid, 15126);
+  assert.equal(result.expenseTransactions, 3);
   assert.equal(result.upkeepDuplicateReason, 'duplicate_transaction');
   assert.equal(result.taxDuplicateReason, 'duplicate_transaction');
+  assert.equal(result.insuranceDuplicateReason, 'duplicate_transaction');
   assert.equal(result.bankAfterDuplicate, result.bankAfterYear);
   assert.equal(result.walletAfterDuplicate, result.walletAfterYear);
 });
