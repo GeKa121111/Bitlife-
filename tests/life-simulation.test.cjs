@@ -1076,8 +1076,8 @@ test('شراء العقار الممول يخصم المقدم ثم يسدد ا�
     ' const firstBalance = mortgage && mortgage.balance; const firstDebt = profile.debt; const downPayment = rental && rental.purchasePrice - mortgage.principal;',
     ' const due = rental && siblingMortgageAnnualDue(41, rental);',
     ' state.yearCount = 41; sibling.age = 41; const secondProcessed = advanceSiblingEconomies();',
-    ' const second = profile.history[profile.history.length - 1]; const snapshot = JSON.stringify(profile); const duplicate = advanceSiblingEconomies();',
-    ' return { guard, firstProcessed, secondProcessed, duplicate, rental, mortgage, firstBalance, firstDebt, downPayment, due, profile, second, snapshot, afterDuplicate: JSON.stringify(profile), bankBefore, bankAfter: state.bank };',
+    ' const second = profile.history[profile.history.length - 1]; const finalRental = profile.ownedProperties.find(asset => asset.kind === \'rental\'); const finalMortgage = finalRental && finalRental.mortgage; const snapshot = JSON.stringify(profile); const duplicate = advanceSiblingEconomies();',
+    ' return { guard, firstProcessed, secondProcessed, duplicate, rental: finalRental, mortgage: finalMortgage, firstBalance, firstDebt, downPayment, due, profile, second, snapshot, afterDuplicate: JSON.stringify(profile), bankBefore, bankAfter: state.bank };',
     '})()'
   ].join(String.fromCharCode(10)), context, { timeout: 10000 });
   assert.ok(result.guard < 1000);
@@ -1174,7 +1174,7 @@ test('السداد المبكر يغلق التمويل ويخصم الرصيد 
     " const sibling = { id: 'prepay-sibling', relation: 'الأخ', age: 45, economicProfile: profile };",
     " const quote = siblingMortgagePrepaymentQuote(profile, 'prepay-rental');",
     " const payoff = siblingMortgagePrepayment(sibling, 'prepay-rental', 45);",
-    ' return { quote, payoff, profile, mortgage, bank: state.bank };',
+    ' return { quote, payoff, profile, mortgage: profile.ownedProperties[0].mortgage, bank: state.bank };',
     '})()'
   ].join(String.fromCharCode(10)), context, { timeout: 10000 });
   assert.equal(result.quote.payoff, 85000);
