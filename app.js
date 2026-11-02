@@ -915,7 +915,7 @@ function newLife(){
  const father=makePerson('male','الأب','👨',28+Math.floor(Math.random()*12),68+Math.floor(Math.random()*28));
  const mother=makePerson('female','الأم','👩',25+Math.floor(Math.random()*12),72+Math.floor(Math.random()*26));
  const sibling=makePerson(gender,'الأخ/الأخت','🧒',Math.floor(Math.random()*8),55+Math.floor(Math.random()*35));
- return {version:1,lifeId:Date.now()+Math.random(),cemeterySaved:false,name:pick(names[gender])+' '+pick(names.family),gender,age:0,place,bank:(perkOwned('goldenPiggyBank')?Math.max(1000000,place.start):place.start),stats:{happiness:65+Math.floor(Math.random()*26),health:76+Math.floor(Math.random()*22),smart:35+Math.floor(Math.random()*41),looks:35+Math.floor(Math.random()*51)},education:{level:0,school:'لم تبدأ الدراسة',major:null,yearsLeft:0,tuition:0},job:null,jobHistory:[],specialCareer:null,specialCareerHistory:[],combatCareer:null,filmStudio:null,esportsCareer:null,talents:{gaming:15+Math.floor(Math.random()*71)},performance:50,boostUsedAge:null,assets:[],investments:[],business:null,companies:[],mafia:{joined:false,rank:0,rep:0,earnings:0},museum:{opened:false,displayed:[]},zoo:{opened:false,animals:[],rareDiscoveries:0},assassinBladeLastUsedAge:null,cult:{founded:false,name:'',doctrine:'',members:[],fund:0,ceremonies:0,discipline:50},casino:{opened:false,games:[],amenities:[],celebrityHires:0,accessories:[]},dealer:{joined:false,rank:0,rep:0,earnings:0,territory:1},royalty:{active:false,title:null,house:null},investmentAdvisor:{hired:false,yearsLeft:0,fee:4500},marketTip:null,family:[father,mother,sibling],friends:[],partner:null,married:false,children:[],coParentingPlans:[],pets:[],hobbies:[],fame:0,followers:0,socialMediaAccount:false,socialMediaPosts:0,socialPlatforms:{},socialFeed:[],reputation:50,sti:false,crimeRecord:0,prison:null,debt:0,willDistribution:'الأسرة بالتساوي',heirlooms:[],dailyRewardDate:null,dailyChallenges:null,seasonalEvent:null,seasonalEventArchive:[],challengeArchive:[],timeMachineSnapshots:[],legacy:{name:null,inheritance:0,heirloom:null},driversLicense:false,travelHistory:[],log:[],accomplishments:['بدأت رحلة الحياة'],status:'حي',cause:null,retired:false,yearCount:0,wealthPeak:place.start};
+ return {version:1,lifeId:Date.now()+Math.random(),cemeterySaved:false,name:pick(names[gender])+' '+pick(names.family),gender,age:0,place,bank:(perkOwned('goldenPiggyBank')?Math.max(1000000,place.start):place.start),stats:{happiness:65+Math.floor(Math.random()*26),health:76+Math.floor(Math.random()*22),smart:35+Math.floor(Math.random()*41),looks:35+Math.floor(Math.random()*51)},education:{level:0,school:'لم تبدأ الدراسة',major:null,yearsLeft:0,tuition:0},job:null,jobHistory:[],specialCareer:null,specialCareerHistory:[],combatCareer:null,filmStudio:null,esportsCareer:null,talents:{gaming:15+Math.floor(Math.random()*71)},performance:50,boostUsedAge:null,assets:[],investments:[],business:null,companies:[],mafia:{joined:false,rank:0,rep:0,earnings:0},museum:{opened:false,displayed:[]},zoo:{opened:false,animals:[],rareDiscoveries:0},assassinBladeLastUsedAge:null,cult:{founded:false,name:'',doctrine:'',members:[],fund:0,ceremonies:0,discipline:50},casino:{opened:false,games:[],amenities:[],celebrityHires:0,accessories:[]},dealer:{joined:false,rank:0,rep:0,earnings:0,territory:1},royalty:{active:false,title:null,house:null},investmentAdvisor:{hired:false,yearsLeft:0,fee:4500},marketTip:null,family:[father,mother,sibling],friends:[],partner:null,married:false,children:[],coParentingPlans:[],pets:[],hobbies:[],fame:0,followers:0,socialMediaAccount:false,socialMediaPosts:0,socialPlatforms:{},socialFeed:[],recentEventTitles:[],reputation:50,sti:false,crimeRecord:0,prison:null,debt:0,willDistribution:'الأسرة بالتساوي',heirlooms:[],dailyRewardDate:null,dailyChallenges:null,seasonalEvent:null,seasonalEventArchive:[],challengeArchive:[],timeMachineSnapshots:[],legacy:{name:null,inheritance:0,heirloom:null},driversLicense:false,travelHistory:[],log:[],accomplishments:['بدأت رحلة الحياة'],status:'حي',cause:null,retired:false,yearCount:0,wealthPeak:place.start};
 }
 
 function isValidSaveData(data){
@@ -1206,8 +1206,9 @@ function load(){
   }
   if(isValidSaveData(x)){
   normalizeCoreState(x);
-  const defaults={lifeId:Date.now()+Math.random(),cemeterySaved:false,jobHistory:[],specialCareer:null,specialCareerHistory:[],combatCareer:null,filmStudio:null,investments:[],business:null,married:false,children:[],coParentingPlans:[],pets:[],hobbies:[],fame:0,followers:0,socialMediaAccount:false,socialMediaPosts:0,socialFeed:[],seasonalEvent:null,seasonalEventArchive:[],reputation:50,crimeRecord:0,prison:null,debt:0,willDistribution:'الأسرة بالتساوي',heirlooms:[],dailyRewardDate:null,dailyChallenges:null,boostUsedAge:null,timeMachineSnapshots:[],legacy:{name:null,inheritance:0,heirloom:null},driversLicense:false,travelHistory:[]};
+  const defaults={lifeId:Date.now()+Math.random(),cemeterySaved:false,jobHistory:[],specialCareer:null,specialCareerHistory:[],combatCareer:null,filmStudio:null,investments:[],business:null,married:false,children:[],coParentingPlans:[],pets:[],hobbies:[],fame:0,followers:0,socialMediaAccount:false,socialMediaPosts:0,socialFeed:[],recentEventTitles:[],seasonalEvent:null,seasonalEventArchive:[],reputation:50,crimeRecord:0,prison:null,debt:0,willDistribution:'الأسرة بالتساوي',heirlooms:[],dailyRewardDate:null,dailyChallenges:null,boostUsedAge:null,timeMachineSnapshots:[],legacy:{name:null,inheritance:0,heirloom:null},driversLicense:false,travelHistory:[]};
   Object.keys(defaults).forEach(k=>{if(x[k]===undefined||x[k]===null)x[k]=defaults[k];});
+  x.recentEventTitles=Array.isArray(x.recentEventTitles)?x.recentEventTitles.filter(title=>typeof title==='string'&&title.trim()).map(title=>title.trim().slice(0,120)).slice(-6):[];
   if(!Array.isArray(x.family))x.family=[];if(!Array.isArray(x.friends))x.friends=[];if(!Array.isArray(x.assets))x.assets=[];if(!Array.isArray(x.timeMachineSnapshots))x.timeMachineSnapshots=[];if(!Array.isArray(x.coParentingPlans))x.coParentingPlans=[];x.coParentingPlans.forEach(p=>{if(p&&typeof p==='object'){if(!Array.isArray(p.childIds))p.childIds=[];if(!Array.isArray(p.history))p.history=[];if(!Number.isFinite(Number(p.supportPerChild)))p.supportPerChild=2200;if(!Number.isFinite(Number(p.arrears)))p.arrears=0;}});
   if(!x.education||typeof x.education!=='object')x.education={level:0,school:'لم تبدأ الدراسة',major:null,yearsLeft:0,tuition:0};
   x.education.clubs=Array.isArray(x.education.clubs)?x.education.clubs:[];
@@ -1571,7 +1572,18 @@ function modal(icon,title,desc,choices,closable=true,extra=''){
 }
 function info(icon,title,desc,choices=[choice('✓','تمام','',closeModal)]){modal(icon,title,desc,choices);}
 function validState(){return state&&state.status==='حي'&&!dead;}
-function availableEvents(){return events.filter(e=>{if(state.age<e.range[0]||state.age>e.range[1])return false;const r=e.requires;if(!r)return true;if(r==='partner')return !!state.partner;if(r==='children')return (state.children||[]).length>0;if(r==='job')return !!state.job;if(r==='pet')return (state.pets||[]).length>0;if(r==='investments')return (state.investments||[]).length>0;if(r==='business')return !!state.business;if(r==='fame')return (state.fame||0)>=25;if(r==='single')return !state.partner;if(r==='noLicense')return !state.driversLicense;return true;});}
+function availableEvents(){
+ const eligible=events.filter(e=>{if(state.age<e.range[0]||state.age>e.range[1])return false;const r=e.requires;if(!r)return true;if(r==='partner')return !!state.partner;if(r==='children')return (state.children||[]).length>0;if(r==='job')return !!state.job;if(r==='pet')return (state.pets||[]).length>0;if(r==='investments')return (state.investments||[]).length>0;if(r==='business')return !!state.business;if(r==='fame')return (state.fame||0)>=25;if(r==='single')return !state.partner;if(r==='noLicense')return !state.driversLicense;return true;});
+ const recent=new Set((Array.isArray(state.recentEventTitles)?state.recentEventTitles:[]).map(title=>String(title)));
+ const fresh=eligible.filter(event=>!recent.has(String(event.title||'')));
+ return fresh.length?fresh:eligible;
+}
+function rememberEventTitle(title){
+ const key=String(title||'').trim().slice(0,120);
+ if(!key)return;
+ const recent=Array.isArray(state.recentEventTitles)?state.recentEventTitles:[];
+ state.recentEventTitles=recent.filter(item=>typeof item==='string'&&item!==key).concat(key).slice(-6);
+}
 function chooseAdaptiveEvent(pool){
  // محرك ترجيح محلي: يفضّل المواقف المرتبطة باحتياجات اللاعب الحالية.
  const s=state.stats;
@@ -1608,6 +1620,7 @@ function randomEvent(){
  const e=chooseAdaptiveEvent(pool);
  modal(e.icon,e.title,e.text,e.choices.map(c=>choice('›',c.label,c.desc,()=>{
    closeModal();
+   rememberEventTitle(e.title);
    if(c.cost&&state.bank<c.cost){info('💳','الرصيد مش كفاية','الاختيار ده محتاج '+cash(c.cost)+'، ورصيدك الحالي '+cash(state.bank)+'.',[choice('↩️','تمام','',()=>{closeModal();afterDecision();})]);return;}
    if(c.cost)stat('bank',-c.cost);
    let failed=false,result=c.result||'اخدت قرارك وكمّلت طريقك.';
