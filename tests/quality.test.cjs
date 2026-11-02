@@ -553,7 +553,7 @@ test('تطبيق الويب قابل للتثبيت ويحتفظ بملفات ا
   assert.ok(manifest.icons.some(item => item.src === './icon.svg'));
   assert.match(html, /rel="manifest" href="manifest\.webmanifest"/);
   assert.match(app, /navigator\.serviceWorker\.register\('\.\/sw\.js'\)/);
-  assert.match(worker, /const CACHE_NAME = 'hayah-shell-v116'/);
+  assert.match(worker, /const CACHE_NAME = 'hayah-shell-v117'/);
   assert.match(worker, /cache\.addAll\(APP_SHELL\)/);
   assert.match(worker, /caches\.match\(APP_SHELL\[0\]\)/);
   assert.match(icon, /حياة/);
@@ -609,7 +609,7 @@ test('الاستقلال المالي للأشقاء البالغين محفوظ
   assert.match(app,/صافي الثروة/);
   assert.match(app,/n\.economicProfile/);
   assert.match(app,/return \{version:1,lifeId:/);
-  assert.match(read('sw.js'),/hayah-shell-v116/);
+  assert.match(read('sw.js'),/hayah-shell-v117/);
 });
 
 test('إعدادات العرض منفصلة عن حفظ الحياة ويمكن الوصول إليها من القائمة', () => {
@@ -642,7 +642,7 @@ test('مساعدة توقيت القتال إعداد وصول مستقل ومت
   assert.ok(app.includes("reactionTimingAssist:session.reactionTimingAssist===true"));
   assert.match(app, /مساعدة التوقيت مفعّلة/);
   assert.match(app, /مساعدة توقيت القتال/);
-  assert.match(read('sw.js'), /hayah-shell-v116/);
+  assert.match(read('sw.js'), /hayah-shell-v117/);
 });
 
 test('فرص تحسين الإحصاءات اختيارية ومحدودة بسنة العمر وتحافظ على حفظ v1', () => {
@@ -663,7 +663,7 @@ test('فرص تحسين الإحصاءات اختيارية ومحدودة بس�
   assert.equal(context.normalize({age: 24, boostUsedAge: -1}), null);
   assert.match(app, /const KEY = 'hekayat_hayah_save_v1';/);
   assert.match(app, /return \{version:1,lifeId:/);
-  assert.match(read('sw.js'), /hayah-shell-v116/);
+  assert.match(read('sw.js'), /hayah-shell-v117/);
 });
 
 test('واجهة الهاتف تحافظ على تخطيط حياة العربي وهويته البصرية المستقلة', () => {
@@ -704,7 +704,7 @@ test('مسيرة الرياضات الإلكترونية أصلية وتحافظ
   assert.match(app, /function upgradeEsportsSetup\(\)/);
   assert.match(app, /موهبة الألعاب الإلكترونية/);
   assert.match(app, /data\.talents\.gaming=clamp\(Number\(data\.talents\.gaming\),0,100\)/);
-  assert.match(read('sw.js'), /hayah-shell-v116/);
+  assert.match(read('sw.js'), /hayah-shell-v117/);
   assert.match(functionSource('rewindToSnapshot', 'customizeMenu'), /ensureGamingTalent\(\)/, 'rewinding a pre-feature snapshot should restore a valid talent default');
 });
 
@@ -974,7 +974,7 @@ test('إدارة المشروع تدعم عقود الموردين وتقاري�
   assert.match(app, /choice\('📦','التعاقد مع مورد'/);
   assert.match(app, /choice\('📊','سجل التقارير'/);
   assert.match(app, /const normalizeBusinessEntity=entity=>/);
-  assert.match(read('sw.js'), /hayah-shell-v116/);
+  assert.match(read('sw.js'), /hayah-shell-v117/);
 });
 
 
@@ -989,7 +989,7 @@ test('إدارة فريق المشروع تحفظ الموظفين وتؤثر ف
   assert.match(app, /staffPayroll/);
   assert.match(app, /staffCount/);
   assert.match(app, /choice\('👥','إدارة الموظفين'/);
-  assert.match(read('sw.js'), /hayah-shell-v116/);
+  assert.match(read('sw.js'), /hayah-shell-v117/);
 });
 
 
@@ -1002,7 +1002,7 @@ test('سوق الموردين يتجدد سنويًا ويحفظ عروض الأ
   assert.match(app, /supplierCostMultiplier/);
   assert.match(app, /entity\.supplier\.yearsLeft\)\|\|3,1,3/);
   assert.match(app, /entity\.supplier\.quality/);
-  assert.match(read('sw.js'), /hayah-shell-v116/);
+  assert.match(read('sw.js'), /hayah-shell-v117/);
 });
 
 
@@ -1017,7 +1017,7 @@ test('إدارة المنتجات تدعم بحث السوق والمبيعات 
   assert.match(app, /competition/);
   assert.match(app, /choice\('🧪','إدارة المنتجات'/);
   assert.match(app, /entity\.productResearch=entity\.productResearch\.filter/);
-  assert.match(read('sw.js'), /hayah-shell-v116/);
+  assert.match(read('sw.js'), /hayah-shell-v117/);
 });
 
 
@@ -1032,7 +1032,7 @@ test('شركات المحفظة تدير الموردين والموظفين و�
   assert.match(app, /simulateBusinessEntityYear\(state\.business,'business'\)/);
   assert.match(app, /simulateBusinessEntityYear\(company,'portfolio'\)/);
   assert.match(app, /business\.assetId\|\|business\.id\|\|business\.title/);
-  assert.match(read('sw.js'), /hayah-shell-v116/);
+  assert.match(read('sw.js'), /hayah-shell-v117/);
 });
 
 
@@ -1048,7 +1048,7 @@ test('الفروع والمصانع محفوظة لكل نشاط وتزيد طا
   assert.match(app, /facilityInvestment/);
   assert.match(app, /choice\('🏗️','الفروع والمصانع'/);
   assert.match(app, /return \{version:1,lifeId:/);
-  assert.match(read('sw.js'), /hayah-shell-v116/);
+  assert.match(read('sw.js'), /hayah-shell-v117/);
 });
 
 test('استثمار المنشأة رأسمالي منفصل عن صافي الربح والصيانة السنوية', () => {
@@ -1082,7 +1082,7 @@ test('سوق المنافسة يحفظ شركات مستقلة وقرارات س
     "choice('📈','تحليل السوق والمنافسين'",
     "return {version:1,lifeId:"
   ].forEach(fragment => assert.ok(app.includes(fragment), 'missing independent rival behavior: '+fragment));
-  assert.match(read('sw.js'), /hayah-shell-v116/);
+  assert.match(read('sw.js'), /hayah-shell-v117/);
 });
 
 
@@ -1095,7 +1095,7 @@ test('النوافذ الحوارية تدير التركيز بلوحة الم�
   assert.match(app, /returnFocus&&returnFocus\.isConnected/);
   assert.match(app, /const initialFocus=\$\('closeModal'\)\|\|getFocusable\(\)\[0\]\|\|dialog/);
   assert.match(read('style.css'), /\.modal button:focus-visible/);
-  assert.match(read('sw.js'), /hayah-shell-v116/);
+  assert.match(read('sw.js'), /hayah-shell-v117/);
 });
 
 test('اختبارات Node دون DOM كامل لا تتطلب querySelector من عنصر الجذر', () => {
@@ -1113,7 +1113,7 @@ test('إعدادات الصوت والاهتزاز ومساعدة القتال �
   assert.ok(app.includes("choice(uiSettings.sound?'🔊':'🔇'"));
   assert.ok(app.includes("choice(uiSettings.haptics?'📳':'📴'"));
   assert.ok(app.includes("localStorage.setItem(SETTINGS_KEY,JSON.stringify(uiSettings))"));
-  assert.match(read('sw.js'), /hayah-shell-v116/);
+  assert.match(read('sw.js'), /hayah-shell-v117/);
 });
 
 
@@ -1126,7 +1126,7 @@ test('سجل الحياة يضيف الأحداث الجديدة تدريجيً�
   assert.match(app, /renderedLogSnapshot=signatures;renderedFeedElement=feed/);
   assert.doesNotMatch(html, /id="lifeFeed"[^>]*aria-live=/);
   assert.match(app, /announceLifeEvents\(entries,appendFrom\)/);
-  assert.match(read('sw.js'), /hayah-shell-v116/);
+  assert.match(read('sw.js'), /hayah-shell-v117/);
 });
 
 
@@ -1140,7 +1140,7 @@ test('اقتصاد الشركات يختلف حسب الصناعة ويظهر أ
   assert.ok(app.includes("industryOperatingCostMultiplier"));
   assert.ok(app.includes("industryUnitCostMultiplier"));
   assert.ok(app.includes("معاملات القطاع: الإيرادات"));
-  assert.match(read('sw.js'), /hayah-shell-v116/);
+  assert.match(read('sw.js'), /hayah-shell-v117/);
 });
 
 
@@ -1164,7 +1164,7 @@ test('تمويل النشاط مستقل لكل شركة ويُحتسب مرة �
   const annualSimulation = functionSource('simulateBusinessEntityYear', 'advanceAge');
   assert.ok(annualSimulation.includes("const costs=operatingCostsTotal+productResult.upfrontCosts+businessLoanInterest"));
   assert.ok(annualSimulation.includes("const cashDelta=revenue-operatingCostsTotal-businessLoanInterestPaid-corporateTaxPaidFromCash"));
-  assert.ok(read('sw.js').includes("hayah-shell-v116"));
+  assert.ok(read('sw.js').includes("hayah-shell-v117"));
 });
 
 
@@ -1191,7 +1191,7 @@ test('الخزينة المستقلة تفصل نقدية كل شركة عن ر�
   assert.ok(annualSimulation.includes("businessTreasuryBalance(business)+revenue-operatingCostsTotal"));
   assert.ok(annualSimulation.includes("const cashDelta=revenue-operatingCostsTotal-businessLoanInterestPaid-corporateTaxPaidFromCash"));
   assert.ok(annualSimulation.includes("treasuryMode:separateTreasury?'separate':'shared'"));
-  assert.match(read('sw.js'), /hayah-shell-v116/);
+  assert.match(read('sw.js'), /hayah-shell-v117/);
 });
 
 
@@ -1212,7 +1212,7 @@ test('ضرائب الشركات تُحسب على الربح الموجب وتُ
   assert.ok(annualSimulation.includes('const taxableProfit=Math.max(0,Math.round(preTaxProfit))'));
   assert.ok(annualSimulation.includes('const cashDelta=revenue-operatingCostsTotal-businessLoanInterestPaid-corporateTaxPaidFromCash'));
   assert.ok(annualSimulation.includes('const costs=operatingCostsTotal+productResult.upfrontCosts+businessLoanInterest+corporateTax'));
-  assert.match(read('sw.js'), /hayah-shell-v116/);
+  assert.match(read('sw.js'), /hayah-shell-v117/);
 });
 
 test('مسيرة القتال تدير ثلاث جولات وتستعيد النزال المحفوظ مع الحفظ القديم', () => {
@@ -1506,7 +1506,7 @@ test('مجتمع المقاتلين يحفظ العلاقات والتحالفا
   assert.ok(app.includes('communityFighterId:session&&session.communityFighterId?session.communityFighterId:null'));
   assert.ok(app.includes("const KEY = 'hekayat_hayah_save_v1';"));
   assert.ok(app.includes('return {version:1,lifeId:'));
-  assert.match(read('sw.js'), /hayah-shell-v116/);
+  assert.match(read('sw.js'), /hayah-shell-v117/);
 });
 test('المهرجان الأسبوعي يدعم 11 شارة ويطبع بيانات المواسم القديمة دون مكافآت مجانية', () => {
   [
@@ -1600,7 +1600,7 @@ test('المهرجان الأسبوعي يدعم 11 شارة ويطبع بيان
   vm.runInNewContext(helpers+'globalThis.normalizedArchive=normalizeSeasonalEventArchive(archive,state);',archiveContext);
   assert.equal(archiveContext.normalizedArchive.length,8);
   assert.ok(archiveContext.normalizedArchive[0].claimed.includes('family'));
-  assert.match(read('sw.js'), /hayah-shell-v116/);
+  assert.match(read('sw.js'), /hayah-shell-v117/);
 });
 
 
@@ -1632,7 +1632,7 @@ test('السوشيال ميديا تحفظ صدى الجمهور وتدعم مس
   vm.runInNewContext(normalizer + "\nglobalThis.limited=normalizeSocialFeed(input);", limitedContext);
   assert.equal(limitedContext.limited.length, 30);
   assert.equal(limitedContext.limited[0].id, 'p10');
-  assert.match(read('sw.js'), /hayah-shell-v116/);
+  assert.match(read('sw.js'), /hayah-shell-v117/);
 });
 
 
@@ -1641,7 +1641,7 @@ test('الشريط السفلي والإحصائيات بعرض التطبيق �
   assert.match(css, /#app > \.bottom-dock > \.stats\{[\s\S]*?width:100%!important/);
   assert.match(css, /#app > \.bottom-dock > \.nav\{[\s\S]*?width:100%!important/);
   assert.match(css, /#app > \.feed\{[\s\S]*?min-height:0!important/);
-  assert.match(read('sw.js'), /hayah-shell-v116/);
+  assert.match(read('sw.js'), /hayah-shell-v117/);
 });
 
 test('الواجهة الرئيسية منظمة وتعرض عناوين أحداث الحياة مع الحفاظ على الهوية العربية', () => {
@@ -1752,7 +1752,7 @@ test('إتقان الحركات يتدرج بالاستخدام ويُطبع ب�
     'round history should retain the mastery level used during each saved round');
   assert.ok(app.includes("achievement('إتقان حركة قتالية:"),
     'mastery milestones should become part of the character story');
-  assert.match(read('sw.js'), /hayah-shell-v116/);
+  assert.match(read('sw.js'), /hayah-shell-v117/);
 });
 
 test('مهرجان السينما يسجل كل فيلم مرة واحدة ويكافئ النتائج المؤهلة ويحافظ على الحفظ القديم', () => {
@@ -1857,7 +1857,7 @@ test('نافذة توقيت رد الفعل تدعم اللعب الموقّت �
   assert.match(app, /استجابة سريعة خلال 1\.8 ثانية تمنحك 4 نقاط إضافية/);
   assert.match(css, /\.combat-reaction-clock/);
   assert.match(css, /hayah-reaction-window/);
-  assert.match(read('sw.js'), /hayah-shell-v116/);
+  assert.match(read('sw.js'), /hayah-shell-v117/);
 });
 
 
@@ -1955,7 +1955,7 @@ test('سجل مواريث العائلة يحتفظ بتاريخ الأجيال 
   assert.match(ledgerMenu, /inheritanceHistoryRecordMenu/);
   assert.match(ledgerMenu, /fmt\(allocated\)\+' '\+currency/);
   assert.match(ledgerMenu, /fmt\(record\.totalEstateValue\)\+' '\+currency/);
-  assert.match(read('sw.js'), /hayah-shell-v116/);
+  assert.match(read('sw.js'), /hayah-shell-v117/);
 });
 
 
@@ -1978,7 +1978,7 @@ test('سجل الميراث يراجع توازن كل حساب وملخص ال�
   assert.match(historySource, /accountLedgerIncompleteCount/);
   assert.match(menuSource, /record\.accountLedgerMismatch/);
   assert.match(menuSource, /دفتر الاستحقاقات غير متوازن/);
-  assert.match(read('sw.js'), /hayah-shell-v116/);
+  assert.match(read('sw.js'), /hayah-shell-v117/);
 });
 
 
@@ -1993,7 +1993,7 @@ test('دفتر الميراث يدقق نسب المستفيدين وهوية ا
   assert.match(historySource, /accountLedgerAmountIncompleteCount/);
   assert.match(menuSource, /issueReasonLabels/);
   assert.match(menuSource, /مجموع نسب المستفيدين/);
-  assert.match(read('sw.js'), /hayah-shell-v116/);
+  assert.match(read('sw.js'), /hayah-shell-v117/);
 });
 
 
@@ -2031,7 +2031,7 @@ test('محافظ الورثة تحفظ حصص الأسرة وتدعم المسا
   assert.match(app, /const beneficiaryWallets=buildBeneficiaryWallets\(previous\.legacy,beneficiaryAccounts,previous\.name,previous\.age\)/);
   assert.match(app, /inheritanceHistory:buildInheritanceHistory\(previous,beneficiaryAccounts\),beneficiaryWallets,familyPropertyOwnership,distribution/);
   assert.match(app, /hekayat_hayah_save_v1/);
-  assert.match(read('sw.js'), /hayah-shell-v116/);
+  assert.match(read('sw.js'), /hayah-shell-v117/);
 });
 
 
@@ -2060,7 +2060,7 @@ test('سجل الملكية المشتركة يحافظ على حصص الأسر
   assert.match(app, /buildFamilyPropertyOwnership\(previous,beneficiaryAccounts\)/);
   assert.match(app, /recordFamilyPropertySale\(a,sale\)/);
   assert.match(app, /distributeFamilyPropertyExpense\(a,ownerCost/);
-  assert.match(read('sw.js'), /hayah-shell-v116/);
+  assert.match(read('sw.js'), /hayah-shell-v117/);
 });
 
 test('مصروفات العقارات المشتركة تخصم من محافظ الورثة وفق دفتر حساب متوافق مع الحفظ القديم', () => {
@@ -2069,7 +2069,7 @@ test('مصروفات العقارات المشتركة تخصم من محافظ 
   assert.match(app, /propertyExpenseTotal/);
   assert.match(app, /propertyExpenseOwed/);
   assert.match(app, /insufficient_active_funds/);
-  assert.match(read('sw.js'), /hayah-shell-v116/);
+  assert.match(read('sw.js'), /hayah-shell-v117/);
 });
 
 
@@ -2095,7 +2095,7 @@ test('الضريبة العقارية اختيارية وتستخدم دفتر �
   assert.match(policy, /ليست معدلات قانونية لأي بلد/);
   assert.match(annualAge, /action:'annual-property-tax'/);
   assert.match(annualAge, /distributeFamilyPropertyExpense/);
-  assert.match(read('sw.js'), /hayah-shell-v116/);
+  assert.match(read('sw.js'), /hayah-shell-v117/);
 });
 
 
@@ -2106,7 +2106,7 @@ test('متأخرات العقار تنتقل مع حصة الوارث وتظل �
   assert.match(builder, /propertyExpenseOwedTotal/);
   assert.match(builder, /property_expense_inheritance/);
   assert.match(builder, /remainingArrears/);
-  assert.match(read('sw.js'), /hayah-shell-v116/);
+  assert.match(read('sw.js'), /hayah-shell-v117/);
 });
 
 
@@ -2138,7 +2138,7 @@ test('التأمين العقاري العائلي اختياري ويربط ا�
   assert.match(maintenance, /recordFamilyPropertyInsuranceClaim/);
   assert.match(expense, /insufficient_owner_funds/);
   assert.match(app, /hekayat_hayah_save_v1/);
-  assert.match(read('sw.js'), /hayah-shell-v116/);
+  assert.match(read('sw.js'), /hayah-shell-v117/);
 });
 
  
@@ -2163,7 +2163,7 @@ test('الأشقاء يمتلكون مساكن مستقلة وتدخل قيمت�
   assert.match(familyTree, /عقارات/);
   assert.match(details, /مسكن مستقل/);
   assert.match(details, /propertyExpensesAnnual/);
-  assert.match(read('sw.js'), /hayah-shell-v116/);
+  assert.match(read('sw.js'), /hayah-shell-v117/);
   assert.match(app, /const KEY = 'hekayat_hayah_save_v1';/);
   assert.match(app, /return \{version:1,lifeId:/);
 });
@@ -2187,7 +2187,7 @@ test('العقارات الاستثمارية للأشقاء تحسب الإيج
   assert.match(profile, /kind==='rental'/);
   assert.match(details, /دخل إيجار/);
   assert.match(details, /إيجار شهري/);
-  assert.match(read('sw.js'), /hayah-shell-v116/);
+  assert.match(read('sw.js'), /hayah-shell-v117/);
   assert.match(app, /const KEY = 'hekayat_hayah_save_v1';/);
   assert.match(app, /return \{version:1,lifeId:/);
 });
@@ -2210,7 +2210,7 @@ test('دفتر متأخرات إيجار الأشقاء يحفظ الرصيد و
   assert.match(details, /متأخرات إيجار قائمة/);
   assert.match(details, /متأخرات غير المحصلة لا تدخل في صافي الثروة/);
   assert.match(familyTree, /متأخرات إيجار/);
-  assert.match(read('sw.js'), /hayah-shell-v116/);
+  assert.match(read('sw.js'), /hayah-shell-v117/);
   assert.match(app, /const KEY = 'hekayat_hayah_save_v1';/);
   assert.ok(app.includes('return {version:1,lifeId:'), 'legacy backup format remains version 1');
 });
@@ -2239,7 +2239,7 @@ test('تمويل العقار الاستثماري للأشقاء يحفظ جد�
   assert.match(details, /متأخرات تمويل/);
   assert.match(profile, /mortgageDebtBalance/);
   assert.match(profile, /mortgage_prepayment/);
-  assert.match(read('sw.js'), /hayah-shell-v116/);
+  assert.match(read('sw.js'), /hayah-shell-v117/);
   assert.match(app, /const KEY = 'hekayat_hayah_save_v1';/);
   assert.ok(app.includes('return {version:1,lifeId:'), 'legacy backup format remains version 1');
 });
@@ -2262,7 +2262,7 @@ test('البيع اليدوي للعقار الاستثماري يحتاج تأ�
   assert.match(details, /siblingManualRentalSaleConfirm/);
   assert.match(details, /مراجعة بيع/);
   assert.match(profile, /propertyTransactions/);
-  assert.match(read('sw.js'), /hayah-shell-v116/);
+  assert.match(read('sw.js'), /hayah-shell-v117/);
   assert.match(app, /const KEY = 'hekayat_hayah_save_v1';/);
   assert.ok(app.includes('return {version:1,lifeId:'), 'legacy backup format remains version 1');
 });
@@ -2286,7 +2286,7 @@ test('عقود الإيجار للأشقاء تحفظ المستأجر والم�
   assert.match(details, /العقد حتى سنة/);
   assert.match(details, /عقود إيجار/);
   assert.match(app, /rentLeaseEvents/);
-  assert.match(read('sw.js'), /hayah-shell-v116/);
+  assert.match(read('sw.js'), /hayah-shell-v117/);
   assert.match(app, /const KEY = 'hekayat_hayah_save_v1';/);
   assert.ok(app.includes('return {version:1,lifeId:'), 'legacy save format remains version 1');
 });
@@ -2313,7 +2313,7 @@ test('إدارة المالك اليدوية لعقود إيجار الأشقا�
   assert.match(menu, /تم تسجيل قرار لهذا العام/);
   assert.match(menu, /تجديد سنة دون زيادة/);
   assert.match(menu, /إنهاء العقد من السنة القادمة/);
-  assert.match(read('sw.js'), /hayah-shell-v116/);
+  assert.match(read('sw.js'), /hayah-shell-v117/);
   assert.match(app, /const KEY = 'hekayat_hayah_save_v1';/);
   assert.ok(app.includes('return {version:1,lifeId:'), 'legacy backup format remains version 1');
 });
@@ -2326,7 +2326,7 @@ test('الأسرة المستقلة للأشقاء تحفظ الشريك وال�
   assert.match(app, /householdEffects\.familyExpenses/);
   assert.match(app, /householdEvents/);
   assert.match(app, /الأسرة المستقلة:/);
-  assert.match(read('sw.js'), /hayah-shell-v116/);
+  assert.match(read('sw.js'), /hayah-shell-v117/);
   assert.match(app, /const KEY = 'hekayat_hayah_save_v1';/);
   assert.ok(app.includes('return {version:1,lifeId:'), 'legacy save format remains version 1');
 });
@@ -2357,7 +2357,7 @@ test('أبناء الأشقاء يواصلون التقدم بعد وفاة ال
   assert.match(app, /function siblingDeceasedHouseholdAnnualEffects\(relative,profile,year\)/);
   assert.match(app, /ownerDeceased/);
   assert.match(childNode, /فرع مستمر بعد وفاة/);
-  assert.match(read('sw.js'), /hayah-shell-v116/);
+  assert.match(read('sw.js'), /hayah-shell-v117/);
   assert.match(app, /const KEY = 'hekayat_hayah_save_v1';/);
   assert.ok(app.includes('return {version:1,lifeId:'), 'the legacy save and backup format must remain version 1');
 });
@@ -2379,9 +2379,140 @@ test('الملكية العقارية الموروثة تنتقل لاقتصاد
   assert.match(childPropertyEffects, /siblingRentalAnnualIncome/);
   assert.match(childTreeNode, /عقارات موروثة/);
   assert.match(childTreeNode, /propertyDebt/);
-  assert.match(read('sw.js'), /hayah-shell-v116/);
+  assert.match(read('sw.js'), /hayah-shell-v117/);
   assert.match(app, /const KEY = 'hekayat_hayah_save_v1';/);
   assert.ok(app.includes('return {version:1,lifeId:'), 'legacy save must remain version 1');
+});
+
+test('الشريك الباقي يدخل دفتر تركة الأشقاء بحصة متوازنة ويحفظ حصص الأصول والديون', () => {
+  const shareSource = functionSource('siblingEstateBeneficiaryShares', 'siblingEstatePlanAction');
+  const allocationSource = functionSource('siblingAllocateEstateAmount', 'siblingEstateAssetSnapshot');
+  const snapshotSource = functionSource('siblingEstateAssetSnapshot', 'siblingNormalizeChildOwnedProperties');
+  const ensureHouseholdSource = functionSource('ensureSiblingHousehold', 'siblingHouseholdAnnualEffects');
+  const updateStatusSource = functionSource('siblingUpdateEstateAssetTransferStatus', 'siblingChildInheritedPropertyAnnualEffects');
+  const settlementSource = functionSource('siblingEstateSettlement', 'siblingOwnedPropertyValue');
+  const context = {
+    clamp(value, min = 0, max = 100) {
+      const number = Number(value);
+      return Math.max(min, Math.min(max, Number.isFinite(number) ? number : 0));
+    },
+    siblingSafeMoney(value) {
+      return Math.max(0, Math.round(Number(value) || 0));
+    },
+    siblingProfileMortgageLiability() { return 0; },
+    siblingInvestmentHash() { return 17; },
+    siblingEstatePlanNormalize(raw) {
+      return { mode: ['equal_children', 'eldest_child', 'youngest_child'].includes(raw && raw.mode) ? raw.mode : 'equal_children' };
+    },
+    siblingNormalizeInheritanceRecords(raw) {
+      const source = raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : {};
+      return { records: Array.isArray(source.records) ? source.records : [] };
+    },
+    siblingReleaseChildInheritance() { return { released: false, cash: 0, debt: 0, count: 0 }; },
+    siblingPropertyAnnualUpkeep() { return 0; }
+  };
+  vm.runInNewContext([
+    shareSource, allocationSource, snapshotSource, ensureHouseholdSource, updateStatusSource, settlementSource,
+    'globalThis.settleSiblingEstate = siblingEstateSettlement;'
+  ].join('\\n'), context);
+
+  const makeChild = (id, name) => ({
+    id, name, age: 12, birthYear: 2014, lastAgeYear: 2026, independent: false, inheritance: { records: [] }
+  });
+  const relative = { id: 'sibling-1', name: 'الشقيق المتوفى', age: 60, deceased: true };
+  const spouse = {
+    id: 'spouse-1', name: 'الشريك الباقي', age: 52, marriedYear: 2004, lastAgeYear: 2026,
+    deceased: false, inheritance: { records: [] }
+  };
+  const children = [makeChild('child-1', 'الابن الأول'), makeChild('child-2', 'الابن الثاني')];
+  const profile = {
+    household: { spouse, children, lastProcessedYear: 2026, history: [] },
+    savings: 100000, investmentBalance: 0, debt: 0,
+    ownedProperties: [{ id: 'home-1', kind: 'residence', label: 'بيت الأسرة', marketValue: 101, upkeep: 5 }],
+    estatePlan: { mode: 'equal_children' }
+  };
+  const result = context.settleSiblingEstate(relative, profile, 2027);
+  const normalizedSpouse = profile.household.spouse;
+  const normalizedChildren = profile.household.children;
+
+  assert.equal(result.settled, true);
+  assert.deepEqual(Array.from(result.beneficiaries, item => item.shareBps), [2500, 3750, 3750]);
+  assert.equal(result.beneficiaries.reduce((sum, item) => sum + item.shareBps, 0), 10000);
+  assert.equal(normalizedSpouse.inheritanceCashBalance, 25000);
+  assert.equal(normalizedSpouse.inheritanceDebtBalance, 0);
+  assert.equal(normalizedSpouse.inheritance.records[0].cashHeld, 0);
+  assert.equal(normalizedSpouse.inheritance.records[0].cashReleased, 25000);
+  assert.deepEqual(Array.from(normalizedChildren, child => child.inheritance.records[0].cashHeld), [37500, 37500]);
+  const inheritedValues = [
+    normalizedSpouse.inheritance.records[0].assetClaims[0].marketValueShare,
+    normalizedChildren[0].inheritance.records[0].assetClaims[0].marketValueShare,
+    normalizedChildren[1].inheritance.records[0].assetClaims[0].marketValueShare
+  ];
+  assert.equal(inheritedValues.reduce((sum, value) => sum + value, 0), 101);
+  assert.equal(profile.estate.assetClaimsCount, 3);
+  assert.equal(profile.estate.assetClaimsPendingCount, 3);
+  assert.equal(profile.estate.assetTransferStatus, 'pending');
+
+  const spouseOnly = {
+    household: { spouse: { id: 'spouse-only', name: 'شريك بلا أبناء', deceased: false }, children: [] },
+    savings: 64000, investmentBalance: 0, debt: 0, ownedProperties: [], estatePlan: { mode: 'equal_children' }
+  };
+  const spouseOnlyResult = context.settleSiblingEstate(relative, spouseOnly, 2028);
+  assert.deepEqual(Array.from(spouseOnlyResult.beneficiaries, item => item.shareBps), [10000]);
+  assert.equal(spouseOnly.household.spouse.inheritanceCashBalance, 64000);
+
+  const debtEstate = {
+    household: { spouse: { id: 'debt-spouse', name: 'شريك عليه التزام', deceased: false }, children: [makeChild('debt-child-1', 'الأول'), makeChild('debt-child-2', 'الثاني')] },
+    savings: 5000, investmentBalance: 0, debt: 20000, ownedProperties: [], estatePlan: { mode: 'equal_children' }
+  };
+  const debtResult = context.settleSiblingEstate(relative, debtEstate, 2029);
+  assert.equal(debtResult.estate.unsecuredDebtRemaining, 15000);
+  assert.equal(debtEstate.household.spouse.inheritanceDebtBalance, 3750);
+  assert.deepEqual(Array.from(debtEstate.household.children, child => child.inheritance.records[0].debtHeld), [5625, 5625]);
+
+  const spouseDeceased = {
+    household: { spouse: { id: 'spouse-deceased', name: 'شريك متوفى', deceased: true }, children: [makeChild('only-child', 'الابن الوحيد')] },
+    savings: 30000, investmentBalance: 0, debt: 0, ownedProperties: [], estatePlan: { mode: 'equal_children' }
+  };
+  const childOnlyResult = context.settleSiblingEstate(relative, spouseDeceased, 2030);
+  assert.deepEqual(Array.from(childOnlyResult.beneficiaries, item => item.shareBps), [10000]);
+  assert.equal(childOnlyResult.beneficiaries[0].beneficiaryType, 'child');
+
+  const noHeirs = {
+    household: { spouse: null, children: [] },
+    savings: 12000, investmentBalance: 0, debt: 0, ownedProperties: [], estatePlan: { mode: 'equal_children' }
+  };
+  const unclaimed = context.settleSiblingEstate(relative, noHeirs, 2031);
+  assert.equal(unclaimed.estate.status, 'unclaimed_no_children');
+  assert.equal(unclaimed.beneficiaries.length, 0);
+  assert.match(functionSource('siblingEstateSummaryMenu', 'familyTreeMenu'), /beneficiaryType==='spouse'/);
+  assert.match(functionSource('siblingEstatePlanMenu', 'siblingEstateSummaryMenu'), /حصة محاكاة 25%/);
+});
+
+test('الحفظ القديم يهيئ حساب إرث الشريك إلى قيم آمنة دون إنشاء أرصدة رجعية', () => {
+  const ensureHouseholdSource = functionSource('ensureSiblingHousehold', 'siblingHouseholdAnnualEffects');
+  const context = {
+    clamp(value, min = 0, max = 100) {
+      const number = Number(value);
+      return Math.max(min, Math.min(max, Number.isFinite(number) ? number : 0));
+    },
+    siblingSafeMoney(value) {
+      return Math.max(0, Math.round(Number(value) || 0));
+    },
+    siblingNormalizeInheritanceRecords(raw) {
+      const source = raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : {};
+      return { records: Array.isArray(source.records) ? source.records : [] };
+    }
+  };
+  vm.runInNewContext(ensureHouseholdSource + '\\nglobalThis.normalizeHousehold = ensureSiblingHousehold;', context);
+  const normalized = context.normalizeHousehold(
+    { id: 'old-sibling', age: 48, deceased: false },
+    { household: { spouse: { id: 'old-spouse', name: 'شريك قديم' }, children: [] } },
+    2026
+  );
+  assert.equal(normalized.spouse.inheritanceCashBalance, 0);
+  assert.equal(normalized.spouse.inheritanceDebtBalance, 0);
+  assert.deepEqual(Array.from(normalized.spouse.inheritance.records), []);
 });
 
 test('وصية الأشقاء ودفتر التركة يظهران في الواجهة مع إبقاء نقل العقارات مرحلة منفصلة', () => {
@@ -2393,7 +2524,7 @@ test('وصية الأشقاء ودفتر التركة يظهران في الوا
   assert.match(app, /siblingEstateSettlement\(relative,deceasedProfile,year\)/);
   assert.match(app, /siblingEstatePlanMenu\(n\)/);
   assert.match(app, /siblingEstateSummaryMenu\(p\)/);
-  assert.match(read('sw.js'), /hayah-shell-v116/);
+  assert.match(read('sw.js'), /hayah-shell-v117/);
   assert.match(app, /const KEY = 'hekayat_hayah_save_v1';/);
   assert.ok(app.includes('return {version:1,lifeId:'), 'the legacy save remains version 1');
 });
