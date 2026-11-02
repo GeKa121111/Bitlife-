@@ -1801,6 +1801,13 @@ function buildFamilyPropertyOwnership(previous,beneficiaryRegistry){
   const currentOwners=record&&Array.isArray(record.owners)?record.owners:[];
   const currentOwner=currentOwners.find(owner=>owner&&String(owner.beneficiaryId||'')===ownerId);
   const recordedShare=currentOwner?safeShare(currentOwner.share):null;
+  const currentOwnerArrears=currentOwner&&currentOwner.propertyExpenseOwed!==undefined&&currentOwner.propertyExpenseOwed!==null?Number(currentOwner.propertyExpenseOwed):0;
+  if(!Number.isSafeInteger(currentOwnerArrears)||currentOwnerArrears<0){
+   record.auditStatus='needs_review';
+   record.auditIssues=[...(Array.isArray(record.auditIssues)?record.auditIssues:[]),'property_expense_arrears_invalid'];
+   if(existed)records[existingIndex]=record;
+   return;
+  }
   const ownerShare=declaredShare!==null?declaredShare:(recordedShare!==null?recordedShare:1);
   if(ownerShare<=0)return;
   const valueOfAsset=safeMoney(asset.value);
@@ -1827,19 +1834,23 @@ function buildFamilyPropertyOwnership(previous,beneficiaryRegistry){
   if(record.auditStatus==='needs_review')return;
   if(existed){
    const existingIds=new Set();
+   let ownerArrearsTotal=0;
    const existingSharesValid=Array.isArray(record.owners)&&record.owners.every(owner=>{
     const id=String(owner&&owner.beneficiaryId||'').trim(),share=safeShare(owner&&owner.share);
-    if(!id||share===null||existingIds.has(id))return false;
-    existingIds.add(id);return true;
+    const arrears=owner&&owner.propertyExpenseOwed!==undefined&&owner.propertyExpenseOwed!==null?Number(owner.propertyExpenseOwed):0;
+    if(!id||share===null||existingIds.has(id)||!Number.isSafeInteger(arrears)||arrears<0)return false;
+    existingIds.add(id);ownerArrearsTotal+=arrears;return Number.isSafeInteger(ownerArrearsTotal);
    });
    const encumbered=record.encumberedShare===undefined?0:safeShare(record.encumberedShare);
    const existingTotal=(Array.isArray(record.owners)?record.owners.reduce((sum,owner)=>sum+(safeShare(owner&&owner.share)||0),0):0)+(encumbered===null?0:encumbered);
-   if(!existingSharesValid||encumbered===null||Math.abs(existingTotal-1)>.005){
+   const aggregateOwed=record.propertyExpenseOwedTotal===undefined||record.propertyExpenseOwedTotal===null?ownerArrearsTotal:Number(record.propertyExpenseOwedTotal);
+   if(!existingSharesValid||!Number.isSafeInteger(ownerArrearsTotal)||!Number.isSafeInteger(aggregateOwed)||aggregateOwed<ownerArrearsTotal||encumbered===null||Math.abs(existingTotal-1)>.005){
     record.auditStatus='needs_review';
     record.auditIssues=[...(Array.isArray(record.auditIssues)?record.auditIssues:[]),'existing_ownership_ledger_invalid'];
     records[existingIndex]=record;
     return;
    }
+   if(record.propertyExpenseOwedTotal===undefined||record.propertyExpenseOwedTotal===null)record.propertyExpenseOwedTotal=ownerArrearsTotal;
   }
   const seenBeneficiaries=new Set();
   let shareTotal=0,accountsValid=accounts.length>0;
@@ -1860,12 +1871,61 @@ function buildFamilyPropertyOwnership(previous,beneficiaryRegistry){
    const id=String(owner.beneficiaryId||'');
    if(id)ownerMap.set(id,{...owner,share:safeShare(owner.share)??0});
   });
+  const successorShares=accounts.map(account=>({account,share:Math.max(0,ownerShare*estateFactor*(Number(account.share)/shareTotal))}));
+  const successorSharesById=new Map(successorShares.map(item=>[String(item.account.beneficiaryId),item]));
+  const eligibleSuccessors=successorShares.filter(item=>item.share>0);
+  const arrearsByBeneficiary=new Map();
+  if(currentOwnerArrears>0){
+   if(!eligibleSuccessors.length){
+    record.auditStatus='needs_review';
+    record.auditIssues=[...(Array.isArray(record.auditIssues)?record.auditIssues:[]),'property_expense_arrears_unassigned'];
+    if(existed)records[existingIndex]=record;
+    return;
+   }
+   const eligibleWeight=eligibleSuccessors.reduce((sum,item)=>sum+Number(item.account.share),0);
+   if(!Number.isFinite(eligibleWeight)||eligibleWeight<=0){
+    record.auditStatus='needs_review';
+    record.auditIssues=[...(Array.isArray(record.auditIssues)?record.auditIssues:[]),'property_expense_arrears_unassigned'];
+    if(existed)records[existingIndex]=record;
+    return;
+   }
+   const arrearsParts=eligibleSuccessors.map((item,index)=>{
+    const raw=currentOwnerArrears*(Number(item.account.share)/eligibleWeight);
+    const amount=Math.floor(raw);
+    return {id:String(item.account.beneficiaryId),amount,remainder:raw-amount,index};
+   });
+   const assignedArrears=arrearsParts.reduce((sum,item)=>sum+item.amount,0);
+   const remainingArrears=currentOwnerArrears-assignedArrears;
+   if(!Number.isSafeInteger(assignedArrears)||!Number.isSafeInteger(remainingArrears)||remainingArrears<0||remainingArrears>arrearsParts.length){
+    record.auditStatus='needs_review';
+    record.auditIssues=[...(Array.isArray(record.auditIssues)?record.auditIssues:[]),'property_expense_arrears_rounding_invalid'];
+    if(existed)records[existingIndex]=record;
+    return;
+   }
+   const remainderOrder=arrearsParts.slice().sort((a,b)=>b.remainder-a.remainder||a.index-b.index);
+   for(let index=0;index<remainingArrears;index++)remainderOrder[index].amount++;
+   arrearsParts.forEach(item=>arrearsByBeneficiary.set(item.id,item.amount));
+  }
+  const nextArrearsByBeneficiary=new Map();
+  for(const item of eligibleSuccessors){
+   const beneficiaryId=String(item.account.beneficiaryId),existing=ownerMap.get(beneficiaryId);
+   const existingArrears=existing&&existing.propertyExpenseOwed!==undefined&&existing.propertyExpenseOwed!==null?Number(existing.propertyExpenseOwed):0;
+   const inheritedArrears=arrearsByBeneficiary.get(beneficiaryId)||0;
+   const nextArrears=existingArrears+inheritedArrears;
+   if(!Number.isSafeInteger(existingArrears)||existingArrears<0||!Number.isSafeInteger(nextArrears)||nextArrears<0){
+    record.auditStatus='needs_review';
+    record.auditIssues=[...(Array.isArray(record.auditIssues)?record.auditIssues:[]),'property_expense_arrears_overflow'];
+    if(existed)records[existingIndex]=record;
+    return;
+   }
+   nextArrearsByBeneficiary.set(beneficiaryId,nextArrears);
+  }
   let distributedShare=0;
   accounts.forEach(account=>{
-   const ratio=Number(account.share)/shareTotal;
-   const share=Math.max(0,ownerShare*estateFactor*ratio);
-   if(share<=0)return;
    const beneficiaryId=String(account.beneficiaryId);
+   const allocation=successorSharesById.get(beneficiaryId);
+   const share=allocation?allocation.share:0;
+   if(share<=0)return;
    const existing=ownerMap.get(beneficiaryId);
    const combinedShare=share+(existing?safeShare(existing.share)??0:0);
    const status=account.status==='transferred'?'active':account.status==='reserved'?'reserved':account.status==='earmarked'?'earmarked':'unassigned';
@@ -1875,6 +1935,7 @@ function buildFamilyPropertyOwnership(previous,beneficiaryRegistry){
     name:String(account.name||'مستفيد'),
     kind:String(account.kind||'other'),
     share:Math.round(combinedShare*100000000)/100000000,
+    propertyExpenseOwed:nextArrearsByBeneficiary.get(beneficiaryId)||0,
     status,
     sourceLifeId:String(registry.sourceLifeId||sourceLifeId)
    });
@@ -1898,6 +1959,12 @@ function buildFamilyPropertyOwnership(previous,beneficiaryRegistry){
   const transactionId='family-property-inheritance-'+encodeURIComponent(sourceLifeId)+'-'+encodeURIComponent(familyAssetId);
   if(!record.transactions.some(transaction=>transaction&&transaction.id===transactionId)){
    record.transactions.push({id:transactionId,type:'inheritance_split',sourceLifeId,sourceName:String(previous&&previous.name||'الجيل السابق'),ownerBeneficiaryId:ownerId,distributedShare:Math.round(distributedShare*100000000)/100000000,encumberedShare:debtShare,currency,age:Number.isFinite(Number(previous&&previous.age))?Number(previous.age):null});
+   record.transactions=record.transactions.slice(-100);
+  }
+  const arrearsTransactionId='family-property-expense-inheritance-'+encodeURIComponent(sourceLifeId)+'-'+encodeURIComponent(familyAssetId);
+  if(currentOwnerArrears>0&&!record.transactions.some(transaction=>transaction&&transaction.id===arrearsTransactionId)){
+   const allocations=Array.from(arrearsByBeneficiary.entries()).filter(([,amount])=>amount>0).map(([beneficiaryId,amount])=>({beneficiaryId,amount}));
+   record.transactions.push({id:arrearsTransactionId,type:'property_expense_inheritance',fromBeneficiaryId:ownerId,fromName:String(previous&&previous.name||'المالك السابق'),amount:currentOwnerArrears,allocations,currency,sourceLifeId,age:Number.isFinite(Number(previous&&previous.age))?Number(previous.age):null});
    record.transactions=record.transactions.slice(-100);
   }
   if(existed)records[existingIndex]=record;else records.push(record);
@@ -2498,15 +2565,17 @@ function familyPropertyOwnershipRecordMenu(recordId){
   const isRent=transaction.type==='rent_distribution',isExpense=transaction.type==='property_expense';
   const isTax=isExpense&&String(transaction.reason||'').includes('الضريبة');
   const isTaxPolicy=transaction.type==='tax_policy';
-  const title=transaction.type==='sale'?'نقل حصة إلى مشترٍ خارجي':transaction.type==='maintenance'?'تحديث قيمة العقار':isRent?'توزيع دخل الإيجار':isTaxPolicy?'تعديل سياسة الضريبة العقارية':isTax?'توزيع الضريبة العقارية':isExpense?'توزيع مصروفات العقار':'توزيع ملكية عائلية';
+  const title=transaction.type==='sale'?'نقل حصة إلى مشترٍ خارجي':transaction.type==='maintenance'?'تحديث قيمة العقار':isRent?'توزيع دخل الإيجار':isTaxPolicy?'تعديل سياسة الضريبة العقارية':transaction.type==='property_expense_inheritance'?'نقل متأخرات مع الميراث':isTax?'توزيع الضريبة العقارية':isExpense?'توزيع مصروفات العقار':'توزيع ملكية عائلية';
   const detail=isRent
    ?'إجمالي الإيجار '+fmt(transaction.grossRent||0)+' '+currency+' · محافظ الأسرة '+fmt(transaction.familyWalletAmount||0)+' · المبلغ المعلّق '+fmt(transaction.reservedAmount||0)
-   :isTaxPolicy
+   :transaction.type==='property_expense_inheritance'
+    ?'المتأخرات المنقولة '+fmt(transaction.amount||0)+' '+currency+' · عدد المستفيدين '+fmt((transaction.allocations||[]).length)
+    :isTaxPolicy
     ?'المعدل السنوي '+formatFamilyPropertyTaxRate(transaction.rateBps)+' · سنة اللعبة '+fmt(transaction.year||0)
     :isExpense
      ?'سبب المصروف '+String(transaction.reason||'مصروف عقاري')+' · الإجمالي '+fmt(transaction.grossCost||0)+' '+currency+' · دفع الملاك '+fmt((transaction.activeAmount||0)+(transaction.familyWalletAmount||0))+' · متأخرات '+fmt(transaction.unpaidAmount||0)
      :'تاريخ العملية '+(transaction.age===null||transaction.age===undefined?'غير مسجل':fmt(transaction.age))+' · '+(transaction.type==='sale'?'قيمة البيع '+fmt(transaction.amount||0)+' '+currency:'مصدر العملية '+String(transaction.sourceName||transaction.sourceLifeId||'سجل العائلة'));
-  opts.push(choice(isRent?'🏠':isTax||isTaxPolicy?'🏛️':isExpense?'🧰':'📜',title,detail,()=>info('📜',title,detail)));
+  opts.push(choice(isRent?'🏠':isTax||isTaxPolicy?'🏛️':isExpense?'🧰':transaction.type==='property_expense_inheritance'?'🧾':'📜',title,detail,()=>info('📜',title,detail)));
  });
  opts.push(choice('↩️','رجوع للعقارات العائلية','',familyPropertyOwnershipMenu));
  const audit=record.auditStatus==='balanced'?'إجمالي الحصص والالتزامات يساوي 100%.':'تنبيه: بيانات الملكية لا تتطابق بالكامل؛ تم إيقاف بيع الحصة والصيانة المشتركة لحماية حقوق بقية الملاك.';

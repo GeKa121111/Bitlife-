@@ -1807,6 +1807,157 @@ test('سجل ملكية قديم ناقص المالك الحالي يتحول �
 });
 
 
+test('متأخرات العقار تنتقل للورثة حسب حصصهم وتظل قابلة للتسوية عند البيع', () => {
+  const context = makeContext();
+  const previous = {
+    lifeId: 'property-arrears-parent-life',
+    name: 'المالك السابق',
+    age: 68,
+    bank: 0,
+    debt: 0,
+    assets: [{
+      id: 'parent-home-share',
+      familyAssetId: 'family-home-arrears-inheritance',
+      familyAssetOriginalValue: 1000000,
+      ownerBeneficiaryId: 'active-parent',
+      ownershipShare: 0.5,
+      title: 'بيت العائلة',
+      kind: 'property',
+      value: 500000,
+      upkeep: 10000,
+      condition: 82
+    }],
+    investments: [],
+    business: null,
+    companies: [],
+    place: { unit: 'جنيه' },
+    legacy: {
+      activeBeneficiaryId: 'active-parent',
+      familyPropertyOwnership: [{
+        id: 'family-home-arrears-inheritance',
+        familyAssetId: 'family-home-arrears-inheritance',
+        title: 'بيت العائلة',
+        currency: 'جنيه',
+        marketValue: 1000000,
+        upkeep: 20000,
+        encumberedShare: 0,
+        auditStatus: 'balanced',
+        propertyExpenseOwedTotal: 18001,
+        propertyExpensePaidTotal: 0,
+        propertyExpenseActivePaidTotal: 0,
+        owners: [
+          { beneficiaryId: 'active-parent', name: 'المالك السابق', kind: 'child', share: 0.5, status: 'active', propertyExpenseOwed: 12001 },
+          { beneficiaryId: 'older-sibling', name: 'الأخ كريم', kind: 'child', share: 0.5, status: 'reserved', propertyExpenseOwed: 6000 }
+        ],
+        transactions: []
+      }]
+    }
+  };
+  const registry = {
+    sourceLifeId: 'property-arrears-next-generation',
+    currency: 'جنيه',
+    accounts: [
+      { beneficiaryId: 'grandchild-a', name: 'الحفيد الأول', kind: 'child', share: 1 / 3, status: 'transferred' },
+      { beneficiaryId: 'grandchild-b', name: 'الحفيدة الثانية', kind: 'child', share: 1 / 3, status: 'reserved' },
+      { beneficiaryId: 'grandchild-c', name: 'الحفيد الثالث', kind: 'child', share: 1 / 3, status: 'reserved' }
+    ]
+  };
+
+  const record = context.buildFamilyPropertyOwnership(previous, registry)[0];
+  assert.equal(record.auditStatus, 'balanced');
+  assert.equal(record.propertyExpenseOwedTotal, 18001);
+  assert.equal(record.owners.find(owner => owner.beneficiaryId === 'older-sibling').propertyExpenseOwed, 6000);
+  assert.equal(record.owners.find(owner => owner.beneficiaryId === 'grandchild-a').propertyExpenseOwed, 4001);
+  assert.equal(record.owners.find(owner => owner.beneficiaryId === 'grandchild-b').propertyExpenseOwed, 4000);
+  assert.equal(record.owners.find(owner => owner.beneficiaryId === 'grandchild-c').propertyExpenseOwed, 4000);
+
+  const transfer = record.transactions.find(item => item.type === 'property_expense_inheritance');
+  assert.ok(transfer);
+  assert.equal(transfer.amount, 12001);
+  assert.equal(transfer.allocations.reduce((sum, item) => sum + item.amount, 0), 12001);
+  assert.deepEqual(Array.from(transfer.allocations, item => item.amount), [4001, 4000, 4000]);
+
+  context.state = {
+    lifeId: 'grandchild-a',
+    name: 'الحفيد الأول',
+    age: 25,
+    bank: 1000,
+    place: { unit: 'جنيه' },
+    legacy: { activeBeneficiaryId: 'grandchild-a', familyPropertyOwnership: [record] }
+  };
+  const inheritedShare = {
+    id: 'grandchild-a-home-share',
+    familyAssetId: record.id,
+    ownerBeneficiaryId: 'grandchild-a',
+    ownershipShare: 1 / 6,
+    kind: 'property',
+    value: 166667
+  };
+  const sale = context.recordFamilyPropertySale(inheritedShare, 10000);
+  assert.equal(sale.ok, true);
+  assert.equal(sale.settledArrears, 4001);
+  assert.equal(sale.netProceeds, 5999);
+  assert.equal(record.propertyExpenseOwedTotal, 14000);
+  assert.equal(record.owners.find(owner => owner.beneficiaryId === 'older-sibling').propertyExpenseOwed, 6000);
+  assert.equal(record.owners.find(owner => owner.beneficiaryId === 'grandchild-b').propertyExpenseOwed, 4000);
+  assert.equal(record.owners.find(owner => owner.beneficiaryId === 'grandchild-c').propertyExpenseOwed, 4000);
+  assert.equal(record.owners.some(owner => owner.beneficiaryId === 'grandchild-a'), false);
+});
+
+test('متأخرات العقار غير الصالحة توقف انتقال الحصة بدل إسقاط الدين', () => {
+  const context = makeContext();
+  const record = {
+    id: 'invalid-arrears-home',
+    familyAssetId: 'invalid-arrears-home',
+    title: 'عقار يحتاج مراجعة',
+    currency: 'جنيه',
+    marketValue: 500000,
+    upkeep: 10000,
+    encumberedShare: 0,
+    auditStatus: 'balanced',
+    propertyExpenseOwedTotal: 0,
+    owners: [
+      { beneficiaryId: 'invalid-arrears-owner', name: 'المالك الحالي', share: 0.5, status: 'active', propertyExpenseOwed: -100 },
+      { beneficiaryId: 'invalid-arrears-sibling', name: 'الأخت', share: 0.5, status: 'reserved', propertyExpenseOwed: 0 }
+    ],
+    transactions: []
+  };
+  const previous = {
+    lifeId: 'invalid-arrears-life',
+    name: 'المالك الحالي',
+    age: 55,
+    bank: 0,
+    debt: 0,
+    assets: [{
+      id: 'invalid-arrears-share',
+      familyAssetId: record.id,
+      familyAssetOriginalValue: 500000,
+      ownerBeneficiaryId: 'invalid-arrears-owner',
+      ownershipShare: 0.5,
+      title: 'عقار يحتاج مراجعة',
+      kind: 'property',
+      value: 250000,
+      upkeep: 5000
+    }],
+    investments: [],
+    business: null,
+    companies: [],
+    place: { unit: 'جنيه' },
+    legacy: { activeBeneficiaryId: 'invalid-arrears-owner', familyPropertyOwnership: [record] }
+  };
+  const next = context.buildFamilyPropertyOwnership(previous, {
+    sourceLifeId: 'invalid-arrears-next',
+    currency: 'جنيه',
+    accounts: [
+      { beneficiaryId: 'invalid-arrears-heir-a', name: 'وارث أول', kind: 'child', share: 0.5, status: 'transferred' },
+      { beneficiaryId: 'invalid-arrears-heir-b', name: 'وارث ثانٍ', kind: 'child', share: 0.5, status: 'reserved' }
+    ]
+  })[0];
+  assert.equal(next.auditStatus, 'needs_review');
+  assert.equal(next.owners.find(owner => owner.beneficiaryId === 'invalid-arrears-owner').propertyExpenseOwed, -100);
+  assert.equal(next.transactions.some(item => item.type === 'property_expense_inheritance'), false);
+});
+
 test('ملكية عقار واحد تظل متوازنة عبر خمسة أجيال مع بقاء حصص الإخوة السابقين', () => {
   const context = makeContext();
   let currentBeneficiaryId = 'founder';
