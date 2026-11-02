@@ -2148,7 +2148,7 @@ function advanceSiblingEconomies(){
    propertySaleDebtPaid:propertySale?propertySale.debtPaid:0,propertySaleShortfallPaid:propertySale?propertySale.shortfallPaid:0,
    propertySaleCashRetained:propertySale?propertySale.retainedCash:0,
    propertySaleKind:propertySale?propertySale.kind:'',
-   rentIncome,rentLoss,rentArrearsAdded,rentArrearsCollected,rentArrearsBalance,rentArrearsWrittenOff:propertySale?propertySale.arrearsWrittenOff:0,
+   rentIncome,rentLoss,rentArrearsAdded,rentArrearsCollected,rentArrearsBalance:rentalArrearsBalance,rentArrearsWrittenOff:propertySale?propertySale.arrearsWrittenOff:0,
    rentalPurchase:!!purchasedRentalProperty,
    employmentState:employment.state,employmentEvent:employment.event||'',netWorth:profile.netWorth});
   if(profile.history.length>12)profile.history.shift();
