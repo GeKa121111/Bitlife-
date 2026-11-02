@@ -1756,6 +1756,96 @@ function siblingCareerBaseSalary(job){
  if(/عامل/.test(label))return 54000;
  return 65000;
 }
+
+function siblingHouseholdName(relative,year,kind,index){
+ const firstNames=['مريم','سلمى','نور','ليلى','آدم','عمر','ياسين','مالك','دينا','هاجر','كريم','مروان','جنى','فارس','ملك','زياد'];
+ const familyNames=['النجار','حسن','سالم','فؤاد','منصور','عادل','إبراهيم','شريف','الرفاعي','كمال'];
+ const identity=String(relative&&(relative.id||relative.name||relative.relation)||'sibling').slice(0,160);
+ const signal=siblingInvestmentHash(identity+'|household|'+String(kind||'member')+'|'+Number(year)+'|'+Math.max(0,Number(index)||0));
+ return firstNames[signal%firstNames.length]+' '+familyNames[Math.floor(signal/firstNames.length)%familyNames.length];
+}
+function ensureSiblingHousehold(relative,profile,year){
+ const numericYear=Number.isSafeInteger(Number(year))?Math.max(0,Number(year)):0;
+ const raw=profile.household&&typeof profile.household==='object'&&!Array.isArray(profile.household)?profile.household:{};
+ const spouseRaw=raw.spouse&&typeof raw.spouse==='object'&&!Array.isArray(raw.spouse)?raw.spouse:null;
+ const spouse=spouseRaw?{
+  id:String(spouseRaw.id||'sibling-spouse').slice(0,80),name:String(spouseRaw.name||'شريك الحياة').slice(0,80),
+  age:clamp(spouseRaw.age??(Number(relative&&relative.age)||numericYear),18,120),
+  job:String(spouseRaw.job||'موظف').slice(0,64),annualIncome:siblingSafeMoney(spouseRaw.annualIncome),
+  marriedYear:clamp(spouseRaw.marriedYear??numericYear,0,9999),
+  lastAgeYear:Number.isSafeInteger(Number(spouseRaw.lastAgeYear))?Number(spouseRaw.lastAgeYear):numericYear,
+  deceased:spouseRaw.deceased===true
+ }:null;
+ const children=(Array.isArray(raw.children)?raw.children:[]).slice(0,4).filter(child=>child&&typeof child==='object'&&!Array.isArray(child)).map((child,index)=>{
+  const age=clamp(child.age??0,0,120),birthYear=Number.isSafeInteger(Number(child.birthYear))?Math.max(0,Number(child.birthYear)):Math.max(0,numericYear-age);
+  return {id:String(child.id||('sibling-child-'+index)).slice(0,80),name:String(child.name||'طفل').slice(0,80),age,birthYear,
+   lastAgeYear:Number.isSafeInteger(Number(child.lastAgeYear))?Number(child.lastAgeYear):numericYear,
+   independent:child.independent===true||age>=18};
+ });
+ const status=spouse?(spouse.deceased?'widowed':'married'):(raw.status==='widowed'?'widowed':'single');
+ const lastProcessedYear=Number.isSafeInteger(Number(raw.lastProcessedYear))?Number(raw.lastProcessedYear):numericYear-1;
+ const history=(Array.isArray(raw.history)?raw.history:[]).filter(item=>item&&typeof item==='object'&&!Array.isArray(item)).slice(-12).map(item=>({
+  year:clamp(item.year??numericYear,0,9999),type:['married','birth','child_independent','widowed'].includes(item.type)?item.type:'',name:String(item.name||'').slice(0,80)
+ })).filter(item=>item.type);
+ profile.household={status,spouse,children,history,lastProcessedYear};
+ return profile.household;
+}
+function siblingHouseholdAnnualEffects(relative,profile,year,age){
+ const numericYear=Number(year),numericAge=Math.max(0,Math.floor(Number(age)||0));
+ if(!Number.isSafeInteger(numericYear)||numericYear<0)return {spouseIncome:0,familyExpenses:0,events:[],status:'single',memberCount:1,duplicate:true};
+ const household=ensureSiblingHousehold(relative,profile,numericYear);
+ if(household.lastProcessedYear>=numericYear)return {spouseIncome:0,familyExpenses:0,events:[],status:household.status,memberCount:1+(household.spouse&&!household.spouse.deceased?1:0)+household.children.length,duplicate:true};
+ const identity=String(relative&&(relative.id||relative.name||relative.relation)||'sibling').slice(0,160);
+ const reliability=clamp(relative&&(relative.reliability??55)),generosity=clamp(relative&&(relative.generosity??50));
+ const events=[];
+ if(household.spouse&&!household.spouse.deceased&&household.spouse.lastAgeYear<numericYear){
+  household.spouse.age=clamp(household.spouse.age+1,18,120);household.spouse.lastAgeYear=numericYear;
+  if(household.spouse.age>=100){household.spouse.deceased=true;household.status='widowed';events.push({type:'widowed',name:household.spouse.name});}
+ }
+ household.children.forEach(child=>{
+  if(child.lastAgeYear<numericYear&&child.birthYear<numericYear){
+   const previousAge=child.age;child.age=clamp(child.age+1,0,120);child.lastAgeYear=numericYear;
+   if(previousAge<18&&child.age>=18&&!child.independent){child.independent=true;events.push({type:'child_independent',name:child.name});}
+  }
+ });
+ if(!household.spouse&&numericAge>=24&&numericAge<=45){
+  const marriageChanceBps=Math.min(2200,500+reliability*12+generosity*3);
+  const signal=siblingInvestmentHash(identity+'|household-marriage|'+numericYear)%10000;
+  if(signal<marriageChanceBps){
+   const spouseJobs=['محاسب','مدرس','مصمم','ممرض','فني','موظف إداري'];
+   const jobIndex=siblingInvestmentHash(identity+'|household-job|'+numericYear)%spouseJobs.length;
+   const job=spouseJobs[jobIndex],ageOffset=(siblingInvestmentHash(identity+'|household-age|'+numericYear)%7)-3;
+   const spouseAge=clamp(numericAge+ageOffset,18,70);
+   household.spouse={id:'sibling-spouse-'+siblingInvestmentHash(identity+'|spouse|'+numericYear).toString(36),
+    name:siblingHouseholdName(relative,numericYear,'spouse',0),age:spouseAge,job,
+    annualIncome:Math.round(siblingCareerBaseSalary(job)*.78),marriedYear:numericYear,lastAgeYear:numericYear,deceased:false};
+   household.status='married';events.push({type:'married',name:household.spouse.name});
+  }
+ }
+ if(household.spouse&&!household.spouse.deceased&&numericAge>=25&&numericAge<=44&&household.spouse.marriedYear<numericYear&&household.children.length<3){
+  const birthChanceBps=Math.min(1600,800+generosity*5);
+  const signal=siblingInvestmentHash(identity+'|household-birth|'+numericYear)%10000;
+  if(signal<birthChanceBps){
+   const childIndex=household.children.length;
+   const child={id:'sibling-child-'+siblingInvestmentHash(identity+'|child|'+numericYear).toString(36),
+    name:siblingHouseholdName(relative,numericYear,'child',childIndex),age:0,birthYear:numericYear,lastAgeYear:numericYear,independent:false};
+   household.children.push(child);events.push({type:'birth',name:child.name});
+  }
+ }
+ let spouseIncome=0,familyExpenses=0;
+ if(household.spouse&&!household.spouse.deceased){
+  spouseIncome=siblingSafeMoney(household.spouse.annualIncome*(household.spouse.age>=65?.35:1));
+  familyExpenses+=12000;
+ }
+ household.children.forEach(child=>{if(!child.independent&&child.age<18)familyExpenses+=child.age<6?3500:6500;});
+ familyExpenses=siblingSafeMoney(familyExpenses);
+ household.status=household.spouse?(household.spouse.deceased?'widowed':'married'):'single';
+ household.lastProcessedYear=numericYear;
+ events.forEach(event=>household.history.push({year:numericYear,type:event.type,name:String(event.name||'').slice(0,80)}));
+ if(household.history.length>12)household.history.splice(0,household.history.length-12);
+ return {spouseIncome,familyExpenses,events,status:household.status,memberCount:1+(household.spouse?1:0)+household.children.length,duplicate:false};
+}
+
 function siblingOwnedPropertyValue(profile){
  const assets=Array.isArray(profile&&profile.ownedProperties)?profile.ownedProperties:[];
  return siblingSafeMoney(assets.reduce((sum,asset)=>sum+siblingSafeMoney(asset&&asset.marketValue),0));
@@ -2237,7 +2327,10 @@ function ensureSiblingEconomicProfile(relative){
   mortgagePrincipal:siblingSafeMoney(item.mortgagePrincipal),mortgageBalance:siblingSafeMoney(item.mortgageBalance),mortgageArrears:siblingSafeMoney(item.mortgageArrears),
   mortgageUnpaid:siblingSafeMoney(item.mortgageUnpaid),mortgageDefault:!!item.mortgageDefault,
   employmentState:['working','seeking','retired'].includes(item.employmentState)?item.employmentState:(clamp(item.age??age)>=65?'retired':'working'),
-  employmentEvent:['laid_off','rehired','retired'].includes(item.employmentEvent)?item.employmentEvent:'',netWorth:siblingSafeSigned(item.netWorth)
+  employmentEvent:['laid_off','rehired','retired'].includes(item.employmentEvent)?item.employmentEvent:'',netWorth:siblingSafeSigned(item.netWorth),
+  householdStatus:['single','married','widowed'].includes(item.householdStatus)?item.householdStatus:'single',
+  householdIncome:siblingSafeMoney(item.householdIncome),householdExpenses:siblingSafeMoney(item.householdExpenses),householdMembers:clamp(item.householdMembers??1,1,8),
+  householdEvents:(Array.isArray(item.householdEvents)?item.householdEvents:[]).slice(0,3).filter(event=>event&&typeof event==='object'&&!Array.isArray(event)&&['married','birth','child_independent','widowed'].includes(event.type)).map(event=>({type:event.type,name:String(event.name||'').slice(0,80)}))
  }));
  profile.propertyTransactions=(Array.isArray(profile.propertyTransactions)?profile.propertyTransactions:[])
   .filter(item=>item&&typeof item==='object'&&!Array.isArray(item)&&['rental_sale','mortgage_prepayment'].includes(item.type)).slice(-12)
@@ -2248,6 +2341,9 @@ function ensureSiblingEconomicProfile(relative){
     gross:siblingSafeMoney(item.gross),transactionCost:siblingSafeMoney(item.transactionCost),netProceeds:siblingSafeMoney(item.netProceeds),
     mortgagePayoff:siblingSafeMoney(item.mortgagePayoff),mortgagePaid:siblingSafeMoney(item.mortgagePaid),debtPaid:siblingSafeMoney(item.debtPaid),
     cashRetained:siblingSafeMoney(item.cashRetained),arrearsWrittenOff:siblingSafeMoney(item.arrearsWrittenOff)});
+ profile.householdIncomeAnnual=siblingSafeMoney(profile.householdIncomeAnnual);
+ profile.householdExpensesAnnual=siblingSafeMoney(profile.householdExpensesAnnual);
+ profile.household=ensureSiblingHousehold(relative,profile,year);
  return profile;
 }
 
@@ -2261,6 +2357,7 @@ function advanceSiblingEconomies(){
   const profile=ensureSiblingEconomicProfile(relative);if(!profile||profile.lastProcessedYear>=year)return;
   const previousDebt=profile.debt,yearsWorked=profile.yearsWorked,rank=profile.rank;
   const employment=siblingEmploymentDecision(relative,profile,year,age),retired=employment.state==='retired';
+  const householdEffects=siblingHouseholdAnnualEffects(relative,profile,year,age);
   let propertyExpenses=0,rentIncome=0,rentLoss=0,rentArrearsCollected=0,rentArrearsAdded=0,mortgageDueTotal=0;
   const mortgageDues=[],rentalLeaseEvents=[];
   profile.ownedProperties.forEach(asset=>{
@@ -2290,7 +2387,7 @@ function advanceSiblingEconomies(){
   const baseSalary=siblingCareerBaseSalary(relative.job),experienceFactor=1+Math.min(.75,yearsWorked*.025),rankFactor=1+(rank-1)*.075;
   const income=Math.round(baseSalary*experienceFactor*rankFactor*(.86+smart/400)*(.9+reliability/1000)*employment.incomeFactor);
   const fixedLiving=Math.round(9000+age*110),expenseRate=Math.max(.52,Math.min(.76,(64+(generosity-50)*.12-(reliability-50)*.06)/100));
-  const expenses=siblingSafeMoney(fixedLiving+income*expenseRate+propertyExpenses+mortgageDueTotal),totalIncome=siblingSafeMoney(income+rentIncome);
+  const expenses=siblingSafeMoney(fixedLiving+income*expenseRate+propertyExpenses+mortgageDueTotal+householdEffects.familyExpenses),totalIncome=siblingSafeMoney(income+rentIncome+householdEffects.spouseIncome);
   let savings=profile.savings,debt=profile.debt;const startingInvestmentBalance=profile.investmentBalance;
   const investmentReturn=siblingInvestmentAnnualReturn(relative,year,profile.investmentRisk,startingInvestmentBalance);
   let investmentContribution=0;const cashFlow=totalIncome-expenses;
@@ -2380,6 +2477,7 @@ function advanceSiblingEconomies(){
   profile.rentalArrearsBalance=rentalArrearsBalance;profile.mortgageDebtBalance=mortgageDebtBalance;profile.mortgageArrearsBalance=mortgageArrearsBalance;
   profile.mortgagePaymentAnnual=mortgagePaymentPaid;profile.mortgageInterestAnnual=mortgageInterestPaid;profile.mortgagePrincipalAnnual=mortgagePrincipalPaid;
   profile.annualIncome=totalIncome;profile.annualExpenses=expenses;
+  profile.householdIncomeAnnual=householdEffects.spouseIncome;profile.householdExpensesAnnual=householdEffects.familyExpenses;
   profile.cumulativeIncome=siblingSafeMoney(profile.cumulativeIncome+totalIncome);profile.cumulativeExpenses=siblingSafeMoney(profile.cumulativeExpenses+expenses);
   profile.netWorth=siblingSafeSigned(savings+investmentBalance+propertyValue-debt);
   profile.employmentStatus=retired?'متقاعد':employment.state==='seeking'?'باحث عن عمل':debt>0&&savings===0?'عليه التزامات':'مستقر';
@@ -2393,7 +2491,9 @@ function advanceSiblingEconomies(){
    rentIncome,rentLoss,rentArrearsAdded,rentArrearsCollected,rentArrearsBalance:rentalArrearsBalance,rentArrearsWrittenOff:propertySale?propertySale.arrearsWrittenOff:0,
    rentLeaseEvents:rentalLeaseEvents.slice(0,5),rentalPurchase:!!purchasedRentalProperty,mortgagePayment:mortgagePaymentPaid,mortgageInterest:mortgageInterestPaid,mortgagePrincipal:mortgagePrincipalPaid,
    mortgageBalance:mortgageDebtBalance,mortgageArrears:mortgageArrearsBalance,mortgageUnpaid:mortgageUnpaidTotal,mortgageDefault,
-   employmentState:employment.state,employmentEvent:employment.event||'',netWorth:profile.netWorth});
+   employmentState:employment.state,employmentEvent:employment.event||'',netWorth:profile.netWorth,
+   householdStatus:householdEffects.status,householdIncome:householdEffects.spouseIncome,householdExpenses:householdEffects.familyExpenses,
+   householdMembers:householdEffects.memberCount,householdEvents:householdEffects.events.slice(0,3).map(event=>({type:event.type,name:event.name}))});
   if(profile.history.length>12)profile.history.shift();
   if(purchasedProperty)log('🏠','امتلاك مسكن مستقل','اشترى '+String(relative.name||'أحد إخوتك')+' مسكنًا من مدخراته بقيمة '+cash(purchasedProperty.purchasePrice)+' '+profile.currency+'.','good');
   if(purchasedRentalProperty)log('🏘️','شراء عقار استثماري',rentalPurchase.loanPrincipal>0?'اشترى '+String(relative.name||'أحد إخوتك')+' عقارًا استثماريًا بمقدم '+cash(rentalPurchase.downPayment)+' وتمويل '+cash(rentalPurchase.loanPrincipal)+' وقسط سنوي '+cash(rentalPurchase.annualPayment)+'.':'اشترى '+String(relative.name||'أحد إخوتك')+' عقارًا استثماريًا نقدًا بقيمة '+cash(purchasedRentalProperty.purchasePrice)+'.','good');
@@ -2412,6 +2512,11 @@ function advanceSiblingEconomies(){
   else if(employment.event==='retired')log('🌅','تقاعد أحد الإخوة','وصل '+String(relative.name||'أحد إخوتك')+' إلى سن التقاعد وأصبح دخله معاشًا محاكيًا.','special');
   else if(age===18)log('💼','بداية الاستقلال المالي','بدأ '+String(relative.name||'أحد إخوتك')+' مساره المهني، بدخل سنوي '+cash(income)+' '+profile.currency+'.','good');
   if(promoted)log('📈','تقدم مهني في العائلة','حصل '+String(relative.name||'أحد إخوتك')+' على ترقية بعد سنوات من الخبرة.','good');
+  householdEffects.events.forEach(event=>{
+   const title=event.type==='married'?'زواج في العائلة':event.type==='birth'?'مولود جديد في العائلة':event.type==='child_independent'?'استقلال أحد الأبناء':'ترمل أحد أفراد العائلة';
+   const detail=event.type==='married'?String(relative.name||'أحد إخوتك')+' تزوج/تزوجت من '+event.name+' وبدأ تكوين أسرة مستقلة.':event.type==='birth'?'رُزق '+String(relative.name||'أحد إخوتك')+' بطفل اسمه '+event.name+'.':event.type==='child_independent'?'أصبح '+event.name+' بالغًا وبدأ مرحلة الاستقلال.':'توفي شريك حياة '+String(relative.name||'أحد إخوتك')+'، وتغير وضع الأسرة.';
+   log(event.type==='birth'?'👶':event.type==='married'?'💍':'👪',title,detail,event.type==='widowed'?'bad':'special');
+  });
   if(debt>0&&previousDebt===0)log('💳','التزام مالي لأحد الإخوة','واجه '+String(relative.name||'أحد إخوتك')+' عجزًا ماليًا هذا العام وسُجلت عليه التزامات في حسابه المستقل.','bad');
   processed++;
  });
@@ -5677,7 +5782,9 @@ function personModal(n){
   :[['الكرم',n.generosity],['الجنون',n.craziness],['المال',n.money]];
  const bars=stats.map(([label,value])=>{const v=clamp(value??50);return '<div class="npc-stat"><span>'+label+'</span><div class="mini-track"><span style="width:'+v+'%"></span></div><b>'+v+'%</b></div>';}).join('');
  const economicProfile=isSibling&&n.economicProfile&&typeof n.economicProfile==='object'?n.economicProfile:null;
- const economySummary=economicProfile?'<div class="relationship-progress"><div class="muted">الاستقلال المالي · '+esc(siblingEmploymentStateLabel(economicProfile.employmentState))+' · '+esc(economicProfile.employmentStatus||'مستقر')+'</div><div class="pillrow"><span class="pill">📈 دخل '+esc(cash(economicProfile.annualIncome||0))+'</span><span class="pill">💰 مدخرات '+esc(cash(economicProfile.savings||0))+'</span><span class="pill">📊 استثمارات '+esc(cash(economicProfile.investmentBalance||0))+'</span><span class="pill">🧾 ديون '+esc(cash(economicProfile.debt||0))+'</span></div></div>':'';
+ const household=economicProfile&&economicProfile.household?economicProfile.household:null;
+ const householdLabel=household?(household.status==='married'?'متزوج · '+(household.children||[]).length+' أبناء':household.status==='widowed'?'أرمل/أرملة · '+(household.children||[]).length+' أبناء':'غير متزوج'):'أسرة مستقلة لم تتكون بعد';
+ const economySummary=economicProfile?'<div class="relationship-progress"><div class="muted">الاستقلال المالي · '+esc(siblingEmploymentStateLabel(economicProfile.employmentState))+' · '+esc(economicProfile.employmentStatus||'مستقر')+'</div><div class="pillrow"><span class="pill">📈 دخل '+esc(cash(economicProfile.annualIncome||0))+'</span><span class="pill">💰 مدخرات '+esc(cash(economicProfile.savings||0))+'</span><span class="pill">📊 استثمارات '+esc(cash(economicProfile.investmentBalance||0))+'</span><span class="pill">🧾 ديون '+esc(cash(economicProfile.debt||0))+'</span><span class="pill">👪 '+esc(householdLabel)+'</span></div></div>':'';
  const progress='<div class="relationship-progress"><div class="muted">قوة العلاقة · '+clamp(n.relationshipLevel)+'%</div><div class="progressline"><div style="width:'+clamp(n.relationshipLevel)+'%"></div></div></div><div class="npc-stats">'+bars+'</div><div class="pillrow"><span class="pill">💼 '+esc(n.job||'غير محدد')+'</span><span class="pill">🧠 '+esc(n.personality||'غير محدد')+'</span><span class="pill">🎂 '+fmt(n.age||0)+' سنة</span></div>'+economySummary;
  const jobDescription=isSibling&&economicProfile&&economicProfile.employmentState==='seeking'?'بيبحث حاليًا عن فرصة عمل، وكانت مهنته '+(n.job||'غير محدد'):isSibling&&economicProfile&&economicProfile.employmentState==='retired'?'متقاعد بعد مسيرة في '+(n.job||'عمله السابق'):'بيشتغل '+(n.job||'غير محدد');
  modal(n.emoji,n.name+' · '+n.relation,jobDescription+'، وشخصيته '+(n.personality||'غير محدد')+'.',[
@@ -5802,6 +5909,9 @@ function siblingMortgagePrepaymentConfirm(n,assetId){
 function siblingEconomicDetails(n){
  const profile=n&&n.economicProfile;if(!profile){info('📊','لا يوجد سجل مالي بعد','يبدأ الحساب المالي المستقل عند بلوغ الأخ أو الأخت سن 18 سنة.');return;}
  const netWorth=Number(profile.netWorth)||0,properties=Array.isArray(profile.ownedProperties)?profile.ownedProperties:[],propertyValue=siblingOwnedPropertyValue(profile);
+ const household=profile.household&&typeof profile.household==='object'?profile.household:{status:'single',spouse:null,children:[]};
+ const householdMembers=[household.spouse&&!household.spouse.deceased?household.spouse.name:'',...(Array.isArray(household.children)?household.children.map(child=>child.name+(child.independent?' · مستقل':' · '+fmt(child.age)+' سنة')):[])].filter(Boolean);
+ const householdSummary=household.status==='married'?'متزوج من '+String(household.spouse&&household.spouse.name||'شريك الحياة')+' · الأبناء '+(household.children||[]).length+(householdMembers.length?' · '+householdMembers.join('، '):''):household.status==='widowed'?'أرمل/أرملة · الأبناء '+(household.children||[]).length:'غير متزوج حاليًا';
  const propertyText=properties.length?properties.map(asset=>{
   const mortgage=asset&&asset.mortgage,finance=mortgage&&siblingMortgageLiability(asset)>0?' · تمويل متبقٍ '+cash(siblingMortgageLiability(asset))+' · قسط سنوي '+cash(mortgage.annualPayment||0)+' · متأخرات تمويل '+cash(mortgage.arrears||0):'';
   const lease=asset&&asset.lease,leaseMode=lease&&lease.ownerManaged?' · إدارة المالك':' · إدارة تلقائية',leaseText=asset.kind!=='rental'?'':lease&&lease.status==='active'?' · المستأجر '+esc(lease.tenantName||'غير محدد')+' · العقد حتى سنة '+fmt(lease.endYear)+' · إيجار العقد '+cash(lease.monthlyRent||asset.monthlyRent||0)+leaseMode:lease?' · العقار شاغر'+(lease.ownerManaged?' · إدارة المالك':''):' · سجل إيجار قديم دون عقد مفصل';
@@ -5817,7 +5927,7 @@ function siblingEconomicDetails(n){
  const mortgageChoices=properties.filter(asset=>asset&&asset.kind==='rental'&&asset.mortgage&&siblingMortgageLiability(asset)>0).map(asset=>choice('💳','مراجعة السداد المبكر','تمويل قائم '+cash(siblingMortgageLiability(asset))+' · مدخرات '+cash(profile.savings||0),()=>siblingMortgagePrepaymentConfirm(n,asset.id),cash(siblingMortgageLiability(asset))));
  const history=(Array.isArray(profile.history)?profile.history:[]).slice(-5).reverse();
  const historyText=history.length?history.map(item=>'سنة '+fmt(item.year)+' · '+siblingEmploymentStateLabel(item.employmentState)+(siblingEmploymentEventLabel(item.employmentEvent)?' ('+siblingEmploymentEventLabel(item.employmentEvent)+')':'')+' · دخل '+cash(item.income)+' · إيجار '+cash(item.rentIncome||0)+' · فاقد إيجار '+cash(item.rentLoss||0)+' · متأخرات محصلة '+cash(item.rentArrearsCollected||0)+' · رصيد متأخرات '+cash(item.rentArrearsBalance||0)+(item.rentArrearsWrittenOff?' · شطب متأخرات '+cash(item.rentArrearsWrittenOff):'')+' · قسط تمويل '+cash(item.mortgagePayment||0)+' · أصل مسدد '+cash(item.mortgagePrincipal||0)+' · رصيد تمويل '+cash(item.mortgageBalance||0)+(item.mortgageDefault?' · تعثر تمويلي':'')+' · مصروف '+cash(item.expenses)+' · مدخرات '+cash(item.savings)+' · محفظة '+cash(item.investmentBalance||0)+' · قيمة العقار '+cash(item.propertyValue||0)+' · صيانة '+cash(item.propertyExpenses||0)+(item.propertyPurchase?' · شراء مسكن':'')+(item.rentalPurchase?' · شراء عقار استثماري':'')+(Array.isArray(item.rentLeaseEvents)&&item.rentLeaseEvents.length?' · عقود إيجار '+item.rentLeaseEvents.map(event=>(event.event==='signed'?'توقيع ':event.event==='renewed'?'تجديد ':'انتهاء ')+String(event.tenantName||'')).join('، '):'')+(item.propertySale?' · بيع عقار '+cash(item.propertySaleGross||0)+' وصافي '+cash(item.propertySaleNet||0):'')).join('؛ '):'لا توجد سنوات مالية مسجلة بعد.';
- const description='المهنة: '+String(profile.job||n.job||'غير محدد')+' · حالة العمل: '+siblingEmploymentStateLabel(profile.employmentState)+' · المستوى المهني '+fmt(profile.rank||1)+' · الخبرة '+fmt(profile.yearsWorked||0)+' سنة. الدخل السنوي '+cash(profile.annualIncome||0)+' '+String(profile.currency||'')+'، منه دخل إيجار '+cash(profile.annualRentIncome||0)+' وإجمالي إيجارات محصلة '+cash(profile.rentalIncomeTotal||0)+' وفاقد إيجاري '+cash(profile.rentalLossTotal||0)+'، ومتأخرات إيجار قائمة '+cash(profile.rentalArrearsBalance||0)+' ومحصلة '+cash(profile.rentalArrearsCollectedTotal||0)+' ومضافة '+cash(profile.rentalArrearsAddedTotal||0)+' ومشطوبة '+cash(profile.rentalArrearsWrittenOffTotal||0)+'. التمويل العقاري القائم '+cash(profile.mortgageDebtBalance||0)+'، ومتأخرات الأقساط '+cash(profile.mortgageArrearsBalance||0)+'، والمدفوع سنويًا '+cash(profile.mortgagePaymentAnnual||0)+'، والسداد المبكر التراكمي '+cash(profile.mortgagePrepaymentsTotal||0)+' ورسومه '+cash(profile.mortgageFeesTotal||0)+'. المصروفات '+cash(profile.annualExpenses||0)+' منها صيانة عقارية '+cash(profile.propertyExpensesAnnual||0)+'. المدخرات '+cash(profile.savings||0)+'، والمحفظة الاستثمارية '+cash(profile.investmentBalance||0)+' بمخاطرة '+siblingInvestmentRiskLabel(profile.investmentRisk)+'، والعائد التراكمي '+cash(profile.investmentReturnsTotal||0)+'، والديون الإجمالية '+cash(profile.debt||0)+'. العقارات المستقلة: '+properties.length+' · '+propertyText+' · إجمالي قيمتها '+cash(propertyValue)+' · إجمالي مبيعات العقارات '+cash(profile.propertySalesTotal||0)+' · صافي الثروة '+(netWorth<0?'سالب ':'')+cash(Math.abs(netWorth))+'. المتأخرات غير المحصلة لا تدخل في صافي الثروة إلا بعد تحصيلها. سجل المعاملات: '+transactionText+'. الحالة المالية: '+String(profile.employmentStatus||'مستقر')+'. آخر السنوات: '+historyText;
+ const description='الأسرة المستقلة: '+householdSummary+' · دخل الشريك السنوي '+cash(profile.householdIncomeAnnual||0)+' · مصروفات الأسرة '+cash(profile.householdExpensesAnnual||0)+'. المهنة: '+String(profile.job||n.job||'غير محدد')+' · حالة العمل: '+siblingEmploymentStateLabel(profile.employmentState)+' · المستوى المهني '+fmt(profile.rank||1)+' · الخبرة '+fmt(profile.yearsWorked||0)+' سنة. الدخل السنوي '+cash(profile.annualIncome||0)+' '+String(profile.currency||'')+'، منه دخل إيجار '+cash(profile.annualRentIncome||0)+' وإجمالي إيجارات محصلة '+cash(profile.rentalIncomeTotal||0)+' وفاقد إيجاري '+cash(profile.rentalLossTotal||0)+'، ومتأخرات إيجار قائمة '+cash(profile.rentalArrearsBalance||0)+' ومحصلة '+cash(profile.rentalArrearsCollectedTotal||0)+' ومضافة '+cash(profile.rentalArrearsAddedTotal||0)+' ومشطوبة '+cash(profile.rentalArrearsWrittenOffTotal||0)+'. التمويل العقاري القائم '+cash(profile.mortgageDebtBalance||0)+'، ومتأخرات الأقساط '+cash(profile.mortgageArrearsBalance||0)+'، والمدفوع سنويًا '+cash(profile.mortgagePaymentAnnual||0)+'، والسداد المبكر التراكمي '+cash(profile.mortgagePrepaymentsTotal||0)+' ورسومه '+cash(profile.mortgageFeesTotal||0)+'. المصروفات '+cash(profile.annualExpenses||0)+' منها صيانة عقارية '+cash(profile.propertyExpensesAnnual||0)+'. المدخرات '+cash(profile.savings||0)+'، والمحفظة الاستثمارية '+cash(profile.investmentBalance||0)+' بمخاطرة '+siblingInvestmentRiskLabel(profile.investmentRisk)+'، والعائد التراكمي '+cash(profile.investmentReturnsTotal||0)+'، والديون الإجمالية '+cash(profile.debt||0)+'. العقارات المستقلة: '+properties.length+' · '+propertyText+' · إجمالي قيمتها '+cash(propertyValue)+' · إجمالي مبيعات العقارات '+cash(profile.propertySalesTotal||0)+' · صافي الثروة '+(netWorth<0?'سالب ':'')+cash(Math.abs(netWorth))+'. المتأخرات غير المحصلة لا تدخل في صافي الثروة إلا بعد تحصيلها. سجل المعاملات: '+transactionText+'. الحالة المالية: '+String(profile.employmentStatus||'مستقر')+'. آخر السنوات: '+historyText;
  info('📊','الاستقلال المالي · '+String(n.name||'أحد الإخوة'),description,[...rentalLeaseChoices,...rentalSaleChoices,...mortgageChoices,choice('↩️','العودة لملف الشخصية','',()=>personModal(n))]);
 }
 function relationshipHistory(n){

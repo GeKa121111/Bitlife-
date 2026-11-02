@@ -53,6 +53,9 @@ const siblingEconomySource = [
   extractFunction('siblingMortgagePrepayment'),
   extractFunction('siblingManualRentalSaleQuote'),
   extractFunction('siblingManualRentalSale'),
+  extractFunction('siblingHouseholdName'),
+  extractFunction('ensureSiblingHousehold'),
+  extractFunction('siblingHouseholdAnnualEffects'),
   extractFunction('ensureSiblingEconomicProfile'),
   extractFunction('advanceSiblingEconomies')
 ].join('\n');
@@ -1483,3 +1486,73 @@ test('العقار الاستثماري القديم دون عقد يحتفظ ب
   assert.equal(result.rent.collected, result.expectedCollected);
   assert.equal(result.asset.lease, undefined, 'legacy rental records must remain unmodified');
 });
+
+test('الأشقاء يكوّنون أسرًا مستقلة بقرارات سنوية حتمية ودخل ومصروفات منفصلة', () => {
+  const context = vm.createContext({});
+  vm.runInNewContext(siblingEconomySource + String.fromCharCode(10) + harnessSource, context, { timeout: 10000 });
+  const result = vm.runInContext([
+    '(() => {',
+    ' state = makeState(); state.yearCount = 24; state.place = { unit: "ج.م" };',
+    ' let selected = null;',
+    ' for (let index = 0; index < 500 && !selected; index++) {',
+    "  const sibling = { id: 'household-sibling-' + index, name: 'أخ مستقل', relation: 'الأخ', age: 24, job: 'محاسب', smart: 70, reliability: 70, generosity: 65 };",
+    '  const profile = { lastProcessedYear: 23, savings: 50000, debt: 0, history: [], ownedProperties: [] };',
+    '  let latest = null;',
+    '  for (let year = 24; year <= 45; year++) { sibling.age = year; latest = siblingHouseholdAnnualEffects(sibling, profile, year, year); }',
+    '  if (profile.household.spouse && profile.household.children.length) selected = { sibling, profile, latest };',
+    ' }',
+    ' if (!selected) return null;',
+    ' const before = JSON.stringify(selected.profile.household);',
+    ' const duplicate = siblingHouseholdAnnualEffects(selected.sibling, selected.profile, 45, 45);',
+    ' return { selected, duplicate, unchanged: before === JSON.stringify(selected.profile.household) };',
+    '})()'
+  ].join(String.fromCharCode(10)), context, { timeout: 10000 });
+  assert.ok(result, 'a deterministic fixture should eventually form a sibling household');
+  assert.ok(result.selected.profile.household.spouse.name.length > 0);
+  assert.ok(result.selected.profile.household.children.length > 0);
+  assert.ok(result.selected.latest.spouseIncome > 0);
+  assert.ok(result.selected.latest.familyExpenses >= 12000);
+  assert.equal(result.selected.profile.household.status, 'married');
+  assert.equal(result.duplicate.duplicate, true);
+  assert.equal(result.unchanged, true, 'processing the same year twice must not age family members or repeat events');
+});
+
+test('أبناء الأشقاء يتحولون إلى مستقلين عند 18 عامًا وتتوقف مصروفات إعالتهم', () => {
+  const context = vm.createContext({});
+  vm.runInNewContext(siblingEconomySource + String.fromCharCode(10) + harnessSource, context, { timeout: 10000 });
+  const result = vm.runInContext([
+    '(() => {',
+    ' const sibling = { id: "adult-child-owner", name: "أخت مستقلة", relation: "الأخت", age: 46, reliability: 70, generosity: 55 };',
+    ' const profile = { household: { status: "married", lastProcessedYear: 60, history: [],',
+    '  spouse: { id: "spouse-a", name: "شريك", age: 42, job: "محاسب", annualIncome: 70000, marriedYear: 35, lastAgeYear: 60, deceased: false },',
+    '  children: [{ id: "child-a", name: "ابن", age: 17, birthYear: 43, lastAgeYear: 60, independent: false }] } };',
+    ' const effects = siblingHouseholdAnnualEffects(sibling, profile, 61, 46);',
+    ' return { effects, child: profile.household.children[0], household: profile.household };',
+    '})()'
+  ].join(String.fromCharCode(10)), context, { timeout: 10000 });
+  assert.equal(result.child.age, 18);
+  assert.equal(result.child.independent, true);
+  assert.ok(result.effects.events.some(event => event.type === 'child_independent'));
+  assert.equal(result.effects.familyExpenses, 12000, 'an adult child no longer creates dependent-child costs');
+});
+
+test('الحفظ القديم يهيئ أسرة الشقيق كحقل اختياري دون زواج أو أبناء رجعيين', () => {
+  const context = vm.createContext({});
+  vm.runInNewContext(siblingEconomySource + String.fromCharCode(10) + harnessSource, context, { timeout: 10000 });
+  const result = vm.runInContext([
+    '(() => {',
+    ' state = makeState(); state.yearCount = 70; state.place = { unit: "ج.م" };',
+    ' const sibling = { id: "legacy-household", name: "أخ قديم", relation: "الأخ", age: 40, job: "محاسب",',
+    '  economicProfile: { savings: 12000, debt: 0, lastProcessedYear: 69, history: [] } };',
+    ' const profile = ensureSiblingEconomicProfile(sibling);',
+    ' return { household: profile.household, key: profile.version, year: profile.lastProcessedYear };',
+    '})()'
+  ].join(String.fromCharCode(10)), context, { timeout: 10000 });
+  assert.equal(result.key, 1);
+  assert.equal(result.household.status, 'single');
+  assert.equal(result.household.spouse, null);
+  assert.deepEqual(Array.from(result.household.children), []);
+  assert.deepEqual(Array.from(result.household.history), []);
+  assert.equal(result.household.lastProcessedYear, 69);
+});
+
