@@ -573,6 +573,7 @@ test('الاستقلال المالي للأشقاء البالغين محفوظ
   assert.match(app,/function siblingInvestmentAnnualReturn\(relative,year,risk,balance\)/);
   assert.match(app,/function siblingEmploymentDecision\(relative,profile,year,age\)/);
   assert.match(app,/employmentState/);
+  assert.match(app,/بيبحث حاليًا عن فرصة عمل/);
   assert.match(app,/investmentContributionsTotal/);
   assert.match(app,/investmentBalance/);
   assert.match(app,/المحفظة الاستثمارية/);
