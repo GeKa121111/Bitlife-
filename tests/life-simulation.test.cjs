@@ -1058,6 +1058,46 @@ test('لا يسمح بالبيع اليدوي لعقار سكني أو لشقي�
 });
 
 
+
+test('شراء العقار الممول يخصم المقدم ثم يسدد القسط في السنة التالية مرة واحدة', () => {
+  const context = vm.createContext({});
+  vm.runInNewContext(siblingEconomySource + String.fromCharCode(10) + harnessSource, context, { timeout: 10000 });
+  const result = vm.runInContext([
+    '(() => {',
+    ' state = makeState(); state.yearCount = 40; state.age = 40; state.bank = 900000; state.place = { unit: "ج.م" };',
+    " const residence = { id: 'mortgage-home', kind: 'residence', label: 'مسكن مستقل', purchaseYear: 30, purchasePrice: 240000, marketValue: 250000, annualUpkeepRateBps: 120, lastMarketYear: 39 };",
+    " const profile = { version: 1, currency: 'ج.م', job: 'مطور', yearsWorked: 12, rank: 2, savings: 0, debt: 0, investmentBalance: 0, investmentContribution: 0, investmentReturn: 0, investmentContributionsTotal: 0, investmentReturnsTotal: 0, investmentRisk: 'balanced', ownedProperties: [residence], propertyExpensesAnnual: 0, propertyPurchasesTotal: 240000, propertySalesTotal: 0, propertySaleCostsTotal: 0, annualIncome: 0, annualExpenses: 0, cumulativeIncome: 0, cumulativeExpenses: 0, lastProcessedYear: 39, employmentStatus: 'مستقر', employmentState: 'working', history: [{ year: 39, age: 39, job: 'مطور', income: 120000, expenses: 80000, savings: 0, debt: 0, employmentState: 'working' }] };",
+    " let siblingId = 'mortgage-integration'; const sibling = { id: siblingId, name: 'مستثمر ممول', relation: 'الأخ', age: 40, job: 'مطور', smart: 85, reliability: 100, generosity: 50, economicProfile: profile };",
+    ' const price = siblingRentalPropertyPrice(sibling); const reserve = Math.max(60000, Math.round((9000 + 40 * 110) * 8));',
+    ' profile.savings = Math.ceil(price * .30) + reserve + 1000;',
+    " let guard = 0; while ((siblingEmploymentDecision(sibling, profile, 40, 40).state !== 'working' || siblingEmploymentDecision(sibling, profile, 41, 41).state !== 'working' || !siblingRentalPurchaseDecision(sibling, profile, 40, 40, profile.savings, 0, 'working')) && guard < 1000) { siblingId += 'x'; sibling.id = siblingId; guard += 1; }",
+    ' state.family = [sibling]; const bankBefore = state.bank; const firstProcessed = advanceSiblingEconomies();',
+    " const rental = profile.ownedProperties.find(asset => asset.kind === 'rental'); const mortgage = rental && rental.mortgage;",
+    ' const firstBalance = mortgage && mortgage.balance; const firstDebt = profile.debt; const downPayment = rental && rental.purchasePrice - mortgage.principal;',
+    ' const due = rental && siblingMortgageAnnualDue(41, rental);',
+    ' state.yearCount = 41; sibling.age = 41; const secondProcessed = advanceSiblingEconomies();',
+    ' const second = profile.history[profile.history.length - 1]; const snapshot = JSON.stringify(profile); const duplicate = advanceSiblingEconomies();',
+    ' return { guard, firstProcessed, secondProcessed, duplicate, rental, mortgage, firstBalance, firstDebt, downPayment, due, profile, second, snapshot, afterDuplicate: JSON.stringify(profile), bankBefore, bankAfter: state.bank };',
+    '})()'
+  ].join(String.fromCharCode(10)), context, { timeout: 10000 });
+  assert.ok(result.guard < 1000);
+  assert.equal(result.firstProcessed, 1);
+  assert.ok(result.rental && result.mortgage);
+  assert.ok(result.downPayment > 0);
+  assert.ok(result.mortgage.principal > 0);
+  assert.equal(result.mortgage.balance, result.firstBalance - (result.firstBalance - result.mortgage.balance) + 0);
+  assert.equal(result.profile.mortgagePaymentAnnual, result.due.due);
+  assert.ok(result.mortgage.balance < result.firstBalance);
+  assert.equal(result.profile.debt, result.firstDebt - (result.firstBalance - result.mortgage.balance));
+  assert.equal(result.profile.mortgageDebtBalance, result.mortgage.balance);
+  assert.equal(result.second.mortgageBalance, result.mortgage.balance);
+  assert.equal(result.second.mortgagePayment, result.due.due);
+  assert.equal(result.secondProcessed, 1);
+  assert.equal(result.duplicate, 0);
+  assert.equal(result.snapshot, result.afterDuplicate);
+  assert.equal(result.bankAfter, result.bankBefore);
+});
+
 test('قرار شراء العقار الاستثماري يتيح مقدمًا وتمويلًا عند عدم كفاية النقد الكامل', () => {
   const context = vm.createContext({});
   vm.runInNewContext(siblingEconomySource + String.fromCharCode(10) + harnessSource, context, { timeout: 10000 });
