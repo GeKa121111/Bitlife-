@@ -25,6 +25,9 @@ const siblingEconomySource = [
   extractFunction('siblingInvestmentRiskFor'),
   extractFunction('siblingInvestmentRiskLabel'),
   extractFunction('siblingInvestmentAnnualReturn'),
+  extractFunction('siblingEmploymentStateLabel'),
+  extractFunction('siblingEmploymentEventLabel'),
+  extractFunction('siblingEmploymentDecision'),
   extractFunction('siblingCareerFor'),
   extractFunction('siblingCareerBaseSalary'),
   extractFunction('ensureSiblingEconomicProfile'),
@@ -581,6 +584,106 @@ test('الأشقاء يبنون محافظ مستقلة بعائد سنوي حت
   assert.ok(result.returns.growth >= -13000 && result.returns.growth <= 15000);
   assert.equal(result.bankAfter, result.bankBefore, 'sibling investment portfolios must never change the active player bank');
 });
+test('سجل السنوات القديمة لا يرث حالة البطالة الحالية بأثر رجعي', () => {
+  const context = vm.createContext({});
+  vm.runInContext(siblingEconomySource + '\n' + harnessSource, context, { timeout: 10000 });
+  const result = vm.runInContext([
+    '(() => {',
+    ' state = makeState();',
+    ' state.yearCount = 55;',
+    " state.place = { unit: 'ج.م' };",
+    " const sibling = { id: 'legacy-employment-history', relation: 'الأخت', age: 45, job: 'محاسبة', economicProfile: { employmentState: 'seeking', lastProcessedYear: 54, history: [{ year: 54, age: 44, job: 'محاسبة', income: 90000, expenses: 50000, savings: 20000, debt: 0 }] } };",
+    ' return ensureSiblingEconomicProfile(sibling);',
+    '})()'
+  ].join('\n'), context, { timeout: 10000 });
+  assert.equal(result.employmentState, 'seeking');
+  assert.equal(result.history[0].employmentState, 'working');
+  assert.equal(result.history[0].employmentEvent, '');
+});
+
+test('فقدان الوظيفة يوقف دخل الشقيق مؤقتًا ويسجل العجز دون المساس ببنك اللاعب', () => {
+  const context = vm.createContext({});
+  vm.runInContext(siblingEconomySource + '\n' + harnessSource, context, { timeout: 10000 });
+  const result = vm.runInContext([
+    '(() => {',
+    ' state = makeState();',
+    ' state.yearCount = 100;',
+    " state.place = { unit: 'ج.م' };",
+    " const sibling = { id: 'job-loss-test', name: 'أخ فقد عمله', relation: 'الأخ', age: 40, job: 'محاسب', smart: 55, reliability: 20, economicProfile: { version: 1, currency: 'ج.م', yearsWorked: 10, rank: 1, savings: 0, debt: 0, investmentBalance: 0, investmentContribution: 0, investmentReturn: 0, investmentContributionsTotal: 0, investmentReturnsTotal: 0, investmentRisk: 'balanced', annualIncome: 0, annualExpenses: 0, cumulativeIncome: 0, cumulativeExpenses: 0, lastProcessedYear: 99, employmentStatus: 'مستقر', employmentState: 'working', history: [] } };",
+    ' state.family = [sibling];',
+    ' const bankBefore = state.bank;',
+    ' const firstCount = advanceSiblingEconomies();',
+    ' const first = JSON.parse(JSON.stringify(sibling.economicProfile));',
+    ' const snapshot = JSON.stringify(first);',
+    ' const duplicateCount = advanceSiblingEconomies();',
+    ' return { firstCount, duplicateCount, first, unchanged: snapshot === JSON.stringify(sibling.economicProfile), bankBefore, bankAfter: state.bank };',
+    '})()'
+  ].join('\n'), context, { timeout: 10000 });
+  assert.equal(result.firstCount, 1);
+  assert.equal(result.first.employmentState, 'seeking');
+  assert.equal(result.first.lastEmploymentEvent, 'laid_off');
+  assert.equal(result.first.annualIncome, 0);
+  assert.ok(result.first.annualExpenses > 0);
+  assert.ok(result.first.debt > 0, 'living costs during unemployment become debt after savings run out');
+  assert.equal(result.first.investmentContribution, 0);
+  assert.equal(result.first.history[0].employmentEvent, 'laid_off');
+  assert.equal(result.duplicateCount, 0);
+  assert.equal(result.unchanged, true);
+  assert.equal(result.bankAfter, result.bankBefore);
+});
+
+test('الشقيق العاطل قد يعود للعمل بدخل جزئي في سنة التعيين دون احتساب خبرة سنة كاملة', () => {
+  const context = vm.createContext({});
+  vm.runInContext(siblingEconomySource + '\n' + harnessSource, context, { timeout: 10000 });
+  const result = vm.runInContext([
+    '(() => {',
+    ' state = makeState();',
+    ' state.yearCount = 25;',
+    " state.place = { unit: 'ج.م' };",
+    " const sibling = { id: 'sibling-job-rehire', name: 'أخ عاد للعمل', relation: 'الأخ', age: 35, job: 'مطور', smart: 90, reliability: 90, economicProfile: { version: 1, currency: 'ج.م', yearsWorked: 20, rank: 1, savings: 10000, debt: 0, investmentBalance: 0, investmentContribution: 0, investmentReturn: 0, investmentContributionsTotal: 0, investmentReturnsTotal: 0, investmentRisk: 'balanced', annualIncome: 0, annualExpenses: 0, cumulativeIncome: 0, cumulativeExpenses: 0, lastProcessedYear: 24, employmentStatus: 'مستقر', employmentState: 'seeking', history: [] } };",
+    ' state.family = [sibling];',
+    ' const bankBefore = state.bank;',
+    ' const processed = advanceSiblingEconomies();',
+    ' const first = JSON.parse(JSON.stringify(sibling.economicProfile));',
+    ' const snapshot = JSON.stringify(first);',
+    ' const duplicate = advanceSiblingEconomies();',
+    " const fullIncome = Math.round(siblingCareerBaseSalary('مطور') * (1 + Math.min(.75, 20 * .025)) * (.86 + 90 / 400) * (.9 + 90 / 1000));",
+    ' return { processed, first, duplicate, unchanged: snapshot === JSON.stringify(sibling.economicProfile), fullIncome, bankBefore, bankAfter: state.bank };',
+    '})()'
+  ].join('\n'), context, { timeout: 10000 });
+  assert.equal(result.processed, 1);
+  assert.equal(result.first.employmentState, 'working');
+  assert.equal(result.first.lastEmploymentEvent, 'rehired');
+  assert.equal(result.first.annualIncome, Math.round(result.fullIncome * .5));
+  assert.equal(result.first.yearsWorked, 20);
+  assert.equal(result.first.history[0].employmentEvent, 'rehired');
+  assert.equal(result.duplicate, 0);
+  assert.equal(result.unchanged, true);
+  assert.equal(result.bankAfter, result.bankBefore);
+});
+
+test('سن التقاعد ينقل الشقيق إلى معاش محاكي ولا يضيف سنوات خبرة جديدة', () => {
+  const context = vm.createContext({});
+  vm.runInContext(siblingEconomySource + '\n' + harnessSource, context, { timeout: 10000 });
+  const result = vm.runInContext([
+    '(() => {',
+    ' state = makeState();',
+    ' state.yearCount = 70;',
+    " state.place = { unit: 'ج.م' };",
+    " const sibling = { id: 'sibling-retire-test', name: 'أخت متقاعدة', relation: 'الأخت', age: 65, job: 'مدرس', smart: 65, reliability: 75, economicProfile: { version: 1, currency: 'ج.م', yearsWorked: 30, rank: 3, savings: 50000, debt: 0, investmentBalance: 10000, investmentContribution: 0, investmentReturn: 0, investmentContributionsTotal: 0, investmentReturnsTotal: 0, investmentRisk: 'conservative', annualIncome: 0, annualExpenses: 0, cumulativeIncome: 0, cumulativeExpenses: 0, lastProcessedYear: 69, employmentStatus: 'مستقر', employmentState: 'working', history: [] } };",
+    ' state.family = [sibling];',
+    ' advanceSiblingEconomies();',
+    ' return { profile: sibling.economicProfile, stateLabel: siblingEmploymentStateLabel(sibling.economicProfile.employmentState) };',
+    '})()'
+  ].join('\n'), context, { timeout: 10000 });
+  assert.equal(result.profile.employmentState, 'retired');
+  assert.equal(result.profile.lastEmploymentEvent, 'retired');
+  assert.equal(result.profile.yearsWorked, 30);
+  assert.ok(result.profile.annualIncome > 0);
+  assert.equal(result.profile.history[0].employmentEvent, 'retired');
+  assert.equal(result.stateLabel, 'متقاعد');
+});
+
 test('محاكاة 10,000 مسار تقدم سنوي حتمي تتحقق من ثوابت العمر والمال والصحة', { timeout: 120000 }, () => {
   const context = vm.createContext({});
   vm.runInContext(combatRecoverySource + '\n' + propertyOwnershipSource + '\n' + siblingEconomySource + '\n' + ageSource + '\n' + harnessSource, context, {
