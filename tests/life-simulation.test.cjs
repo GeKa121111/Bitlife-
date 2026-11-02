@@ -827,6 +827,7 @@ test('بيع مسكن الشقيق لا يحدث إلا بعد استمرار ا
   assert.equal(result.duplicate, 0);
   assert.equal(result.after.ownedProperties.length, 0, 'the home should be liquidated after a second consecutive year of unemployment and an uncovered deficit');
   assert.equal(result.after.debt, 0, 'sale proceeds should clear existing debt before any new debt is recorded');
+  assert.equal(result.after.employmentStatus, 'باحث عن عمل', 'selling the home must not incorrectly mark an unemployed sibling as financially stable');
   assert.equal(result.after.savings, result.expectedRetained, 'remaining proceeds should cover this year\'s deficit and become savings');
   assert.equal(result.after.propertyExpensesAnnual, result.expectedUpkeep, 'the current year\'s upkeep remains recorded because it accrued before the sale');
   assert.equal(result.after.annualExpenses, result.expectedExpenses);
