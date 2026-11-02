@@ -4112,8 +4112,12 @@ function supportBeneficiaryWallet(walletId,amount){
 }
 function siblingHouseholdChildNode(relative,child){
  const economy=child&&child.economy&&typeof child.economy==='object'?child.economy:null;
+ const properties=economy&&Array.isArray(economy.ownedProperties)?economy.ownedProperties:[];
+ const propertyValue=properties.reduce((sum,asset)=>sum+siblingSafeMoney(asset&&asset.marketValue),0);
+ const propertyDebt=properties.reduce((sum,asset)=>sum+siblingMortgageLiability(asset),0);
+ const propertyNote=properties.length?' · عقارات موروثة '+fmt(properties.length)+' ('+cash(propertyValue)+') · تمويل '+cash(propertyDebt):'';
  const detail=child&&child.independent&&economy
-  ?String(economy.educationStatus||'مسار تعليمي غير محدد')+' · '+String(economy.job||'مهنة غير محددة')+' · دخل '+cash(economy.annualIncome||0)+' · مدخرات '+cash(economy.savings||0)+' · ديون '+cash(economy.debt||0)
+  ?String(economy.educationStatus||'مسار تعليمي غير محدد')+' · '+String(economy.job||'مهنة غير محددة')+' · دخل '+cash(economy.annualIncome||0)+' · مدخرات '+cash(economy.savings||0)+' · ديون '+cash(economy.debt||0)+propertyNote
   :child&&child.independent?'بالغ · يبدأ سجله المهني في دورة التقدم التالية':'تحت إعالة الأسرة';
  const branchStatus=relative&&relative.deceased?' · فرع مستمر بعد وفاة '+esc(relative.name||'الوالد/الوالدة'):'';
  return '<article class="family-tree-node"><div class="family-tree-person"><span class="family-tree-avatar">🧑</span><span class="family-tree-copy"><strong>'+esc(child&&child.name||'ابن/ابنة')+'</strong><small>ابن/ابنة '+esc(relative&&relative.name||'أحد الإخوة')+' · '+fmt(child&&child.age||0)+' سنة'+branchStatus+'</small></span></div><small class="family-tree-foot">'+esc(detail)+'</small></article>';
