@@ -2004,6 +2004,9 @@ function ensureSiblingHousehold(relative,profile,year){
   job:String(spouseRaw.job||'موظف').slice(0,64),annualIncome:siblingSafeMoney(spouseRaw.annualIncome),
   marriedYear:clamp(spouseRaw.marriedYear??numericYear,0,9999),
   lastAgeYear:Number.isSafeInteger(Number(spouseRaw.lastAgeYear))?Number(spouseRaw.lastAgeYear):numericYear,
+  ...(spouseRaw.inheritance&&typeof spouseRaw.inheritance==='object'?{inheritance:siblingNormalizeInheritanceRecords(spouseRaw.inheritance)}:{}),
+  ...(Object.prototype.hasOwnProperty.call(spouseRaw,'inheritanceCashBalance')?{inheritanceCashBalance:siblingSafeMoney(spouseRaw.inheritanceCashBalance)}:{}),
+  ...(Object.prototype.hasOwnProperty.call(spouseRaw,'inheritanceDebtBalance')?{inheritanceDebtBalance:siblingSafeMoney(spouseRaw.inheritanceDebtBalance)}:{}),
   deceased:spouseRaw.deceased===true
  }:null;
  const children=(Array.isArray(raw.children)?raw.children:[]).slice(0,4).filter(child=>child&&typeof child==='object'&&!Array.isArray(child)).map((child,index)=>{
