@@ -2688,7 +2688,8 @@ function familyPropertyOwnershipRecordMenu(recordId){
  const taxSummary=taxRateBps===null?'النسبة المسجلة غير صالحة':taxRateBps===0?'متوقفة':taxAssessment.ok?'المعدل '+formatFamilyPropertyTaxRate(taxRateBps)+' · تقدير سنوي '+cash(taxAssessment.amount):'المعدل يحتاج مراجعة';
  const taxChoice=choice('🏛️','سياسة الضريبة العقارية',taxSummary+' · معدل محاكاة اختياري وليس نسبة قانونية.',()=>familyPropertyTaxPolicyMenu(recordKey));
  const insurancePolicy=familyPropertyInsurancePolicy(record),insurancePremium=calculateFamilyPropertyAnnualInsurancePremium(record);
- const insuranceSummary=!insurancePolicy?'بيانات التأمين غير صالحة':!insurancePolicy.enabled?'غير مفعل':insurancePremium.ok?'قسط سنوي '+cash(insurancePremium.amount)+' '+currency+' · تغطية '+formatInheritancePercent(insurancePolicy.coverageBps/10000)+' · تحمل '+cash(insurancePolicy.deductible)+' '+currency:'سياسة التأمين تحتاج مراجعة';
+ const insurancePaidThisYear=insurancePolicy&&insurancePolicy.enabled&&Number(record.insurancePremiumPaidYear)===Number(state.yearCount)&&String(record.insurancePremiumPaidLifeId||'')===String(state.lifeId||state.name||'life');
+ const insuranceSummary=!insurancePolicy?'بيانات التأمين غير صالحة':!insurancePolicy.enabled?'غير مفعل':insurancePremium.ok?'قسط سنوي '+cash(insurancePremium.amount)+' '+currency+' · تغطية '+formatInheritancePercent(insurancePolicy.coverageBps/10000)+' · تحمل '+cash(insurancePolicy.deductible)+' '+currency+(insurancePaidThisYear?' · قسط السنة الحالية مسدد':''):'سياسة التأمين تحتاج مراجعة';
  const insuranceChoice=choice('🛡️','تأمين العقار',insuranceSummary,()=>familyPropertyInsurancePolicyMenu(recordKey));
  if(record.auditStatus!=='balanced'){taxChoice.disabled=true;insuranceChoice.disabled=true;}
  const owners=Array.isArray(record.owners)?record.owners:[];
@@ -3184,6 +3185,8 @@ function advanceAge(){
   const policy=familyPropertyInsurancePolicy(entry.record);
   if(!policy){sharedPropertyInsuranceWarnings++;return;}
   if(!policy.enabled)return;
+  const activeLifeId=String(state.lifeId||state.name||'life');
+  if(Number(entry.record.insurancePremiumPaidYear)===Number(state.yearCount)&&String(entry.record.insurancePremiumPaidLifeId||'')===activeLifeId)return;
   const assessment=calculateFamilyPropertyAnnualInsurancePremium(entry.record);
   if(!assessment||assessment.ok!==true){sharedPropertyInsuranceWarnings++;return;}
   if(assessment.amount===0){entry.record.insurancePremiumPaidYear=state.yearCount;entry.record.insurancePremiumPaidLifeId=String(state.lifeId||state.name||'life');return;}
