@@ -1842,11 +1842,11 @@ test('متأخرات العقار تنتقل للورثة حسب حصصهم وت
         upkeep: 20000,
         encumberedShare: 0,
         auditStatus: 'balanced',
-        propertyExpenseOwedTotal: 18000,
+        propertyExpenseOwedTotal: 18001,
         propertyExpensePaidTotal: 0,
         propertyExpenseActivePaidTotal: 0,
         owners: [
-          { beneficiaryId: 'active-parent', name: 'المالك السابق', kind: 'child', share: 0.5, status: 'active', propertyExpenseOwed: 12000 },
+          { beneficiaryId: 'active-parent', name: 'المالك السابق', kind: 'child', share: 0.5, status: 'active', propertyExpenseOwed: 12001 },
           { beneficiaryId: 'older-sibling', name: 'الأخ كريم', kind: 'child', share: 0.5, status: 'reserved', propertyExpenseOwed: 6000 }
         ],
         transactions: []
@@ -1857,23 +1857,25 @@ test('متأخرات العقار تنتقل للورثة حسب حصصهم وت
     sourceLifeId: 'property-arrears-next-generation',
     currency: 'جنيه',
     accounts: [
-      { beneficiaryId: 'grandchild-a', name: 'الحفيد الأول', kind: 'child', share: 0.5, status: 'transferred' },
-      { beneficiaryId: 'grandchild-b', name: 'الحفيدة الثانية', kind: 'child', share: 0.5, status: 'reserved' }
+      { beneficiaryId: 'grandchild-a', name: 'الحفيد الأول', kind: 'child', share: 1 / 3, status: 'transferred' },
+      { beneficiaryId: 'grandchild-b', name: 'الحفيدة الثانية', kind: 'child', share: 1 / 3, status: 'reserved' },
+      { beneficiaryId: 'grandchild-c', name: 'الحفيد الثالث', kind: 'child', share: 1 / 3, status: 'reserved' }
     ]
   };
 
   const record = context.buildFamilyPropertyOwnership(previous, registry)[0];
   assert.equal(record.auditStatus, 'balanced');
-  assert.equal(record.propertyExpenseOwedTotal, 18000);
+  assert.equal(record.propertyExpenseOwedTotal, 18001);
   assert.equal(record.owners.find(owner => owner.beneficiaryId === 'older-sibling').propertyExpenseOwed, 6000);
-  assert.equal(record.owners.find(owner => owner.beneficiaryId === 'grandchild-a').propertyExpenseOwed, 6000);
-  assert.equal(record.owners.find(owner => owner.beneficiaryId === 'grandchild-b').propertyExpenseOwed, 6000);
+  assert.equal(record.owners.find(owner => owner.beneficiaryId === 'grandchild-a').propertyExpenseOwed, 4001);
+  assert.equal(record.owners.find(owner => owner.beneficiaryId === 'grandchild-b').propertyExpenseOwed, 4000);
+  assert.equal(record.owners.find(owner => owner.beneficiaryId === 'grandchild-c').propertyExpenseOwed, 4000);
 
   const transfer = record.transactions.find(item => item.type === 'property_expense_inheritance');
   assert.ok(transfer);
-  assert.equal(transfer.amount, 12000);
-  assert.equal(transfer.allocations.reduce((sum, item) => sum + item.amount, 0), 12000);
-  assert.equal(transfer.allocations.length, 2);
+  assert.equal(transfer.amount, 12001);
+  assert.equal(transfer.allocations.reduce((sum, item) => sum + item.amount, 0), 12001);
+  assert.deepEqual(transfer.allocations.map(item => item.amount), [4001, 4000, 4000]);
 
   context.state = {
     lifeId: 'grandchild-a',
@@ -1887,17 +1889,18 @@ test('متأخرات العقار تنتقل للورثة حسب حصصهم وت
     id: 'grandchild-a-home-share',
     familyAssetId: record.id,
     ownerBeneficiaryId: 'grandchild-a',
-    ownershipShare: 0.25,
+    ownershipShare: 1 / 6,
     kind: 'property',
-    value: 250000
+    value: 166667
   };
   const sale = context.recordFamilyPropertySale(inheritedShare, 10000);
   assert.equal(sale.ok, true);
-  assert.equal(sale.settledArrears, 6000);
-  assert.equal(sale.netProceeds, 4000);
-  assert.equal(record.propertyExpenseOwedTotal, 12000);
+  assert.equal(sale.settledArrears, 4001);
+  assert.equal(sale.netProceeds, 5999);
+  assert.equal(record.propertyExpenseOwedTotal, 14000);
   assert.equal(record.owners.find(owner => owner.beneficiaryId === 'older-sibling').propertyExpenseOwed, 6000);
-  assert.equal(record.owners.find(owner => owner.beneficiaryId === 'grandchild-b').propertyExpenseOwed, 6000);
+  assert.equal(record.owners.find(owner => owner.beneficiaryId === 'grandchild-b').propertyExpenseOwed, 4000);
+  assert.equal(record.owners.find(owner => owner.beneficiaryId === 'grandchild-c').propertyExpenseOwed, 4000);
   assert.equal(record.owners.some(owner => owner.beneficiaryId === 'grandchild-a'), false);
 });
 
