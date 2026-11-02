@@ -1085,7 +1085,7 @@ test('شراء العقار الممول يخصم المقدم ثم يسدد ا�
   assert.ok(result.rental && result.mortgage);
   assert.ok(result.downPayment > 0);
   assert.ok(result.mortgage.principal > 0);
-  assert.equal(result.mortgage.balance, result.firstBalance - (result.firstBalance - result.mortgage.balance) + 0);
+  assert.equal(result.mortgage.lastProcessedYear, 41);
   assert.equal(result.profile.mortgagePaymentAnnual, result.due.due);
   assert.ok(result.mortgage.balance < result.firstBalance);
   assert.equal(result.profile.debt, result.firstDebt - (result.firstBalance - result.mortgage.balance));
