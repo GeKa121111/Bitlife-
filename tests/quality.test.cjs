@@ -615,7 +615,7 @@ test('مساعدة توقيت القتال إعداد وصول مستقل ومت
   assert.ok(app.includes("reactionTimingAssist:session.reactionTimingAssist===true"));
   assert.match(app, /مساعدة التوقيت مفعّلة/);
   assert.match(app, /مساعدة توقيت القتال/);
-  assert.match(read('sw.js'), /hayah-shell-v113/);
+  assert.match(read('sw.js'), /hayah-shell-v114/);
 });
 
 test('فرص تحسين الإحصاءات اختيارية ومحدودة بسنة العمر وتحافظ على حفظ v1', () => {
@@ -2333,4 +2333,19 @@ test('أبناء الأشقاء يواصلون التقدم بعد وفاة ال
   assert.match(read('sw.js'), /hayah-shell-v113/);
   assert.match(app, /const KEY = 'hekayat_hayah_save_v1';/);
   assert.ok(app.includes('return {version:1,lifeId:'), 'the legacy save and backup format must remain version 1');
+});
+
+
+test('وصية الأشقاء ودفتر التركة يظهران في الواجهة مع إبقاء نقل العقارات مرحلة منفصلة', () => {
+  assert.match(app, /function siblingEstatePlanAction\(relative,mode\)/);
+  assert.match(app, /function siblingEstateSettlement\(relative,profile,year\)/);
+  assert.match(app, /function siblingEstatePlanMenu\(relative\)/);
+  assert.match(app, /function siblingEstateSummaryMenu\(relative\)/);
+  assert.match(app, /assetTransferStatus/);
+  assert.match(app, /siblingEstateSettlement\(relative,deceasedProfile,year\)/);
+  assert.match(app, /siblingEstatePlanMenu\(n\)/);
+  assert.match(app, /siblingEstateSummaryMenu\(p\)/);
+  assert.match(read('sw.js'), /hayah-shell-v114/);
+  assert.match(app, /const KEY = 'hekayat_hayah_save_v1';/);
+  assert.ok(app.includes('return {version:1,lifeId:'), 'the legacy save remains version 1');
 });
