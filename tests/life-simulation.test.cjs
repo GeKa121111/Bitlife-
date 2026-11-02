@@ -39,6 +39,7 @@ const siblingEconomySource = [
   extractFunction('siblingRentalPropertyPrice'),
   extractFunction('siblingRentalPurchaseDecision'),
   extractFunction('siblingRentalAnnualIncome'),
+  extractFunction('siblingRentalArrearsSettlement'),
   extractFunction('ensureSiblingEconomicProfile'),
   extractFunction('advanceSiblingEconomies')
 ].join('\n');
@@ -903,6 +904,102 @@ test('الأشقاء يشترون عقارًا استثماريًا ويحصّل
   assert.equal(result.duplicate, 0);
   assert.equal(result.snapshot, result.afterDuplicate, 'the same year must not collect rent or charge upkeep twice');
   assert.equal(result.bankAfter, result.bankBefore);
+});
+
+
+test('متأخرات الإيجار تُحصّل تدريجيًا وتُسجل دون مضاعفة الدخل أو تغيير بنك اللاعب', () => {
+  const context = vm.createContext({});
+  vm.runInNewContext(siblingEconomySource + String.fromCharCode(10) + harnessSource, context, { timeout: 10000 });
+  const result = vm.runInContext([
+    '(() => {',
+    ' state = makeState(); state.yearCount = 41; state.age = 41; state.bank = 900000; state.place = { unit: "ج.م" }; setSeed(91);',
+    " let siblingId = 'arrears-collector';",
+    " const residence = { id: 'arrears-primary-home', kind: 'residence', purchaseYear: 30, purchasePrice: 240000, marketValue: 250000, annualUpkeepRateBps: 120, lastMarketYear: 40 };",
+    " const rental = { id: 'arrears-rental', kind: 'rental', purchaseYear: 35, purchasePrice: 200000, marketValue: 250000, annualUpkeepRateBps: 180, lastMarketYear: 40, monthlyRent: 1500, lastRentYear: 40, rentArrears: 10000, rentArrearsAddedTotal: 10000, rentArrearsCollectedTotal: 0 };",
+    " const profile = { version: 1, currency: 'ج.م', job: 'محاسب', yearsWorked: 12, rank: 2, savings: 700000, debt: 0, investmentBalance: 0, investmentContribution: 0, investmentReturn: 0, investmentContributionsTotal: 0, investmentReturnsTotal: 0, investmentRisk: 'balanced', ownedProperties: [residence, rental], propertyExpensesAnnual: 0, propertyPurchasesTotal: 440000, propertySalesTotal: 0, propertySaleCostsTotal: 0, annualIncome: 0, annualExpenses: 0, cumulativeIncome: 0, cumulativeExpenses: 0, lastProcessedYear: 40, employmentStatus: 'مستقر', employmentState: 'working', lastEmploymentEvent: '', history: [{ year: 40, age: 40, job: 'محاسب', income: 100000, expenses: 70000, savings: 700000, debt: 0, employmentState: 'working' }] };",
+    " const sibling = { id: siblingId, name: 'محصل الإيجار', relation: 'الأخ', age: 41, job: 'محاسب', smart: 85, reliability: 90, generosity: 50, economicProfile: profile };",
+    " let guard = 0;",
+    " while ((siblingEmploymentDecision(sibling, profile, 41, 41).state !== 'working' || !siblingRentalAnnualIncome(sibling, 41, rental) || !siblingRentalArrearsSettlement(sibling, 41, rental) || siblingRentalArrearsSettlement(sibling, 41, rental).collected <= 0) && guard < 1000) { siblingId += 'x'; sibling.id = siblingId; rental.id = 'arrears-rental-' + siblingInvestmentHash(siblingId).toString(36); guard += 1; }",
+    " const expectedRent = siblingRentalAnnualIncome(sibling, 41, rental);",
+    " const expectedRecovery = siblingRentalArrearsSettlement(sibling, 41, rental);",
+    ' state.family = [sibling]; const bankBefore = state.bank;',
+    ' const processed = advanceSiblingEconomies();',
+    ' const year = profile.history[profile.history.length - 1];',
+    " const rentalAfter = profile.ownedProperties.find(asset => asset.kind === 'rental');",
+    " const sameYearSettlement = siblingRentalArrearsSettlement({ id: 'same-year' }, 41, { kind: 'rental', lastRentYear: 41, rentArrears: 5000 });",
+    ' const snapshot = JSON.stringify(profile); const duplicate = advanceSiblingEconomies();',
+    ' return { guard, processed, expectedRent, expectedRecovery, sameYearSettlement, rental: rentalAfter, profile, year, snapshot, afterDuplicate: JSON.stringify(profile), bankBefore, bankAfter: state.bank, duplicate };',
+    '})()'
+  ].join(String.fromCharCode(10)), context, { timeout: 10000 });
+  assert.ok(result.guard < 1000, 'the deterministic fixture should find a working sibling with collectible arrears');
+  assert.equal(result.processed, 1);
+  assert.equal(result.profile.annualRentIncome, result.expectedRent.collected + result.expectedRecovery.collected);
+  assert.equal(result.rental.rentArrears, result.expectedRecovery.closingArrears + result.expectedRent.collectionLoss);
+  assert.equal(result.profile.rentalArrearsCollectedTotal, result.expectedRecovery.collected);
+  assert.equal(result.profile.rentalArrearsAddedTotal, result.expectedRent.collectionLoss);
+  assert.equal(result.profile.rentalArrearsBalance, result.rental.rentArrears);
+  assert.equal(result.year.rentArrearsCollected, result.expectedRecovery.collected);
+  assert.equal(result.year.rentArrearsAdded, result.expectedRent.collectionLoss);
+  assert.equal(result.year.rentArrearsBalance, result.rental.rentArrears);
+  assert.equal(result.profile.netWorth, result.profile.savings + result.profile.investmentBalance + result.profile.ownedProperties.reduce((sum, asset) => sum + asset.marketValue, 0) - result.profile.debt, 'uncollected arrears must not be counted as realized net worth');
+  assert.equal(result.sameYearSettlement, null);
+  assert.equal(result.duplicate, 0);
+  assert.equal(result.snapshot, result.afterDuplicate, 'retrying the same year must not recover arrears or record rent twice');
+  assert.equal(result.bankAfter, result.bankBefore, 'the active player bank must remain untouched');
+});
+
+test('بيع العقار الاستثماري يشطب المتأخرات غير المحصلة ولا يترك رصيدًا وهميًا', () => {
+  const context = vm.createContext({});
+  vm.runInNewContext(siblingEconomySource + String.fromCharCode(10) + harnessSource, context, { timeout: 10000 });
+  const result = vm.runInContext([
+    '(() => {',
+    ' state = makeState(); state.yearCount = 42; state.age = 42; state.bank = 50000; state.place = { unit: "ج.م" }; setSeed(17);',
+    " let siblingId = 'arrears-writeoff';",
+    " const residence = { id: 'writeoff-home', kind: 'residence', purchaseYear: 30, purchasePrice: 180000, marketValue: 180000, annualUpkeepRateBps: 120, lastMarketYear: 41 };",
+    " const rental = { id: 'writeoff-rental', kind: 'rental', purchaseYear: 35, purchasePrice: 200000, marketValue: 200000, annualUpkeepRateBps: 180, lastMarketYear: 41, monthlyRent: 500, lastRentYear: 41, rentArrears: 20000, rentArrearsAddedTotal: 20000, rentArrearsCollectedTotal: 0 };",
+    " const profile = { version: 1, currency: 'ج.م', job: 'محاسب', yearsWorked: 10, rank: 1, savings: 0, debt: 0, investmentBalance: 0, investmentContribution: 0, investmentReturn: 0, investmentContributionsTotal: 0, investmentReturnsTotal: 0, investmentRisk: 'conservative', ownedProperties: [residence, rental], propertyExpensesAnnual: 0, propertyPurchasesTotal: 380000, propertySalesTotal: 0, propertySaleCostsTotal: 0, annualIncome: 0, annualExpenses: 0, cumulativeIncome: 0, cumulativeExpenses: 0, lastProcessedYear: 41, employmentStatus: 'باحث عن عمل', employmentState: 'seeking', lastEmploymentEvent: '', history: [{ year: 41, age: 41, job: 'محاسب', income: 0, expenses: 20000, savings: 0, debt: 0, employmentState: 'seeking' }] };",
+    " const sibling = { id: siblingId, name: 'مالك متعثر', relation: 'الأخ', age: 42, job: 'محاسب', smart: 0, reliability: 0, generosity: 50, economicProfile: profile };",
+    " let guard = 0;",
+    " while (siblingEmploymentDecision(sibling, profile, 42, 42).state !== 'seeking' && guard < 1000) { siblingId += 'x'; sibling.id = siblingId; rental.id = 'writeoff-rental-' + siblingInvestmentHash(siblingId).toString(36); guard += 1; }",
+    ' state.family = [sibling]; const bankBefore = state.bank;',
+    ' const processed = advanceSiblingEconomies();',
+    ' const year = profile.history[profile.history.length - 1];',
+    ' const snapshot = JSON.stringify(profile); const duplicate = advanceSiblingEconomies();',
+    ' return { guard, processed, profile, year, snapshot, afterDuplicate: JSON.stringify(profile), bankBefore, bankAfter: state.bank, duplicate };',
+    '})()'
+  ].join(String.fromCharCode(10)), context, { timeout: 10000 });
+  assert.ok(result.guard < 1000, 'the deterministic fixture should remain unemployed for the second consecutive year');
+  assert.equal(result.processed, 1);
+  assert.equal(result.year.propertySale, true);
+  assert.equal(result.year.propertySaleKind, 'rental');
+  assert.ok(result.year.rentArrearsWrittenOff > 0);
+  assert.equal(result.profile.rentalArrearsWrittenOffTotal, result.year.rentArrearsWrittenOff);
+  assert.equal(result.profile.rentalArrearsBalance, 0);
+  assert.equal(result.profile.ownedProperties.some(asset => asset.kind === 'rental'), false);
+  assert.equal(result.profile.ownedProperties.some(asset => asset.kind === 'residence'), true);
+  assert.equal(result.duplicate, 0);
+  assert.equal(result.snapshot, result.afterDuplicate);
+  assert.equal(result.bankAfter, result.bankBefore);
+});
+
+test('الحفظ القديم يطبع متأخرات العقار الاستثماري المفقودة إلى صفر دون دخل رجعي', () => {
+  const context = vm.createContext({});
+  vm.runInNewContext(siblingEconomySource + String.fromCharCode(10) + harnessSource, context, { timeout: 10000 });
+  const result = vm.runInContext([
+    '(() => {',
+    ' state = makeState(); state.yearCount = 41; state.place = { unit: "ج.م" };',
+    " const sibling = { id: 'legacy-rental-owner', relation: 'الأخ', age: 45, job: 'محاسب', economicProfile: { savings: 100000, debt: 0, lastProcessedYear: 40, ownedProperties: [{ id: 'legacy-rental', kind: 'rental', purchaseYear: 35, purchasePrice: 150000, marketValue: 160000, monthlyRent: 700, lastRentYear: 40 }] } };",
+    ' const profile = ensureSiblingEconomicProfile(sibling);',
+    ' return { asset: profile.ownedProperties[0], balance: profile.rentalArrearsBalance, collected: profile.rentalArrearsCollectedTotal, added: profile.rentalArrearsAddedTotal, writtenOff: profile.rentalArrearsWrittenOffTotal };',
+    '})()'
+  ].join(String.fromCharCode(10)), context, { timeout: 10000 });
+  assert.equal(result.asset.rentArrears, 0);
+  assert.equal(result.asset.rentArrearsCollectedTotal, 0);
+  assert.equal(result.asset.rentArrearsAddedTotal, 0);
+  assert.equal(result.balance, 0);
+  assert.equal(result.collected, 0);
+  assert.equal(result.added, 0);
+  assert.equal(result.writtenOff, 0);
 });
 
 test('عند الضائقة المالية يُباع العقار الاستثماري قبل المسكن الأساسي', () => {
