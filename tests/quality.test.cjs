@@ -2489,7 +2489,7 @@ test('الشريك الباقي يدخل دفتر تركة الأشقاء بحص
   assert.match(functionSource('siblingEstatePlanMenu', 'siblingEstateSummaryMenu'), /حصة محاكاة 25%/);
 });
 
-test('الحفظ القديم يهيئ حساب إرث الشريك إلى قيم آمنة دون إنشاء أرصدة رجعية', () => {
+test('الحفظ القديم لا يضيف دفتر إرث للشريك قبل تسوية التركة', () => {
   const ensureHouseholdSource = functionSource('ensureSiblingHousehold', 'siblingHouseholdAnnualEffects');
   const context = {
     clamp(value, min = 0, max = 100) {
@@ -2510,9 +2510,9 @@ test('الحفظ القديم يهيئ حساب إرث الشريك إلى قي�
     { household: { spouse: { id: 'old-spouse', name: 'شريك قديم' }, children: [] } },
     2026
   );
-  assert.equal(normalized.spouse.inheritanceCashBalance, 0);
-  assert.equal(normalized.spouse.inheritanceDebtBalance, 0);
-  assert.deepEqual(Array.from(normalized.spouse.inheritance.records), []);
+  assert.equal(Object.prototype.hasOwnProperty.call(normalized.spouse, 'inheritance'), false);
+  assert.equal(Object.prototype.hasOwnProperty.call(normalized.spouse, 'inheritanceCashBalance'), false);
+  assert.equal(Object.prototype.hasOwnProperty.call(normalized.spouse, 'inheritanceDebtBalance'), false);
 });
 
 test('وصية الأشقاء ودفتر التركة يظهران في الواجهة مع إبقاء نقل العقارات مرحلة منفصلة', () => {
