@@ -806,6 +806,7 @@ test('بيع مسكن الشقيق لا يحدث إلا بعد استمرار ا
     " const firstYearProfile = { ...profile, history: [{ year: 39, employmentState: 'working' }] }; ",
     " const firstYearDecision = siblingPropertySaleDecision(sibling, firstYearProfile, 40, 40, 'seeking', 20000); ",
     " const coveredDeficitDecision = siblingPropertySaleDecision(sibling, profile, 40, 40, 'seeking', 0); ",
+    " const gapYearDecision = siblingPropertySaleDecision(sibling, { ...profile, history: [{ year: 38, employmentState: 'seeking' }] }, 40, 40, 'seeking', 20000);",
     ' const expectedValue = Math.max(0, Math.round(asset.marketValue * (10000 + siblingPropertyMarketChangeBps(sibling, 40, asset)) / 10000));',
     ' const expectedUpkeep = siblingPropertyAnnualUpkeep({ ...asset, marketValue: expectedValue });',
     ' const expectedExpenses = 9000 + 40 * 110 + expectedUpkeep;',
@@ -818,11 +819,12 @@ test('بيع مسكن الشقيق لا يحدث إلا بعد استمرار ا
     ' const after = JSON.parse(JSON.stringify(profile));',
     ' const snapshot = JSON.stringify(profile);',
     ' const duplicate = advanceSiblingEconomies();',
-    ' return { processed, duplicate, after, snapshot, afterDuplicate: JSON.stringify(profile), bankBefore, bankAfter: state.bank, firstYearDecision, coveredDeficitDecision, expectedValue, expectedUpkeep, expectedExpenses, expectedCost, expectedNet, expectedRetained };',
+    ' return { processed, duplicate, after, snapshot, afterDuplicate: JSON.stringify(profile), bankBefore, bankAfter: state.bank, firstYearDecision, coveredDeficitDecision, gapYearDecision, expectedValue, expectedUpkeep, expectedExpenses, expectedCost, expectedNet, expectedRetained };',
     '})()'
   ].join(String.fromCharCode(10)), context, { timeout: 10000 });
   assert.equal(result.firstYearDecision, null, 'one year of unemployment alone must not force a home sale');
   assert.equal(result.coveredDeficitDecision, null, 'a home must not be sold when savings cover the deficit');
+  assert.equal(result.gapYearDecision, null, 'non-consecutive unemployment records must not trigger a forced sale');
   assert.equal(result.processed, 1);
   assert.equal(result.duplicate, 0);
   assert.equal(result.after.ownedProperties.length, 0, 'the home should be liquidated after a second consecutive year of unemployment and an uncovered deficit');
