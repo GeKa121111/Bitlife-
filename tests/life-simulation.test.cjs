@@ -584,6 +584,23 @@ test('الأشقاء يبنون محافظ مستقلة بعائد سنوي حت
   assert.ok(result.returns.growth >= -13000 && result.returns.growth <= 15000);
   assert.equal(result.bankAfter, result.bankBefore, 'sibling investment portfolios must never change the active player bank');
 });
+test('سجل السنوات القديمة لا يرث حالة البطالة الحالية بأثر رجعي', () => {
+  const context = vm.createContext({});
+  vm.runInContext(siblingEconomySource + '\n' + harnessSource, context, { timeout: 10000 });
+  const result = vm.runInContext([
+    '(() => {',
+    ' state = makeState();',
+    ' state.yearCount = 55;',
+    " state.place = { unit: 'ج.م' };",
+    " const sibling = { id: 'legacy-employment-history', relation: 'الأخت', age: 45, job: 'محاسبة', economicProfile: { employmentState: 'seeking', lastProcessedYear: 54, history: [{ year: 54, age: 44, job: 'محاسبة', income: 90000, expenses: 50000, savings: 20000, debt: 0 }] } };",
+    ' return ensureSiblingEconomicProfile(sibling);',
+    '})()'
+  ].join('\n'), context, { timeout: 10000 });
+  assert.equal(result.employmentState, 'seeking');
+  assert.equal(result.history[0].employmentState, 'working');
+  assert.equal(result.history[0].employmentEvent, '');
+});
+
 test('فقدان الوظيفة يوقف دخل الشقيق مؤقتًا ويسجل العجز دون المساس ببنك اللاعب', () => {
   const context = vm.createContext({});
   vm.runInContext(siblingEconomySource + '\n' + harnessSource, context, { timeout: 10000 });
