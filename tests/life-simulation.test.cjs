@@ -1588,6 +1588,27 @@ test('الحفظ القديم يهيئ أبناء الأشقاء البالغي�
   assert.equal(result.effects.events.length, 0, 'legacy adult children must not receive invented graduation or employment events');
 });
 
+test('أبناء الأشقاء ينتقلون إلى التقاعد عند 65 عامًا مرة واحدة فقط', () => {
+  const context = vm.createContext({});
+  vm.runInNewContext(siblingEconomySource + String.fromCharCode(10) + harnessSource, context, { timeout: 10000 });
+  const result = vm.runInContext([
+    '(() => {',
+    ' state = makeState(); state.yearCount = 90; state.place = { unit: "ج.م" };',
+    ' const sibling = { id: "retirement-parent", name: "أخ", relation: "الأخ", age: 50 };',
+    ' const child = { id: "retirement-child", name: "ابن", age: 64, birthYear: 26, lastAgeYear: 89, independent: true, independentYear: 44, economy: { educationPath: "work", educationStatus: "تعليم ثانوي", job: "مساعد إداري", careerJob: "موظف", employmentState: "working", yearsWorked: 20, annualIncome: 80000, annualExpenses: 50000, savings: 10000, debt: 0, lastProcessedYear: 89, history: [] } };',
+    ' const profile = { savings: 20000, household: { status: "widowed", spouse: null, children: [child], lastProcessedYear: 89, history: [] } };',
+    ' const first = siblingHouseholdAnnualEffects(sibling, profile, 90, 50);',
+    ' const childAfter = profile.household.children[0];',
+    ' const second = siblingHouseholdAnnualEffects(sibling, profile, 90, 50);',
+    ' return { first, second, child: childAfter };',
+    '})()'
+  ].join(String.fromCharCode(10)), context, { timeout: 10000 });
+  assert.equal(result.child.age, 65);
+  assert.equal(result.child.economy.employmentState, 'retired');
+  assert.equal(result.child.economy.job, 'متقاعد');
+  assert.ok(result.first.events.some(event => event.type === 'child_retired'));
+  assert.equal(result.second.duplicate, true);
+});
 test('الحفظ القديم يهيئ أسرة الشقيق كحقل اختياري دون زواج أو أبناء رجعيين', () => {
   const context = vm.createContext({});
   vm.runInNewContext(siblingEconomySource + String.fromCharCode(10) + harnessSource, context, { timeout: 10000 });
