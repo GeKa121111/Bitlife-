@@ -2005,7 +2005,7 @@ function advanceSiblingEconomies(){
   profile.cumulativeIncome=siblingSafeMoney(profile.cumulativeIncome+income);
   profile.cumulativeExpenses=siblingSafeMoney(profile.cumulativeExpenses+expenses);
   profile.netWorth=siblingSafeSigned(savings+investmentBalance+propertyValue-debt);
-  profile.employmentStatus=retired?'متقاعد':debt>0&&savings===0?'عليه التزامات':'مستقر';
+  profile.employmentStatus=retired?'متقاعد':employment.state==='seeking'?'باحث عن عمل':debt>0&&savings===0?'عليه التزامات':'مستقر';
   profile.employmentState=employment.state;
   profile.lastEmploymentEvent=employment.event||'';
   profile.lastProcessedYear=year;
