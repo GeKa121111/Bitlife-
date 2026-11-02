@@ -2513,6 +2513,14 @@ test('الحفظ القديم لا يضيف دفتر إرث للشريك قبل 
   assert.equal(Object.prototype.hasOwnProperty.call(normalized.spouse, 'inheritance'), false);
   assert.equal(Object.prototype.hasOwnProperty.call(normalized.spouse, 'inheritanceCashBalance'), false);
   assert.equal(Object.prototype.hasOwnProperty.call(normalized.spouse, 'inheritanceDebtBalance'), false);
+  const withLedger = context.normalizeHousehold(
+    { id: 'old-sibling', age: 48, deceased: false },
+    { household: { spouse: { id: 'old-spouse', name: 'شريك قديم', inheritance: { records: [{ estateId: 'estate-1' }] }, inheritanceCashBalance: 1234, inheritanceDebtBalance: 567 }, children: [] } },
+    2027
+  );
+  assert.equal(withLedger.spouse.inheritanceCashBalance, 1234);
+  assert.equal(withLedger.spouse.inheritanceDebtBalance, 567);
+  assert.equal(withLedger.spouse.inheritance.records[0].estateId, 'estate-1');
 });
 
 test('وصية الأشقاء ودفتر التركة يظهران في الواجهة مع إبقاء نقل العقارات مرحلة منفصلة', () => {
