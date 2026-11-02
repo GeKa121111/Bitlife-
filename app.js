@@ -1879,12 +1879,13 @@ function ensureSiblingHousehold(relative,profile,year){
    independentYear:child.independentYear!==null&&child.independentYear!==undefined&&Number.isSafeInteger(Number(child.independentYear))?Math.max(0,Number(child.independentYear)):(age>=18?Math.max(0,birthYear+18):null),
    economy:child.economy&&typeof child.economy==='object'&&!Array.isArray(child.economy)?child.economy:null};
  });
- const status=spouse?(spouse.deceased?'widowed':'married'):(raw.status==='widowed'?'widowed':'single');
+ const ownerDeceased=raw.ownerDeceased===true||!!(relative&&relative.deceased===true);
+ const status=ownerDeceased?(spouse?'widowed':'single'):spouse?(spouse.deceased?'widowed':'married'):(raw.status==='widowed'?'widowed':'single');
  const lastProcessedYear=Number.isSafeInteger(Number(raw.lastProcessedYear))?Number(raw.lastProcessedYear):numericYear-1;
  const history=(Array.isArray(raw.history)?raw.history:[]).filter(item=>item&&typeof item==='object'&&!Array.isArray(item)).slice(-12).map(item=>({
   year:clamp(item.year??numericYear,0,9999),type:['married','birth','child_independent','widowed','child_started_study','child_started_work','child_graduated','child_retired'].includes(item.type)?item.type:'',name:String(item.name||'').slice(0,80)
  })).filter(item=>item.type);
- profile.household={status,spouse,children,history,lastProcessedYear};
+ profile.household={status,spouse,children,history,lastProcessedYear,ownerDeceased};
  return profile.household;
 }
 function siblingHouseholdAnnualEffects(relative,profile,year,age){
@@ -1947,6 +1948,50 @@ function siblingHouseholdAnnualEffects(relative,profile,year,age){
  return {spouseIncome,familyExpenses,events,status:household.status,memberCount:1+(household.spouse?1:0)+household.children.length,duplicate:false};
 }
 
+function siblingDeceasedHouseholdAnnualEffects(relative,profile,year){
+ const numericYear=Number(year);
+ if(!relative||!relative.deceased||!profile||typeof profile!=='object'||Array.isArray(profile)||!Number.isSafeInteger(numericYear)||numericYear<0)return {duplicate:true,events:[],processedChildren:0};
+ const household=ensureSiblingHousehold(relative,profile,numericYear);
+ household.ownerDeceased=true;
+ household.status=household.spouse?'widowed':'single';
+ if(household.lastProcessedYear>=numericYear)return {duplicate:true,events:[],processedChildren:0,status:household.status};
+ const events=[];
+ if(household.spouse&&!household.spouse.deceased){
+  const spouseLastAgeYear=Number.isSafeInteger(Number(household.spouse.lastAgeYear))?Math.max(0,Number(household.spouse.lastAgeYear)):numericYear-1;
+  const elapsed=Math.max(0,numericYear-spouseLastAgeYear);
+  if(elapsed>0){
+   household.spouse.age=clamp(household.spouse.age+Math.min(elapsed,120-household.spouse.age),18,120);
+   household.spouse.lastAgeYear=numericYear;
+  }
+  if(household.spouse.age>=100)household.spouse.deceased=true;
+ }
+ let processedChildren=0;
+ household.children.forEach(child=>{
+  const lastAgeYear=Number.isSafeInteger(Number(child.lastAgeYear))?Math.max(0,Number(child.lastAgeYear)):numericYear-1;
+  const birthYear=Number.isSafeInteger(Number(child.birthYear))?Math.max(0,Number(child.birthYear)):Math.max(0,numericYear-child.age);
+  const firstYear=Math.max(lastAgeYear+1,birthYear+1);
+  for(let childYear=firstYear;childYear<=numericYear&&child.age<120;childYear++){
+   const previousAge=child.age;
+   child.age=clamp(child.age+1,0,120);
+   child.lastAgeYear=childYear;
+   if(previousAge<18&&child.age>=18&&!child.independent){
+    child.independent=true;child.independentYear=childYear;
+    events.push({type:'child_independent',name:child.name,year:childYear});
+   }
+   if(child.independent&&child.age>=18){
+    const effects=siblingChildEconomicAnnualEffects(relative,child,childYear);
+    if(effects&&!effects.duplicate)effects.events.forEach(event=>events.push({type:event.type,name:child.name,year:childYear}));
+   }
+  }
+  if(child.lastAgeYear<numericYear)child.lastAgeYear=numericYear;
+  processedChildren++;
+ });
+ household.lastProcessedYear=numericYear;
+ events.forEach(event=>household.history.push({year:clamp(event.year??numericYear,0,9999),type:event.type,name:String(event.name||'').slice(0,80)}));
+ if(household.history.length>12)household.history.splice(0,household.history.length-12);
+ household.status=household.spouse?'widowed':'single';
+ return {duplicate:false,events,processedChildren,status:household.status};
+}
 function siblingOwnedPropertyValue(profile){
  const assets=Array.isArray(profile&&profile.ownedProperties)?profile.ownedProperties:[];
  return siblingSafeMoney(assets.reduce((sum,asset)=>sum+siblingSafeMoney(asset&&asset.marketValue),0));
@@ -2453,7 +2498,23 @@ function advanceSiblingEconomies(){
  const year=Number.isSafeInteger(Number(state.yearCount))?Math.max(0,Number(state.yearCount)):Math.max(0,Math.floor(Number(state.age)||0));
  let processed=0;
  state.family.forEach(relative=>{
-  if(!relative||relative.deceased||!/(أخ|أخت)/.test(String(relative.relation||'')))return;
+  if(!relative||!/(أخ|أخت)/.test(String(relative.relation||'')))return;
+  if(relative.deceased){
+   const deceasedProfile=relative.economicProfile&&typeof relative.economicProfile==='object'&&!Array.isArray(relative.economicProfile)?relative.economicProfile:null;
+   if(!deceasedProfile||!deceasedProfile.household)return;
+   const descendants=siblingDeceasedHouseholdAnnualEffects(relative,deceasedProfile,year);
+   if(!descendants.duplicate){
+    const titles={child_independent:'استمرار حياة أحد أبناء العائلة',child_started_study:'مسار تعليمي بعد وفاة الوالد',child_started_work:'بداية مهنية بعد وفاة الوالد',child_graduated:'تخرج أحد أبناء العائلة',child_retired:'تقاعد أحد أبناء العائلة'};
+    const icons={child_independent:'🌱',child_started_study:'🎓',child_started_work:'💼',child_graduated:'🎓',child_retired:'🌅'};
+    descendants.events.forEach(event=>{
+     const childName=String(event.name||'أحد الأبناء'),parentName=String(relative.name||'الوالد/الوالدة');
+     const detail=childName+' يواصل مساره بعد وفاة '+parentName+' · السنة '+fmt(event.year??year)+'.';
+     log(icons[event.type]||'🌱',titles[event.type]||'تطور في فرع العائلة',detail,'special');
+    });
+    processed++;
+   }
+   return;
+  }
   const age=Math.max(0,Math.floor(Number(relative.age)||0));if(age<18)return;
   const profile=ensureSiblingEconomicProfile(relative);if(!profile||profile.lastProcessedYear>=year)return;
   const previousDebt=profile.debt,yearsWorked=profile.yearsWorked,rank=profile.rank;
@@ -3626,7 +3687,8 @@ function siblingHouseholdChildNode(relative,child){
  const detail=child&&child.independent&&economy
   ?String(economy.educationStatus||'مسار تعليمي غير محدد')+' · '+String(economy.job||'مهنة غير محددة')+' · دخل '+cash(economy.annualIncome||0)+' · مدخرات '+cash(economy.savings||0)+' · ديون '+cash(economy.debt||0)
   :child&&child.independent?'بالغ · يبدأ سجله المهني في دورة التقدم التالية':'تحت إعالة الأسرة';
- return '<article class="family-tree-node"><div class="family-tree-person"><span class="family-tree-avatar">🧑</span><span class="family-tree-copy"><strong>'+esc(child&&child.name||'ابن/ابنة')+'</strong><small>ابن/ابنة '+esc(relative&&relative.name||'أحد الإخوة')+' · '+fmt(child&&child.age||0)+' سنة</small></span></div><small class="family-tree-foot">'+esc(detail)+'</small></article>';
+ const branchStatus=relative&&relative.deceased?' · فرع مستمر بعد وفاة '+esc(relative.name||'الوالد/الوالدة'):'';
+ return '<article class="family-tree-node"><div class="family-tree-person"><span class="family-tree-avatar">🧑</span><span class="family-tree-copy"><strong>'+esc(child&&child.name||'ابن/ابنة')+'</strong><small>ابن/ابنة '+esc(relative&&relative.name||'أحد الإخوة')+' · '+fmt(child&&child.age||0)+' سنة'+branchStatus+'</small></span></div><small class="family-tree-foot">'+esc(detail)+'</small></article>';
 }
 function familyTreeMenu(){
  if(!state)return;const fam=Array.isArray(state.family)?state.family:[],kids=Array.isArray(state.children)?state.children:[];
