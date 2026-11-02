@@ -932,7 +932,7 @@ test('الحفظ القديم لا يكتسب عقارات أو مصروفات �
     " state.place = { unit: 'ج.م' };",
     " const sibling = { id: 'legacy-sibling-no-home', relation: 'الأخ', age: 50, job: 'محاسب', economicProfile: { savings: 80000, debt: 10000, investmentBalance: 5000, lastProcessedYear: 59, history: [{ year: 59, age: 49, job: 'محاسب', income: 90000, expenses: 60000 }] } };",
     ' const profile = ensureSiblingEconomicProfile(sibling);',
-    ' return { assets: profile.ownedProperties, propertyExpenses: profile.propertyExpensesAnnual, propertyPurchases: profile.propertyPurchasesTotal, netWorth: profile.netWorth, history: profile.history };',
+    ' return { assets: profile.ownedProperties, propertyExpenses: profile.propertyExpensesAnnual, propertyPurchases: profile.propertyPurchasesTotal, annualRentIncome: profile.annualRentIncome, cumulativeRentIncome: profile.cumulativeRentIncome, rentalIncomeTotal: profile.rentalIncomeTotal, rentalLossTotal: profile.rentalLossTotal, netWorth: profile.netWorth, history: profile.history };',
     '})()'
   ].join(String.fromCharCode(10)), context, { timeout: 10000 });
   assert.deepEqual(Array.from(result.assets), []);
