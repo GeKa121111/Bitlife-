@@ -889,6 +889,7 @@ test('الأشقاء يشترون عقارًا استثماريًا ويحصّل
   assert.equal(result.afterPurchase.rental.kind, 'rental');
   assert.ok(result.afterPurchase.rental.monthlyRent > 0);
   assert.equal(result.afterPurchase.rentIncome, 0, 'a rental bought during the year must not earn retroactive rent');
+  assert.equal(result.afterPurchase.purchaseTotal, 240000 + result.afterPurchase.rental.purchasePrice, 'the cumulative property purchase total should include the rental asset');
   assert.equal(result.secondProcessed, 1);
   assert.equal(result.expectedRent.collected, result.profile.annualRentIncome);
   assert.equal(result.expectedRent.totalLoss, result.profile.rentalLossTotal);
