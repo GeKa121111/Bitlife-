@@ -93,6 +93,11 @@ const runtime = [
   'classifyFamilyPropertyRentResult',
   'distributeFamilyPropertyRent',
   'distributeFamilyPropertyExpense',
+  'familyPropertyInsurancePolicy',
+  'setFamilyPropertyInsurancePolicy',
+  'calculateFamilyPropertyAnnualInsurancePremium',
+  'calculateFamilyPropertyInsuranceClaim',
+  'recordFamilyPropertyInsuranceClaim',
   'maintainAsset',
   'supportBeneficiaryWallet',
   'getInheritanceHistoryRecords',
@@ -2389,3 +2394,108 @@ test('الصيانة القديمة لعقار بلا سجل ملكية مشتر
   assert.equal(asset.condition, 100);
 });
 
+
+
+test('التأمين العقاري اختياري ويحسب القسط والتعويض بعد سداد القسط السنوي', () => {
+  const context = makeContext();
+  const record = {
+    id: 'insurance-policy-flat', familyAssetId: 'insurance-policy-flat',
+    currency: 'جنيه', marketValue: 1000000, auditStatus: 'balanced',
+    owners: [{ beneficiaryId: 'owner-a', share: 0.5 }, { beneficiaryId: 'owner-b', share: 0.5 }],
+    transactions: []
+  };
+  const legacyPolicy = context.familyPropertyInsurancePolicy(record);
+  assert.equal(legacyPolicy.enabled, false);
+  assert.equal(context.calculateFamilyPropertyAnnualInsurancePremium(record).amount, 0);
+  const configured = context.setFamilyPropertyInsurancePolicy(record, 'standard');
+  assert.equal(configured.ok, true);
+  assert.equal(configured.policy.coverageBps, 7500);
+  assert.equal(context.calculateFamilyPropertyAnnualInsurancePremium(record).amount, 5000);
+  record.insurancePremiumPaidYear = 45;
+  const claim = context.calculateFamilyPropertyInsuranceClaim(record, 20000, 45);
+  assert.equal(claim.ok, true);
+  assert.equal(claim.coveredAmount, 15000);
+  assert.equal(claim.payout, 12000);
+  assert.equal(claim.netCost, 8000);
+  context.state = { age: 45, yearCount: 45, place: { unit: 'جنيه' } };
+  const saved = context.recordFamilyPropertyInsuranceClaim(record, claim);
+  assert.equal(saved.ok, true);
+  assert.equal(record.insuranceClaimPaidTotal, 12000);
+  assert.equal(record.transactions[0].type, 'insurance_claim');
+  assert.equal(context.calculateFamilyPropertyInsuranceClaim(record, 20000, 45).reason, 'duplicate_claim');
+  assert.equal(context.setFamilyPropertyInsurancePolicy(record, 'unknown').ok, false);
+  const invalid = { ...record, auditStatus: 'needs_review' };
+  assert.equal(context.calculateFamilyPropertyAnnualInsurancePremium(invalid).reason, 'ownership_audit_incomplete');
+});
+
+test('تعويض التأمين يقلل تكلفة صيانة العقار المشترك قبل توزيعها على الملاك', () => {
+  const context = makeContext();
+  const wallet = {
+    id: 'insured-maintenance-wallet', beneficiaryId: 'insured-maintenance-sibling', kind: 'child', currency: 'جنيه',
+    openingBalance: 50000, supportTotal: 0, rentalIncomeTotal: 0, propertyExpenseTotal: 0, balance: 50000,
+    transactions: [{ id: 'insured-maintenance-inheritance', type: 'inheritance', amount: 50000, currency: 'جنيه' }],
+    ledgerAuditComplete: true, ledgerMismatch: false
+  };
+  const record = {
+    id: 'insured-maintenance-property', familyAssetId: 'insured-maintenance-property', title: 'بيت العائلة',
+    currency: 'جنيه', marketValue: 1000000, upkeep: 0, insurancePremiumPaidYear: 45,
+    insurancePolicy: { enabled: true, plan: 'standard', coverageBps: 7500, annualPremiumRateBps: 50, deductible: 3000 },
+    encumberedShare: 0, auditStatus: 'balanced',
+    owners: [
+      { beneficiaryId: 'insured-maintenance-active', kind: 'child', status: 'active', share: 0.5 },
+      { beneficiaryId: 'insured-maintenance-sibling', kind: 'child', status: 'reserved', share: 0.5 }
+    ],
+    transactions: []
+  };
+  const asset = {
+    id: 'insured-maintenance-share', familyAssetId: record.id, ownerBeneficiaryId: 'insured-maintenance-active',
+    ownershipShare: 0.5, title: 'بيت العائلة', kind: 'property', value: 500000, condition: 50
+  };
+  context.state = {
+    lifeId: 'insured-maintenance-life', name: 'المالك الحالي', age: 45, yearCount: 45, bank: 50000,
+    place: { unit: 'جنيه' }, assets: [asset],
+    legacy: { activeBeneficiaryId: 'insured-maintenance-active', beneficiaryWallets: [wallet], familyPropertyOwnership: [record] }
+  };
+  context.maintainAsset(0);
+  assert.equal(context.state.bank, 46625);
+  assert.equal(wallet.balance, 46625);
+  assert.equal(record.propertyExpenseTotal, 6750);
+  assert.equal(record.insuranceClaimPaidTotal, 8250);
+  assert.equal(record.transactions.filter(item => item.type === 'insurance_claim').length, 1);
+  assert.equal(asset.condition, 100);
+  assert.ok(context.infoMessages.some(message => String(message[2] || '').includes('تعويض التأمين 8250')));
+});
+
+test('قسط التأمين لا يُسجل مدفوعًا إذا تعذر تحصيل حصة أي مالك ولا تُخصم مبالغ جزئية', () => {
+  const context = makeContext();
+  const wallet = {
+    id: 'insurance-premium-low-wallet', beneficiaryId: 'insurance-premium-sibling', kind: 'child', currency: 'جنيه',
+    openingBalance: 1000, supportTotal: 0, rentalIncomeTotal: 0, propertyExpenseTotal: 0, balance: 1000,
+    transactions: [{ id: 'insurance-premium-low-inheritance', type: 'inheritance', amount: 1000, currency: 'جنيه' }],
+    ledgerAuditComplete: true, ledgerMismatch: false
+  };
+  const record = {
+    id: 'insurance-premium-low-flat', familyAssetId: 'insurance-premium-low-flat', currency: 'جنيه',
+    marketValue: 1000000, auditStatus: 'balanced', encumberedShare: 0,
+    owners: [
+      { beneficiaryId: 'insurance-premium-active', kind: 'child', status: 'active', share: 0.5 },
+      { beneficiaryId: 'insurance-premium-sibling', kind: 'child', status: 'reserved', share: 0.5 }
+    ],
+    transactions: []
+  };
+  context.state = {
+    lifeId: 'insurance-premium-life', name: 'المالك الحالي', age: 40, yearCount: 40, bank: 50000,
+    place: { unit: 'جنيه' },
+    legacy: { activeBeneficiaryId: 'insurance-premium-active', beneficiaryWallets: [wallet], familyPropertyOwnership: [record] }
+  };
+  context.setFamilyPropertyInsurancePolicy(record, 'standard');
+  const beforeRecord = JSON.stringify(record), beforeWallet = JSON.stringify(wallet), beforeBank = context.state.bank;
+  const result = context.distributeFamilyPropertyExpense({ familyAssetId: record.id, ownerBeneficiaryId: 'insurance-premium-active', ownershipShare: 0.5, kind: 'property' }, 5000, {
+    action: 'annual-insurance-premium', reason: 'قسط التأمين العقاري السنوي', requireFullPayment: true
+  });
+  assert.equal(result.ok, false);
+  assert.equal(result.reason, 'insufficient_owner_funds');
+  assert.equal(context.state.bank, beforeBank);
+  assert.equal(JSON.stringify(record), beforeRecord);
+  assert.equal(JSON.stringify(wallet), beforeWallet);
+});
