@@ -693,6 +693,6 @@ assert.match(app, /ownerManaged:true/, 'manual leases should stop automatic rene
 
 assert.match(app, /actionAlreadyUsed/, 'the lease menu should not offer a second owner action in the same game year');
 
-assert.match(app, /function siblingHouseholdAnnualEffects\\(relative,profile,year,age\\)/, 'adult siblings should form independent households deterministically');
-assert.match(app, /householdEffects\\.spouseIncome/, 'spouse income should enter the sibling household budget');
-assert.match(app, /householdEffects\\.familyExpenses/, 'dependent children should create independent household costs');
+assert.match(app, /function siblingHouseholdAnnualEffects\(relative,profile,year,age\)/, 'adult siblings should form independent households deterministically');
+assert.match(app, /householdEffects\.spouseIncome/, 'spouse income should enter the sibling household budget');
+assert.match(app, /householdEffects\.familyExpenses/, 'dependent children should create independent household costs');
