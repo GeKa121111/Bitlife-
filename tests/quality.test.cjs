@@ -2253,8 +2253,8 @@ test('عقود الإيجار للأشقاء تحفظ المستأجر والم�
   assert.match(lease, /lease-signing/);
   assert.match(annual, /leaseStatus/);
   assert.match(annual, /vacancyLoss/);
-  assert.match(profile, /normalized\\.lease/);
-  assert.match(profile, /rawLease\\.history/);
+  assert.match(profile, /normalized\.lease/);
+  assert.match(profile, /rawLease\.history/);
   assert.match(details, /المستأجر/);
   assert.match(details, /العقد حتى سنة/);
   assert.match(details, /عقود إيجار/);
