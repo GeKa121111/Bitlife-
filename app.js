@@ -2342,6 +2342,7 @@ function distributeFamilyPropertyExpense(asset,totalCost,source){
   item.nextExpenseOwed=due;unpaidAmount+=item.amount;
  }
  if(activeAmount>bank)return {ok:false,reason:'insufficient_active_funds',required:activeAmount,available:bank};
+ if(src.requireFullPayment===true&&(unpaidAmount>0||reservedAmount>0||externalOwed>0))return {ok:false,reason:'insufficient_owner_funds',required:grossCost,unpaidAmount,reservedAmount};
  const nextTotal=Number(record.propertyExpenseTotal||0)+grossCost;
  const nextPaid=Number(record.propertyExpensePaidTotal||0)+activeAmount+familyWalletAmount;
  const nextOwed=Math.max(0,Number(record.propertyExpenseOwedTotal||0)+unpaidAmount-arrearsReleased);
@@ -2363,6 +2364,94 @@ function distributeFamilyPropertyExpense(asset,totalCost,source){
  record.transactions=record.transactions.slice(-100);
  return {ok:true,tracked:true,grossCost,activeAmount,familyWalletAmount,unpaidAmount,externalOwed,reservedAmount,arrearsReleased};
 }
+function familyPropertyInsurancePolicy(record){
+ if(!record||typeof record!=='object'||Array.isArray(record))return null;
+ const raw=record.insurancePolicy;
+ if(raw===undefined||raw===null)return {enabled:false,plan:'none',coverageBps:0,annualPremiumRateBps:0,deductible:0};
+ if(!raw||typeof raw!=='object'||Array.isArray(raw))return null;
+ const coverageBps=Number(raw.coverageBps),annualPremiumRateBps=Number(raw.annualPremiumRateBps),deductible=Number(raw.deductible);
+ if(typeof raw.enabled!=='boolean'||!Number.isSafeInteger(coverageBps)||coverageBps<0||coverageBps>10000
+  ||!Number.isSafeInteger(annualPremiumRateBps)||annualPremiumRateBps<0||annualPremiumRateBps>300
+  ||!Number.isSafeInteger(deductible)||deductible<0||deductible>100000000)return null;
+ if(raw.enabled&&(coverageBps<=0||annualPremiumRateBps<=0))return null;
+ if(!raw.enabled&&(coverageBps!==0||annualPremiumRateBps!==0||deductible!==0))return null;
+ return {enabled:raw.enabled,plan:String(raw.plan||'custom'),coverageBps,annualPremiumRateBps,deductible};
+}
+function setFamilyPropertyInsurancePolicy(record,planId){
+ if(!record||typeof record!=='object'||Array.isArray(record))return {ok:false,reason:'record_missing'};
+ if(record.auditStatus!=='balanced')return {ok:false,reason:'ownership_audit_incomplete'};
+ const plans={
+  none:{enabled:false,plan:'none',coverageBps:0,annualPremiumRateBps:0,deductible:0},
+  basic:{enabled:true,plan:'basic',coverageBps:5000,annualPremiumRateBps:25,deductible:5000},
+  standard:{enabled:true,plan:'standard',coverageBps:7500,annualPremiumRateBps:50,deductible:3000},
+  comprehensive:{enabled:true,plan:'comprehensive',coverageBps:9000,annualPremiumRateBps:75,deductible:1000}
+ };
+ const selected=plans[String(planId||'')];
+ if(!selected)return {ok:false,reason:'invalid_insurance_plan'};
+ const current=familyPropertyInsurancePolicy(record);
+ const changed=!current||current.plan!==selected.plan||current.coverageBps!==selected.coverageBps
+  ||current.annualPremiumRateBps!==selected.annualPremiumRateBps||current.deductible!==selected.deductible;
+ record.insurancePolicy={...selected};
+ if(changed)record.insurancePremiumPaidYear=null;
+ return {ok:true,policy:{...selected}};
+}
+function calculateFamilyPropertyAnnualInsurancePremium(record){
+ if(!record||typeof record!=='object')return {ok:false,reason:'record_missing'};
+ if(record.auditStatus!=='balanced')return {ok:false,reason:'ownership_audit_incomplete'};
+ const policy=familyPropertyInsurancePolicy(record),marketValue=Number(record.marketValue);
+ if(!policy)return {ok:false,reason:'invalid_insurance_policy'};
+ if(!Number.isSafeInteger(marketValue)||marketValue<0)return {ok:false,reason:'invalid_market_value'};
+ if(!policy.enabled)return {ok:true,enabled:false,amount:0,policy};
+ const raw=marketValue*policy.annualPremiumRateBps/10000;
+ if(!Number.isFinite(raw)||raw>Number.MAX_SAFE_INTEGER)return {ok:false,reason:'premium_amount_overflow'};
+ const amount=Math.round(raw);
+ if(!Number.isSafeInteger(amount)||amount<0)return {ok:false,reason:'premium_amount_overflow'};
+ return {ok:true,enabled:true,amount,policy,marketValue};
+}
+function calculateFamilyPropertyInsuranceClaim(record,repairCost,year){
+ if(!record||typeof record!=='object')return {ok:false,reason:'record_missing'};
+ if(record.auditStatus!=='balanced')return {ok:false,reason:'ownership_audit_incomplete'};
+ const cost=Number(repairCost),currentYear=Number(year);
+ if(!Number.isSafeInteger(cost)||cost<=0||!Number.isSafeInteger(currentYear)||currentYear<0)return {ok:false,reason:'invalid_claim_amount'};
+ const policy=familyPropertyInsurancePolicy(record);
+ if(!policy)return {ok:false,reason:'invalid_insurance_policy'};
+ if(!policy.enabled)return {ok:true,insured:false,reason:'not_insured',payout:0,netCost:cost};
+ if(Number(record.insurancePremiumPaidYear)!==currentYear)return {ok:true,insured:false,reason:'premium_not_paid',payout:0,netCost:cost};
+ const recordId=String(record.id||record.familyAssetId||'');
+ if(!recordId)return {ok:false,reason:'property_id_missing'};
+ const claimId='family-property-insurance-claim-'+encodeURIComponent(recordId)+'-'+currentYear;
+ if((Array.isArray(record.transactions)?record.transactions:[]).some(item=>item&&String(item.id)===claimId))return {ok:false,reason:'duplicate_claim'};
+ const coveredAmount=Math.round(cost*policy.coverageBps/10000);
+ const payout=Math.max(0,Math.min(cost,coveredAmount-policy.deductible));
+ const netCost=cost-payout;
+ const previousTotal=record.insuranceClaimPaidTotal===undefined||record.insuranceClaimPaidTotal===null?0:Number(record.insuranceClaimPaidTotal);
+ const nextTotal=previousTotal+payout;
+ if(!Number.isSafeInteger(previousTotal)||previousTotal<0||!Number.isSafeInteger(nextTotal)||nextTotal<0)return {ok:false,reason:'claim_ledger_overflow'};
+ return {ok:true,insured:true,claimId,year:currentYear,coverageBps:policy.coverageBps,deductible:policy.deductible,grossRepairCost:cost,coveredAmount,payout,netCost,nextTotal};
+}
+function recordFamilyPropertyInsuranceClaim(record,assessment){
+ if(!record||typeof record!=='object'||!assessment||assessment.ok!==true)return {ok:false,reason:'invalid_claim'};
+ const payout=Number(assessment.payout);
+ if(!Number.isSafeInteger(payout)||payout<0)return {ok:false,reason:'invalid_claim_payout'};
+ if(payout===0)return {ok:true,recorded:false,payout:0};
+ const claimId=String(assessment.claimId||'');
+ if(!claimId||(Array.isArray(record.transactions)?record.transactions:[]).some(item=>item&&String(item.id)===claimId))return {ok:false,reason:'duplicate_claim'};
+ const previousTotal=record.insuranceClaimPaidTotal===undefined||record.insuranceClaimPaidTotal===null?0:Number(record.insuranceClaimPaidTotal);
+ const nextTotal=previousTotal+payout;
+ if(!Number.isSafeInteger(previousTotal)||previousTotal<0||!Number.isSafeInteger(nextTotal)||nextTotal!==Number(assessment.nextTotal))return {ok:false,reason:'claim_ledger_overflow'};
+ if(!Array.isArray(record.transactions))record.transactions=[];
+ record.insuranceClaimPaidTotal=nextTotal;
+ record.transactions.push({
+  id:claimId,type:'insurance_claim',grossRepairCost:Number(assessment.grossRepairCost),
+  coverageBps:Number(assessment.coverageBps),deductible:Number(assessment.deductible),
+  payout,ownerCost:Number(assessment.netCost),currency:String(record.currency||state&&state.place&&state.place.unit||'ج.م'),
+  age:state&&Number.isFinite(Number(state.age))?Number(state.age):null,
+  year:Number(assessment.year)
+ });
+ record.transactions=record.transactions.slice(-100);
+ return {ok:true,recorded:true,payout};
+}
+
 function familyPropertyTaxRateBps(record){
  if(!record||typeof record!=='object'||Array.isArray(record))return null;
  if(record.annualTaxRateBps===undefined||record.annualTaxRateBps===null)return 0;
@@ -2395,6 +2484,53 @@ function setFamilyPropertyTaxRateBps(record,rateBps){
  record.annualTaxRateBps=rate;
  return {ok:true,rateBps:rate};
 }
+function familyPropertyInsurancePolicyMenu(recordId){
+ if(!state||!state.legacy)return;
+ const record=familyPropertyOwnershipRecords(state.legacy).find(item=>String(item.id||item.familyAssetId)===String(recordId));
+ if(!record){familyPropertyOwnershipMenu();return;}
+ if(record.auditStatus!=='balanced'){info('⚠️','التأمين متوقف','راجع سجل الملكية قبل تعديل أو استخدام وثيقة التأمين.');return;}
+ const recordKey=String(record.id||record.familyAssetId),current=familyPropertyInsurancePolicy(record);
+ const plans=[
+  {id:'none',title:'بدون تأمين',icon:'⛔'},
+  {id:'basic',title:'تغطية أساسية',icon:'🛡️'},
+  {id:'standard',title:'تغطية متوازنة',icon:'🛡️'},
+  {id:'comprehensive',title:'تغطية موسعة',icon:'🏅'}
+ ];
+ const opts=plans.map(plan=>{
+  const previewRecord={...record,insurancePolicy:({
+   none:{enabled:false,plan:'none',coverageBps:0,annualPremiumRateBps:0,deductible:0},
+   basic:{enabled:true,plan:'basic',coverageBps:5000,annualPremiumRateBps:25,deductible:5000},
+   standard:{enabled:true,plan:'standard',coverageBps:7500,annualPremiumRateBps:50,deductible:3000},
+   comprehensive:{enabled:true,plan:'comprehensive',coverageBps:9000,annualPremiumRateBps:75,deductible:1000}
+  })[plan.id]};
+  const preview=calculateFamilyPropertyAnnualInsurancePremium(previewRecord);
+  const selected=current&&current.plan===plan.id;
+  const detail=plan.id==='none'?'لن تُخصم أقساط ولن تُصرف تعويضات.':
+   preview.ok?'قسط سنوي '+cash(preview.amount)+' '+String(record.currency||state.place&&state.place.unit||'ج.م')+' · تغطية '+formatInheritancePercent(preview.policy.coverageBps/10000)+' · تحمل '+cash(preview.policy.deductible)+'.':
+   'تعذر تقدير القسط قبل مراجعة سجل العقار.';
+  return choice(plan.icon,plan.title+(selected?' · الحالية':''),detail,()=>{
+   const result=setFamilyPropertyInsurancePolicy(record,plan.id);
+   if(!result.ok){info('⚠️','تعذر تعديل التأمين','لم يتم تغيير الوثيقة لأن سجل الملكية أو الخطة غير صالح.');return;}
+   if(!Array.isArray(record.transactions))record.transactions=[];
+   const policy=result.policy;
+   record.transactions.push({
+    id:'family-property-insurance-policy-'+encodeURIComponent(recordKey)+'-'+String(state.yearCount||state.age||0)+'-'+plan.id+'-'+Date.now(),
+    type:'insurance_policy',plan:plan.id,coverageBps:policy.coverageBps,
+    annualPremiumRateBps:policy.annualPremiumRateBps,deductible:policy.deductible,
+    currency:String(record.currency||state.place&&state.place.unit||'ج.م'),
+    age:Number.isFinite(Number(state.age))?Number(state.age):null,
+    year:Number.isFinite(Number(state.yearCount))?Number(state.yearCount):null
+   });
+   record.transactions=record.transactions.slice(-100);
+   log('🛡️','تعديل تأمين العقار','تم تحديث وثيقة '+plan.title+' للعقار '+String(record.title||'العقار')+'.','good');
+   render();
+   familyPropertyOwnershipRecordMenu(recordKey);
+  });
+ });
+ opts.push(choice('↩️','رجوع لتفاصيل العقار','',()=>familyPropertyOwnershipRecordMenu(recordKey)));
+ modal('🛡️','تأمين العقار العائلي','التأمين اختياري داخل المحاكاة. يُحسب القسط على القيمة الكاملة للعقار ويُوزع على الملاك. لا تصبح التغطية فعالة في سنة المطالبة إلا بعد سداد القسط السنوي بالكامل.',opts);
+}
+
 function beneficiaryWalletsMenu(){
  if(!state)return;
  const wallets=getBeneficiaryWallets(state.legacy);
@@ -2548,10 +2684,14 @@ function familyPropertyOwnershipRecordMenu(recordId){
  const taxRateBps=familyPropertyTaxRateBps(record),taxAssessment=calculateFamilyPropertyAnnualTax(record);
  const taxSummary=taxRateBps===null?'النسبة المسجلة غير صالحة':taxRateBps===0?'متوقفة':taxAssessment.ok?'المعدل '+formatFamilyPropertyTaxRate(taxRateBps)+' · تقدير سنوي '+cash(taxAssessment.amount):'المعدل يحتاج مراجعة';
  const taxChoice=choice('🏛️','سياسة الضريبة العقارية',taxSummary+' · معدل محاكاة اختياري وليس نسبة قانونية.',()=>familyPropertyTaxPolicyMenu(recordKey));
- if(record.auditStatus!=='balanced')taxChoice.disabled=true;
+ const insurancePolicy=familyPropertyInsurancePolicy(record),insurancePremium=calculateFamilyPropertyAnnualInsurancePremium(record);
+ const insuranceSummary=!insurancePolicy?'بيانات التأمين غير صالحة':!insurancePolicy.enabled?'غير مفعل':insurancePremium.ok?'قسط سنوي '+cash(insurancePremium.amount)+' '+currency+' · تغطية '+formatInheritancePercent(insurancePolicy.coverageBps/10000)+' · تحمل '+cash(insurancePolicy.deductible)+' '+currency:'سياسة التأمين تحتاج مراجعة';
+ const insuranceChoice=choice('🛡️','تأمين العقار',insuranceSummary,()=>familyPropertyInsurancePolicyMenu(recordKey));
+ if(record.auditStatus!=='balanced'){taxChoice.disabled=true;insuranceChoice.disabled=true;}
+ else if(!insurancePolicy)insuranceChoice.disabled=true;
  const owners=Array.isArray(record.owners)?record.owners:[];
  const statusLabels={active:'المالك الحالي',reserved:'حصة محفوظة للوريث',earmarked:'حصة مخصصة للتبرع',unassigned:'مستفيد غير محدد',external:'مشتري خارجي'};
- const opts=[taxChoice,...owners.map(owner=>{
+ const opts=[taxChoice,insuranceChoice,...owners.map(owner=>{
   const share=safeFamilyOwnershipShare(owner&&owner.share)||0;
   const amount=Math.round(Math.max(0,Number(record.marketValue)||0)*share);
   const expenseOwed=Math.max(0,Number(owner&&owner.propertyExpenseOwed)||0);
@@ -2564,24 +2704,28 @@ function familyPropertyOwnershipRecordMenu(recordId){
  transactions.forEach(transaction=>{
   const isRent=transaction.type==='rent_distribution',isExpense=transaction.type==='property_expense';
   const isTax=isExpense&&String(transaction.reason||'').includes('الضريبة');
-  const isTaxPolicy=transaction.type==='tax_policy';
-  const title=transaction.type==='sale'?'نقل حصة إلى مشترٍ خارجي':transaction.type==='maintenance'?'تحديث قيمة العقار':isRent?'توزيع دخل الإيجار':isTaxPolicy?'تعديل سياسة الضريبة العقارية':transaction.type==='property_expense_inheritance'?'نقل متأخرات مع الميراث':isTax?'توزيع الضريبة العقارية':isExpense?'توزيع مصروفات العقار':'توزيع ملكية عائلية';
+  const isTaxPolicy=transaction.type==='tax_policy',isInsurancePolicy=transaction.type==='insurance_policy',isInsuranceClaim=transaction.type==='insurance_claim';
+  const title=transaction.type==='sale'?'نقل حصة إلى مشترٍ خارجي':transaction.type==='maintenance'?'تحديث قيمة العقار':isRent?'توزيع دخل الإيجار':isTaxPolicy?'تعديل سياسة الضريبة العقارية':isInsurancePolicy?'تعديل وثيقة التأمين':isInsuranceClaim?'صرف تعويض تأميني':transaction.type==='property_expense_inheritance'?'نقل متأخرات مع الميراث':isTax?'توزيع الضريبة العقارية':isExpense?'توزيع مصروفات العقار':'توزيع ملكية عائلية';
   const detail=isRent
    ?'إجمالي الإيجار '+fmt(transaction.grossRent||0)+' '+currency+' · محافظ الأسرة '+fmt(transaction.familyWalletAmount||0)+' · المبلغ المعلّق '+fmt(transaction.reservedAmount||0)
    :transaction.type==='property_expense_inheritance'
     ?'المتأخرات المنقولة '+fmt(transaction.amount||0)+' '+currency+' · عدد المستفيدين '+fmt((transaction.allocations||[]).length)
     :isTaxPolicy
     ?'المعدل السنوي '+formatFamilyPropertyTaxRate(transaction.rateBps)+' · سنة اللعبة '+fmt(transaction.year||0)
+    :isInsurancePolicy
+     ?'الخطة '+String(transaction.plan||'غير محددة')+' · التغطية '+formatInheritancePercent((Number(transaction.coverageBps)||0)/10000)+' · القسط السنوي '+fmt(transaction.annualPremiumRateBps||0)+' نقطة أساس · التحمل '+fmt(transaction.deductible||0)+' '+currency
+     :isInsuranceClaim
+      ?'تكلفة الإصلاح '+fmt(transaction.grossRepairCost||0)+' '+currency+' · التعويض '+fmt(transaction.payout||0)+' · مساهمة الملاك '+fmt(transaction.ownerCost||0)
     :isExpense
      ?'سبب المصروف '+String(transaction.reason||'مصروف عقاري')+' · الإجمالي '+fmt(transaction.grossCost||0)+' '+currency+' · دفع الملاك '+fmt((transaction.activeAmount||0)+(transaction.familyWalletAmount||0))+' · متأخرات '+fmt(transaction.unpaidAmount||0)
      :'تاريخ العملية '+(transaction.age===null||transaction.age===undefined?'غير مسجل':fmt(transaction.age))+' · '+(transaction.type==='sale'?'قيمة البيع '+fmt(transaction.amount||0)+' '+currency:'مصدر العملية '+String(transaction.sourceName||transaction.sourceLifeId||'سجل العائلة'));
-  opts.push(choice(isRent?'🏠':isTax||isTaxPolicy?'🏛️':isExpense?'🧰':transaction.type==='property_expense_inheritance'?'🧾':'📜',title,detail,()=>info('📜',title,detail)));
+  opts.push(choice(isRent?'🏠':isTax||isTaxPolicy?'🏛️':isInsurancePolicy||isInsuranceClaim?'🛡️':isExpense?'🧰':transaction.type==='property_expense_inheritance'?'🧾':'📜',title,detail,()=>info('📜',title,detail)));
  });
  opts.push(choice('↩️','رجوع للعقارات العائلية','',familyPropertyOwnershipMenu));
  const audit=record.auditStatus==='balanced'?'إجمالي الحصص والالتزامات يساوي 100%.':'تنبيه: بيانات الملكية لا تتطابق بالكامل؛ تم إيقاف بيع الحصة والصيانة المشتركة لحماية حقوق بقية الملاك.';
  const reserveOutstanding=Math.max(0,(Number(record.rentReserveTotal)||0)-(Number(record.rentReserveReleasedTotal)||0));
  const expenseOwed=Math.max(0,Number(record.propertyExpenseOwedTotal)||0);
- modal('🏘️','ملاك '+String(record.title||'العقار'),'القيمة الكاملة '+fmt(record.marketValue||0)+' '+currency+' · الصيانة السنوية '+fmt(record.upkeep||0)+' '+currency+' · الضريبة العقارية السنوية '+taxSummary+' · إيجار محفوظ للتسوية '+fmt(reserveOutstanding)+' '+currency+' · مصروفات عقارية مسجلة '+fmt(record.propertyExpenseTotal||0)+' '+currency+' · مصروفات مستحقة '+fmt(expenseOwed)+' '+currency+'. '+audit,opts);
+ modal('🏘️','ملاك '+String(record.title||'العقار'),'القيمة الكاملة '+fmt(record.marketValue||0)+' '+currency+' · الصيانة السنوية '+fmt(record.upkeep||0)+' '+currency+' · الضريبة العقارية السنوية '+taxSummary+' · التأمين العقاري '+insuranceSummary+' · إيجار محفوظ للتسوية '+fmt(reserveOutstanding)+' '+currency+' · مصروفات عقارية مسجلة '+fmt(record.propertyExpenseTotal||0)+' '+currency+' · مصروفات مستحقة '+fmt(expenseOwed)+' '+currency+'. '+audit,opts);
 }
 function familyPropertyTaxPolicyMenu(recordId){
  if(!state||!state.legacy)return;
@@ -3033,6 +3177,24 @@ function advanceAge(){
  });
  if(sharedPropertyTaxGross>0)log('🏛️','الضريبة العقارية السنوية','إجمالي الضريبة '+cash(sharedPropertyTaxGross)+' · حصتك '+cash(sharedPropertyTaxActivePaid)+' · محافظ الأسرة '+cash(sharedPropertyTaxWalletPaid)+' · متأخرات الملاك '+cash(sharedPropertyTaxUnpaid)+'.',sharedPropertyTaxUnpaid>0?'bad':'good');
  if(sharedPropertyTaxWarnings>0)log('⚠️','تعذر تسوية الضريبة العقارية','تم إيقاف '+sharedPropertyTaxWarnings+' تسوية ضريبية دون خصم جزئي؛ راجع سياسة الضريبة وسجل ملكية العقار.','bad');
+ let sharedPropertyInsuranceGross=0,sharedPropertyInsuranceActivePaid=0,sharedPropertyInsuranceWalletPaid=0,sharedPropertyInsuranceWarnings=0;
+ sharedPropertyUpkeepEntries.forEach(entry=>{
+  const policy=familyPropertyInsurancePolicy(entry.record);
+  if(!policy){sharedPropertyInsuranceWarnings++;return;}
+  if(!policy.enabled)return;
+  const assessment=calculateFamilyPropertyAnnualInsurancePremium(entry.record);
+  if(!assessment||assessment.ok!==true){sharedPropertyInsuranceWarnings++;return;}
+  if(assessment.amount===0){entry.record.insurancePremiumPaidYear=state.yearCount;return;}
+  const result=distributeFamilyPropertyExpense(entry.asset,assessment.amount,{action:'annual-insurance-premium',reason:'قسط التأمين العقاري السنوي',requireFullPayment:true});
+  if(result&&result.reason==='duplicate_transaction'){entry.record.insurancePremiumPaidYear=state.yearCount;return;}
+  if(!result||result.ok!==true||result.tracked!==true||result.unpaidAmount>0||result.reservedAmount>0){sharedPropertyInsuranceWarnings++;return;}
+  entry.record.insurancePremiumPaidYear=state.yearCount;
+  sharedPropertyInsuranceGross+=result.grossCost;
+  sharedPropertyInsuranceActivePaid+=result.activeAmount;
+  sharedPropertyInsuranceWalletPaid+=result.familyWalletAmount;
+ });
+ if(sharedPropertyInsuranceGross>0)log('🛡️','قسط التأمين العقاري السنوي','إجمالي القسط '+cash(sharedPropertyInsuranceGross)+' · حصتك '+cash(sharedPropertyInsuranceActivePaid)+' · محافظ الأسرة '+cash(sharedPropertyInsuranceWalletPaid)+'.','good');
+ if(sharedPropertyInsuranceWarnings>0)log('⚠️','تعذر سداد قسط التأمين العقاري','لم تُفعّل التغطية هذا العام لبعض العقارات لأن القسط أو سجل الملكية لم يكتمل؛ لم يتم خصم أي مبلغ جزئي من قسط التأمين.','bad');
  const rentEntries=(state.assets||[]).filter(a=>a.kind==='property'&&a.rented).map(asset=>({asset,amount:Math.max(0,Math.round(asset.tenant&&perkOwned('landlordPack')?(asset.tenant.rent||asset.value*.045):(asset.value||0)*.045))})).filter(entry=>entry.amount>0);
  (state.assets||[]).forEach(a=>{if(a.kind==='property'&&a.tenant&&perkOwned('landlordPack')){a.tenant.yearsLeft=Math.max(0,(a.tenant.yearsLeft||0)-1);if(a.tenant.yearsLeft===0&&chance(.25)){a.rented=false;a.tenant=null;log('🏠','انتهاء عقد الإيجار','غادر المستأجر أحد عقاراتك بعد انتهاء العقد. افتح إدارة المستأجرين للبحث عن مستأجر جديد.','bad');}else if(a.tenant&&a.tenant.yearsLeft===0)a.tenant.yearsLeft=1;}});
  if(state.zoo&&state.zoo.opened)advanceZooSystem();if(state.cult&&state.cult.founded)advanceCultSystem();if(state.casino&&state.casino.opened)advanceCasinoSystem();if(state.dealer&&state.dealer.joined)advanceDealerSystem();advanceInvestmentAdvisor();
@@ -4417,19 +4579,28 @@ function maintainAsset(index){
  if(missing===0){info('✅','الأصل في أفضل حالة','مش محتاج صيانة دلوقتي.');return;}
  const before=condition;
  let cost=Math.max(500,Math.round(a.value*(a.kind==='car'?.018:.03)*(missing/100)));
- let expenseResult=null;
+ let expenseResult=null,insuranceAssessment=null;
  if(a.kind==='property'&&state.legacy){
   const familyRecord=familyPropertyOwnershipRecords(state.legacy).find(item=>String(item.id||item.familyAssetId)===String(a.familyAssetId||''));
   if(familyRecord){
    const fullValue=Number(familyRecord.marketValue);
    if(!Number.isSafeInteger(fullValue)||fullValue<=0){info('⚠️','تعذر تدقيق قيمة العقار','قيمة العقار المشتركة غير صالحة؛ لم يتم خصم أي مبلغ أو تغيير حالة الأصل.');return;}
    const fullCost=Math.max(500,Math.round(fullValue*.03*(missing/100)));
-   expenseResult=distributeFamilyPropertyExpense(a,fullCost,{action:'maintenance',reason:'صيانة / تجديد'});
-   if(!expenseResult.ok){
-    const message=expenseResult.reason==='insufficient_active_funds'?'رصيدك لا يكفي لحصتك من الصيانة والمتأخرات المستحقة عليك. لم يتم خصم أي مبلغ.':'تعذر تدقيق الملكية أو دفتر المصروفات؛ تم إيقاف الصيانة دون تغيير الأرصدة.';
-    info('💳','الصيانة المشتركة متوقفة',message);return;
+   insuranceAssessment=calculateFamilyPropertyInsuranceClaim(familyRecord,fullCost,Number(state.yearCount??state.age??0));
+   if(!insuranceAssessment||insuranceAssessment.ok!==true){info('🛡️','تعذر تسوية مطالبة التأمين',insuranceAssessment&&insuranceAssessment.reason==='duplicate_claim'?'تم تسجيل مطالبة لهذا العقار في السنة الحالية بالفعل.':'بيانات التأمين أو سجل المطالبات غير صالح؛ لم يتم خصم أي مبلغ أو تغيير حالة الأصل.');return;}
+   const ownerCost=insuranceAssessment.netCost;
+   if(ownerCost>0){
+    expenseResult=distributeFamilyPropertyExpense(a,ownerCost,{action:'maintenance',reason:insuranceAssessment.payout>0?'صيانة / تجديد بعد تعويض التأمين':'صيانة / تجديد'});
+    if(!expenseResult.ok){
+     const message=expenseResult.reason==='insufficient_active_funds'?'رصيدك لا يكفي لحصتك من الصيانة والمتأخرات المستحقة عليك. لم يتم خصم أي مبلغ.':'تعذر تدقيق الملكية أو دفتر المصروفات؛ تم إيقاف الصيانة دون تغيير الأرصدة.';
+     info('💳','الصيانة المشتركة متوقفة',message);return;
+    }
+    cost=expenseResult.activeAmount;
+   }else cost=0;
+   if(insuranceAssessment.payout>0){
+    const claim=recordFamilyPropertyInsuranceClaim(familyRecord,insuranceAssessment);
+    if(!claim.ok){info('🛡️','تعذر تسجيل التعويض','لم يتم اعتماد مطالبة التأمين؛ راجع سجل العقار قبل تكرار العملية.');return;}
    }
-   cost=expenseResult.activeAmount;
   }else{
    if(state.bank<cost){info('💳','الرصيد مش كفاية','الصيانة أو التجديد تكلف '+cash(cost)+'. حاول توفر المبلغ الأول.');return;}
    state.bank-=cost;
@@ -4440,7 +4611,8 @@ function maintainAsset(index){
  }
  a.condition=100;a.value=Math.round(a.value*(1+missing*.0015));
  if(a.kind==='property')syncFamilyPropertyMarketValue(a,null,0);
- const detail=expenseResult&&expenseResult.tracked?'دفعت حصتك '+cash(expenseResult.activeAmount)+'، وساهمت محافظ الأسرة بـ '+cash(expenseResult.familyWalletAmount)+'. المبالغ غير المسددة '+cash(expenseResult.unpaidAmount)+' اتسجلت كالتزامات على أصحابها. إجمالي الصيانة '+cash(expenseResult.grossCost)+'.':'دفعت '+cash(cost)+'، ورجّعت الحالة من '+before+'% إلى 100%. قيمة إعادة البيع المتوقعة اتحسنت.';
+ const insuranceDetail=insuranceAssessment&&insuranceAssessment.payout>0?' · تعويض التأمين '+cash(insuranceAssessment.payout):'';
+ const detail=(expenseResult&&expenseResult.tracked?'دفعت حصتك '+cash(expenseResult.activeAmount)+'، وساهمت محافظ الأسرة بـ '+cash(expenseResult.familyWalletAmount)+'. المبالغ غير المسددة '+cash(expenseResult.unpaidAmount)+' اتسجلت كالتزامات على أصحابها. إجمالي الصيانة '+cash(expenseResult.grossCost)+'.':'دفعت '+cash(cost)+'، ورجّعت الحالة من '+before+'% إلى 100%. قيمة إعادة البيع المتوقعة اتحسنت.')+insuranceDetail;
  log(a.kind==='car'?'🔧':'🏠','صيانة / تجديد '+a.title,detail,'good');
  render();info('🧰','الصيانة اكتملت',a.title+' بقى في حالة 100%. '+detail);
 }
