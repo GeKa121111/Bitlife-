@@ -1869,6 +1869,7 @@ function siblingChildEconomicAnnualEffects(relative,child,year){
  if(!economy)return null;
  if(economy.lastProcessedYear>=numericYear)return {duplicate:true,events:[],income:0,expenses:0};
  const events=[],previousEmploymentState=economy.employmentState;
+ if(inheritanceRelease&&inheritanceRelease.properties>0)events.push({type:'child_inherited_property',properties:inheritanceRelease.properties});
  let annualIncome=0,baseSalary=0;
  if(age<22){
   if(economy.educationPath==='university'){
@@ -2311,7 +2312,7 @@ function siblingChildInheritedPropertyAnnualEffects(relative,child,economy,year)
    asset.marketValue=siblingSafeMoney(Math.max(0,Math.round(asset.marketValue*(10000+changeBps)/10000)));
    asset.lastMarketYear=numericYear;
   }
-  propertyExpenses=siblingSafeMoney(propertyExpenses+siblingSafeMoney(asset.upkeep));
+  propertyExpenses=siblingSafeMoney(propertyExpenses+siblingPropertyAnnualUpkeep(asset));
   if(asset.kind==='rental'){
    const rent=siblingRentalAnnualIncome(relative,numericYear,asset);
    if(rent){
@@ -2407,6 +2408,7 @@ function siblingEstateSettlement(relative,profile,year){
   planMode:plan.mode,liquidAssetsBefore:liquidAssets,unsecuredDebtBefore:unsecuredDebt,unsecuredDebtPaid,
   unsecuredDebtRemaining,securedDebtRetained:securedDebt,distributedCash:distributableCash,retainedCash:0,
   retainedAssets:assets,assetTransferStatus:assets.length?'pending':'none',beneficiaries};
+ siblingUpdateEstateAssetTransferStatus(profile,household);
  return {duplicate:false,settled:true,estate:profile.estate,beneficiaries,distributedCash:distributableCash,unsecuredDebtPaid};
 }
 
