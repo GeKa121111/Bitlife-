@@ -514,7 +514,7 @@ test('الإخوة البالغون يديرون دخلهم ومصروفاتهم
   assert.ok(result.first.savings > 0);
   assert.equal(result.first.debt, 0);
   assert.equal(result.first.cumulativeIncome, result.first.annualIncome,
-    'older saves receive no retroactive wages when the optional profile is first created');
+    'legacy siblings receive no retroactive wages when the optional profile is first created');
   assert.equal(result.first.history.length, 1);
   assert.equal(result.first.lastProcessedYear, 24);
   assert.equal(result.duplicateUnchanged, true);
@@ -529,14 +529,13 @@ test('الإخوة البالغون يديرون دخلهم ومصروفاتهم
 
 test('ملف الاقتصاد الاختياري يتطبع بأمان عند وجود بيانات قديمة أو تالفة', () => {
   const context = vm.createContext({});
-  vm.runInContext(siblingEconomySource + '
-' + harnessSource, context, { timeout: 10000 });
+  vm.runInContext(siblingEconomySource + '\n' + harnessSource, context, { timeout: 10000 });
   const result = vm.runInContext(`(() => {
     state = makeState();
     state.yearCount = 50;
     state.place = { unit: 'ج.م' };
     const sibling = {
-      id: 'legacy-adult-sibling', relation: 'أخت', age: 45, job: 'طالب',
+      id: 'legacy-adult-sibling', relation: 'أخت', age: 45, job: 'طالب', smart: 70,
       economicProfile: { savings: -900, debt: 'غير صالح', rank: 99, history: [{ year: 49, income: -1 }] }
     };
     state.family = [sibling];
