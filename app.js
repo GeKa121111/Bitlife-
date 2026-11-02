@@ -2392,7 +2392,7 @@ function setFamilyPropertyInsurancePolicy(record,planId){
  const changed=!current||current.plan!==selected.plan||current.coverageBps!==selected.coverageBps
   ||current.annualPremiumRateBps!==selected.annualPremiumRateBps||current.deductible!==selected.deductible;
  record.insurancePolicy={...selected};
- if(changed)record.insurancePremiumPaidYear=null;
+ if(changed){record.insurancePremiumPaidYear=null;record.insurancePremiumPaidLifeId=null;}
  return {ok:true,policy:{...selected}};
 }
 function calculateFamilyPropertyAnnualInsurancePremium(record){
@@ -2416,10 +2416,11 @@ function calculateFamilyPropertyInsuranceClaim(record,repairCost,year){
  const policy=familyPropertyInsurancePolicy(record);
  if(!policy)return {ok:false,reason:'invalid_insurance_policy'};
  if(!policy.enabled)return {ok:true,insured:false,reason:'not_insured',payout:0,netCost:cost};
- if(Number(record.insurancePremiumPaidYear)!==currentYear)return {ok:true,insured:false,reason:'premium_not_paid',payout:0,netCost:cost};
+ const activeLifeId=String(state&&(state.lifeId||state.name)||'life');
+ if(Number(record.insurancePremiumPaidYear)!==currentYear||String(record.insurancePremiumPaidLifeId||'')!==activeLifeId)return {ok:true,insured:false,reason:'premium_not_paid',payout:0,netCost:cost};
  const recordId=String(record.id||record.familyAssetId||'');
  if(!recordId)return {ok:false,reason:'property_id_missing'};
- const claimId='family-property-insurance-claim-'+encodeURIComponent(recordId)+'-'+currentYear;
+ const claimId='family-property-insurance-claim-'+encodeURIComponent(recordId)+'-'+encodeURIComponent(activeLifeId)+'-'+currentYear;
  if((Array.isArray(record.transactions)?record.transactions:[]).some(item=>item&&String(item.id)===claimId))return {ok:false,reason:'duplicate_claim'};
  const coveredAmount=Math.round(cost*policy.coverageBps/10000);
  const payout=Math.max(0,Math.min(cost,coveredAmount-policy.deductible));
@@ -2434,8 +2435,10 @@ function recordFamilyPropertyInsuranceClaim(record,assessment){
  const payout=Number(assessment.payout);
  if(!Number.isSafeInteger(payout)||payout<0)return {ok:false,reason:'invalid_claim_payout'};
  if(payout===0)return {ok:true,recorded:false,payout:0};
- const claimId=String(assessment.claimId||'');
- if(!claimId||(Array.isArray(record.transactions)?record.transactions:[]).some(item=>item&&String(item.id)===claimId))return {ok:false,reason:'duplicate_claim'};
+ const claimId=String(assessment.claimId||''),currentYear=Number(assessment.year),activeLifeId=String(state&&(state.lifeId||state.name)||'life');
+ const expectedClaimId='family-property-insurance-claim-'+encodeURIComponent(String(record.id||record.familyAssetId||''))+'-'+encodeURIComponent(activeLifeId)+'-'+currentYear;
+ if(record.auditStatus!=='balanced'||Number(record.insurancePremiumPaidYear)!==currentYear||String(record.insurancePremiumPaidLifeId||'')!==activeLifeId)return {ok:false,reason:'premium_not_paid'};
+ if(!claimId||claimId!==expectedClaimId||(Array.isArray(record.transactions)?record.transactions:[]).some(item=>item&&String(item.id)===claimId))return {ok:false,reason:'duplicate_claim'};
  const previousTotal=record.insuranceClaimPaidTotal===undefined||record.insuranceClaimPaidTotal===null?0:Number(record.insuranceClaimPaidTotal);
  const nextTotal=previousTotal+payout;
  if(!Number.isSafeInteger(previousTotal)||previousTotal<0||!Number.isSafeInteger(nextTotal)||nextTotal!==Number(assessment.nextTotal))return {ok:false,reason:'claim_ledger_overflow'};
@@ -2444,7 +2447,7 @@ function recordFamilyPropertyInsuranceClaim(record,assessment){
  record.transactions.push({
   id:claimId,type:'insurance_claim',grossRepairCost:Number(assessment.grossRepairCost),
   coverageBps:Number(assessment.coverageBps),deductible:Number(assessment.deductible),
-  payout,ownerCost:Number(assessment.netCost),currency:String(record.currency||state&&state.place&&state.place.unit||'ج.م'),
+  payout,ownerCost:Number(assessment.netCost),sourceLifeId:activeLifeId,currency:String(record.currency||state&&state.place&&state.place.unit||'ج.م'),
   age:state&&Number.isFinite(Number(state.age))?Number(state.age):null,
   year:Number(assessment.year)
  });
@@ -2688,7 +2691,6 @@ function familyPropertyOwnershipRecordMenu(recordId){
  const insuranceSummary=!insurancePolicy?'بيانات التأمين غير صالحة':!insurancePolicy.enabled?'غير مفعل':insurancePremium.ok?'قسط سنوي '+cash(insurancePremium.amount)+' '+currency+' · تغطية '+formatInheritancePercent(insurancePolicy.coverageBps/10000)+' · تحمل '+cash(insurancePolicy.deductible)+' '+currency:'سياسة التأمين تحتاج مراجعة';
  const insuranceChoice=choice('🛡️','تأمين العقار',insuranceSummary,()=>familyPropertyInsurancePolicyMenu(recordKey));
  if(record.auditStatus!=='balanced'){taxChoice.disabled=true;insuranceChoice.disabled=true;}
- else if(!insurancePolicy)insuranceChoice.disabled=true;
  const owners=Array.isArray(record.owners)?record.owners:[];
  const statusLabels={active:'المالك الحالي',reserved:'حصة محفوظة للوريث',earmarked:'حصة مخصصة للتبرع',unassigned:'مستفيد غير محدد',external:'مشتري خارجي'};
  const opts=[taxChoice,insuranceChoice,...owners.map(owner=>{
@@ -3184,11 +3186,12 @@ function advanceAge(){
   if(!policy.enabled)return;
   const assessment=calculateFamilyPropertyAnnualInsurancePremium(entry.record);
   if(!assessment||assessment.ok!==true){sharedPropertyInsuranceWarnings++;return;}
-  if(assessment.amount===0){entry.record.insurancePremiumPaidYear=state.yearCount;return;}
+  if(assessment.amount===0){entry.record.insurancePremiumPaidYear=state.yearCount;entry.record.insurancePremiumPaidLifeId=String(state.lifeId||state.name||'life');return;}
   const result=distributeFamilyPropertyExpense(entry.asset,assessment.amount,{action:'annual-insurance-premium',reason:'قسط التأمين العقاري السنوي',requireFullPayment:true});
-  if(result&&result.reason==='duplicate_transaction'){entry.record.insurancePremiumPaidYear=state.yearCount;return;}
+  if(result&&result.reason==='duplicate_transaction'){entry.record.insurancePremiumPaidYear=state.yearCount;entry.record.insurancePremiumPaidLifeId=String(state.lifeId||state.name||'life');return;}
   if(!result||result.ok!==true||result.tracked!==true||result.unpaidAmount>0||result.reservedAmount>0){sharedPropertyInsuranceWarnings++;return;}
   entry.record.insurancePremiumPaidYear=state.yearCount;
+  entry.record.insurancePremiumPaidLifeId=String(state.lifeId||state.name||'life');
   sharedPropertyInsuranceGross+=result.grossCost;
   sharedPropertyInsuranceActivePaid+=result.activeAmount;
   sharedPropertyInsuranceWalletPaid+=result.familyWalletAmount;
