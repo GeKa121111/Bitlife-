@@ -2416,6 +2416,7 @@ test('التأمين العقاري اختياري ويحسب القسط وال�
   assert.equal(unpaidClaim.reason, 'premium_not_paid');
   record.insurancePremiumPaidYear = 45;
   record.insurancePremiumPaidLifeId = 'insurance-policy-life';
+  context.state.lifeId = 'different-life';
   const wrongLife = context.calculateFamilyPropertyInsuranceClaim(record, 20000, 45);
   assert.equal(wrongLife.reason, 'premium_not_paid');
   context.state.lifeId = 'insurance-policy-life';
