@@ -2010,7 +2010,7 @@ test('سجل الملكية المشتركة يحافظ على حصص الأسر
   assert.match(details, /حصة محفوظة للوريث/);
   assert.match(app, /buildFamilyPropertyOwnership\(previous,beneficiaryAccounts\)/);
   assert.match(app, /recordFamilyPropertySale\(a,sale\)/);
-  assert.match(app, /distributeFamilyPropertyExpense\(a,fullCost/);
+  assert.match(app, /distributeFamilyPropertyExpense\(a,ownerCost/);
   assert.match(read('sw.js'), /hayah-shell-v99/);
 });
 
@@ -2074,7 +2074,7 @@ test('التأمين العقاري العائلي اختياري ويربط ا�
   const expense = functionSource('distributeFamilyPropertyExpense', 'familyPropertyTaxRateBps');
   assert.match(policy, /insurancePolicy/);
   assert.match(policy, /enabled:false/);
-  assert.match(setter, /basic:[\\s\\S]*standard:[\\s\\S]*comprehensive:/);
+  assert.ok(setter.includes('basic:') && setter.includes('standard:') && setter.includes('comprehensive:'));
   assert.match(premium, /annualPremiumRateBps/);
   assert.match(claim, /insurancePremiumPaidYear/);
   assert.match(claim, /duplicate_claim/);
