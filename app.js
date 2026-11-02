@@ -2080,7 +2080,7 @@ function siblingEstatePlanAction(relative,mode){
 function siblingAllocateEstateAmount(totalAmount,beneficiaryShares){
  const amount=siblingSafeMoney(totalAmount),shares=Array.isArray(beneficiaryShares)?beneficiaryShares:[];
  if(!shares.length)return null;
- const weights=shares.map(item=>clamp(item&&item.shareBps??0,0,10000));
+ const weights=shares.map(item=>clamp(item&&item.shareBps!==undefined?item.shareBps:0,0,10000));
  if(weights.reduce((sum,value)=>sum+value,0)!==10000)return null;
  const whole=Math.floor(amount/10000),remainderAmount=amount%10000;
  const allocations=weights.map((shareBps,index)=>{
