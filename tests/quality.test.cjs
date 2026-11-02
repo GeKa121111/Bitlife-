@@ -2185,5 +2185,5 @@ test('دفتر متأخرات إيجار الأشقاء يحفظ الرصيد و
   assert.match(familyTree, /متأخرات إيجار/);
   assert.match(read('sw.js'), /hayah-shell-v106/);
   assert.match(app, /const KEY = 'hekayat_hayah_save_v1';/);
-  assert.match(app, /return \\{version:1,lifeId:/);
+  assert.ok(app.includes('return {version:1,lifeId:'), 'legacy backup format remains version 1');
 });
