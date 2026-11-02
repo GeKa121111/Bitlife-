@@ -925,8 +925,9 @@ test('متأخرات الإيجار تُحصّل تدريجيًا وتُسجل �
     ' state.family = [sibling]; const bankBefore = state.bank;',
     ' const processed = advanceSiblingEconomies();',
     ' const year = profile.history[profile.history.length - 1];',
+    " const rentalAfter = profile.ownedProperties.find(asset => asset.kind === 'rental');",
     ' const snapshot = JSON.stringify(profile); const duplicate = advanceSiblingEconomies();',
-    ' return { guard, processed, expectedRent, expectedRecovery, rental, profile, year, snapshot, afterDuplicate: JSON.stringify(profile), bankBefore, bankAfter: state.bank, duplicate };',
+    ' return { guard, processed, expectedRent, expectedRecovery, rental: rentalAfter, profile, year, snapshot, afterDuplicate: JSON.stringify(profile), bankBefore, bankAfter: state.bank, duplicate };',
     '})()'
   ].join(String.fromCharCode(10)), context, { timeout: 10000 });
   assert.ok(result.guard < 1000, 'the deterministic fixture should find a working sibling with collectible arrears');
