@@ -1659,11 +1659,6 @@ function advanceChildren(){
  });
 }
 
-function siblingEconomicHash(value){
- const source=String(value||'');let hash=2166136261;
- for(let i=0;i<source.length;i++)hash=Math.imul(hash^source.charCodeAt(i),16777619);
- return hash>>>0;
-}
 function siblingSafeMoney(value){
  const amount=Number(value);
  if(!Number.isFinite(amount))return 0;
