@@ -298,7 +298,7 @@ function runCohort(count) {
 
 test('الصيانة والضريبة السنوية للعقار المشترك تتوزعان حسب الملكية دون خصم مزدوج', () => {
   const context = vm.createContext({});
-  vm.runInContext(combatRecoverySource + '\\n' + propertyOwnershipSource + '\\n' + ageSource + '\\n' + harnessSource, context, {
+  vm.runInContext(combatRecoverySource + '\n' + propertyOwnershipSource + '\n' + ageSource + '\n' + harnessSource, context, {
     timeout: 120000,
     filename: 'hayah-shared-property-upkeep-harness.js'
   });
