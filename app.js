@@ -1861,7 +1861,7 @@ function siblingRentalLeaseDecision(relative,year,asset){
   tenantName:String(tenantNameOverride??lease.tenantName??'').slice(0,60),
   monthlyRent:siblingSafeMoney(lease.monthlyRent)||baseMonthlyRent,startYear:Math.max(0,Number(lease.startYear)||0),
   endYear:Number.isSafeInteger(Number(lease.endYear))?Number(lease.endYear):endYear,
-  termYears:clamp(lease.termYears??0,0,3),renewals:clamp(lease.renewals??0,0,99),event,
+  termYears:clamp(lease.termYears??0,0,3),renewals:clamp(lease.renewals??0,0,99),event,ownerManaged:lease.ownerManaged===true,
   signed:event==='signed',renewed:event==='renewed',vacant:lease.status!=='active'});
  const recordEvent=(event,tenantNameOverride)=>{
   lease.lastProcessedYear=numericYear;
@@ -1876,6 +1876,15 @@ function siblingRentalLeaseDecision(relative,year,asset){
   return result('active');
  }
  if(lastProcessedYear>=numericYear)return result(lease.status==='active'?'active':'vacant');
+ if(lease.ownerManaged===true){
+  if(lease.status==='active'&&numericYear>endYear){
+   const formerTenantName=String(lease.tenantName||'').slice(0,60);
+   lease.status='vacant';lease.tenantName='';lease.startYear=numericYear;lease.endYear=numericYear-1;lease.termYears=0;
+   recordEvent('expired',formerTenantName);return result('expired',formerTenantName);
+  }
+  lease.lastProcessedYear=numericYear;
+  return result(lease.status==='active'?'active':'vacant');
+ }
  const reliability=clamp(relative&&(relative.reliability??55));
  if(lease.status==='active'&&numericYear>endYear){
   const formerTenantName=String(lease.tenantName||'').slice(0,60);
@@ -1908,6 +1917,54 @@ function siblingRentalLeaseDecision(relative,year,asset){
  lease.status='vacant';lease.tenantName='';lease.monthlyRent=baseMonthlyRent;
  lease.startYear=numericYear;lease.endYear=numericYear-1;lease.termYears=0;recordEvent('vacant');
  return result('vacant');
+}
+function siblingManualRentalLeaseQuote(relative,assetId,action,termYears,rentFactorBps,year){
+ const numericYear=Number(year),profile=relative&&relative.economicProfile;
+ if(!relative||relative.deceased||Math.max(0,Number(relative.age)||0)<18||!profile||typeof profile!=='object'||!Number.isSafeInteger(numericYear)||numericYear<0||!['sign','renew','terminate','manage'].includes(action))return null;
+ const assets=Array.isArray(profile.ownedProperties)?profile.ownedProperties:[];
+ const asset=assets.find(item=>item&&item.kind==='rental'&&String(item.id||'')===String(assetId||''));
+ if(!asset)return null;
+ const lease=asset.lease&&typeof asset.lease==='object'&&!Array.isArray(asset.lease)?asset.lease:{};
+ const oldTenantName=String(lease.tenantName||'').trim().slice(0,60),rawEnd=Number(lease.endYear);
+ const endYear=Number.isSafeInteger(rawEnd)?rawEnd:numericYear;
+ const active=lease.status==='active'&&oldTenantName.length>0&&endYear>=numericYear;
+ const lastAction=Number(lease.lastOwnerActionYear);
+ if(Number.isSafeInteger(lastAction)&&lastAction>=numericYear)return null;
+ if((action==='renew'||action==='terminate'||action==='manage')&&!active)return null;
+ if(action==='renew'&&endYear>numericYear)return null;
+ if(action==='sign'&&active)return null;
+ const term=action==='terminate'||action==='manage'?0:clamp(termYears??1,1,3);
+ const factor=action==='terminate'||action==='manage'?10000:clamp(rentFactorBps??10000,9000,11000);
+ const oldMonthlyRent=siblingSafeMoney(lease.monthlyRent||asset.monthlyRent);
+ if(oldMonthlyRent<=0)return null;
+ const monthlyRent=action==='terminate'||action==='manage'?oldMonthlyRent:Math.max(1,Math.round(oldMonthlyRent*factor/10000));
+ const startYear=action==='manage'?Math.max(0,Number(lease.startYear)||0):numericYear+1;
+ const nextEndYear=action==='terminate'?numericYear:action==='manage'?endYear:startYear+term-1;
+ const tenantName=action==='sign'?siblingRentalTenantName(relative,numericYear,asset):action==='renew'||action==='manage'?oldTenantName:'';
+ return {assetId:String(asset.id||''),action,oldTenantName,tenantName,oldMonthlyRent,monthlyRent,termYears:term,rentFactorBps:factor,startYear,endYear:nextEndYear};
+}
+function siblingManualRentalLeaseAction(relative,assetId,action,termYears,rentFactorBps,year){
+ const numericYear=Number(year),quote=siblingManualRentalLeaseQuote(relative,assetId,action,termYears,rentFactorBps,year);
+ if(!quote)return null;
+ const profile=relative.economicProfile,asset=(Array.isArray(profile.ownedProperties)?profile.ownedProperties:[]).find(item=>item&&item.kind==='rental'&&String(item.id||'')===quote.assetId);
+ if(!asset)return null;
+ const previous=asset.lease&&typeof asset.lease==='object'&&!Array.isArray(asset.lease)?asset.lease:{};
+ if(action==='manage'){
+  asset.lease={...previous,ownerManaged:true,lastOwnerActionYear:numericYear,history:(Array.isArray(previous.history)?previous.history:[]).slice(-6)};
+  return {...quote,status:asset.lease.status,ownerManaged:true};
+ }
+ const history=(Array.isArray(previous.history)?previous.history:[]).filter(item=>item&&typeof item==='object'&&!Array.isArray(item)).slice(-5);
+ const event=action==='sign'?'signed':action==='renew'?'renewed':'expired';
+ history.push({year:numericYear,event,tenantName:action==='terminate'?quote.oldTenantName:quote.tenantName,monthlyRent:quote.monthlyRent,startYear:quote.startYear,endYear:quote.endYear});
+ if(history.length>6)history.shift();
+ const renewals=action==='renew'?clamp(previous.renewals??0,0,99)+1:0;
+ asset.lease={status:action==='terminate'?'vacant':'active',tenantName:quote.tenantName,monthlyRent:quote.monthlyRent,
+  startYear:quote.startYear,endYear:quote.endYear,termYears:quote.termYears,lastProcessedYear:numericYear,renewals,
+  ownerManaged:true,lastOwnerActionYear:numericYear,history};
+ asset.monthlyRent=quote.monthlyRent;
+ const previousRentYear=Number(asset.lastRentYear);
+ asset.lastRentYear=Math.max(Number.isSafeInteger(previousRentYear)?previousRentYear:0,numericYear);
+ return {...quote,status:asset.lease.status,renewals,ownerManaged:true};
 }
 function siblingRentalAnnualIncome(relative,year,asset){
  const numericYear=Number(year);
@@ -2121,11 +2178,12 @@ function ensureSiblingEconomicProfile(relative){
     const startYear=Number.isSafeInteger(rawStart)?Math.max(purchaseYear,rawStart):purchaseYear+1;
     const endYear=Number.isSafeInteger(rawEnd)?Math.max(0,rawEnd):startYear+clamp(rawLease.termYears??1,1,3)-1;
     const tenantName=String(rawLease.tenantName||'').trim().slice(0,60);
-    const active=rawLease.status==='active'&&tenantName.length>0&&endYear>=startYear&&startYear<=year;
+    const active=rawLease.status==='active'&&tenantName.length>0&&endYear>=startYear&&startYear<=year+1&&endYear>=year;
     normalized.lease={status:active?'active':'vacant',tenantName:active?tenantName:'',monthlyRent:siblingSafeMoney(rawLease.monthlyRent)||normalized.monthlyRent,
      startYear,endYear:active?endYear:Math.min(endYear,startYear-1),termYears:active?clamp(rawLease.termYears??(endYear-startYear+1),1,3):0,
      lastProcessedYear:Number.isSafeInteger(Number(rawLease.lastProcessedYear))?Math.max(purchaseYear,Number(rawLease.lastProcessedYear)):purchaseYear,
-     renewals:clamp(rawLease.renewals??0,0,99),
+     renewals:clamp(rawLease.renewals??0,0,99),ownerManaged:rawLease.ownerManaged===true,
+     lastOwnerActionYear:Number.isSafeInteger(Number(rawLease.lastOwnerActionYear))?Math.max(-1,Math.min(year,Number(rawLease.lastOwnerActionYear))):-1,
      history:(Array.isArray(rawLease.history)?rawLease.history:[]).filter(entry=>entry&&typeof entry==='object'&&!Array.isArray(entry)&&['signed','renewed','expired','vacant'].includes(entry.event)).slice(-6).map(entry=>({
       year:clamp(entry.year??purchaseYear,0,9999),event:entry.event,tenantName:String(entry.tenantName||'').slice(0,60),
       monthlyRent:siblingSafeMoney(entry.monthlyRent),startYear:clamp(entry.startYear??purchaseYear,0,9999),endYear:clamp(entry.endYear??purchaseYear,0,9999)
@@ -5636,6 +5694,68 @@ function personModal(n){
 
 
 
+function siblingManualRentalLeaseConfirm(n,assetId,action,termYears,rentFactorBps){
+ const year=Number.isSafeInteger(Number(state&&state.yearCount))?Math.max(0,Number(state.yearCount)):Math.max(0,Number(n&&n.age)||0);
+ const quote=siblingManualRentalLeaseQuote(n,assetId,action,termYears,rentFactorBps,year);
+ if(!quote){info('⚠️','تعذر تجهيز قرار العقد','قد يكون العقد تغير بالفعل، أو لا توجد صلاحية لتنفيذ القرار في هذه السنة.');return;}
+ const labels={sign:'توقيع عقد جديد',renew:'تجديد أو تعديل العقد',terminate:'إنهاء العقد من السنة القادمة',manage:'تولي إدارة العقد يدويًا'};
+ const label=labels[action]||'إدارة العقد';
+ const description=action==='manage'
+  ?'سيتم الاحتفاظ بالمستأجر الحالي '+quote.tenantName+' والإيجار '+cash(quote.monthlyRent)+' وموعد الانتهاء '+fmt(quote.endYear)+'. بعد هذا القرار لن يجدد المحرك العقد تلقائيًا ولن يبحث عن مستأجر بدلًا منك.'
+  :action==='terminate'
+   ?'المستأجر الحالي: '+quote.oldTenantName+' · ينتهي العقد الحالي بعد السنة '+fmt(year)+' · سيصبح العقار شاغرًا من السنة '+fmt(quote.startYear)+'. لن تُسجل إيرادات رجعية.'
+   :(action==='sign'?'المستأجر المقترح: '+quote.tenantName+' · ':'المستأجر الحالي: '+quote.tenantName+' · ')+
+    'الإيجار الشهري الجديد '+cash(quote.monthlyRent)+' بدلًا من '+cash(quote.oldMonthlyRent)+' · مدة العقد '+fmt(quote.termYears)+' سنة · من السنة '+fmt(quote.startYear)+' إلى '+fmt(quote.endYear)+'. القرار يسري من السنة القادمة.';
+ info('📄','مراجعة '+label,description,[
+  choice('✓','تأكيد '+label,'حفظ القرار في حساب الشقيق فقط.',()=>{
+   const result=siblingManualRentalLeaseAction(n,assetId,action,termYears,rentFactorBps,year);
+   if(!result){info('⚠️','لم يتم تحديث العقد','تغيرت بيانات العقار أو تم تنفيذ قرار آخر في السنة نفسها.');return;}
+   const title=action==='sign'?'توقيع عقد بإدارة المالك':action==='renew'?'تجديد عقد بإدارة المالك':action==='manage'?'تفعيل الإدارة اليدوية للعقد':'إنهاء عقد بإدارة المالك';
+   const text=action==='manage'
+    ?'تولى '+String(n.name||'أحد إخوتك')+' إدارة العقد يدويًا مع الاحتفاظ بالمستأجر والإيجار والمدة الحالية.'
+    :action==='terminate'
+     ?'أنهى '+String(n.name||'أحد إخوتك')+' العقد مع '+result.oldTenantName+' من السنة '+fmt(result.startYear)+'، وسيظل العقار شاغرًا حتى يوقع عقدًا جديدًا.'
+     :(action==='sign'?'وقّع ':'جدد ')+String(n.name||'أحد إخوتك')+' العقد مع '+result.tenantName+' بإيجار شهري '+cash(result.monthlyRent)+' لمدة '+fmt(result.termYears)+' سنة تبدأ من '+fmt(result.startYear)+'.';
+   log('📄',title,text,action==='terminate'?'special':'good');
+   const saved=save();
+   info(saved?'📄':'⚠️',saved?'تم تحديث عقد الإيجار':'تعذر تأكيد الحفظ',saved?'تم حفظ قرار المالك دون تغيير الدخل التاريخي أو إنشاء إيرادات رجعية.':'تم تحديث الجلسة الحالية، لكن المتصفح لم يؤكد حفظ التغيير محليًا.',[
+    choice('📊','عرض الوضع المالي','راجع حالة العقد والأصول بعد التعديل.',()=>siblingEconomicDetails(n))
+   ]);
+  }),
+  choice('↩️','إلغاء','الاحتفاظ بالعقد الحالي دون تغيير.',()=>siblingManualRentalLeaseMenu(n,assetId))
+ ]);
+}
+function siblingManualRentalLeaseMenu(n,assetId){
+ if(!n||n.deceased||Math.max(0,Number(n.age)||0)<18){info('🔒','إدارة العقد غير متاحة','إدارة عقارات الأشقاء متاحة للمالك البالغ فقط.');return;}
+ const profile=n.economicProfile,assets=Array.isArray(profile&&profile.ownedProperties)?profile.ownedProperties:[],asset=assets.find(item=>item&&item.kind==='rental'&&String(item.id||'')===String(assetId||''));
+ if(!asset){info('⚠️','العقار غير موجود','لم يتم العثور على العقار الاستثماري في سجل المالك.');return;}
+ const year=Number.isSafeInteger(Number(state&&state.yearCount))?Math.max(0,Number(state.yearCount)):Math.max(0,Number(n.age)||0);
+ const lease=asset.lease&&typeof asset.lease==='object'?asset.lease:null;
+ const active=!!(lease&&lease.status==='active'&&String(lease.tenantName||'').trim()&&Number(lease.endYear)>=year);
+ const currentRent=siblingSafeMoney(lease&&lease.monthlyRent||asset.monthlyRent);
+ const options=[];
+ if(active){
+  if(lease.ownerManaged===true){
+   if(Number(lease.endYear)<=year){
+    options.push(choice('🔄','تجديد سنة دون زيادة','إيجار شهري '+cash(currentRent)+' يبدأ العقد المعدل من السنة القادمة.',()=>siblingManualRentalLeaseConfirm(n,assetId,'renew',1,10000)));
+    options.push(choice('📈','تجديد سنتين بزيادة 5%','إيجار شهري '+cash(Math.round(currentRent*1.05))+' من السنة القادمة.',()=>siblingManualRentalLeaseConfirm(n,assetId,'renew',2,10500)));
+    options.push(choice('📈','تجديد ثلاث سنوات بزيادة 8%','إيجار شهري '+cash(Math.round(currentRent*1.08))+' من السنة القادمة.',()=>siblingManualRentalLeaseConfirm(n,assetId,'renew',3,10800)));
+   }else{
+    options.push(choice('⏳','العقد مستمر حتى السنة '+fmt(lease.endYear),'يمكن تجديده عند انتهاء مدته، أو إنهاؤه من السنة القادمة.',()=>info('📄','العقد ما زال ساريًا','لن يتم تقصير مدة العقد الحالي. يمكن مراجعة التجديد عند وصول سنة الانتهاء.')));
+   }
+  }else{
+   options.push(choice('🧭','تولي إدارة العقد يدويًا','الاحتفاظ بالمستأجر والمدة الحالية وإيقاف التجديد التلقائي.',()=>siblingManualRentalLeaseConfirm(n,assetId,'manage',0,10000)));
+  }
+  options.push(choice('🛑','إنهاء العقد من السنة القادمة','إنهاء العلاقة التعاقدية دون شطب متأخرات الإيجار القائمة.',()=>siblingManualRentalLeaseConfirm(n,assetId,'terminate',0,10000)));
+ }else{
+  options.push(choice('📝','عقد سنة بإيجار 95% من الحالي','عرض إيجار أقل لجذب مستأجر بسرعة.',()=>siblingManualRentalLeaseConfirm(n,assetId,'sign',1,9500)));
+  options.push(choice('📝','عقد سنتين بالإيجار الحالي','عقد متوسط المدة دون تغيير الإيجار المرجعي.',()=>siblingManualRentalLeaseConfirm(n,assetId,'sign',2,10000)));
+  options.push(choice('📝','عقد ثلاث سنوات بزيادة 5%','إيجار أعلى مقابل التزام أطول.',()=>siblingManualRentalLeaseConfirm(n,assetId,'sign',3,10500)));
+ }
+ options.push(choice('↩️','العودة للوضع المالي','',()=>siblingEconomicDetails(n)));
+ modal('📄','إدارة عقد الإيجار',active?'المستأجر '+lease.tenantName+' · ينتهي في السنة '+fmt(lease.endYear)+'. اختر قرارًا للمالك.':'العقار شاغر أو يعمل بسجل إيجار قديم. اختر مدة العقد وقيمة الإيجار؛ لا توجد إيرادات رجعية.',options);
+}
+
 function siblingManualRentalSaleConfirm(n,assetId){
  const profile=n&&n.economicProfile,quote=siblingManualRentalSaleQuote(profile,assetId);
  if(!quote){info('⚠️','العقار غير متاح للبيع','لم يتم العثور على عقار استثماري صالح لهذا القرار.');return;}
@@ -5681,17 +5801,21 @@ function siblingEconomicDetails(n){
  const netWorth=Number(profile.netWorth)||0,properties=Array.isArray(profile.ownedProperties)?profile.ownedProperties:[],propertyValue=siblingOwnedPropertyValue(profile);
  const propertyText=properties.length?properties.map(asset=>{
   const mortgage=asset&&asset.mortgage,finance=mortgage&&siblingMortgageLiability(asset)>0?' · تمويل متبقٍ '+cash(siblingMortgageLiability(asset))+' · قسط سنوي '+cash(mortgage.annualPayment||0)+' · متأخرات تمويل '+cash(mortgage.arrears||0):'';
-  const lease=asset&&asset.lease,leaseText=asset.kind!=='rental'?'':lease&&lease.status==='active'?' · المستأجر '+esc(lease.tenantName||'غير محدد')+' · العقد حتى سنة '+fmt(lease.endYear)+' · إيجار العقد '+cash(lease.monthlyRent||asset.monthlyRent||0):lease?' · العقار شاغر':' · سجل إيجار قديم دون عقد مفصل';
+  const lease=asset&&asset.lease,leaseMode=lease&&lease.ownerManaged?' · إدارة المالك':' · إدارة تلقائية',leaseText=asset.kind!=='rental'?'':lease&&lease.status==='active'?' · المستأجر '+esc(lease.tenantName||'غير محدد')+' · العقد حتى سنة '+fmt(lease.endYear)+' · إيجار العقد '+cash(lease.monthlyRent||asset.monthlyRent||0)+leaseMode:lease?' · العقار شاغر'+(lease.ownerManaged?' · إدارة المالك':''):' · سجل إيجار قديم دون عقد مفصل';
   return String(asset.label||'مسكن مستقل')+' · '+cash(asset.marketValue||0)+' '+String(profile.currency||'')+(asset.kind==='rental'?' · إيجار شهري '+cash(asset.monthlyRent||0)+' · متأخرات إيجار '+cash(asset.rentArrears||0)+leaseText:'')+finance;
  }).join('، '):'لا يمتلك عقارًا مستقلًا بعد';
  const propertyTransactions=(Array.isArray(profile.propertyTransactions)?profile.propertyTransactions:[]).slice(-3).reverse();
  const transactionText=propertyTransactions.length?propertyTransactions.map(item=>item.type==='mortgage_prepayment'?'سنة '+fmt(item.year)+' · سداد مبكر '+cash(item.principalPaid+item.arrearsPaid)+' · رسوم '+cash(item.fee):'سنة '+fmt(item.year)+' · بيع عقار '+cash(item.gross)+' · رسوم '+cash(item.transactionCost)+' · سداد تمويل '+cash(item.mortgagePaid||0)+' · سداد دين '+cash(item.debtPaid)+' · صافي نقدي '+cash(item.cashRetained)+' · شطب متأخرات '+cash(item.arrearsWrittenOff)).join('؛ '):'لا توجد عمليات بيع أو سداد مبكر مسجلة';
- const rentalSaleChoices=properties.filter(asset=>asset&&asset.kind==='rental').map(asset=>choice('🏘️','مراجعة بيع '+String(asset.label||'العقار الاستثماري'),'القيمة السوقية '+cash(asset.marketValue||0)+' · متأخرات إيجار '+cash(asset.rentArrears||0)+' · البيع اختياري ويتطلب تأكيدًا.',()=>siblingManualRentalSaleConfirm(n,asset.id),cash(asset.marketValue||0)));
+ const rentalLeaseChoices=properties.filter(asset=>asset&&asset.kind==='rental').map(asset=>{
+   const lease=asset.lease,active=lease&&lease.status==='active'&&String(lease.tenantName||'').trim()&&Number(lease.endYear)>=Number(state&&state.yearCount||0);
+   return choice('📄','إدارة عقد '+String(asset.label||'العقار الاستثماري'),active?'المستأجر '+lease.tenantName+' · ينتهي في '+fmt(lease.endYear)+' · الإيجار '+cash(lease.monthlyRent||asset.monthlyRent):'العقار شاغر أو بلا عقد مفصل؛ يمكن توقيع عقد جديد.',()=>siblingManualRentalLeaseMenu(n,asset.id));
+  });
+  const rentalSaleChoices=properties.filter(asset=>asset&&asset.kind==='rental').map(asset=>choice('🏘️','مراجعة بيع '+String(asset.label||'العقار الاستثماري'),'القيمة السوقية '+cash(asset.marketValue||0)+' · متأخرات إيجار '+cash(asset.rentArrears||0)+' · البيع اختياري ويتطلب تأكيدًا.',()=>siblingManualRentalSaleConfirm(n,asset.id),cash(asset.marketValue||0)));
  const mortgageChoices=properties.filter(asset=>asset&&asset.kind==='rental'&&asset.mortgage&&siblingMortgageLiability(asset)>0).map(asset=>choice('💳','مراجعة السداد المبكر','تمويل قائم '+cash(siblingMortgageLiability(asset))+' · مدخرات '+cash(profile.savings||0),()=>siblingMortgagePrepaymentConfirm(n,asset.id),cash(siblingMortgageLiability(asset))));
  const history=(Array.isArray(profile.history)?profile.history:[]).slice(-5).reverse();
  const historyText=history.length?history.map(item=>'سنة '+fmt(item.year)+' · '+siblingEmploymentStateLabel(item.employmentState)+(siblingEmploymentEventLabel(item.employmentEvent)?' ('+siblingEmploymentEventLabel(item.employmentEvent)+')':'')+' · دخل '+cash(item.income)+' · إيجار '+cash(item.rentIncome||0)+' · فاقد إيجار '+cash(item.rentLoss||0)+' · متأخرات محصلة '+cash(item.rentArrearsCollected||0)+' · رصيد متأخرات '+cash(item.rentArrearsBalance||0)+(item.rentArrearsWrittenOff?' · شطب متأخرات '+cash(item.rentArrearsWrittenOff):'')+' · قسط تمويل '+cash(item.mortgagePayment||0)+' · أصل مسدد '+cash(item.mortgagePrincipal||0)+' · رصيد تمويل '+cash(item.mortgageBalance||0)+(item.mortgageDefault?' · تعثر تمويلي':'')+' · مصروف '+cash(item.expenses)+' · مدخرات '+cash(item.savings)+' · محفظة '+cash(item.investmentBalance||0)+' · قيمة العقار '+cash(item.propertyValue||0)+' · صيانة '+cash(item.propertyExpenses||0)+(item.propertyPurchase?' · شراء مسكن':'')+(item.rentalPurchase?' · شراء عقار استثماري':'')+(Array.isArray(item.rentLeaseEvents)&&item.rentLeaseEvents.length?' · عقود إيجار '+item.rentLeaseEvents.map(event=>(event.event==='signed'?'توقيع ':event.event==='renewed'?'تجديد ':'انتهاء ')+String(event.tenantName||'')).join('، '):'')+(item.propertySale?' · بيع عقار '+cash(item.propertySaleGross||0)+' وصافي '+cash(item.propertySaleNet||0):'')).join('؛ '):'لا توجد سنوات مالية مسجلة بعد.';
  const description='المهنة: '+String(profile.job||n.job||'غير محدد')+' · حالة العمل: '+siblingEmploymentStateLabel(profile.employmentState)+' · المستوى المهني '+fmt(profile.rank||1)+' · الخبرة '+fmt(profile.yearsWorked||0)+' سنة. الدخل السنوي '+cash(profile.annualIncome||0)+' '+String(profile.currency||'')+'، منه دخل إيجار '+cash(profile.annualRentIncome||0)+' وإجمالي إيجارات محصلة '+cash(profile.rentalIncomeTotal||0)+' وفاقد إيجاري '+cash(profile.rentalLossTotal||0)+'، ومتأخرات إيجار قائمة '+cash(profile.rentalArrearsBalance||0)+' ومحصلة '+cash(profile.rentalArrearsCollectedTotal||0)+' ومضافة '+cash(profile.rentalArrearsAddedTotal||0)+' ومشطوبة '+cash(profile.rentalArrearsWrittenOffTotal||0)+'. التمويل العقاري القائم '+cash(profile.mortgageDebtBalance||0)+'، ومتأخرات الأقساط '+cash(profile.mortgageArrearsBalance||0)+'، والمدفوع سنويًا '+cash(profile.mortgagePaymentAnnual||0)+'، والسداد المبكر التراكمي '+cash(profile.mortgagePrepaymentsTotal||0)+' ورسومه '+cash(profile.mortgageFeesTotal||0)+'. المصروفات '+cash(profile.annualExpenses||0)+' منها صيانة عقارية '+cash(profile.propertyExpensesAnnual||0)+'. المدخرات '+cash(profile.savings||0)+'، والمحفظة الاستثمارية '+cash(profile.investmentBalance||0)+' بمخاطرة '+siblingInvestmentRiskLabel(profile.investmentRisk)+'، والعائد التراكمي '+cash(profile.investmentReturnsTotal||0)+'، والديون الإجمالية '+cash(profile.debt||0)+'. العقارات المستقلة: '+properties.length+' · '+propertyText+' · إجمالي قيمتها '+cash(propertyValue)+' · إجمالي مبيعات العقارات '+cash(profile.propertySalesTotal||0)+' · صافي الثروة '+(netWorth<0?'سالب ':'')+cash(Math.abs(netWorth))+'. المتأخرات غير المحصلة لا تدخل في صافي الثروة إلا بعد تحصيلها. سجل المعاملات: '+transactionText+'. الحالة المالية: '+String(profile.employmentStatus||'مستقر')+'. آخر السنوات: '+historyText;
- info('📊','الاستقلال المالي · '+String(n.name||'أحد الإخوة'),description,[...rentalSaleChoices,...mortgageChoices,choice('↩️','العودة لملف الشخصية','',()=>personModal(n))]);
+ info('📊','الاستقلال المالي · '+String(n.name||'أحد الإخوة'),description,[...rentalLeaseChoices,...rentalSaleChoices,...mortgageChoices,choice('↩️','العودة لملف الشخصية','',()=>personModal(n))]);
 }
 function relationshipHistory(n){
  const history=Array.isArray(n.interactions)?n.interactions.slice().reverse():[];
