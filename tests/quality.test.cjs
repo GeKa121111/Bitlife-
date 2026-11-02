@@ -31,21 +31,21 @@ test('الأحداث الحديثة لا تتكرر حتى تنفد البدائ
     { title: 'حدث ج', range: [0, 100] }
   ];
   const context = { state, events };
-  vm.runInNewContext(availableSource + '\\nglobalThis.result=availableEvents().map(event=>event.title);', context);
+  vm.runInNewContext(availableSource + '\nglobalThis.result=availableEvents().map(event=>event.title);', context);
   assert.deepEqual(Array.from(context.result), ['حدث ج']);
 
   state.recentEventTitles = ['حدث أ', 'حدث ب', 'حدث ج'];
-  vm.runInNewContext(availableSource + '\\nglobalThis.result=availableEvents().map(event=>event.title);', context);
+  vm.runInNewContext(availableSource + '\nglobalThis.result=availableEvents().map(event=>event.title);', context);
   assert.deepEqual(Array.from(context.result), ['حدث أ', 'حدث ب', 'حدث ج'],
     'when every eligible event is recent, the game must still offer an event');
 
   const rememberSource = functionSource('rememberEventTitle', 'chooseAdaptiveEvent');
   state.recentEventTitles = ['قديم 1', 'قديم 2', 'قديم 3', 'قديم 4', 'قديم 5', 'قديم 6'];
-  vm.runInNewContext(rememberSource + '\\nrememberEventTitle("حدث جديد"); rememberEventTitle("حدث جديد");', context);
+  vm.runInNewContext(rememberSource + '\nrememberEventTitle("حدث جديد"); rememberEventTitle("حدث جديد");', context);
   assert.deepEqual(Array.from(state.recentEventTitles), ['قديم 2', 'قديم 3', 'قديم 4', 'قديم 5', 'قديم 6', 'حدث جديد']);
-  assert.match(functionSource('load', 'flash'), /recentEventTitles:\\[\\]/,
+  assert.match(functionSource('load', 'flash'), /recentEventTitles:\[\]/,
     'v1 saves without the optional history must receive an empty list');
-  assert.match(functionSource('randomEvent', 'afterDecision'), /rememberEventTitle\\(e\\.title\\)/);
+  assert.match(functionSource('randomEvent', 'afterDecision'), /rememberEventTitle\(e\.title\)/);
 });
 
 test('اختصار لوحة المفاتيح يتجاوز الرأس وينقل التركيز إلى يوميات الحياة', () => {
