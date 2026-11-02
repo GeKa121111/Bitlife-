@@ -2056,7 +2056,7 @@ function advanceSiblingEconomies(){
    };
    profile.ownedProperties.push(purchasedProperty);
   }
-  const rentalPurchase=!propertySale&&!purchasedProperty?siblingRentalPurchaseDecision(relative,profile,year,age,savings,debt,employment.state):null;
+  const rentalPurchase=!propertySale&&!purchasedProperty&&cashFlow>=0?siblingRentalPurchaseDecision(relative,profile,year,age,savings,debt,employment.state):null;
   let purchasedRentalProperty=null;
   if(rentalPurchase&&savings>=rentalPurchase.price+rentalPurchase.reserve){
    savings=siblingSafeMoney(savings-rentalPurchase.price);
@@ -2088,7 +2088,7 @@ function advanceSiblingEconomies(){
   profile.investmentContributionsTotal=siblingSafeMoney(profile.investmentContributionsTotal+investmentContribution);
   profile.investmentReturnsTotal=siblingSafeSigned(profile.investmentReturnsTotal+investmentReturn);
   profile.propertyExpensesAnnual=propertyExpenses;
-  profile.propertyPurchasesTotal=siblingSafeMoney(profile.propertyPurchasesTotal+(purchasedProperty?purchasedProperty.purchasePrice:0));
+  profile.propertyPurchasesTotal=siblingSafeMoney(profile.propertyPurchasesTotal+(purchasedProperty?purchasedProperty.purchasePrice:0)+(purchasedRentalProperty?purchasedRentalProperty.purchasePrice:0));
   profile.propertySalesTotal=siblingSafeMoney(profile.propertySalesTotal+(propertySale?propertySale.gross:0));
   profile.propertySaleCostsTotal=siblingSafeMoney(profile.propertySaleCostsTotal+(propertySale?propertySale.transactionCost:0));
   profile.annualRentIncome=rentIncome;
