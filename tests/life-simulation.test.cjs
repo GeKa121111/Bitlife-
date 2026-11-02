@@ -54,6 +54,9 @@ const siblingEconomySource = [
   extractFunction('siblingManualRentalSaleQuote'),
   extractFunction('siblingManualRentalSale'),
   extractFunction('siblingHouseholdName'),
+  extractFunction('siblingChildCareerFor'),
+  extractFunction('ensureSiblingChildEconomy'),
+  extractFunction('siblingChildEconomicAnnualEffects'),
   extractFunction('ensureSiblingHousehold'),
   extractFunction('siblingHouseholdAnnualEffects'),
   extractFunction('ensureSiblingEconomicProfile'),
@@ -1536,6 +1539,76 @@ test('أبناء الأشقاء يتحولون إلى مستقلين عند 18 �
   assert.equal(result.effects.familyExpenses, 12000, 'an adult child no longer creates dependent-child costs');
 });
 
+test('أبناء الأشقاء البالغون يحصلون على تعليم ومهنة وميزانية مستقلة دون التأثير على حساب الوالد', () => {
+  const context = vm.createContext({});
+  vm.runInNewContext(siblingEconomySource + String.fromCharCode(10) + harnessSource, context, { timeout: 10000 });
+  const result = vm.runInContext([
+    '(() => {',
+    ' state = makeState(); state.yearCount = 80; state.place = { unit: "ج.م" };',
+    ' const sibling = { id: "adult-child-parent", name: "أخ مستقل", relation: "الأخ", age: 45, reliability: 70, generosity: 60 };',
+    ' const child = { id: "adult-child-uni", name: "ابن بالغ", age: 21, birthYear: 58, lastAgeYear: 79, independent: true, independentYear: 76, economy: { educationPath: "university", educationStatus: "يدرس بالجامعة", job: "طالب جامعي", annualIncome: 30000, annualExpenses: 24000, savings: 5000, debt: 0, yearsWorked: 0, lastProcessedYear: 79, history: [] } };',
+    ' const profile = { savings: 12345, household: { status: "married", spouse: null, children: [child], lastProcessedYear: 79, history: [] } };',
+    ' const parentSavings = profile.savings;',
+    ' const first = siblingHouseholdAnnualEffects(sibling, profile, 80, 45);',
+    ' const childAfter = profile.household.children[0];',
+    ' const snapshot = JSON.stringify(childAfter.economy);',
+    ' const duplicate = siblingHouseholdAnnualEffects(sibling, profile, 80, 45);',
+    ' return { first, child: childAfter, snapshot, duplicate, unchanged: snapshot === JSON.stringify(profile.household.children[0].economy), parentSavings, afterParentSavings: profile.savings };',
+    '})()'
+  ].join(String.fromCharCode(10)), context, { timeout: 10000 });
+  assert.equal(result.child.age, 22);
+  assert.equal(result.child.economy.educationStatus, 'جامعي');
+  assert.equal(result.child.economy.job, result.child.economy.careerJob);
+  assert.ok(result.child.economy.annualIncome > 0);
+  assert.equal(result.child.economy.history.length, 1, 'an existing adult child must not receive retroactive financial history');
+  assert.ok(result.first.events.some(event => event.type === 'child_graduated'));
+  assert.equal(result.duplicate.duplicate, true);
+  assert.equal(result.unchanged, true, 'processing the same year twice must not duplicate child income or savings');
+  assert.equal(result.parentSavings, result.afterParentSavings, 'the adult child wallet must not change the sibling parent savings');
+});
+
+test('الحفظ القديم يهيئ أبناء الأشقاء البالغين بسجل مالي يبدأ من سنة التفعيل فقط', () => {
+  const context = vm.createContext({});
+  vm.runInNewContext(siblingEconomySource + String.fromCharCode(10) + harnessSource, context, { timeout: 10000 });
+  const result = vm.runInContext([
+    '(() => {',
+    ' state = makeState(); state.yearCount = 90; state.place = { unit: "ج.م" };',
+    ' const sibling = { id: "legacy-child-parent", name: "أخت", relation: "الأخت", age: 52 };',
+    ' const child = { id: "legacy-adult-child", name: "ابنة بالغة", age: 30, birthYear: 60, lastAgeYear: 89, independent: true };',
+    ' const profile = { savings: 40000, household: { status: "widowed", spouse: null, children: [child], lastProcessedYear: 89, history: [] } };',
+    ' const effects = siblingHouseholdAnnualEffects(sibling, profile, 90, 52);',
+    ' return { child: profile.household.children[0], effects, parentSavings: profile.savings };',
+    '})()'
+  ].join(String.fromCharCode(10)), context, { timeout: 10000 });
+  assert.ok(result.child.economy);
+  assert.equal(result.child.economy.lastProcessedYear, 90);
+  assert.equal(result.child.economy.history.length, 1);
+  assert.ok(result.child.economy.annualIncome > 0);
+  assert.equal(result.parentSavings, 40000);
+  assert.equal(result.effects.events.length, 0, 'legacy adult children must not receive invented graduation or employment events');
+});
+
+test('أبناء الأشقاء ينتقلون إلى التقاعد عند 65 عامًا مرة واحدة فقط', () => {
+  const context = vm.createContext({});
+  vm.runInNewContext(siblingEconomySource + String.fromCharCode(10) + harnessSource, context, { timeout: 10000 });
+  const result = vm.runInContext([
+    '(() => {',
+    ' state = makeState(); state.yearCount = 90; state.place = { unit: "ج.م" };',
+    ' const sibling = { id: "retirement-parent", name: "أخ", relation: "الأخ", age: 50 };',
+    ' const child = { id: "retirement-child", name: "ابن", age: 64, birthYear: 26, lastAgeYear: 89, independent: true, independentYear: 44, economy: { educationPath: "work", educationStatus: "تعليم ثانوي", job: "مساعد إداري", careerJob: "موظف", employmentState: "working", yearsWorked: 20, annualIncome: 80000, annualExpenses: 50000, savings: 10000, debt: 0, lastProcessedYear: 89, history: [] } };',
+    ' const profile = { savings: 20000, household: { status: "widowed", spouse: null, children: [child], lastProcessedYear: 89, history: [] } };',
+    ' const first = siblingHouseholdAnnualEffects(sibling, profile, 90, 50);',
+    ' const childAfter = profile.household.children[0];',
+    ' const second = siblingHouseholdAnnualEffects(sibling, profile, 90, 50);',
+    ' return { first, second, child: childAfter };',
+    '})()'
+  ].join(String.fromCharCode(10)), context, { timeout: 10000 });
+  assert.equal(result.child.age, 65);
+  assert.equal(result.child.economy.employmentState, 'retired');
+  assert.equal(result.child.economy.job, 'متقاعد');
+  assert.ok(result.first.events.some(event => event.type === 'child_retired'));
+  assert.equal(result.second.duplicate, true);
+});
 test('الحفظ القديم يهيئ أسرة الشقيق كحقل اختياري دون زواج أو أبناء رجعيين', () => {
   const context = vm.createContext({});
   vm.runInNewContext(siblingEconomySource + String.fromCharCode(10) + harnessSource, context, { timeout: 10000 });
