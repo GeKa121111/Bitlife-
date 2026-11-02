@@ -1797,7 +1797,7 @@ function ensureSiblingChildEconomy(relative,child,year){
  }));
  child.economy={
   educationPath,educationStatus,aptitude,job,careerJob,
-  employmentState:age>=65?'retired':'working',
+  employmentState:age>=65?(raw.employmentState==='working'?'working':'retired'):'working',
   yearsWorked:clamp(raw.yearsWorked??0,0,60),
   annualIncome:siblingSafeMoney(raw.annualIncome),annualExpenses:siblingSafeMoney(raw.annualExpenses),
   savings:siblingSafeMoney(raw.savings),debt:siblingSafeMoney(raw.debt),netWorth:siblingSafeSigned(raw.netWorth),
@@ -1828,7 +1828,8 @@ function siblingChildEconomicAnnualEffects(relative,child,year){
   economy.yearsWorked=clamp(economy.yearsWorked+1,0,60);
   baseSalary=siblingCareerBaseSalary(economy.careerJob);
   annualIncome=Math.round(baseSalary*(1+Math.min(.5,economy.yearsWorked*.025)));
-  if(age===22&&numericYear-(Number(child.independentYear)||numericYear)>=4&&economy.educationPath!=='work')events.push({type:'child_graduated'});
+  const independentYear=Number(child.independentYear);
+  if(age===22&&Number.isSafeInteger(independentYear)&&numericYear-independentYear===4&&economy.educationPath!=='work')events.push({type:'child_graduated'});
  }
  if(age>=65){
   economy.employmentState='retired';economy.job='متقاعد';
@@ -1875,7 +1876,7 @@ function ensureSiblingHousehold(relative,profile,year){
   return {id:String(child.id||('sibling-child-'+index)).slice(0,80),name:String(child.name||'طفل').slice(0,80),age,birthYear,
    lastAgeYear:Number.isSafeInteger(Number(child.lastAgeYear))?Number(child.lastAgeYear):numericYear,
    independent:child.independent===true||age>=18,
-   independentYear:Number.isSafeInteger(Number(child.independentYear))?Math.max(0,Number(child.independentYear)):(age>=18?Math.max(0,birthYear+18):null),
+   independentYear:child.independentYear!==null&&child.independentYear!==undefined&&Number.isSafeInteger(Number(child.independentYear))?Math.max(0,Number(child.independentYear)):(age>=18?Math.max(0,birthYear+18):null),
    economy:child.economy&&typeof child.economy==='object'&&!Array.isArray(child.economy)?child.economy:null};
  });
  const status=spouse?(spouse.deceased?'widowed':'married'):(raw.status==='widowed'?'widowed':'single');
