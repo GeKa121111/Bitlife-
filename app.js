@@ -5734,7 +5734,10 @@ function siblingManualRentalLeaseMenu(n,assetId){
  const active=!!(lease&&lease.status==='active'&&String(lease.tenantName||'').trim()&&Number(lease.endYear)>=year);
  const currentRent=siblingSafeMoney(lease&&lease.monthlyRent||asset.monthlyRent);
  const options=[];
- if(active){
+ const actionAlreadyUsed=!!(lease&&Number.isSafeInteger(Number(lease.lastOwnerActionYear))&&Number(lease.lastOwnerActionYear)>=year);
+ if(actionAlreadyUsed){
+  options.push(choice('🕒','تم تسجيل قرار لهذا العام','تم تنفيذ قرار لهذا العقار في السنة الحالية؛ يمكنك اتخاذ قرار جديد مع بداية السنة التالية.',()=>info('📄','قرار العقد محفوظ','لا يمكن تنفيذ أكثر من قرار يدوي للعقار نفسه في سنة اللعبة الواحدة.')));
+ }else if(active){
   if(lease.ownerManaged===true){
    if(Number(lease.endYear)<=year){
     options.push(choice('🔄','تجديد سنة دون زيادة','إيجار شهري '+cash(currentRent)+' يبدأ العقد المعدل من السنة القادمة.',()=>siblingManualRentalLeaseConfirm(n,assetId,'renew',1,10000)));
