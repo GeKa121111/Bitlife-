@@ -2127,7 +2127,7 @@ test('الأشقاء يمتلكون مساكن مستقلة وتدخل قيمت�
   assert.match(annual, /siblingPropertyAnnualUpkeep/);
   assert.match(annual, /siblingPropertyPurchaseDecision/);
   assert.match(annual, /siblingOwnedPropertyValue/);
-  assert.match(profile, /ownedAssets/);
+  assert.match(profile, /ownedProperties/);
   assert.match(familyTree, /عقارات/);
   assert.match(details, /مسكن مستقل/);
   assert.match(details, /propertyExpensesAnnual/);
