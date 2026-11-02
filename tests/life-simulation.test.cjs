@@ -1881,7 +1881,7 @@ test('حصة العقار تنتقل فعليًا إلى ملكية الابن �
     ' const afterDuplicate = economy.ownedProperties.length;',
     ' const annual = siblingChildEconomicAnnualEffects(sibling, heir, 81);',
     ' return { settlement, transferStatus: sibling.economicProfile.estate.assetTransferStatus, asset, record, duplicateRelease,',
-    '  afterDuplicate, annual, finalAsset: economy.ownedProperties[0], economy };',
+    '  afterDuplicate, annual, finalAsset: heir.economy.ownedProperties[0], economy: heir.economy };',
     '})()'
   ].join(String.fromCharCode(10)), context, { timeout: 10000 });
   assert.equal(result.settlement.duplicate, false);
