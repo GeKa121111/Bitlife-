@@ -2152,7 +2152,7 @@ test('العقارات الاستثمارية للأشقاء تحسب الإيج
   assert.match(rentalHelpers, /siblingRentalAnnualIncome/);
   assert.match(rentalHelpers, /vacancyLoss/);
   assert.match(rentalHelpers, /collectionLoss/);
-  assert.match(sale, /asset\.kind==='rental'\?0:1/);
+  assert.match(sale, /a\.kind==='rental'\?0:1/);
   assert.match(annual, /siblingRentalAnnualIncome/);
   assert.match(annual, /rentalIncomeTotal/);
   assert.match(annual, /rentalLossTotal/);
