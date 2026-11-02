@@ -926,8 +926,9 @@ test('متأخرات الإيجار تُحصّل تدريجيًا وتُسجل �
     ' const processed = advanceSiblingEconomies();',
     ' const year = profile.history[profile.history.length - 1];',
     " const rentalAfter = profile.ownedProperties.find(asset => asset.kind === 'rental');",
+    " const sameYearSettlement = siblingRentalArrearsSettlement({ id: 'same-year' }, 41, { kind: 'rental', lastRentYear: 41, rentArrears: 5000 });",
     ' const snapshot = JSON.stringify(profile); const duplicate = advanceSiblingEconomies();',
-    ' return { guard, processed, expectedRent, expectedRecovery, rental: rentalAfter, profile, year, snapshot, afterDuplicate: JSON.stringify(profile), bankBefore, bankAfter: state.bank, duplicate };',
+    ' return { guard, processed, expectedRent, expectedRecovery, sameYearSettlement, rental: rentalAfter, profile, year, snapshot, afterDuplicate: JSON.stringify(profile), bankBefore, bankAfter: state.bank, duplicate };',
     '})()'
   ].join(String.fromCharCode(10)), context, { timeout: 10000 });
   assert.ok(result.guard < 1000, 'the deterministic fixture should find a working sibling with collectible arrears');
@@ -941,7 +942,7 @@ test('متأخرات الإيجار تُحصّل تدريجيًا وتُسجل �
   assert.equal(result.year.rentArrearsAdded, result.expectedRent.collectionLoss);
   assert.equal(result.year.rentArrearsBalance, result.rental.rentArrears);
   assert.equal(result.profile.netWorth, result.profile.savings + result.profile.investmentBalance + result.profile.ownedProperties.reduce((sum, asset) => sum + asset.marketValue, 0) - result.profile.debt, 'uncollected arrears must not be counted as realized net worth');
-  assert.equal(siblingRentalArrearsSettlement({ id: 'same-year' }, 41, { kind: 'rental', lastRentYear: 41, rentArrears: 5000 }), null);
+  assert.equal(result.sameYearSettlement, null);
   assert.equal(result.duplicate, 0);
   assert.equal(result.snapshot, result.afterDuplicate, 'retrying the same year must not recover arrears or record rent twice');
   assert.equal(result.bankAfter, result.bankBefore, 'the active player bank must remain untouched');
