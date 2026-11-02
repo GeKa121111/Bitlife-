@@ -2336,6 +2336,27 @@ test('أبناء الأشقاء يواصلون التقدم بعد وفاة ال
 });
 
 
+test('الملكية العقارية الموروثة تنتقل لاقتصاد الابن عند الاستحقاق وتدخل في محاكاته السنوية', () => {
+  const release = functionSource('siblingReleaseChildInheritance', 'ensureSiblingChildEconomy');
+  const childEconomy = functionSource('siblingChildEconomicAnnualEffects', 'ensureSiblingHousehold');
+  const childPropertyEffects = functionSource('siblingChildInheritedPropertyAnnualEffects', 'siblingEstateSettlement');
+  const childTreeNode = functionSource('siblingHouseholdChildNode', 'familyTreeMenu');
+  assert.match(app, /function siblingNormalizeChildOwnedProperties\(raw,year\)/);
+  assert.match(app, /function siblingChildEstatePropertyPlan\(relative,child,economy,record,year\)/);
+  assert.match(app, /function siblingUpdateEstateAssetTransferStatus\(profile,household\)/);
+  assert.match(release, /siblingChildEstatePropertyPlan/);
+  assert.match(release, /assetsTransferredYear/);
+  assert.match(release, /transferredAssetIds/);
+  assert.match(childEconomy, /siblingChildInheritedPropertyAnnualEffects/);
+  assert.match(childPropertyEffects, /siblingMortgageAnnualDue/);
+  assert.match(childPropertyEffects, /siblingRentalAnnualIncome/);
+  assert.match(childTreeNode, /عقارات موروثة/);
+  assert.match(childTreeNode, /propertyDebt/);
+  assert.match(read('sw.js'), /hayah-shell-v115/);
+  assert.match(app, /const KEY = 'hekayat_hayah_save_v1';/);
+  assert.ok(app.includes('return {version:1,lifeId:'), 'legacy save must remain version 1');
+});
+
 test('وصية الأشقاء ودفتر التركة يظهران في الواجهة مع إبقاء نقل العقارات مرحلة منفصلة', () => {
   assert.match(app, /function siblingEstatePlanAction\(relative,mode\)/);
   assert.match(app, /function siblingEstateSettlement\(relative,profile,year\)/);
