@@ -879,7 +879,7 @@ test('الأشقاء يشترون عقارًا استثماريًا ويحصّل
     " const profile = { version: 1, currency: 'ج.م', job: 'محاسب', yearsWorked: 12, rank: 2, savings: 700000, debt: 0, investmentBalance: 0, investmentContribution: 0, investmentReturn: 0, investmentContributionsTotal: 0, investmentReturnsTotal: 0, investmentRisk: 'balanced', ownedProperties: [residence], propertyExpensesAnnual: 0, propertyPurchasesTotal: 240000, propertySalesTotal: 0, propertySaleCostsTotal: 0, annualIncome: 0, annualExpenses: 0, cumulativeIncome: 0, cumulativeExpenses: 0, lastProcessedYear: 39, employmentStatus: 'مستقر', employmentState: 'working', lastEmploymentEvent: '', history: [{ year: 39, age: 39, job: 'محاسب', income: 100000, expenses: 70000, savings: 700000, debt: 0, employmentState: 'working' }] };",
     " const sibling = { id: siblingId, name: 'مستثمر العائلة', relation: 'الأخ', age: 40, job: 'محاسب', smart: 80, reliability: 80, generosity: 50, economicProfile: profile };",
     " const projectedRental = { id: 'sibling-rental-' + siblingInvestmentHash(siblingId).toString(36), kind: 'rental', monthlyRent: Math.round(siblingRentalPropertyPrice(sibling) * .005), lastRentYear: 40 };",
-    " while (siblingEmploymentDecision(sibling, profile, 40, 40).state !== 'working' || siblingEmploymentDecision(sibling, profile, 41, 41).state !== 'working' || !siblingRentalPurchaseDecision(sibling, profile, 40, 40, profile.savings, profile.debt, 'working') || siblingRentalAnnualIncome(sibling, 41, projectedRental).totalLoss <= 0) { siblingId += 'x'; sibling.id = siblingId; projectedRental.id = 'sibling-rental-' + siblingInvestmentHash(siblingId).toString(36); }",
+    " while (siblingEmploymentDecision(sibling, profile, 40, 40).state !== 'working' || siblingEmploymentDecision(sibling, profile, 41, 41).state !== 'working' || !siblingRentalPurchaseDecision(sibling, profile, 40, 40, profile.savings, profile.debt, 'working') || siblingInvestmentHash(siblingId + '|lease-signing|41|' + projectedRental.id) % 10000 >= 8400 || siblingRentalAnnualIncome(sibling, 41, projectedRental).totalLoss <= 0) { siblingId += 'x'; sibling.id = siblingId; projectedRental.id = 'sibling-rental-' + siblingInvestmentHash(siblingId).toString(36); }",
     ' state.family = [sibling];',
     ' const bankBefore = state.bank;',
     ' const firstProcessed = advanceSiblingEconomies();',
@@ -906,7 +906,7 @@ test('الأشقاء يشترون عقارًا استثماريًا ويحصّل
   assert.equal(result.secondProcessed, 1);
   assert.equal(result.expectedRent.collected, result.profile.annualRentIncome);
   assert.equal(result.expectedRent.totalLoss, result.profile.rentalLossTotal);
-  assert.equal(result.expectedRent.leaseStatus, 'legacy', 'older rentals without lease data must keep the legacy income model');
+  assert.equal(result.expectedRent.leaseStatus, 'active', 'the selected fixture should sign a tenant in the first rental year');
   assert.ok(result.profile.annualRentIncome > 0);
   assert.ok(result.profile.rentalLossTotal > 0, 'vacancy and collection loss should be visible in the simulation');
   assert.equal(result.secondYear.rentIncome, result.expectedRent.collected);
@@ -1363,4 +1363,29 @@ test('دورة الإيجار تسجل توقيع العقد في تاريخ ا�
   assert.ok(result.profile.annualRentIncome > 0);
   assert.ok(result.profile.rentalArrearsAddedTotal > 0);
   assert.equal(result.bankAfter, result.bankBefore);
+});
+
+
+test('العقار الاستثماري القديم دون عقد يحتفظ بحساب الإشغال والتحصيل السابق', () => {
+  const context = vm.createContext({});
+  vm.runInNewContext(siblingEconomySource + String.fromCharCode(10) + harnessSource, context, { timeout: 10000 });
+  const result = vm.runInContext([
+    '(() => {',
+    ' state = makeState(); state.yearCount = 41;',
+    " const sibling = { id: 'legacy-lease-owner', name: 'مالك قديم', relation: 'الأخ', reliability: 60 };",
+    " const asset = { id: 'legacy-rental', kind: 'rental', purchaseYear: 30, monthlyRent: 700, lastRentYear: 40 };",
+    " const identity = sibling.id, assetId = asset.id, year = 41, totalPotential = 700 * 12;",
+    " const occupancyBps = 7000 + siblingInvestmentHash(identity + '|rental-occupancy|' + year + '|' + assetId) % 3001;",
+    " const collectionBps = 8500 + siblingInvestmentHash(identity + '|rental-collection|' + year + '|' + assetId) % 1501;",
+    " const potential = Math.round(totalPotential * occupancyBps / 10000);",
+    " const expectedCollected = Math.round(potential * collectionBps / 10000);",
+    " const rent = siblingRentalAnnualIncome(sibling, year, asset);",
+    " return { rent, asset, occupancyBps, collectionBps, expectedCollected };",
+    '})()'
+  ].join(String.fromCharCode(10)), context, { timeout: 10000 });
+  assert.equal(result.rent.leaseStatus, 'legacy');
+  assert.equal(result.rent.occupancyBps, result.occupancyBps);
+  assert.equal(result.rent.collectionBps, result.collectionBps);
+  assert.equal(result.rent.collected, result.expectedCollected);
+  assert.equal(result.asset.lease, undefined, 'legacy rental records must remain unmodified');
 });
