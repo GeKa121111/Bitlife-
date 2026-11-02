@@ -27,7 +27,11 @@ const propertyOwnershipSource = [
   extractFunction('recordBeneficiaryWalletPropertyExpense'),
   extractFunction('classifyFamilyPropertyRentResult'),
   extractFunction('distributeFamilyPropertyRent'),
-  extractFunction('distributeFamilyPropertyExpense')
+  extractFunction('distributeFamilyPropertyExpense'),
+  extractFunction('familyPropertyTaxRateBps'),
+  extractFunction('formatFamilyPropertyTaxRate'),
+  extractFunction('calculateFamilyPropertyAnnualTax'),
+  extractFunction('setFamilyPropertyTaxRateBps')
 ].join('\n');
 const combatStart = app.indexOf('function normalizeCombatInjuryYears(');
 const combatEnd = app.indexOf('const combatMoveMasteryThresholds=', combatStart);
@@ -292,7 +296,7 @@ function runCohort(count) {
 }
 `;
 
-test('الصيانة السنوية للعقار المشترك تتوزع تلقائيًا حسب الملكية دون خصم مزدوج', () => {
+test('الصيانة والضريبة السنوية للعقار المشترك تتوزعان حسب الملكية دون خصم مزدوج', () => {
   const context = vm.createContext({});
   vm.runInContext(combatRecoverySource + '\n' + propertyOwnershipSource + '\n' + ageSource + '\n' + harnessSource, context, {
     timeout: 120000,
@@ -326,6 +330,7 @@ test('الصيانة السنوية للعقار المشترك تتوزع تل�
       currency: 'جنيه',
       marketValue: 1000000,
       upkeep: 20000,
+      annualTaxRateBps: 50,
       encumberedShare: 0,
       auditStatus: 'balanced',
       owners: [
@@ -355,20 +360,29 @@ test('الصيانة السنوية للعقار المشترك تتوزع تل�
     advanceAge();
     const bankAfterYear = state.bank;
     const walletAfterYear = wallet.balance;
-    const duplicate = distributeFamilyPropertyExpense(state.assets[0], 20000, {
+    const taxAssessment = calculateFamilyPropertyAnnualTax(record);
+    const upkeepDuplicate = distributeFamilyPropertyExpense(state.assets[0], 20000, {
       action: 'annual-upkeep',
       reason: 'الصيانة السنوية للعقار'
+    });
+    const taxDuplicate = distributeFamilyPropertyExpense(state.assets[0], taxAssessment.amount, {
+      action: 'annual-property-tax',
+      reason: 'الضريبة العقارية السنوية'
     });
     return {
       age: state.age,
       yearCount: state.yearCount,
       bankAfterYear,
       walletAfterYear,
+      marketValue: record.marketValue,
+      taxRateBps: taxAssessment.rateBps,
+      taxAmount: taxAssessment.amount,
       propertyExpenseTotal: record.propertyExpenseTotal,
       activePaid: record.propertyExpenseActivePaidTotal,
       walletPaid: record.propertyExpenseWalletPaidTotal,
       expenseTransactions: record.transactions.filter(item => item && item.type === 'property_expense').length,
-      duplicateReason: duplicate.reason,
+      upkeepDuplicateReason: upkeepDuplicate.reason,
+      taxDuplicateReason: taxDuplicate.reason,
       bankAfterDuplicate: state.bank,
       walletAfterDuplicate: wallet.balance
     };
@@ -376,16 +390,54 @@ test('الصيانة السنوية للعقار المشترك تتوزع تل�
 
   assert.equal(result.age, 41);
   assert.equal(result.yearCount, 41);
-  assert.equal(result.bankAfterYear, 23620, 'bank should pay living costs plus only the active owner share');
-  assert.equal(result.walletAfterYear, 20000, 'the sibling wallet should pay its own 50% share');
-  assert.equal(result.propertyExpenseTotal, 20000);
-  assert.equal(result.activePaid, 10000);
-  assert.equal(result.walletPaid, 10000);
-  assert.equal(result.expenseTransactions, 1);
-  assert.equal(result.duplicateReason, 'duplicate_transaction');
+  assert.equal(result.marketValue, 1025000);
+  assert.equal(result.taxRateBps, 50);
+  assert.equal(result.taxAmount, 5125);
+  assert.equal(result.bankAfterYear, 21058, 'the active owner pays only their maintenance and tax shares plus living costs');
+  assert.equal(result.walletAfterYear, 17437, 'the sibling wallet pays only its own maintenance and tax shares');
+  assert.equal(result.propertyExpenseTotal, 25125);
+  assert.equal(result.activePaid, 12562);
+  assert.equal(result.walletPaid, 12563);
+  assert.equal(result.expenseTransactions, 2);
+  assert.equal(result.upkeepDuplicateReason, 'duplicate_transaction');
+  assert.equal(result.taxDuplicateReason, 'duplicate_transaction');
   assert.equal(result.bankAfterDuplicate, result.bankAfterYear);
   assert.equal(result.walletAfterDuplicate, result.walletAfterYear);
 });
+
+test('الضريبة العقارية اختيارية للحفظ القديم وترفض النسب أو سجلات الملكية غير السليمة', () => {
+  const context = vm.createContext({});
+  vm.runInContext(propertyOwnershipSource, context, { timeout: 10000 });
+  const result = vm.runInContext(`(() => {
+    const legacy = { auditStatus: 'balanced', marketValue: 1000000 };
+    const defaultTax = calculateFamilyPropertyAnnualTax(legacy);
+    const configured = setFamilyPropertyTaxRateBps(legacy, 50);
+    const assessed = calculateFamilyPropertyAnnualTax(legacy);
+    const invalidRate = setFamilyPropertyTaxRateBps(legacy, 201);
+    const invalidAuditRecord = { auditStatus: 'needs_review', marketValue: 1000000, annualTaxRateBps: 50 };
+    const blockedAssessment = calculateFamilyPropertyAnnualTax(invalidAuditRecord);
+    const blockedUpdate = setFamilyPropertyTaxRateBps(invalidAuditRecord, 25);
+    return {
+      defaultRate: defaultTax.rateBps,
+      defaultAmount: defaultTax.amount,
+      configuredOk: configured.ok,
+      configuredAmount: assessed.amount,
+      invalidRateOk: invalidRate.ok,
+      retainedRate: legacy.annualTaxRateBps,
+      blockedReason: blockedAssessment.reason,
+      blockedUpdateReason: blockedUpdate.reason
+    };
+  })()`, context);
+  assert.equal(result.defaultRate, 0);
+  assert.equal(result.defaultAmount, 0);
+  assert.equal(result.configuredOk, true);
+  assert.equal(result.configuredAmount, 5000);
+  assert.equal(result.invalidRateOk, false);
+  assert.equal(result.retainedRate, 50);
+  assert.equal(result.blockedReason, 'ownership_audit_incomplete');
+  assert.equal(result.blockedUpdateReason, 'ownership_audit_incomplete');
+});
+
 
 test('محاكاة 10,000 مسار تقدم سنوي حتمي تتحقق من ثوابت العمر والمال والصحة', { timeout: 120000 }, () => {
   const context = vm.createContext({});

@@ -641,6 +641,23 @@ async function run() {
     assert.match(familyPropertyOwnershipText, /الأخت مريم/);
     assert.match(familyPropertyOwnershipText, /50%/);
     assert.match(familyPropertyOwnershipText, /القيمة الكاملة/);
+    await page.locator('#modalRoot .choice').filter({ hasText: 'سياسة الضريبة العقارية' }).click();
+    const taxPolicyDialog = await page.locator('#modalRoot [role="dialog"]').textContent();
+    assert.match(taxPolicyDialog, /ليست معدلات قانونية/);
+    await page.locator('#modalRoot .choice').filter({ hasText: '0.50%' }).click();
+    const selectedTaxRate = await page.evaluate(() => {
+      const saved = JSON.parse(localStorage.getItem('hekayat_hayah_save_v1') || 'null');
+      const record = (saved.legacy.familyPropertyOwnership || []).find(item => item.familyAssetId === 'browser-family-home');
+      return record && record.annualTaxRateBps;
+    });
+    assert.equal(selectedTaxRate, 50, 'the selected optional tax policy should persist in the legacy-compatible property record');
+    await page.evaluate(() => {
+      const key = 'hekayat_hayah_save_v1';
+      const saved = JSON.parse(localStorage.getItem(key) || 'null');
+      const record = (saved.legacy.familyPropertyOwnership || []).find(item => item.familyAssetId === 'browser-family-home');
+      record.annualTaxRateBps = 0;
+      localStorage.setItem(key, JSON.stringify(saved));
+    });
     await page.evaluate(() => {
       const key = 'hekayat_hayah_save_v1';
       const saved = JSON.parse(localStorage.getItem(key) || 'null');
