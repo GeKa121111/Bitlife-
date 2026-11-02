@@ -66,6 +66,7 @@ const siblingEconomySource = [
   extractFunction('siblingEstatePlanLabel'),
   extractFunction('siblingEstateBeneficiaryShares'),
   extractFunction('siblingEstatePlanAction'),
+  extractFunction('siblingAllocateEstateAmount'),
   extractFunction('siblingEstateAssetSnapshot'),
   extractFunction('siblingEstateSettlement'),
   extractFunction('ensureSiblingEconomicProfile'),
@@ -1812,4 +1813,43 @@ test('العجز النقدي في التركة يوزع الدين غير ال�
   assert.equal(result.estate.securedDebtRetained, 30000);
   assert.equal(result.heirDebt, 50000);
   assert.equal(result.estate.distributedCash, 0);
+});
+
+test('حصص العقارات والتمويل ومتأخرات الإيجار تتوزع دون فقد أو خلق قيمة بين ثلاثة ورثة', () => {
+  const context = vm.createContext({});
+  vm.runInNewContext(siblingEconomySource + String.fromCharCode(10) + harnessSource, context, { timeout: 10000 });
+  const result = vm.runInContext([
+    '(() => {',
+    ' state = makeState(); state.yearCount = 70; state.place = { unit: "ج.م" };',
+    ' const children = [',
+    '  { id: "oldest", name: "الابن الأكبر", age: 16, birthYear: 54, lastAgeYear: 69, independent: false },',
+    '  { id: "middle", name: "الابن الأوسط", age: 15, birthYear: 55, lastAgeYear: 69, independent: false },',
+    '  { id: "youngest", name: "الابن الأصغر", age: 14, birthYear: 56, lastAgeYear: 69, independent: false }',
+    ' ];',
+    ' const sibling = { id: "odd-value-estate", name: "شقيق متوفى", relation: "الأخ", age: 70, deceased: true, economicProfile: {',
+    '  savings: 0, investmentBalance: 0, debt: 0, household: { status: "single", lastProcessedYear: 69, history: [], children },',
+    '  ownedProperties: [{ id: "odd-rental", kind: "rental", label: "عقار بقيم غير قابلة للقسمة", marketValue: 101, rentArrears: 11, mortgage: { balance: 17, arrears: 7 } }] } };',
+    ' const settled = siblingEstateSettlement(sibling, sibling.economicProfile, 70);',
+    ' const heirs = sibling.economicProfile.household.children;',
+    ' const claims = heirs.map(child => child.inheritance.records[0].assetClaims[0]);',
+    ' const sums = {',
+    '  marketValue: claims.reduce((sum, item) => sum + item.marketValueShare, 0),',
+    '  mortgageBalance: claims.reduce((sum, item) => sum + item.mortgageBalanceShare, 0),',
+    '  mortgageArrears: claims.reduce((sum, item) => sum + item.mortgageArrearsShare, 0),',
+    '  rentArrears: claims.reduce((sum, item) => sum + item.rentArrearsShare, 0)',
+    ' };',
+    ' const duplicate = siblingEstateSettlement(sibling, sibling.economicProfile, 70);',
+    ' return { settled, duplicate, shares: settled.beneficiaries.map(item => item.shareBps), claims, sums,',
+    '  recordCounts: heirs.map(child => child.inheritance.records.length), retained: sibling.economicProfile.estate.retainedAssets[0] };',
+    '})()'
+  ].join(String.fromCharCode(10)), context, { timeout: 10000 });
+  assert.equal(result.settled.duplicate, false);
+  assert.deepEqual(Array.from(result.shares), [3334, 3333, 3333]);
+  assert.deepEqual(JSON.parse(JSON.stringify(result.sums)), {
+    marketValue: 101, mortgageBalance: 17, mortgageArrears: 7, rentArrears: 11
+  });
+  assert.ok(result.claims.every(item => Object.values(item).filter(value => typeof value === 'number').every(value => Number.isSafeInteger(value) && value >= 0)));
+  assert.equal(result.duplicate.duplicate, true, 'the same estate cannot allocate property claims a second time');
+  assert.deepEqual(Array.from(result.recordCounts), [1, 1, 1]);
+  assert.equal(result.retained.marketValue, 101, 'the deceased sibling property remains an unchanged audit snapshot');
 });
