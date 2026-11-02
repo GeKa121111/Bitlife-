@@ -2180,7 +2180,7 @@ test('دفتر متأخرات إيجار الأشقاء يحفظ الرصيد و
   assert.match(profile, /rentArrearsAddedTotal/);
   assert.match(profile, /rentArrearsCollectedTotal/);
   assert.match(profile, /rentalArrearsWrittenOffTotal/);
-  assert.match(details, /متأخرات قائمة/);
+  assert.match(details, /متأخرات إيجار قائمة/);
   assert.match(details, /متأخرات غير المحصلة لا تدخل في صافي الثروة/);
   assert.match(familyTree, /متأخرات إيجار/);
   assert.match(read('sw.js'), /hayah-shell-v108/);
