@@ -2041,7 +2041,8 @@ test('الضريبة العقارية اختيارية وتستخدم دفتر �
   assert.match(setter, /ownership_audit_incomplete/);
   assert.match(details, /سياسة الضريبة العقارية/);
   assert.match(details, /معدل محاكاة اختياري وليس نسبة قانونية/);
-  assert.match(policy, /0\.50%/);
+  assert.match(policy, /rates=\[0,25,50,100,150,200\]/);
+  assert.match(policy, /formatFamilyPropertyTaxRate\(rateBps\)/);
   assert.match(policy, /ليست معدلات قانونية لأي بلد/);
   assert.match(annualAge, /action:'annual-property-tax'/);
   assert.match(annualAge, /distributeFamilyPropertyExpense/);
