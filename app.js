@@ -2004,9 +2004,6 @@ function ensureSiblingHousehold(relative,profile,year){
   job:String(spouseRaw.job||'موظف').slice(0,64),annualIncome:siblingSafeMoney(spouseRaw.annualIncome),
   marriedYear:clamp(spouseRaw.marriedYear??numericYear,0,9999),
   lastAgeYear:Number.isSafeInteger(Number(spouseRaw.lastAgeYear))?Number(spouseRaw.lastAgeYear):numericYear,
-  inheritance:siblingNormalizeInheritanceRecords(spouseRaw.inheritance),
-  inheritanceCashBalance:siblingSafeMoney(spouseRaw.inheritanceCashBalance),
-  inheritanceDebtBalance:siblingSafeMoney(spouseRaw.inheritanceDebtBalance),
   deceased:spouseRaw.deceased===true
  }:null;
  const children=(Array.isArray(raw.children)?raw.children:[]).slice(0,4).filter(child=>child&&typeof child==='object'&&!Array.isArray(child)).map((child,index)=>{
@@ -2287,7 +2284,8 @@ function siblingChildEstatePropertyPlan(relative,child,economy,record,year){
 function siblingUpdateEstateAssetTransferStatus(profile,household){
  const estate=profile&&profile.estate;if(!estate||typeof estate!=='object'||estate.settled!==true)return null;
  const children=household&&Array.isArray(household.children)?household.children:[],owners=children.slice();
- if(household&&household.spouse)owners.push(household.spouse);
+ const hasSpouseBeneficiary=Array.isArray(estate.beneficiaries)&&estate.beneficiaries.some(item=>item.beneficiaryType==='spouse');
+ if(hasSpouseBeneficiary&&household&&household.spouse)owners.push(household.spouse);
  const records=owners.flatMap(owner=>{owner.inheritance=siblingNormalizeInheritanceRecords(owner.inheritance);return owner.inheritance.records.filter(record=>record.estateId===String(estate.id||''));});
  const totalClaims=records.reduce((sum,record)=>sum+(record.assetClaims||[]).length,0),pendingClaims=records.reduce((sum,record)=>sum+(record.assetsPending?record.assetClaims.length:0),0);
  estate.assetClaimsCount=totalClaims;estate.assetClaimsPendingCount=pendingClaims;estate.assetClaimsTransferredCount=Math.max(0,totalClaims-pendingClaims);
@@ -2346,6 +2344,11 @@ function siblingEstateSettlement(relative,profile,year){
  if(!profile.household||typeof profile.household!=='object'||Array.isArray(profile.household))return null;
  const household=ensureSiblingHousehold(relative,profile,numericYear);household.ownerDeceased=true;
  const children=Array.isArray(household.children)?household.children:[],survivingSpouse=household.spouse&&!household.spouse.deceased?household.spouse:null;
+ if(survivingSpouse){
+  survivingSpouse.inheritance=siblingNormalizeInheritanceRecords(survivingSpouse.inheritance);
+  survivingSpouse.inheritanceCashBalance=siblingSafeMoney(survivingSpouse.inheritanceCashBalance);
+  survivingSpouse.inheritanceDebtBalance=siblingSafeMoney(survivingSpouse.inheritanceDebtBalance);
+ }
  const assets=(Array.isArray(profile.ownedProperties)?profile.ownedProperties:[]).filter(asset=>asset&&typeof asset==='object'&&!Array.isArray(asset)).map(siblingEstateAssetSnapshot);
  const securedDebt=siblingProfileMortgageLiability(profile),totalDebt=siblingSafeMoney(profile.debt),unsecuredDebt=Math.max(0,totalDebt-securedDebt),liquidAssets=siblingSafeMoney(profile.savings+profile.investmentBalance);
  const identity=String(relative.id||relative.name||relative.relation||'sibling').slice(0,160),estateId='sibling-estate-'+siblingInvestmentHash(identity+'|estate|'+numericYear).toString(36),plan=siblingEstatePlanNormalize(profile.estatePlan,numericYear);
