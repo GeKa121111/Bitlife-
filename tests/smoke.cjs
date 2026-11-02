@@ -690,3 +690,5 @@ assert.match(app, /function siblingManualRentalLeaseQuote\(/, 'owners should be 
 assert.match(app, /function siblingManualRentalLeaseAction\(/, 'manual lease changes should be saved to the sibling asset');
 assert.match(app, /function siblingManualRentalLeaseMenu\(/, 'the sibling finance screen should expose contract management');
 assert.match(app, /ownerManaged:true/, 'manual leases should stop automatic renewal and tenant assignment');
+
+assert.match(app, /actionAlreadyUsed/, 'the lease menu should not offer a second owner action in the same game year');
