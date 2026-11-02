@@ -2004,6 +2004,9 @@ function ensureSiblingHousehold(relative,profile,year){
   job:String(spouseRaw.job||'موظف').slice(0,64),annualIncome:siblingSafeMoney(spouseRaw.annualIncome),
   marriedYear:clamp(spouseRaw.marriedYear??numericYear,0,9999),
   lastAgeYear:Number.isSafeInteger(Number(spouseRaw.lastAgeYear))?Number(spouseRaw.lastAgeYear):numericYear,
+  ...(spouseRaw.inheritance&&typeof spouseRaw.inheritance==='object'?{inheritance:siblingNormalizeInheritanceRecords(spouseRaw.inheritance)}:{}),
+  ...(Object.prototype.hasOwnProperty.call(spouseRaw,'inheritanceCashBalance')?{inheritanceCashBalance:siblingSafeMoney(spouseRaw.inheritanceCashBalance)}:{}),
+  ...(Object.prototype.hasOwnProperty.call(spouseRaw,'inheritanceDebtBalance')?{inheritanceDebtBalance:siblingSafeMoney(spouseRaw.inheritanceDebtBalance)}:{}),
   deceased:spouseRaw.deceased===true
  }:null;
  const children=(Array.isArray(raw.children)?raw.children:[]).slice(0,4).filter(child=>child&&typeof child==='object'&&!Array.isArray(child)).map((child,index)=>{
@@ -2137,34 +2140,26 @@ function siblingEstatePlanNormalize(raw,year){
 function siblingEstatePlanLabel(mode){
  return ({equal_children:'بالتساوي بين الأبناء',eldest_child:'للأكبر سنًا',youngest_child:'للأصغر سنًا'})[mode]||'بالتساوي بين الأبناء';
 }
-function siblingEstateBeneficiaryShares(children,mode){
+function siblingEstateBeneficiaryShares(children,mode,totalBps=10000){
  const unique=[],seen=new Set();
- (Array.isArray(children)?children:[]).forEach(child=>{
-  if(!child||typeof child!=='object'||Array.isArray(child))return;
-  const id=String(child.id||child.name||'').slice(0,80);
-  if(!id||seen.has(id))return;
-  seen.add(id);unique.push(child);
- });
- unique.sort((a,b)=>{
-  const birthA=Number.isSafeInteger(Number(a.birthYear))?Number(a.birthYear):9999;
-  const birthB=Number.isSafeInteger(Number(b.birthYear))?Number(b.birthYear):9999;
-  return birthA-birthB||String(a.id||a.name||'').localeCompare(String(b.id||b.name||''),'ar');
- });
+ (Array.isArray(children)?children:[]).forEach(child=>{if(!child||typeof child!=='object'||Array.isArray(child))return;const id=String(child.id||child.name||'').slice(0,80);if(!id||seen.has(id))return;seen.add(id);unique.push(child);});
+ unique.sort((a,b)=>{const birthA=Number.isSafeInteger(Number(a.birthYear))?Number(a.birthYear):9999;const birthB=Number.isSafeInteger(Number(b.birthYear))?Number(b.birthYear):9999;return birthA-birthB||String(a.id||a.name||'').localeCompare(String(b.id||b.name||''),'ar');});
  if(!unique.length)return [];
- if(mode==='eldest_child')return [{child:unique[0],shareBps:10000}];
- if(mode==='youngest_child')return [{child:unique[unique.length-1],shareBps:10000}];
- const base=Math.floor(10000/unique.length),remainder=10000-base*unique.length;
+ const target=clamp(totalBps,0,10000);if(target<=0)return [];
+ if(mode==='eldest_child')return [{child:unique[0],shareBps:target}];
+ if(mode==='youngest_child')return [{child:unique[unique.length-1],shareBps:target}];
+ const base=Math.floor(target/unique.length),remainder=target-base*unique.length;
  return unique.map((child,index)=>({child,shareBps:base+(index===0?remainder:0)}));
 }
 function siblingEstatePlanAction(relative,mode){
  if(!relative||relative.deceased||Math.max(0,Number(relative.age)||0)<18||!['equal_children','eldest_child','youngest_child'].includes(mode))return false;
- const profile=ensureSiblingEconomicProfile(relative);
- if(!profile||profile.estate&&profile.estate.settled)return false;
+ const profile=ensureSiblingEconomicProfile(relative);if(!profile||profile.estate&&profile.estate.settled)return false;
  const household=profile.household&&typeof profile.household==='object'?profile.household:null;
- if(!household||!Array.isArray(household.children)||!household.children.length)return false;
+ const children=household&&Array.isArray(household.children)?household.children:[];
+ const survivingSpouse=household&&household.spouse&&!household.spouse.deceased;
+ if(!household||(!children.length&&!survivingSpouse))return false;
  const year=Number.isSafeInteger(Number(state&&state.yearCount))?Math.max(0,Number(state.yearCount)):Math.max(0,Number(relative.age)||0);
- profile.estatePlan={mode,updatedYear:year};
- return true;
+ profile.estatePlan={mode,updatedYear:year};return true;
 }
 function siblingAllocateEstateAmount(totalAmount,beneficiaryShares){
  const amount=siblingSafeMoney(totalAmount),shares=Array.isArray(beneficiaryShares)?beneficiaryShares:[];
@@ -2290,28 +2285,22 @@ function siblingChildEstatePropertyPlan(relative,child,economy,record,year){
  return {ok:true,ownedProperties:next,transferIds,propertyCount};
 }
 function siblingUpdateEstateAssetTransferStatus(profile,household){
- const estate=profile&&profile.estate;
- if(!estate||typeof estate!=='object'||estate.settled!==true)return null;
- const children=household&&Array.isArray(household.children)?household.children:[];
- const records=children.flatMap(child=>{
-  child.inheritance=siblingNormalizeInheritanceRecords(child.inheritance);
-  return child.inheritance.records.filter(record=>record.estateId===String(estate.id||''));
- });
- const totalClaims=records.reduce((sum,record)=>sum+(record.assetClaims||[]).length,0);
- const pendingClaims=records.reduce((sum,record)=>sum+(record.assetsPending?record.assetClaims.length:0),0);
- estate.assetClaimsCount=totalClaims;estate.assetClaimsPendingCount=pendingClaims;
- estate.assetClaimsTransferredCount=Math.max(0,totalClaims-pendingClaims);
+ const estate=profile&&profile.estate;if(!estate||typeof estate!=='object'||estate.settled!==true)return null;
+ const children=household&&Array.isArray(household.children)?household.children:[],owners=children.slice();
+ const hasSpouseBeneficiary=Array.isArray(estate.beneficiaries)&&estate.beneficiaries.some(item=>item.beneficiaryType==='spouse');
+ if(hasSpouseBeneficiary&&household&&household.spouse)owners.push(household.spouse);
+ const records=owners.flatMap(owner=>{owner.inheritance=siblingNormalizeInheritanceRecords(owner.inheritance);return owner.inheritance.records.filter(record=>record.estateId===String(estate.id||''));});
+ const totalClaims=records.reduce((sum,record)=>sum+(record.assetClaims||[]).length,0),pendingClaims=records.reduce((sum,record)=>sum+(record.assetsPending?record.assetClaims.length:0),0);
+ estate.assetClaimsCount=totalClaims;estate.assetClaimsPendingCount=pendingClaims;estate.assetClaimsTransferredCount=Math.max(0,totalClaims-pendingClaims);
  estate.assetTransferStatus=totalClaims===0?'none':pendingClaims===0?'transferred':estate.assetClaimsTransferredCount>0?'partially_transferred':'pending';
- const byId=new Map(records.map(record=>[record.estateId+'|'+(record.assetClaims[0]&&record.assetClaims[0].assetId||''),record]));
  estate.beneficiaries=(Array.isArray(estate.beneficiaries)?estate.beneficiaries:[]).map(item=>{
-  const child=children.find(candidate=>String(candidate.id||candidate.name||'')===String(item.beneficiaryId||''));
-  const childRecords=child&&child.inheritance?child.inheritance.records.filter(record=>record.estateId===String(estate.id||'')):[];
-  const total=childRecords.reduce((sum,record)=>sum+record.assetClaims.length,0);
-  const pending=childRecords.reduce((sum,record)=>sum+(record.assetsPending?record.assetClaims.length:0),0);
+  const beneficiaryId=String(item.beneficiaryId||''),isSpouse=item.beneficiaryType==='spouse'||!!(household&&household.spouse&&String(household.spouse.id||household.spouse.name||'')===beneficiaryId);
+  const owner=isSpouse?(household&&household.spouse):children.find(candidate=>String(candidate.id||candidate.name||'')===beneficiaryId);
+  const ownerRecords=owner&&owner.inheritance?owner.inheritance.records.filter(record=>record.estateId===String(estate.id||'')):[];
+  const total=ownerRecords.reduce((sum,record)=>sum+record.assetClaims.length,0),pending=ownerRecords.reduce((sum,record)=>sum+(record.assetsPending?record.assetClaims.length:0),0);
   return {...item,assetsTransferredCount:Math.max(0,total-pending),assetsPendingCount:pending,assetsPending:pending>0};
  });
- if(pendingClaims===0&&totalClaims>0)estate.status='cash_distributed_assets_transferred';
- else if(estate.assetClaimsTransferredCount>0)estate.status='cash_distributed_assets_partially_transferred';
+ if(pendingClaims===0&&totalClaims>0)estate.status='cash_distributed_assets_transferred';else if(estate.assetClaimsTransferredCount>0)estate.status='cash_distributed_assets_partially_transferred';
  return estate;
 }
 function siblingChildInheritedPropertyAnnualEffects(relative,child,economy,year){
@@ -2356,75 +2345,70 @@ function siblingEstateSettlement(relative,profile,year){
  if(!relative||!relative.deceased||!profile||typeof profile!=='object'||Array.isArray(profile)||!Number.isSafeInteger(numericYear)||numericYear<0)return null;
  if(profile.estate&&typeof profile.estate==='object'&&profile.estate.settled===true)return {duplicate:true,settled:true,estate:profile.estate};
  if(!profile.household||typeof profile.household!=='object'||Array.isArray(profile.household))return null;
- const household=ensureSiblingHousehold(relative,profile,numericYear);
- household.ownerDeceased=true;
- const children=Array.isArray(household.children)?household.children:[];
+ const household=ensureSiblingHousehold(relative,profile,numericYear);household.ownerDeceased=true;
+ const children=Array.isArray(household.children)?household.children:[],survivingSpouse=household.spouse&&!household.spouse.deceased?household.spouse:null;
+ if(survivingSpouse){
+  survivingSpouse.inheritance=siblingNormalizeInheritanceRecords(survivingSpouse.inheritance);
+  survivingSpouse.inheritanceCashBalance=siblingSafeMoney(survivingSpouse.inheritanceCashBalance);
+  survivingSpouse.inheritanceDebtBalance=siblingSafeMoney(survivingSpouse.inheritanceDebtBalance);
+ }
  const assets=(Array.isArray(profile.ownedProperties)?profile.ownedProperties:[]).filter(asset=>asset&&typeof asset==='object'&&!Array.isArray(asset)).map(siblingEstateAssetSnapshot);
- const securedDebt=siblingProfileMortgageLiability(profile),totalDebt=siblingSafeMoney(profile.debt);
- const unsecuredDebt=Math.max(0,totalDebt-securedDebt),liquidAssets=siblingSafeMoney(profile.savings+profile.investmentBalance);
- const identity=String(relative.id||relative.name||relative.relation||'sibling').slice(0,160);
- const estateId='sibling-estate-'+siblingInvestmentHash(identity+'|estate|'+numericYear).toString(36);
- const plan=siblingEstatePlanNormalize(profile.estatePlan,numericYear);
- if(!children.length){
-  profile.estate={version:1,id:estateId,settled:true,settledYear:numericYear,status:'unclaimed_no_children',planMode:plan.mode,
-   liquidAssetsBefore:liquidAssets,unsecuredDebtBefore:unsecuredDebt,unsecuredDebtPaid:0,unsecuredDebtRemaining:unsecuredDebt,
-   securedDebtRetained:securedDebt,distributedCash:0,retainedCash:liquidAssets,retainedAssets:assets,assetTransferStatus:assets.length?'pending':'none',beneficiaries:[]};
+ const securedDebt=siblingProfileMortgageLiability(profile),totalDebt=siblingSafeMoney(profile.debt),unsecuredDebt=Math.max(0,totalDebt-securedDebt),liquidAssets=siblingSafeMoney(profile.savings+profile.investmentBalance);
+ const identity=String(relative.id||relative.name||relative.relation||'sibling').slice(0,160),estateId='sibling-estate-'+siblingInvestmentHash(identity+'|estate|'+numericYear).toString(36),plan=siblingEstatePlanNormalize(profile.estatePlan,numericYear);
+ if(!children.length&&!survivingSpouse){
+  profile.estate={version:1,id:estateId,settled:true,settledYear:numericYear,status:'unclaimed_no_children',planMode:plan.mode,liquidAssetsBefore:liquidAssets,
+   unsecuredDebtBefore:unsecuredDebt,unsecuredDebtPaid:0,unsecuredDebtRemaining:unsecuredDebt,securedDebtRetained:securedDebt,distributedCash:0,retainedCash:liquidAssets,
+   retainedAssets:assets,assetTransferStatus:assets.length?'pending':'none',beneficiaries:[]};
   return {duplicate:false,settled:true,estate:profile.estate,beneficiaries:[],distributedCash:0,unsecuredDebtPaid:0};
  }
- const shares=siblingEstateBeneficiaryShares(children,plan.mode);
- if(!shares.length)return null;
- const assetAllocations=assets.map(asset=>({
-  asset,
-  marketValue:siblingAllocateEstateAmount(asset.marketValue,shares),
-  upkeep:siblingAllocateEstateAmount(asset.upkeep,shares),
-  monthlyRent:siblingAllocateEstateAmount(asset.monthlyRent,shares),
-  mortgageBalance:siblingAllocateEstateAmount(asset.mortgageBalance,shares),
-  mortgageArrears:siblingAllocateEstateAmount(asset.mortgageArrears,shares),
-  mortgageAnnualPayment:siblingAllocateEstateAmount(asset.mortgageAnnualPayment,shares),
-  rentArrears:siblingAllocateEstateAmount(asset.rentArrears,shares)
- }));
+ const spouseShareBps=survivingSpouse?(children.length?2500:10000):0;
+ const childShares=children.length?siblingEstateBeneficiaryShares(children,plan.mode,10000-spouseShareBps):[];
+ const shares=[...(survivingSpouse?[{kind:'spouse',beneficiary:survivingSpouse,shareBps:spouseShareBps}]:[]),...childShares.map(item=>({kind:'child',beneficiary:item.child,shareBps:item.shareBps}))];
+ if(!shares.length||shares.reduce((sum,item)=>sum+clamp(item.shareBps,0,10000),0)!==10000)return null;
+ const assetAllocations=assets.map(asset=>({asset,marketValue:siblingAllocateEstateAmount(asset.marketValue,shares),upkeep:siblingAllocateEstateAmount(asset.upkeep,shares),
+  monthlyRent:siblingAllocateEstateAmount(asset.monthlyRent,shares),mortgageBalance:siblingAllocateEstateAmount(asset.mortgageBalance,shares),mortgageArrears:siblingAllocateEstateAmount(asset.mortgageArrears,shares),
+  mortgageAnnualPayment:siblingAllocateEstateAmount(asset.mortgageAnnualPayment,shares),rentArrears:siblingAllocateEstateAmount(asset.rentArrears,shares)}));
  if(assetAllocations.some(item=>['marketValue','upkeep','monthlyRent','mortgageBalance','mortgageArrears','mortgageAnnualPayment','rentArrears'].some(key=>!Array.isArray(item[key])||item[key].length!==shares.length)))return null;
- const unsecuredDebtPaid=Math.min(liquidAssets,unsecuredDebt),distributableCash=siblingSafeMoney(liquidAssets-unsecuredDebtPaid);
- const unsecuredDebtRemaining=siblingSafeMoney(unsecuredDebt-unsecuredDebtPaid);
- let cashRemaining=distributableCash,debtRemaining=unsecuredDebtRemaining;
- const beneficiaries=[];
+ const unsecuredDebtPaid=Math.min(liquidAssets,unsecuredDebt),distributableCash=siblingSafeMoney(liquidAssets-unsecuredDebtPaid),unsecuredDebtRemaining=siblingSafeMoney(unsecuredDebt-unsecuredDebtPaid);
+ let cashRemaining=distributableCash,debtRemaining=unsecuredDebtRemaining;const beneficiaries=[];
  shares.forEach((share,index)=>{
-  const child=share.child,shareBps=clamp(share.shareBps,0,10000),last=index===shares.length-1;
-  const cashShare=last?cashRemaining:Math.floor(distributableCash*shareBps/10000);
-  const debtShare=last?debtRemaining:Math.floor(unsecuredDebtRemaining*shareBps/10000);
+  const beneficiary=share.beneficiary,isSpouse=share.kind==='spouse',shareBps=clamp(share.shareBps,0,10000),last=index===shares.length-1;
+  const cashShare=last?cashRemaining:Math.floor(distributableCash*shareBps/10000),debtShare=last?debtRemaining:Math.floor(unsecuredDebtRemaining*shareBps/10000);
   cashRemaining=siblingSafeMoney(cashRemaining-cashShare);debtRemaining=siblingSafeMoney(debtRemaining-debtShare);
-  child.inheritance=siblingNormalizeInheritanceRecords(child.inheritance);
-  let record=child.inheritance.records.find(item=>item.estateId===estateId);
+  beneficiary.inheritance=siblingNormalizeInheritanceRecords(beneficiary.inheritance);
+  let record=beneficiary.inheritance.records.find(item=>item.estateId===estateId);
   if(!record){
-   const assetClaims=assetAllocations.map(item=>({assetId:item.asset.assetId,kind:item.asset.kind,label:item.asset.label,shareBps,
-    marketValueShare:item.marketValue[index],upkeepShare:item.upkeep[index],annualUpkeepRateBps:item.asset.annualUpkeepRateBps,
-    monthlyRentShare:item.monthlyRent[index],mortgageBalanceShare:item.mortgageBalance[index],mortgageArrearsShare:item.mortgageArrears[index],
-    mortgageAnnualPaymentShare:item.mortgageAnnualPayment[index],mortgageInterestRateBps:item.asset.mortgageInterestRateBps,
-    mortgageRemainingYears:item.asset.mortgageRemainingYears,mortgageTermYears:item.asset.mortgageTermYears,
-    mortgageStatus:item.asset.mortgageStatus,mortgageLastProcessedYear:item.asset.mortgageLastProcessedYear,
-    rentArrearsShare:item.rentArrears[index],leaseStatus:item.asset.leaseStatus,tenantName:item.asset.tenantName,
-    leaseStartYear:item.asset.leaseStartYear,leaseEndYear:item.asset.leaseEndYear,leaseTermYears:item.asset.leaseTermYears,
-    leaseRenewals:item.asset.leaseRenewals,leaseOwnerManaged:item.asset.leaseOwnerManaged}));
-   record={estateId,year:numericYear,cashHeld:cashShare,debtHeld:debtShare,cashReleased:0,debtReleased:0,releasedYear:null,
-    assetClaims,assetsPending:assetClaims.length>0,history:[{year:numericYear,type:'received',cash:cashShare,debt:debtShare}]};
-   child.inheritance.records.push(record);
-   if(child.inheritance.records.length>20)child.inheritance.records.splice(0,child.inheritance.records.length-20);
+   const assetClaims=assetAllocations.map(item=>({assetId:item.asset.assetId,kind:item.asset.kind,label:item.asset.label,shareBps,marketValueShare:item.marketValue[index],
+    upkeepShare:item.upkeep[index],annualUpkeepRateBps:item.asset.annualUpkeepRateBps,monthlyRentShare:item.monthlyRent[index],mortgageBalanceShare:item.mortgageBalance[index],
+    mortgageArrearsShare:item.mortgageArrears[index],mortgageAnnualPaymentShare:item.mortgageAnnualPayment[index],mortgageInterestRateBps:item.asset.mortgageInterestRateBps,
+    mortgageRemainingYears:item.asset.mortgageRemainingYears,mortgageTermYears:item.asset.mortgageTermYears,mortgageStatus:item.asset.mortgageStatus,
+    mortgageLastProcessedYear:item.asset.mortgageLastProcessedYear,rentArrearsShare:item.rentArrears[index],leaseStatus:item.asset.leaseStatus,tenantName:item.asset.tenantName,
+    leaseStartYear:item.asset.leaseStartYear,leaseEndYear:item.asset.leaseEndYear,leaseTermYears:item.asset.leaseTermYears,leaseRenewals:item.asset.leaseRenewals,leaseOwnerManaged:item.asset.leaseOwnerManaged}));
+   record={estateId,year:numericYear,cashHeld:cashShare,debtHeld:debtShare,cashReleased:0,debtReleased:0,releasedYear:null,assetClaims,assetsPending:assetClaims.length>0,
+    history:[{year:numericYear,type:'received',cash:cashShare,debt:debtShare}]};
+   beneficiary.inheritance.records.push(record);if(beneficiary.inheritance.records.length>20)beneficiary.inheritance.records.splice(0,beneficiary.inheritance.records.length-20);
   }
   let releaseResult={released:false,cash:0,debt:0,count:0};
-  if(child.independent&&Number(child.age)>=18)releaseResult=siblingReleaseChildInheritance(relative,child,numericYear);
-  const currentRecord=child.inheritance.records.find(item=>item.estateId===estateId)||record;
-  beneficiaries.push({beneficiaryId:String(child.id||child.name||'').slice(0,80),name:String(child.name||'ابن/ابنة').slice(0,80),
-   shareBps,cashAllocated:cashShare,debtAllocated:debtShare,cashReleased:siblingSafeMoney(currentRecord&&currentRecord.cashReleased),
-   debtReleased:siblingSafeMoney(currentRecord&&currentRecord.debtReleased),assetClaimCount:assets.length,adultRelease:!!releaseResult.released});
+  if(isSpouse){
+   const heldCash=siblingSafeMoney(record.cashHeld),heldDebt=siblingSafeMoney(record.debtHeld);
+   beneficiary.inheritanceCashBalance=siblingSafeMoney(beneficiary.inheritanceCashBalance+heldCash);
+   beneficiary.inheritanceDebtBalance=siblingSafeMoney(beneficiary.inheritanceDebtBalance+heldDebt);
+   record.cashReleased=siblingSafeMoney(record.cashReleased+heldCash);record.debtReleased=siblingSafeMoney(record.debtReleased+heldDebt);
+   record.cashHeld=0;record.debtHeld=0;record.releasedYear=numericYear;
+   if(heldCash||heldDebt)record.history.push({year:numericYear,type:'released',cash:heldCash,debt:heldDebt,properties:0});
+   releaseResult={released:heldCash>0||heldDebt>0,cash:heldCash,debt:heldDebt,count:1};
+  }else if(beneficiary.independent&&Number(beneficiary.age)>=18)releaseResult=siblingReleaseChildInheritance(relative,beneficiary,numericYear);
+  const currentRecord=beneficiary.inheritance.records.find(item=>item.estateId===estateId)||record;
+  beneficiaries.push({beneficiaryType:share.kind,beneficiaryId:String(beneficiary.id||beneficiary.name||'').slice(0,80),name:String(beneficiary.name||(isSpouse?'الشريك/الشريكة':'ابن/ابنة')).slice(0,80),
+   shareBps,cashAllocated:cashShare,debtAllocated:debtShare,cashReleased:siblingSafeMoney(currentRecord&&currentRecord.cashReleased),debtReleased:siblingSafeMoney(currentRecord&&currentRecord.debtReleased),
+   assetClaimCount:assets.length,adultRelease:!!releaseResult.released});
  });
- profile.estate={version:1,id:estateId,settled:true,settledYear:numericYear,status:assets.length?'cash_distributed_assets_pending':'cash_distributed',
-  planMode:plan.mode,liquidAssetsBefore:liquidAssets,unsecuredDebtBefore:unsecuredDebt,unsecuredDebtPaid,
-  unsecuredDebtRemaining,securedDebtRetained:securedDebt,distributedCash:distributableCash,retainedCash:0,
-  retainedAssets:assets,assetTransferStatus:assets.length?'pending':'none',beneficiaries};
+ profile.estate={version:1,id:estateId,settled:true,settledYear:numericYear,status:assets.length?'cash_distributed_assets_pending':'cash_distributed',planMode:plan.mode,
+  liquidAssetsBefore:liquidAssets,unsecuredDebtBefore:unsecuredDebt,unsecuredDebtPaid,unsecuredDebtRemaining,securedDebtRetained:securedDebt,distributedCash:distributableCash,
+  retainedCash:0,retainedAssets:assets,assetTransferStatus:assets.length?'pending':'none',beneficiaries};
  siblingUpdateEstateAssetTransferStatus(profile,household);
  return {duplicate:false,settled:true,estate:profile.estate,beneficiaries,distributedCash:distributableCash,unsecuredDebtPaid};
 }
-
 function siblingOwnedPropertyValue(profile){
  const assets=Array.isArray(profile&&profile.ownedProperties)?profile.ownedProperties:[];
  return siblingSafeMoney(assets.reduce((sum,asset)=>sum+siblingSafeMoney(asset&&asset.marketValue),0));
@@ -4136,48 +4120,53 @@ function siblingHouseholdChildNode(relative,child){
  return '<article class="family-tree-node"><div class="family-tree-person"><span class="family-tree-avatar">🧑</span><span class="family-tree-copy"><strong>'+esc(child&&child.name||'ابن/ابنة')+'</strong><small>ابن/ابنة '+esc(relative&&relative.name||'أحد الإخوة')+' · '+fmt(child&&child.age||0)+' سنة'+branchStatus+'</small></span></div><small class="family-tree-foot">'+esc(detail)+'</small></article>';
 }
 function siblingEstatePlanConfirm(relative,mode){
- const profile=relative&&relative.economicProfile,household=profile&&profile.household;
- if(!profile||!household||!Array.isArray(household.children)||!household.children.length){info('📜','لا توجد وصية متاحة','تحتاج الأسرة إلى أبناء مسجلين قبل تحديد المستفيدين.');return;}
- const shares=siblingEstateBeneficiaryShares(household.children,mode);
- const preview=shares.map(item=>String(item.child.name||'ابن/ابنة')+' · '+(item.shareBps/100)+'%').join('، ');
- info('📜','مراجعة وصية '+String(relative.name||'الشقيق'),'طريقة التوزيع: '+siblingEstatePlanLabel(mode)+'. المستفيدون: '+preview+'. ستظل العقارات والتمويل في سجل التركة لحين تنفيذ نقل الملكية في مرحلة لاحقة.',[
+ const profile=relative&&relative.economicProfile,household=profile&&profile.household,children=household&&Array.isArray(household.children)?household.children:[],spouse=household&&household.spouse&&!household.spouse.deceased?household.spouse:null;
+ if(!profile||(!children.length&&!spouse)){info('📜','لا يوجد مستفيدون بعد','تحتاج الأسرة إلى أبناء أو شريك حياة مسجل قبل تحديد الوصية.');return;}
+ const childTotalBps=spouse?(children.length?7500:0):10000,shares=children.length?siblingEstateBeneficiaryShares(children,mode,childTotalBps):[],previewParts=[];
+ if(spouse)previewParts.push(String(spouse.name||'الشريك/الشريكة')+' · '+(children.length?25:100)+'% (الشريك)');
+ shares.forEach(item=>previewParts.push(String(item.child.name||'ابن/ابنة')+' · '+(item.shareBps/100)+'%'));
+ const preview=previewParts.join('، '),rule=spouse?(children.length?'يحصل الشريك الباقي على 25%، ويوزع المتبقي على الأبناء حسب اختيارك.':'يحصل الشريك الباقي على كامل التركة عند عدم وجود أبناء.'):'توزع التركة على الأبناء حسب الاختيار.';
+ info('📜','مراجعة وصية '+String(relative.name||'الشقيق'),rule+' المستفيدون: '+preview+'. هذا توزيع محاكى داخل «حياة» وليس قاعدة قانونية لأي بلد.',[
   choice('✓','تأكيد الوصية','حفظ الاختيار في سجل الشقيق.',()=>{
-   if(!siblingEstatePlanAction(relative,mode)){info('⚠️','تعذر حفظ الوصية','تأكد أن الشقيق على قيد الحياة وأن لديه أبناء، ولم تتم تسوية تركته.');return;}
+   if(!siblingEstatePlanAction(relative,mode)){info('⚠️','تعذر حفظ الوصية','تأكد أن الشقيق بالغ وعلى قيد الحياة ولديه مستفيد مسجل، ولم تتم تسوية تركته.');return;}
    save();log('📜','تحديث وصية '+String(relative.name||'الشقيق'),'تم اختيار '+siblingEstatePlanLabel(mode)+'.','special');render();
-   info('📜','تم حفظ الوصية','سيُستخدم هذا الاختيار عند تسوية التركة. يمكن تغييره ما دام الشقيق على قيد الحياة ولم تبدأ التسوية.');
+   info('📜','تم حفظ الوصية','سيُستخدم الاختيار عند تسوية التركة. ويمكن تغييره ما دام الشقيق على قيد الحياة ولم تبدأ التسوية.');
   }),
   choice('↩️','رجوع','',()=>siblingEstatePlanMenu(relative))
  ]);
 }
 function siblingEstatePlanMenu(relative){
  if(!relative||relative.deceased||Math.max(0,Number(relative.age)||0)<18){info('🔒','إدارة الوصية غير متاحة','يمكن للشقيق البالغ وعلى قيد الحياة تحديد وصيته.');return;}
- const profile=ensureSiblingEconomicProfile(relative),household=profile&&profile.household;
- const children=household&&Array.isArray(household.children)?household.children:[];
- if(!children.length){info('📜','لا يوجد مستفيدون بعد','ستظهر خيارات الوصية بعد تكوّن أبناء في هذا الفرع العائلي.');return;}
- const plan=siblingEstatePlanNormalize(profile.estatePlan,state&&state.yearCount);
- const summary=children.map(child=>String(child.name||'ابن/ابنة')+' · '+fmt(child.age||0)+' سنة').join('، ');
- const opts=[
-  choice('⚖️','بالتساوي بين الأبناء',plan.mode==='equal_children'?'الخيار الحالي':'تقسيم متساوٍ بين الأبناء المسجلين.',()=>siblingEstatePlanConfirm(relative,'equal_children')),
-  choice('👑','للأكبر سنًا',plan.mode==='eldest_child'?'الخيار الحالي':'تخصيص الحصة للأكبر سنًا.',()=>siblingEstatePlanConfirm(relative,'eldest_child')),
-  choice('🌱','للأصغر سنًا',plan.mode==='youngest_child'?'الخيار الحالي':'تخصيص الحصة للأصغر سنًا.',()=>siblingEstatePlanConfirm(relative,'youngest_child')),
-  choice('↩️','رجوع للملف','',()=>personModal(relative))
- ];
- modal('📜','وصية '+String(relative.name||'الشقيق'),'اختر طريقة توزيع السيولة والديون غير المضمونة. حاليًا تظل العقارات والتمويل في سجل التركة كحصص قيد نقل الملكية. الأبناء القاصرون يحتفظون بنصيبهم في أمانة حتى بلوغ 18 سنة.',opts,true,
-  '<div class="relationship-progress"><strong>الأبناء المسجلون</strong><p>'+esc(summary)+'</p><small>الاختيار الحالي: '+esc(siblingEstatePlanLabel(plan.mode))+'</small></div>');
+ const profile=ensureSiblingEconomicProfile(relative),household=profile&&profile.household,children=household&&Array.isArray(household.children)?household.children:[],spouse=household&&household.spouse&&!household.spouse.deceased?household.spouse:null;
+ if(!children.length&&!spouse){info('📜','لا يوجد مستفيدون بعد','ستظهر خيارات الوصية بعد تكوّن أبناء أو تسجيل شريك حياة في هذا الفرع.');return;}
+ const plan=siblingEstatePlanNormalize(profile.estatePlan,state&&state.yearCount),summaryParts=children.map(child=>String(child.name||'ابن/ابنة')+' · '+fmt(child.age||0)+' سنة');
+ if(spouse)summaryParts.unshift(String(spouse.name||'الشريك/الشريكة')+' · شريك حياة · '+(children.length?'حصة محاكاة 25%':'حصة محاكاة 100%'));
+ const summary=summaryParts.join('؛ ');
+ const opts=children.length?[
+  choice('⚖️','بالتساوي بين الأبناء',plan.mode==='equal_children'?'الخيار الحالي':'تقسيم حصة الأبناء بالتساوي.',()=>siblingEstatePlanConfirm(relative,'equal_children')),
+  choice('👑','للأكبر سنًا',plan.mode==='eldest_child'?'الخيار الحالي':'تخصيص حصة الأبناء للأكبر سنًا.',()=>siblingEstatePlanConfirm(relative,'eldest_child')),
+  choice('🌱','للأصغر سنًا',plan.mode==='youngest_child'?'الخيار الحالي':'تخصيص حصة الأبناء للأصغر سنًا.',()=>siblingEstatePlanConfirm(relative,'youngest_child'))
+ ]:[choice('✓','تأكيد استحقاق الشريك','الشريك الباقي هو المستفيد المسجل الوحيد في غياب الأبناء.',()=>siblingEstatePlanConfirm(relative,'equal_children'))];
+ opts.push(choice('↩️','رجوع للملف','',()=>personModal(relative)));
+ const rule=spouse?(children.length?'يحصل الشريك الباقي على 25% من التركة، ويوزع الباقي على الأبناء.':'يحصل الشريك الباقي على كامل التركة عند عدم وجود أبناء.'):'في غياب شريك باقٍ، توزع التركة على الأبناء وفق اختيارك.';
+ modal('📜','وصية '+String(relative.name||'الشقيق'),rule+' اختر طريقة توزيع حصة الأبناء. العقارات تبقى استحقاقات مسجلة حتى اكتمال نقل الملكية.',opts,true,
+  '<div class="relationship-progress"><strong>المستفيدون المسجلون</strong><p>'+esc(summary)+'</p><small>الاختيار الحالي: '+esc(siblingEstatePlanLabel(plan.mode))+'</small></div>');
 }
 function siblingEstateSummaryMenu(relative){
  const profile=relative&&relative.economicProfile,estate=profile&&profile.estate;
  if(!estate||typeof estate!=='object'||estate.settled!==true){info('📜','لا توجد تسوية تركة مسجلة','لم يبدأ دفتر التركة لهذا الفرع بعد، أو أن الحفظ القديم لا يحتوي على سجل أسرة.');return;}
- const beneficiaries=(Array.isArray(estate.beneficiaries)?estate.beneficiaries:[]).map(item=>String(item.name||'ابن/ابنة')+' · '+fmt((Number(item.shareBps)||0)/100)+'% · سيولة '+cash(item.cashAllocated||0)+' · دين '+cash(item.debtAllocated||0)).join('؛ ')||'لا يوجد أبناء مستفيدون مسجلون.';
+ const beneficiaries=(Array.isArray(estate.beneficiaries)?estate.beneficiaries:[]).map(item=>{const type=item.beneficiaryType==='spouse'?'الشريك/الشريكة':'ابن/ابنة';return String(item.name||type)+' ('+type+') · '+fmt((Number(item.shareBps)||0)/100)+'% · سيولة '+cash(item.cashAllocated||0)+' · دين '+cash(item.debtAllocated||0)+' · حصص أصول '+fmt(item.assetClaimCount||0);}).join('؛ ')||'لا يوجد مستفيدون مسجلون.';
  const assets=(Array.isArray(estate.retainedAssets)?estate.retainedAssets:[]).map(item=>String(item.label||'عقار')+' · '+cash(item.marketValue||0)+' · تمويل '+cash((Number(item.mortgageBalance)||0)+(Number(item.mortgageArrears)||0))).join('؛ ')||'لا توجد عقارات ضمن التركة.';
- const transferStatus=estate.assetTransferStatus==='transferred'?'تم نقل ملكية حصص العقارات للمستفيدين':estate.assetTransferStatus==='partially_transferred'?'تم نقل بعض حصص العقارات، وما زالت حصص أخرى معلقة':estate.assetTransferStatus==='pending'?'حصص العقارات قيد النقل عند بلوغ المستفيدين 18 سنة':'لا توجد حصص عقارية معلقة';
- const extra='<div class="relationship-progress"><div class="pillrow"><span class="pill">💰 سيولة قبل التسوية '+esc(cash(estate.liquidAssetsBefore||0))+'</span><span class="pill">🧾 دين غير مضمون متبقٍ '+esc(cash(estate.unsecuredDebtRemaining||0))+'</span><span class="pill">🏦 تمويل مرتبط بالعقارات '+esc(cash(estate.securedDebtRetained||0))+'</span></div><p><strong>حالة الملكية</strong><br>'+esc(transferStatus)+' · تم نقل '+fmt(estate.assetClaimsTransferredCount||0)+' من '+fmt(estate.assetClaimsCount||0)+' حصة</p><p><strong>المستفيدون</strong><br>'+esc(beneficiaries)+'</p><p><strong>الأصول في سجل التركة</strong><br>'+esc(assets)+'</p></div>';
+ const household=profile.household&&typeof profile.household==='object'?profile.household:{},spouseBeneficiary=(Array.isArray(estate.beneficiaries)?estate.beneficiaries:[]).some(item=>item.beneficiaryType==='spouse');
+ const spouse=spouseBeneficiary&&household.spouse&&typeof household.spouse==='object'?household.spouse:null,spouseRecords=spouse&&spouse.inheritance&&Array.isArray(spouse.inheritance.records)?spouse.inheritance.records:[];
+ const spousePending=spouseRecords.filter(record=>record.estateId===String(estate.id||'')&&record.assetsPending).reduce((sum,record)=>sum+record.assetClaims.length,0);
+ const spouseAccount=spouse?'<p><strong>حساب الشريك الموروث</strong><br>سيولة '+esc(cash(spouse.inheritanceCashBalance||0))+' · التزامات '+esc(cash(spouse.inheritanceDebtBalance||0))+(spousePending?' · حصص عقارية معلقة '+fmt(spousePending)+' بانتظار محفظة أصول مستقلة':'')+'</p>':'';
+ const transferStatus=estate.assetTransferStatus==='transferred'?'تم نقل ملكية حصص العقارات للمستفيدين':estate.assetTransferStatus==='partially_transferred'?'تم نقل بعض حصص العقارات، وما زالت حصص أخرى معلقة':estate.assetTransferStatus==='pending'?'حصص العقارات قيد النقل عند بلوغ المستفيدين 18 سنة أو استكمال إدارة حصة الشريك':'لا توجد حصص عقارية معلقة';
+ const extra='<div class="relationship-progress"><div class="pillrow"><span class="pill">💰 سيولة قبل التسوية '+esc(cash(estate.liquidAssetsBefore||0))+'</span><span class="pill">🧾 دين غير مضمون متبقٍ '+esc(cash(estate.unsecuredDebtRemaining||0))+'</span><span class="pill">🏦 تمويل مرتبط بالعقارات '+esc(cash(estate.securedDebtRetained||0))+'</span></div><p><strong>حالة الملكية</strong><br>'+esc(transferStatus)+' · تم نقل '+fmt(estate.assetClaimsTransferredCount||0)+' من '+fmt(estate.assetClaimsCount||0)+' حصة</p><p><strong>المستفيدون</strong><br>'+esc(beneficiaries)+'</p>'+spouseAccount+'<p><strong>الأصول في سجل التركة</strong><br>'+esc(assets)+'</p></div>';
  modal('📜','تركة '+String(relative.name||'أحد الأشقاء'),'سجل التسوية سنة '+fmt(estate.settledYear||0)+' · '+(estate.assetTransferStatus==='transferred'?'تم نقل حصص العقارات للمستفيدين.':estate.assetTransferStatus==='partially_transferred'?'نقل الملكية جارٍ لبعض المستفيدين.':estate.assetTransferStatus==='pending'?'حصص العقارات تنتظر اكتمال شروط نقل الملكية.':'لا توجد حصص عقارية معلقة.'),[
-  choice('🌳','شجرة العائلة','',familyTreeMenu),
-  choice('↩️','رجوع','',familyTreeMenu)
+  choice('🌳','شجرة العائلة','',familyTreeMenu),choice('↩️','رجوع','',familyTreeMenu)
  ],true,extra);
 }
-
 function familyTreeMenu(){
  if(!state)return;const fam=Array.isArray(state.family)?state.family:[],kids=Array.isArray(state.children)?state.children:[];
  const siblings=fam.filter(p=>/(أخ|أخت)/.test(String(p.relation||''))),parents=fam.filter(p=>/(الأب|الأم|والد|والدة|جد|جدة|أب|أم)/.test(String(p.relation||''))&&!siblings.includes(p)),others=fam.filter(p=>!siblings.includes(p)&&!parents.includes(p));
