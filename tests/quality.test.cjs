@@ -2337,8 +2337,8 @@ test('أبناء الأشقاء يواصلون التقدم بعد وفاة ال
 
 
 test('الملكية العقارية الموروثة تنتقل لاقتصاد الابن عند الاستحقاق وتدخل في محاكاته السنوية', () => {
-  const release = functionSource('siblingReleaseChildInheritance', 'ensureSiblingChildEconomy');
-  const childEconomy = functionSource('siblingChildEconomicAnnualEffects', 'ensureSiblingHousehold');
+  const release = functionSource('siblingReleaseChildInheritance', 'siblingChildEconomicAnnualEffects');
+  const childEconomy = functionSource('siblingChildEconomicAnnualEffects', 'siblingNormalizeInheritanceRecords');
   const childPropertyEffects = functionSource('siblingChildInheritedPropertyAnnualEffects', 'siblingEstateSettlement');
   const childTreeNode = functionSource('siblingHouseholdChildNode', 'familyTreeMenu');
   assert.match(app, /function siblingNormalizeChildOwnedProperties\(raw,year\)/);
