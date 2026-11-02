@@ -2296,6 +2296,38 @@ function distributeFamilyPropertyExpense(asset,totalCost,source){
  record.transactions=record.transactions.slice(-100);
  return {ok:true,tracked:true,grossCost,activeAmount,familyWalletAmount,unpaidAmount,externalOwed,reservedAmount,arrearsReleased};
 }
+function familyPropertyTaxRateBps(record){
+ if(!record||typeof record!=='object'||Array.isArray(record))return null;
+ if(record.annualTaxRateBps===undefined||record.annualTaxRateBps===null)return 0;
+ if(typeof record.annualTaxRateBps==='string'&&record.annualTaxRateBps.trim()==='')return null;
+ const rate=Number(record.annualTaxRateBps);
+ return Number.isSafeInteger(rate)&&rate>=0&&rate<=200?rate:null;
+}
+function formatFamilyPropertyTaxRate(rateBps){
+ const rate=Number(rateBps);
+ if(!Number.isSafeInteger(rate)||rate<0||rate>200)return 'غير صالحة';
+ return (rate/100).toFixed(2)+'%';
+}
+function calculateFamilyPropertyAnnualTax(record){
+ if(!record||typeof record!=='object')return {ok:false,reason:'record_missing'};
+ if(record.auditStatus!=='balanced')return {ok:false,reason:'ownership_audit_incomplete'};
+ const rateBps=familyPropertyTaxRateBps(record),marketValue=Number(record.marketValue);
+ if(rateBps===null||!Number.isSafeInteger(marketValue)||marketValue<0)return {ok:false,reason:'invalid_tax_policy'};
+ const raw=marketValue*rateBps/10000;
+ if(!Number.isFinite(raw)||raw>Number.MAX_SAFE_INTEGER)return {ok:false,reason:'tax_amount_overflow'};
+ const amount=Math.round(raw);
+ if(!Number.isSafeInteger(amount)||amount<0)return {ok:false,reason:'tax_amount_overflow'};
+ return {ok:true,rateBps,amount};
+}
+function setFamilyPropertyTaxRateBps(record,rateBps){
+ if(!record||typeof record!=='object'||Array.isArray(record))return {ok:false,reason:'record_missing'};
+ if(record.auditStatus!=='balanced')return {ok:false,reason:'ownership_audit_incomplete'};
+ if(rateBps===null||rateBps===undefined||rateBps==='')return {ok:false,reason:'invalid_tax_rate'};
+ const rate=Number(rateBps);
+ if(!Number.isSafeInteger(rate)||rate<0||rate>200)return {ok:false,reason:'invalid_tax_rate'};
+ record.annualTaxRateBps=rate;
+ return {ok:true,rateBps:rate};
+}
 function beneficiaryWalletsMenu(){
  if(!state)return;
  const wallets=getBeneficiaryWallets(state.legacy);
@@ -2444,34 +2476,74 @@ function familyPropertyOwnershipRecordMenu(recordId){
  if(!state||!state.legacy)return;
  const record=familyPropertyOwnershipRecords(state.legacy).find(item=>String(item.id||item.familyAssetId)===String(recordId));
  if(!record){familyPropertyOwnershipMenu();return;}
+ const recordKey=String(record.id||record.familyAssetId);
  const currency=String(record.currency||state.place&&state.place.unit||'ج.م');
+ const taxRateBps=familyPropertyTaxRateBps(record),taxAssessment=calculateFamilyPropertyAnnualTax(record);
+ const taxSummary=taxRateBps===null?'النسبة المسجلة غير صالحة':taxRateBps===0?'متوقفة':taxAssessment.ok?'المعدل '+formatFamilyPropertyTaxRate(taxRateBps)+' · تقدير سنوي '+cash(taxAssessment.amount):'المعدل يحتاج مراجعة';
+ const taxChoice=choice('🏛️','سياسة الضريبة العقارية',taxSummary+' · معدل محاكاة اختياري وليس نسبة قانونية.',()=>familyPropertyTaxPolicyMenu(recordKey));
+ if(record.auditStatus!=='balanced')taxChoice.disabled=true;
  const owners=Array.isArray(record.owners)?record.owners:[];
  const statusLabels={active:'المالك الحالي',reserved:'حصة محفوظة للوريث',earmarked:'حصة مخصصة للتبرع',unassigned:'مستفيد غير محدد',external:'مشتري خارجي'};
- const opts=owners.map(owner=>{
+ const opts=[taxChoice,...owners.map(owner=>{
   const share=safeFamilyOwnershipShare(owner&&owner.share)||0;
   const amount=Math.round(Math.max(0,Number(record.marketValue)||0)*share);
   const expenseOwed=Math.max(0,Number(owner&&owner.propertyExpenseOwed)||0);
   const expenseText=expenseOwed?' · مصروفات مستحقة '+fmt(expenseOwed)+' '+currency:'';
   return choice(owner&&owner.kind==='external'?'🏠':'👤',String(owner&&owner.name||'مالك')+' · '+formatInheritancePercent(share)+'%',(statusLabels[owner&&owner.status]||'حصة مسجلة')+' · قيمة الحصة '+fmt(amount)+' '+currency+expenseText,()=>info('📒',String(owner&&owner.name||'مالك'),'الحصة '+formatInheritancePercent(share)+'% · القيمة المسجلة '+fmt(amount)+' '+currency+expenseText+'.'));
- });
+ })];
  const encumbered=safeFamilyOwnershipShare(record.encumberedShare)||0;
  if(encumbered>0)opts.push(choice('⚠️','حصة مرتبطة بالتزامات التركة · '+formatInheritancePercent(encumbered)+'%','هذه الحصة لم تُسند إلى مستفيد بسبب التزامات أو بيانات توزيع تحتاج مراجعة.',()=>info('⚠️','حصة غير موزعة','هذه الحصة مرتبطة بالتزامات التركة أو بيانات تحتاج مراجعة قبل توزيعها.')));
  const transactions=Array.isArray(record.transactions)?record.transactions.slice(-5).reverse():[];
  transactions.forEach(transaction=>{
   const isRent=transaction.type==='rent_distribution',isExpense=transaction.type==='property_expense';
-  const title=transaction.type==='sale'?'نقل حصة إلى مشترٍ خارجي':transaction.type==='maintenance'?'تحديث قيمة العقار':isRent?'توزيع دخل الإيجار':isExpense?'توزيع مصروفات العقار':'توزيع ملكية عائلية';
+  const isTax=isExpense&&String(transaction.reason||'').includes('الضريبة');
+  const isTaxPolicy=transaction.type==='tax_policy';
+  const title=transaction.type==='sale'?'نقل حصة إلى مشترٍ خارجي':transaction.type==='maintenance'?'تحديث قيمة العقار':isRent?'توزيع دخل الإيجار':isTaxPolicy?'تعديل سياسة الضريبة العقارية':isTax?'توزيع الضريبة العقارية':isExpense?'توزيع مصروفات العقار':'توزيع ملكية عائلية';
   const detail=isRent
    ?'إجمالي الإيجار '+fmt(transaction.grossRent||0)+' '+currency+' · محافظ الأسرة '+fmt(transaction.familyWalletAmount||0)+' · المبلغ المعلّق '+fmt(transaction.reservedAmount||0)
-   :isExpense
-    ?'إجمالي المصروف '+fmt(transaction.grossCost||0)+' '+currency+' · دفع الملاك '+fmt((transaction.activeAmount||0)+(transaction.familyWalletAmount||0))+' · متأخرات '+fmt(transaction.unpaidAmount||0)
-    :'تاريخ العملية '+(transaction.age===null||transaction.age===undefined?'غير مسجل':fmt(transaction.age))+' · '+(transaction.type==='sale'?'قيمة البيع '+fmt(transaction.amount||0)+' '+currency:'مصدر العملية '+String(transaction.sourceName||transaction.sourceLifeId||'سجل العائلة'));
-  opts.push(choice(isRent?'🏠':isExpense?'🧰':'📜',title,detail,()=>info('📜',title,detail)));
+   :isTaxPolicy
+    ?'المعدل السنوي '+formatFamilyPropertyTaxRate(transaction.rateBps)+' · سنة اللعبة '+fmt(transaction.year||0)
+    :isExpense
+     ?'سبب المصروف '+String(transaction.reason||'مصروف عقاري')+' · الإجمالي '+fmt(transaction.grossCost||0)+' '+currency+' · دفع الملاك '+fmt((transaction.activeAmount||0)+(transaction.familyWalletAmount||0))+' · متأخرات '+fmt(transaction.unpaidAmount||0)
+     :'تاريخ العملية '+(transaction.age===null||transaction.age===undefined?'غير مسجل':fmt(transaction.age))+' · '+(transaction.type==='sale'?'قيمة البيع '+fmt(transaction.amount||0)+' '+currency:'مصدر العملية '+String(transaction.sourceName||transaction.sourceLifeId||'سجل العائلة'));
+  opts.push(choice(isRent?'🏠':isTax||isTaxPolicy?'🏛️':isExpense?'🧰':'📜',title,detail,()=>info('📜',title,detail)));
  });
  opts.push(choice('↩️','رجوع للعقارات العائلية','',familyPropertyOwnershipMenu));
  const audit=record.auditStatus==='balanced'?'إجمالي الحصص والالتزامات يساوي 100%.':'تنبيه: بيانات الملكية لا تتطابق بالكامل؛ تم إيقاف بيع الحصة والصيانة المشتركة لحماية حقوق بقية الملاك.';
  const reserveOutstanding=Math.max(0,(Number(record.rentReserveTotal)||0)-(Number(record.rentReserveReleasedTotal)||0));
  const expenseOwed=Math.max(0,Number(record.propertyExpenseOwedTotal)||0);
- modal('🏘️','ملاك '+String(record.title||'العقار'),'القيمة الكاملة '+fmt(record.marketValue||0)+' '+currency+' · الصيانة السنوية '+fmt(record.upkeep||0)+' '+currency+' · إيجار محفوظ للتسوية '+fmt(reserveOutstanding)+' '+currency+' · مصروفات عقارية مسجلة '+fmt(record.propertyExpenseTotal||0)+' '+currency+' · مصروفات مستحقة '+fmt(expenseOwed)+' '+currency+'. '+audit,opts);
+ modal('🏘️','ملاك '+String(record.title||'العقار'),'القيمة الكاملة '+fmt(record.marketValue||0)+' '+currency+' · الصيانة السنوية '+fmt(record.upkeep||0)+' '+currency+' · الضريبة العقارية السنوية '+taxSummary+' · إيجار محفوظ للتسوية '+fmt(reserveOutstanding)+' '+currency+' · مصروفات عقارية مسجلة '+fmt(record.propertyExpenseTotal||0)+' '+currency+' · مصروفات مستحقة '+fmt(expenseOwed)+' '+currency+'. '+audit,opts);
+}
+function familyPropertyTaxPolicyMenu(recordId){
+ if(!state||!state.legacy)return;
+ const record=familyPropertyOwnershipRecords(state.legacy).find(item=>String(item.id||item.familyAssetId)===String(recordId));
+ if(!record){familyPropertyOwnershipMenu();return;}
+ if(record.auditStatus!=='balanced'){info('⚠️','سياسة الضريبة متوقفة','راجع سجل الملكية قبل تعديل أو احتساب أي ضريبة.');return;}
+ const recordKey=String(record.id||record.familyAssetId);
+ const currentRate=familyPropertyTaxRateBps(record);
+ const rates=[0,25,50,100,150,200];
+ const opts=rates.map(rateBps=>{
+  const preview=calculateFamilyPropertyAnnualTax({...record,annualTaxRateBps:rateBps});
+  const label=rateBps===0?'إيقاف الضريبة (0.00%)':formatFamilyPropertyTaxRate(rateBps);
+  const detail=preview.ok?'تقدير سنوي '+cash(preview.amount)+' على القيمة الكاملة للعقار.':'تعذر حساب الضريبة قبل مراجعة السجل.';
+  return choice(rateBps===0?'⛔':'🏛️',label+(currentRate===rateBps?' · الحالية':''),detail,()=>{
+   const result=setFamilyPropertyTaxRateBps(record,rateBps);
+   if(!result.ok){info('⚠️','تعذر تعديل الضريبة','لم يتم تغيير السياسة لأن سجل الملكية أو النسبة غير صالح.');return;}
+   if(!Array.isArray(record.transactions))record.transactions=[];
+   record.transactions.push({
+    id:'family-property-tax-policy-'+encodeURIComponent(recordKey)+'-'+String(state.yearCount||state.age||0)+'-'+rateBps+'-'+Date.now()+'-'+Math.random().toString(36).slice(2,6),
+    type:'tax_policy',rateBps,currency:String(record.currency||state.place&&state.place.unit||'ج.م'),
+    age:Number.isFinite(Number(state.age))?Number(state.age):null,
+    year:Number.isFinite(Number(state.yearCount))?Number(state.yearCount):null
+   });
+   record.transactions=record.transactions.slice(-100);
+   log('🏛️','تعديل سياسة الضريبة العقارية','تم ضبط معدل الضريبة السنوي على '+formatFamilyPropertyTaxRate(rateBps)+'.','good');
+   render();
+   familyPropertyOwnershipRecordMenu(recordKey);
+  });
+ });
+ opts.push(choice('↩️','رجوع لتفاصيل العقار','',()=>familyPropertyOwnershipRecordMenu(recordKey)));
+ modal('🏛️','سياسة الضريبة العقارية','اختر معدل محاكاة سنويًا يُحسب على القيمة الكاملة للعقار ثم يُوزع حسب نسب الملكية. النسب هنا إعدادات داخل اللعبة وليست معدلات قانونية لأي بلد.',opts);
 }
 function inheritanceAccountsMenu(){
  if(!state)return;
@@ -2875,6 +2947,23 @@ function advanceAge(){
  });
  if(sharedPropertyUpkeepGross>0)log('🏘️','الصيانة السنوية للعقارات العائلية','إجمالي المصروف '+cash(sharedPropertyUpkeepGross)+' · حصتك '+cash(sharedPropertyUpkeepActivePaid)+' · محافظ الأسرة '+cash(sharedPropertyUpkeepWalletPaid)+' · متأخرات الملاك '+cash(sharedPropertyUpkeepUnpaid)+'.',sharedPropertyUpkeepUnpaid>0?'bad':'good');
  if(sharedPropertyUpkeepWarnings>0)log('⚠️','تعذر تسوية صيانة بعض العقارات','تم إيقاف '+sharedPropertyUpkeepWarnings+' تسوية سنوية دون خصم جزئي؛ راجع سجل ملكية عقارات العائلة.','bad');
+ let sharedPropertyTaxGross=0,sharedPropertyTaxActivePaid=0,sharedPropertyTaxWalletPaid=0,sharedPropertyTaxUnpaid=0,sharedPropertyTaxWarnings=0;
+ sharedPropertyUpkeepEntries.forEach(entry=>{
+  const rateBps=familyPropertyTaxRateBps(entry.record);
+  if(rateBps===0)return;
+  const assessment=calculateFamilyPropertyAnnualTax(entry.record);
+  if(!assessment||assessment.ok!==true){sharedPropertyTaxWarnings++;return;}
+  if(assessment.amount===0)return;
+  const result=distributeFamilyPropertyExpense(entry.asset,assessment.amount,{action:'annual-property-tax',reason:'الضريبة العقارية السنوية'});
+  if(result&&result.reason==='duplicate_transaction')return;
+  if(!result||result.ok!==true||result.tracked!==true){sharedPropertyTaxWarnings++;return;}
+  sharedPropertyTaxGross+=result.grossCost;
+  sharedPropertyTaxActivePaid+=result.activeAmount;
+  sharedPropertyTaxWalletPaid+=result.familyWalletAmount;
+  sharedPropertyTaxUnpaid+=result.unpaidAmount;
+ });
+ if(sharedPropertyTaxGross>0)log('🏛️','الضريبة العقارية السنوية','إجمالي الضريبة '+cash(sharedPropertyTaxGross)+' · حصتك '+cash(sharedPropertyTaxActivePaid)+' · محافظ الأسرة '+cash(sharedPropertyTaxWalletPaid)+' · متأخرات الملاك '+cash(sharedPropertyTaxUnpaid)+'.',sharedPropertyTaxUnpaid>0?'bad':'good');
+ if(sharedPropertyTaxWarnings>0)log('⚠️','تعذر تسوية الضريبة العقارية','تم إيقاف '+sharedPropertyTaxWarnings+' تسوية ضريبية دون خصم جزئي؛ راجع سياسة الضريبة وسجل ملكية العقار.','bad');
  const rentEntries=(state.assets||[]).filter(a=>a.kind==='property'&&a.rented).map(asset=>({asset,amount:Math.max(0,Math.round(asset.tenant&&perkOwned('landlordPack')?(asset.tenant.rent||asset.value*.045):(asset.value||0)*.045))})).filter(entry=>entry.amount>0);
  (state.assets||[]).forEach(a=>{if(a.kind==='property'&&a.tenant&&perkOwned('landlordPack')){a.tenant.yearsLeft=Math.max(0,(a.tenant.yearsLeft||0)-1);if(a.tenant.yearsLeft===0&&chance(.25)){a.rented=false;a.tenant=null;log('🏠','انتهاء عقد الإيجار','غادر المستأجر أحد عقاراتك بعد انتهاء العقد. افتح إدارة المستأجرين للبحث عن مستأجر جديد.','bad');}else if(a.tenant&&a.tenant.yearsLeft===0)a.tenant.yearsLeft=1;}});
  if(state.zoo&&state.zoo.opened)advanceZooSystem();if(state.cult&&state.cult.founded)advanceCultSystem();if(state.casino&&state.casino.opened)advanceCasinoSystem();if(state.dealer&&state.dealer.joined)advanceDealerSystem();advanceInvestmentAdvisor();
