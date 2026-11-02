@@ -1796,7 +1796,8 @@ function siblingPropertySaleDecision(relative,profile,year,age,employmentState,u
  const history=Array.isArray(profile&&profile.history)?profile.history:[];
  const previous=history.length?history[history.length-1]:null;
  if(employmentState!=='seeking'||!Number.isSafeInteger(numericYear)||numericYear<0||Math.max(0,Number(age)||0)<18||
-  siblingSafeMoney(uncoveredShortfall)<=0||!previous||previous.employmentState!=='seeking')return null;
+  siblingSafeMoney(uncoveredShortfall)<=0||!previous||previous.employmentState!=='seeking'||
+  !Number.isSafeInteger(Number(previous.year))||Number(previous.year)!==numericYear-1)return null;
  const assets=(Array.isArray(profile&&profile.ownedProperties)?profile.ownedProperties:[])
   .filter(asset=>asset&&asset.kind==='residence'&&siblingSafeMoney(asset.marketValue)>0)
   .sort((a,b)=>siblingSafeMoney(a.marketValue)-siblingSafeMoney(b.marketValue));
