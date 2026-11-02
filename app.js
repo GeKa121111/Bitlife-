@@ -1864,11 +1864,11 @@ function ensureSiblingEconomicProfile(relative){
   investmentContribution:siblingSafeMoney(item.investmentContribution),
   investmentReturn:siblingSafeSigned(item.investmentReturn),
   investmentRisk:['conservative','balanced','growth'].includes(item.investmentRisk)?item.investmentRisk:profile.investmentRisk,
+  propertyValue:siblingSafeMoney(item.propertyValue),propertyExpenses:siblingSafeMoney(item.propertyExpenses),
+  propertyCount:clamp(item.propertyCount??0,0,3),propertyPurchase:!!item.propertyPurchase,
   employmentState:['working','seeking','retired'].includes(item.employmentState)?item.employmentState:(clamp(item.age??age)>=65?'retired':'working'),
   employmentEvent:['laid_off','rehired','retired'].includes(item.employmentEvent)?item.employmentEvent:'',
-  netWorth:siblingSafeSigned(item.netWorth),
-  propertyValue:siblingSafeMoney(item.propertyValue),propertyExpenses:siblingSafeMoney(item.propertyExpenses),
-  propertyCount:clamp(item.propertyCount??0,0,3),propertyPurchase:!!item.propertyPurchase
+  netWorth:siblingSafeSigned(item.netWorth)
  }));
  return profile;
 }
