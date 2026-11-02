@@ -1875,7 +1875,7 @@ test('متأخرات العقار تنتقل للورثة حسب حصصهم وت
   assert.ok(transfer);
   assert.equal(transfer.amount, 12001);
   assert.equal(transfer.allocations.reduce((sum, item) => sum + item.amount, 0), 12001);
-  assert.deepEqual(transfer.allocations.map(item => item.amount), [4001, 4000, 4000]);
+  assert.deepEqual(Array.from(transfer.allocations, item => item.amount), [4001, 4000, 4000]);
 
   context.state = {
     lifeId: 'grandchild-a',
