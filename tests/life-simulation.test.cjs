@@ -19,7 +19,6 @@ function extractFunction(name) {
 
 const ageSource = extractFunction('advanceAge');
 const siblingEconomySource = [
-  extractFunction('siblingEconomicHash'),
   extractFunction('siblingSafeMoney'),
   extractFunction('siblingSafeSigned'),
   extractFunction('siblingCareerFor'),
