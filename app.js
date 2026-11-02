@@ -1791,6 +1791,23 @@ function siblingPropertyPurchaseDecision(relative,profile,year,age,savings,debt,
  const signal=siblingInvestmentHash(identity+'|home-purchase|'+year)%10000;
  return signal<chanceBps?{price,reserve,chanceBps}:null;
 }
+function siblingPropertySaleDecision(relative,profile,year,age,employmentState,uncoveredShortfall){
+ const numericYear=Number(year);
+ const history=Array.isArray(profile&&profile.history)?profile.history:[];
+ const previous=history.length?history[history.length-1]:null;
+ if(employmentState!=='seeking'||!Number.isSafeInteger(numericYear)||numericYear<0||Math.max(0,Number(age)||0)<18||
+  siblingSafeMoney(uncoveredShortfall)<=0||!previous||previous.employmentState!=='seeking')return null;
+ const assets=(Array.isArray(profile&&profile.ownedProperties)?profile.ownedProperties:[])
+  .filter(asset=>asset&&asset.kind==='residence'&&siblingSafeMoney(asset.marketValue)>0)
+  .sort((a,b)=>siblingSafeMoney(a.marketValue)-siblingSafeMoney(b.marketValue));
+ const asset=assets[0];
+ if(!asset)return null;
+ const gross=siblingSafeMoney(asset.marketValue);
+ const transactionCost=Math.min(gross,Math.round(gross*.05));
+ const netProceeds=siblingSafeMoney(gross-transactionCost);
+ if(netProceeds<=0)return null;
+ return {assetId:String(asset.id||''),gross,transactionCost,netProceeds,year:numericYear};
+}
 function ensureSiblingEconomicProfile(relative){
  if(!relative||typeof relative!=='object'||Array.isArray(relative))return null;
  const age=Math.max(0,Math.floor(Number(relative.age)||0));
@@ -1802,7 +1819,7 @@ function ensureSiblingEconomicProfile(relative){
    yearsWorked:Math.min(30,Math.max(0,age-22)),rank:1,
    savings:0,debt:0,investmentBalance:0,investmentContribution:0,investmentReturn:0,
    investmentContributionsTotal:0,investmentReturnsTotal:0,investmentRisk:siblingInvestmentRiskFor(relative),
-   ownedProperties:[],propertyExpensesAnnual:0,propertyPurchasesTotal:0,
+   ownedProperties:[],propertyExpensesAnnual:0,propertyPurchasesTotal:0,propertySalesTotal:0,propertySaleCostsTotal:0,
    annualIncome:0,annualExpenses:0,cumulativeIncome:0,cumulativeExpenses:0,lastProcessedYear:year-1,
    employmentStatus:'مستقر',employmentState:age>=65?'retired':'working',lastEmploymentEvent:'',history:[]
   };
@@ -1849,6 +1866,8 @@ function ensureSiblingEconomicProfile(relative){
  }).filter(Boolean);
  profile.propertyExpensesAnnual=siblingSafeMoney(profile.propertyExpensesAnnual);
  profile.propertyPurchasesTotal=siblingSafeMoney(profile.propertyPurchasesTotal);
+ profile.propertySalesTotal=siblingSafeMoney(profile.propertySalesTotal);
+ profile.propertySaleCostsTotal=siblingSafeMoney(profile.propertySaleCostsTotal);
  profile.netWorth=siblingSafeSigned(profile.savings+profile.investmentBalance+siblingOwnedPropertyValue(profile)-profile.debt);
  if(profile.lastProcessedYear===null||profile.lastProcessedYear===undefined||!Number.isSafeInteger(Number(profile.lastProcessedYear)))profile.lastProcessedYear=year-1;
  else profile.lastProcessedYear=Number(profile.lastProcessedYear);
@@ -1866,6 +1885,10 @@ function ensureSiblingEconomicProfile(relative){
   investmentRisk:['conservative','balanced','growth'].includes(item.investmentRisk)?item.investmentRisk:profile.investmentRisk,
   propertyValue:siblingSafeMoney(item.propertyValue),propertyExpenses:siblingSafeMoney(item.propertyExpenses),
   propertyCount:clamp(item.propertyCount??0,0,99),propertyPurchase:!!item.propertyPurchase,
+  propertySale:!!item.propertySale,propertySaleGross:siblingSafeMoney(item.propertySaleGross),
+  propertySaleCosts:siblingSafeMoney(item.propertySaleCosts),propertySaleNet:siblingSafeMoney(item.propertySaleNet),
+  propertySaleDebtPaid:siblingSafeMoney(item.propertySaleDebtPaid),propertySaleShortfallPaid:siblingSafeMoney(item.propertySaleShortfallPaid),
+  propertySaleCashRetained:siblingSafeMoney(item.propertySaleCashRetained),
   employmentState:['working','seeking','retired'].includes(item.employmentState)?item.employmentState:(clamp(item.age??age)>=65?'retired':'working'),
   employmentEvent:['laid_off','rehired','retired'].includes(item.employmentEvent)?item.employmentEvent:'',
   netWorth:siblingSafeSigned(item.netWorth)
@@ -1911,6 +1934,7 @@ function advanceSiblingEconomies(){
   const investmentReturn=siblingInvestmentAnnualReturn(relative,year,profile.investmentRisk,startingInvestmentBalance);
   let investmentContribution=0;
   const cashFlow=income-expenses;
+  let propertySale=null;
   if(cashFlow>=0){
    const repayment=Math.min(debt,Math.round(cashFlow*.35));
    debt-=repayment;
@@ -1919,7 +1943,28 @@ function advanceSiblingEconomies(){
    savings=siblingSafeMoney(savings+available-investmentContribution);
   }else{
    const shortfall=-cashFlow,fromSavings=Math.min(savings,shortfall);
-   savings-=fromSavings;debt=siblingSafeMoney(debt+shortfall-fromSavings);
+   savings-=fromSavings;
+   let uncoveredShortfall=siblingSafeMoney(shortfall-fromSavings);
+   const saleDecision=siblingPropertySaleDecision(relative,profile,year,age,employment.state,uncoveredShortfall);
+   if(saleDecision){
+    const assetIndex=profile.ownedProperties.findIndex(asset=>asset&&String(asset.id||'')===saleDecision.assetId);
+    if(assetIndex>=0){
+     const asset=profile.ownedProperties[assetIndex];
+     const gross=siblingSafeMoney(asset.marketValue);
+     const transactionCost=Math.min(gross,Math.round(gross*.05));
+     const netProceeds=siblingSafeMoney(gross-transactionCost);
+     const debtPaid=Math.min(debt,netProceeds);
+     debt=siblingSafeMoney(debt-debtPaid);
+     const availableAfterDebt=netProceeds-debtPaid;
+     const shortfallPaid=Math.min(uncoveredShortfall,availableAfterDebt);
+     uncoveredShortfall=siblingSafeMoney(uncoveredShortfall-shortfallPaid);
+     const retainedCash=siblingSafeMoney(availableAfterDebt-shortfallPaid);
+     savings=siblingSafeMoney(savings+retainedCash);
+     profile.ownedProperties.splice(assetIndex,1);
+     propertySale={assetId:saleDecision.assetId,gross,transactionCost,netProceeds,debtPaid,shortfallPaid,retainedCash};
+    }
+   }
+   debt=siblingSafeMoney(debt+uncoveredShortfall);
   }
   const investmentBalance=siblingSafeMoney(Math.max(0,startingInvestmentBalance+investmentReturn+investmentContribution));
   const propertyPurchase=siblingPropertyPurchaseDecision(relative,profile,year,age,savings,debt,employment.state);
@@ -1953,6 +1998,8 @@ function advanceSiblingEconomies(){
   profile.investmentReturnsTotal=siblingSafeSigned(profile.investmentReturnsTotal+investmentReturn);
   profile.propertyExpensesAnnual=propertyExpenses;
   profile.propertyPurchasesTotal=siblingSafeMoney(profile.propertyPurchasesTotal+(purchasedProperty?purchasedProperty.purchasePrice:0));
+  profile.propertySalesTotal=siblingSafeMoney(profile.propertySalesTotal+(propertySale?propertySale.gross:0));
+  profile.propertySaleCostsTotal=siblingSafeMoney(profile.propertySaleCostsTotal+(propertySale?propertySale.transactionCost:0));
   profile.annualIncome=siblingSafeMoney(income);
   profile.annualExpenses=expenses;
   profile.cumulativeIncome=siblingSafeMoney(profile.cumulativeIncome+income);
@@ -1965,9 +2012,14 @@ function advanceSiblingEconomies(){
   profile.history.push({year,age,job:profile.job,income:profile.annualIncome,expenses:profile.annualExpenses,savings,debt,
    investmentBalance,investmentContribution,investmentReturn,investmentRisk:profile.investmentRisk,
    propertyValue,propertyExpenses,propertyCount:profile.ownedProperties.length,propertyPurchase:!!purchasedProperty,
+   propertySale:!!propertySale,propertySaleGross:propertySale?propertySale.gross:0,
+   propertySaleCosts:propertySale?propertySale.transactionCost:0,propertySaleNet:propertySale?propertySale.netProceeds:0,
+   propertySaleDebtPaid:propertySale?propertySale.debtPaid:0,propertySaleShortfallPaid:propertySale?propertySale.shortfallPaid:0,
+   propertySaleCashRetained:propertySale?propertySale.retainedCash:0,
    employmentState:employment.state,employmentEvent:employment.event||'',netWorth:profile.netWorth});
   if(profile.history.length>12)profile.history.shift();
   if(purchasedProperty)log('🏠','امتلاك مسكن مستقل','اشترى '+String(relative.name||'أحد إخوتك')+' مسكنًا من مدخراته بقيمة '+cash(purchasedProperty.purchasePrice)+' '+profile.currency+'.','good');
+  if(propertySale)log('🏠','بيع مسكن لتغطية الالتزامات','باع '+String(relative.name||'أحد إخوتك')+' مسكنه بعد استمرار البطالة؛ خُصمت تكاليف البيع وسُددت الالتزامات من الحصيلة.','special');
   if(employment.event==='laid_off')log('🧾','فقدان وظيفة في العائلة','فقد '+String(relative.name||'أحد إخوتك')+' وظيفته هذا العام، ويبحث عن فرصة جديدة.','bad');
   else if(employment.event==='rehired')log('💼','عودة إلى العمل','عاد '+String(relative.name||'أحد إخوتك')+' إلى العمل، مع دخل جزئي خلال سنة التعيين.','good');
   else if(employment.event==='retired')log('🌅','تقاعد أحد الإخوة','وصل '+String(relative.name||'أحد إخوتك')+' إلى سن التقاعد وأصبح دخله معاشًا محاكيًا.','special');
@@ -5260,8 +5312,8 @@ function siblingEconomicDetails(n){
  const propertyValue=siblingOwnedPropertyValue(profile);
  const propertyText=properties.length?properties.map(asset=>String(asset.label||'مسكن مستقل')+' · '+cash(asset.marketValue||0)+' '+String(profile.currency||'')).join('، '):'لا يمتلك مسكنًا مستقلًا بعد';
  const history=(Array.isArray(profile.history)?profile.history:[]).slice(-5).reverse();
- const historyText=history.length?history.map(item=>'سنة '+fmt(item.year)+' · '+siblingEmploymentStateLabel(item.employmentState)+(siblingEmploymentEventLabel(item.employmentEvent)?' ('+siblingEmploymentEventLabel(item.employmentEvent)+')':'')+' · دخل '+cash(item.income)+' · مصروف '+cash(item.expenses)+' · مدخرات '+cash(item.savings)+' · محفظة '+cash(item.investmentBalance||0)+' · قيمة العقار '+cash(item.propertyValue||0)+' · صيانة '+cash(item.propertyExpenses||0)+(item.propertyPurchase?' · شراء مسكن':'')).join('؛ '):'لا توجد سنوات مالية مسجلة بعد.';
- const description='المهنة: '+String(profile.job||n.job||'غير محدد')+' · حالة العمل: '+siblingEmploymentStateLabel(profile.employmentState)+' · المستوى المهني '+fmt(profile.rank||1)+' · الخبرة '+fmt(profile.yearsWorked||0)+' سنة. الدخل السنوي '+cash(profile.annualIncome||0)+' '+String(profile.currency||'')+'، والمصروفات '+cash(profile.annualExpenses||0)+' منها صيانة عقارية '+cash(profile.propertyExpensesAnnual||0)+'. المدخرات '+cash(profile.savings||0)+'، والمحفظة الاستثمارية '+cash(profile.investmentBalance||0)+' بمخاطرة '+siblingInvestmentRiskLabel(profile.investmentRisk)+'، والعائد التراكمي '+cash(profile.investmentReturnsTotal||0)+'، والديون '+cash(profile.debt||0)+'. العقارات المستقلة: '+properties.length+' · '+propertyText+' · إجمالي قيمتها '+cash(propertyValue)+' · صافي الثروة '+(netWorth<0?'سالب ':'')+cash(Math.abs(netWorth))+'. الحالة المالية: '+String(profile.employmentStatus||'مستقر')+'. آخر السنوات: '+historyText;
+ const historyText=history.length?history.map(item=>'سنة '+fmt(item.year)+' · '+siblingEmploymentStateLabel(item.employmentState)+(siblingEmploymentEventLabel(item.employmentEvent)?' ('+siblingEmploymentEventLabel(item.employmentEvent)+')':'')+' · دخل '+cash(item.income)+' · مصروف '+cash(item.expenses)+' · مدخرات '+cash(item.savings)+' · محفظة '+cash(item.investmentBalance||0)+' · قيمة العقار '+cash(item.propertyValue||0)+' · صيانة '+cash(item.propertyExpenses||0)+(item.propertyPurchase?' · شراء مسكن':'')+(item.propertySale?' · بيع مسكن '+cash(item.propertySaleGross||0)+' وصافي '+cash(item.propertySaleNet||0):'')).join('؛ '):'لا توجد سنوات مالية مسجلة بعد.';
+ const description='المهنة: '+String(profile.job||n.job||'غير محدد')+' · حالة العمل: '+siblingEmploymentStateLabel(profile.employmentState)+' · المستوى المهني '+fmt(profile.rank||1)+' · الخبرة '+fmt(profile.yearsWorked||0)+' سنة. الدخل السنوي '+cash(profile.annualIncome||0)+' '+String(profile.currency||'')+'، والمصروفات '+cash(profile.annualExpenses||0)+' منها صيانة عقارية '+cash(profile.propertyExpensesAnnual||0)+'. المدخرات '+cash(profile.savings||0)+'، والمحفظة الاستثمارية '+cash(profile.investmentBalance||0)+' بمخاطرة '+siblingInvestmentRiskLabel(profile.investmentRisk)+'، والعائد التراكمي '+cash(profile.investmentReturnsTotal||0)+'، والديون '+cash(profile.debt||0)+'. العقارات المستقلة: '+properties.length+' · '+propertyText+' · إجمالي قيمتها '+cash(propertyValue)+' · إجمالي مبيعات العقارات '+cash(profile.propertySalesTotal||0)+' · صافي الثروة '+(netWorth<0?'سالب ':'')+cash(Math.abs(netWorth))+'. الحالة المالية: '+String(profile.employmentStatus||'مستقر')+'. آخر السنوات: '+historyText;
  info('📊','الاستقلال المالي · '+String(n.name||'أحد الإخوة'),description,[choice('↩️','العودة لملف الشخصية','',()=>personModal(n))]);
 }
 function relationshipHistory(n){
