@@ -701,3 +701,10 @@ assert.match(app, /householdEffects\.familyExpenses/, 'dependent children should
 
 assert.match(app, /function siblingDeceasedHouseholdAnnualEffects\(relative,profile,year\)/, 'children of deceased siblings should continue their independent annual simulation');
 assert.match(app, /ownerDeceased/, 'deceased sibling household status should be normalized and preserved');
+
+
+assert.match(app, /function siblingEstateSettlement\(relative,profile,year\)/, 'deceased sibling estates should be settled once');
+assert.match(app, /function siblingReleaseChildInheritance\(relative,child,year\)/, 'minor inheritance should be released when the child becomes an adult');
+assert.match(app, /assetTransferStatus/, 'property title transfer must remain explicit and auditable');
+assert.match(app, /function siblingEstatePlanMenu\(relative\)/, 'adult siblings should be able to record an estate plan');
+assert.match(serviceWorker, /hayah-shell-v114/, 'the PWA cache must be versioned with the estate update');
