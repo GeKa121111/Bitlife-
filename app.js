@@ -2077,6 +2077,22 @@ function siblingEstatePlanAction(relative,mode){
  profile.estatePlan={mode,updatedYear:year};
  return true;
 }
+function siblingAllocateEstateAmount(totalAmount,beneficiaryShares){
+ const amount=siblingSafeMoney(totalAmount),shares=Array.isArray(beneficiaryShares)?beneficiaryShares:[];
+ if(!shares.length)return null;
+ const weights=shares.map(item=>clamp(item&&item.shareBps??0,0,10000));
+ if(weights.reduce((sum,value)=>sum+value,0)!==10000)return null;
+ const whole=Math.floor(amount/10000),remainderAmount=amount%10000;
+ const allocations=weights.map((shareBps,index)=>{
+  const remainderProduct=remainderAmount*shareBps;
+  return {index,amount:whole*shareBps+Math.floor(remainderProduct/10000),remainder:remainderProduct%10000};
+ });
+ const allocated=allocations.reduce((sum,item)=>sum+item.amount,0),remainder=amount-allocated;
+ if(!Number.isSafeInteger(allocated)||!Number.isSafeInteger(remainder)||remainder<0||remainder>=allocations.length)return null;
+ const order=allocations.slice().sort((a,b)=>b.remainder-a.remainder||a.index-b.index);
+ for(let index=0;index<remainder;index++)order[index].amount++;
+ return allocations.sort((a,b)=>a.index-b.index).map(item=>item.amount);
+}
 function siblingEstateAssetSnapshot(asset){
  const mortgage=asset&&asset.mortgage&&typeof asset.mortgage==='object'?asset.mortgage:null;
  const lease=asset&&asset.lease&&typeof asset.lease==='object'?asset.lease:null;
@@ -2108,6 +2124,14 @@ function siblingEstateSettlement(relative,profile,year){
  }
  const shares=siblingEstateBeneficiaryShares(children,plan.mode);
  if(!shares.length)return null;
+ const assetAllocations=assets.map(asset=>({
+  asset,
+  marketValue:siblingAllocateEstateAmount(asset.marketValue,shares),
+  mortgageBalance:siblingAllocateEstateAmount(asset.mortgageBalance,shares),
+  mortgageArrears:siblingAllocateEstateAmount(asset.mortgageArrears,shares),
+  rentArrears:siblingAllocateEstateAmount(asset.rentArrears,shares)
+ }));
+ if(assetAllocations.some(item=>['marketValue','mortgageBalance','mortgageArrears','rentArrears'].some(key=>!Array.isArray(item[key])||item[key].length!==shares.length)))return null;
  const unsecuredDebtPaid=Math.min(liquidAssets,unsecuredDebt),distributableCash=siblingSafeMoney(liquidAssets-unsecuredDebtPaid);
  const unsecuredDebtRemaining=siblingSafeMoney(unsecuredDebt-unsecuredDebtPaid);
  let cashRemaining=distributableCash,debtRemaining=unsecuredDebtRemaining;
@@ -2120,11 +2144,9 @@ function siblingEstateSettlement(relative,profile,year){
   child.inheritance=siblingNormalizeInheritanceRecords(child.inheritance);
   let record=child.inheritance.records.find(item=>item.estateId===estateId);
   if(!record){
-   const assetClaims=assets.map(asset=>({assetId:asset.assetId,kind:asset.kind,label:asset.label,shareBps,
-    marketValueShare:siblingSafeMoney(Math.floor(asset.marketValue*shareBps/10000)),
-    mortgageBalanceShare:siblingSafeMoney(Math.floor(asset.mortgageBalance*shareBps/10000)),
-    mortgageArrearsShare:siblingSafeMoney(Math.floor(asset.mortgageArrears*shareBps/10000)),
-    rentArrearsShare:siblingSafeMoney(Math.floor(asset.rentArrears*shareBps/10000))}));
+   const assetClaims=assetAllocations.map(item=>({assetId:item.asset.assetId,kind:item.asset.kind,label:item.asset.label,shareBps,
+    marketValueShare:item.marketValue[index],mortgageBalanceShare:item.mortgageBalance[index],
+    mortgageArrearsShare:item.mortgageArrears[index],rentArrearsShare:item.rentArrears[index]}));
    record={estateId,year:numericYear,cashHeld:cashShare,debtHeld:debtShare,cashReleased:0,debtReleased:0,releasedYear:null,
     assetClaims,assetsPending:assetClaims.length>0,history:[{year:numericYear,type:'received',cash:cashShare,debt:debtShare}]};
    child.inheritance.records.push(record);
