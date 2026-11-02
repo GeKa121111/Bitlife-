@@ -2411,13 +2411,16 @@ test('التأمين العقاري اختياري ويحسب القسط وال�
   assert.equal(configured.ok, true);
   assert.equal(configured.policy.coverageBps, 7500);
   assert.equal(context.calculateFamilyPropertyAnnualInsurancePremium(record).amount, 5000);
+  context.state = { lifeId: 'insurance-policy-life', age: 45, yearCount: 45, place: { unit: 'جنيه' } };
+  const unpaidClaim = context.calculateFamilyPropertyInsuranceClaim(record, 20000, 45);
+  assert.equal(unpaidClaim.reason, 'premium_not_paid');
   record.insurancePremiumPaidYear = 45;
+  record.insurancePremiumPaidLifeId = 'insurance-policy-life';
   const claim = context.calculateFamilyPropertyInsuranceClaim(record, 20000, 45);
   assert.equal(claim.ok, true);
   assert.equal(claim.coveredAmount, 15000);
   assert.equal(claim.payout, 12000);
   assert.equal(claim.netCost, 8000);
-  context.state = { age: 45, yearCount: 45, place: { unit: 'جنيه' } };
   const saved = context.recordFamilyPropertyInsuranceClaim(record, claim);
   assert.equal(saved.ok, true);
   assert.equal(record.insuranceClaimPaidTotal, 12000);
@@ -2438,7 +2441,7 @@ test('تعويض التأمين يقلل تكلفة صيانة العقار ال
   };
   const record = {
     id: 'insured-maintenance-property', familyAssetId: 'insured-maintenance-property', title: 'بيت العائلة',
-    currency: 'جنيه', marketValue: 1000000, upkeep: 0, insurancePremiumPaidYear: 45,
+    currency: 'جنيه', marketValue: 1000000, upkeep: 0, insurancePremiumPaidYear: 45, insurancePremiumPaidLifeId: 'insured-maintenance-life',
     insurancePolicy: { enabled: true, plan: 'standard', coverageBps: 7500, annualPremiumRateBps: 50, deductible: 3000 },
     encumberedShare: 0, auditStatus: 'balanced',
     owners: [
