@@ -677,3 +677,7 @@ assert.match(app, /rentalArrearsBalance/, 'outstanding rental arrears should be 
 assert.match(app, /function siblingManualRentalSaleQuote\(/, 'manual rental-sale quote should be available');
 assert.match(app, /function siblingManualRentalSale\(/, 'siblings should be able to sell an investment property deliberately');
 assert.match(app, /function siblingManualRentalSaleConfirm\(/, 'manual sale must require an explicit confirmation');
+
+assert.match(app, /function siblingMortgageAnnualDue\(/, 'sibling rental financing should calculate one annual installment per year');
+assert.match(app, /function siblingMortgageSettlement\(/, 'missed installments should become mortgage arrears without amortizing unpaid principal');
+assert.match(app, /function siblingMortgagePrepayment\(/, 'siblings should be able to settle a mortgage early from their own savings');
