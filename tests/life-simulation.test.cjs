@@ -38,6 +38,8 @@ const siblingEconomySource = [
   extractFunction('siblingPropertySaleDecision'),
   extractFunction('siblingRentalPropertyPrice'),
   extractFunction('siblingRentalPurchaseDecision'),
+  extractFunction('siblingRentalTenantName'),
+  extractFunction('siblingRentalLeaseDecision'),
   extractFunction('siblingRentalAnnualIncome'),
   extractFunction('siblingRentalArrearsSettlement'),
   extractFunction('siblingMortgageLiability'),
@@ -904,6 +906,7 @@ test('الأشقاء يشترون عقارًا استثماريًا ويحصّل
   assert.equal(result.secondProcessed, 1);
   assert.equal(result.expectedRent.collected, result.profile.annualRentIncome);
   assert.equal(result.expectedRent.totalLoss, result.profile.rentalLossTotal);
+  assert.equal(result.expectedRent.leaseStatus, 'legacy', 'older rentals without lease data must keep the legacy income model');
   assert.ok(result.profile.annualRentIncome > 0);
   assert.ok(result.profile.rentalLossTotal > 0, 'vacancy and collection loss should be visible in the simulation');
   assert.equal(result.secondYear.rentIncome, result.expectedRent.collected);
@@ -1205,6 +1208,7 @@ test('الحفظ القديم يطبع متأخرات العقار الاستث�
     ' return { asset: profile.ownedProperties[0], balance: profile.rentalArrearsBalance, collected: profile.rentalArrearsCollectedTotal, added: profile.rentalArrearsAddedTotal, writtenOff: profile.rentalArrearsWrittenOffTotal, mortgageDebt: profile.mortgageDebtBalance, transactions: profile.propertyTransactions };',
     '})()'
   ].join(String.fromCharCode(10)), context, { timeout: 10000 });
+  assert.equal(result.asset.lease, undefined, 'legacy rental assets must not receive a retroactive lease');
   assert.equal(result.asset.rentArrears, 0);
   assert.equal(result.asset.rentArrearsCollectedTotal, 0);
   assert.equal(result.asset.rentArrearsAddedTotal, 0);
@@ -1258,4 +1262,105 @@ test('الحفظ القديم لا يكتسب عقارات أو مصروفات �
   assert.equal(result.history[0].propertyValue, 0);
   assert.equal(result.history[0].propertyExpenses, 0);
   assert.equal(result.history[0].propertyPurchase, false);
+});
+
+test('عقد الإيجار يحدد مستأجرًا ومدة وتجديدًا حتميًا دون تكرار', () => {
+  const context = vm.createContext({});
+  vm.runInNewContext(siblingEconomySource + String.fromCharCode(10) + harnessSource, context, { timeout: 10000 });
+  const result = vm.runInContext([
+    '(() => {',
+    ' state = makeState(); state.yearCount = 41; state.age = 41; state.place = { unit: "ج.م" };',
+    " let siblingId = 'lease-owner';",
+    " const sibling = { id: siblingId, name: 'مالك العقد', relation: 'الأخ', age: 41, reliability: 90, smart: 70 };",
+    " const makeAsset = () => ({ id: 'lease-rental', kind: 'rental', purchaseYear: 40, monthlyRent: 1200, lastRentYear: 40, lease: { status: 'vacant', tenantName: '', monthlyRent: 1200, startYear: 41, endYear: 40, termYears: 0, lastProcessedYear: 40, renewals: 0, history: [] } });",
+    " let asset = makeAsset(), first = siblingRentalLeaseDecision(sibling, 41, asset), guard = 0;",
+    " while (first.status !== 'active' && guard < 1000) { siblingId += 'x'; sibling.id = siblingId; asset = makeAsset(); first = siblingRentalLeaseDecision(sibling, 41, asset); guard += 1; }",
+    " const firstSnapshot = JSON.stringify(asset.lease);",
+    " const repeated = siblingRentalLeaseDecision(sibling, 41, asset);",
+    " const repeatedSnapshot = JSON.stringify(asset.lease);",
+    " const income = siblingRentalAnnualIncome(sibling, 41, asset);",
+    " asset.lease.startYear = 41; asset.lease.endYear = 41; asset.lease.termYears = 1; asset.lease.lastProcessedYear = 41;",
+    " const tenantBeforeExpiry = asset.lease.tenantName;",
+    " const beforeRenewalHistory = asset.lease.history.length;",
+    " const expiry = siblingRentalLeaseDecision(sibling, 42, asset);",
+    " const expirySnapshot = JSON.stringify(asset.lease);",
+    " const duplicateExpiry = siblingRentalLeaseDecision(sibling, 42, asset);",
+    " return { guard, first, repeated, firstSnapshot, repeatedSnapshot, income, expiry, duplicateExpiry, tenantBeforeExpiry, expirySnapshot, afterDuplicate: JSON.stringify(asset.lease), beforeRenewalHistory, lease: asset.lease };",
+    '})()'
+  ].join(String.fromCharCode(10)), context, { timeout: 10000 });
+  assert.ok(result.guard < 1000, 'a deterministic fixture should find a tenant');
+  assert.equal(result.first.event, 'signed');
+  assert.equal(result.first.status, 'active');
+  assert.ok(result.first.tenantName.length > 0);
+  assert.equal(result.first.startYear, 41);
+  assert.ok(result.first.endYear >= 41 && result.first.endYear <= 43);
+  assert.equal(result.firstSnapshot, result.repeatedSnapshot, 'processing the same contract year must not sign or extend twice');
+  assert.equal(result.income.leaseStatus, 'active');
+  assert.equal(result.income.tenantName, result.first.tenantName);
+  assert.ok(result.income.collected > 0);
+  assert.ok(result.income.collectionLoss > 0);
+  assert.ok(['renewed', 'expired'].includes(result.expiry.event));
+  assert.equal(result.expiry.tenantName, result.tenantBeforeExpiry);
+  assert.equal(result.lease.lastProcessedYear, 42);
+  assert.equal(result.lease.history.length, result.beforeRenewalHistory + 1);
+  assert.equal(result.expirySnapshot, result.afterDuplicate, 'a repeated expiry year must not renew or expire twice');
+  assert.equal(result.duplicateExpiry.event, result.expiry.event === 'renewed' ? 'active' : 'vacant');
+});
+
+test('فترة شغور العقار لا تنشئ متأخرات إيجار ولا تحسب مستأجرًا وهميًا', () => {
+  const context = vm.createContext({});
+  vm.runInNewContext(siblingEconomySource + String.fromCharCode(10) + harnessSource, context, { timeout: 10000 });
+  const result = vm.runInContext([
+    '(() => {',
+    ' state = makeState(); state.yearCount = 51; state.age = 51; state.place = { unit: "ج.م" };',
+    " let siblingId = 'vacant-owner', asset, decision, guard = 0;",
+    " const sibling = { id: siblingId, name: 'مالك شاغر', relation: 'الأخ', age: 51, reliability: 0 };",
+    " const makeAsset = () => ({ id: 'vacant-rental', kind: 'rental', purchaseYear: 40, monthlyRent: 1000, lastRentYear: 50, rentArrears: 0, lease: { status: 'vacant', tenantName: '', monthlyRent: 1000, startYear: 51, endYear: 50, termYears: 0, lastProcessedYear: 50, renewals: 0, history: [] } });",
+    " do { asset = makeAsset(); decision = siblingRentalLeaseDecision(sibling, 51, asset); if (decision.status !== 'vacant') { siblingId += 'x'; sibling.id = siblingId; } guard += 1; } while (decision.status !== 'vacant' && guard < 1000);",
+    " const rent = siblingRentalAnnualIncome(sibling, 51, asset);",
+    " const arrears = siblingRentalArrearsSettlement(sibling, 51, asset);",
+    " return { guard, decision, rent, arrears, asset };",
+    '})()'
+  ].join(String.fromCharCode(10)), context, { timeout: 10000 });
+  assert.ok(result.guard < 1000, 'a deterministic fixture should find a vacant year');
+  assert.equal(result.decision.status, 'vacant');
+  assert.equal(result.rent.leaseStatus, 'vacant');
+  assert.equal(result.rent.tenantName, '');
+  assert.equal(result.rent.collected, 0);
+  assert.equal(result.rent.vacancyLoss, 12000);
+  assert.equal(result.rent.collectionLoss, 0, 'vacancy is not an unpaid tenant balance');
+  assert.equal(result.rent.totalLoss, 12000);
+  assert.equal(result.arrears.collected, 0);
+  assert.equal(result.arrears.closingArrears, 0);
+  assert.equal(result.asset.lease.lastProcessedYear, 51);
+});
+
+test('دورة الإيجار تسجل توقيع العقد في تاريخ الشقيق دون التأثير على بنك اللاعب', () => {
+  const context = vm.createContext({});
+  vm.runInNewContext(siblingEconomySource + String.fromCharCode(10) + harnessSource, context, { timeout: 10000 });
+  const result = vm.runInContext([
+    '(() => {',
+    ' state = makeState(); state.yearCount = 41; state.age = 60; state.bank = 987654; state.place = { unit: "ج.م" };',
+    " let siblingId = 'annual-lease-owner', guard = 0;",
+    " const residence = { id: 'annual-home', kind: 'residence', purchaseYear: 30, purchasePrice: 240000, marketValue: 250000, annualUpkeepRateBps: 120, lastMarketYear: 40 };",
+    " const rental = { id: 'annual-rental', kind: 'rental', purchaseYear: 40, purchasePrice: 180000, marketValue: 190000, monthlyRent: 1000, lastRentYear: 40, annualUpkeepRateBps: 180, lastMarketYear: 40, rentArrears: 0, lease: { status: 'vacant', tenantName: '', monthlyRent: 1000, startYear: 41, endYear: 40, termYears: 0, lastProcessedYear: 40, renewals: 0, history: [] } };",
+    " const profile = { version: 1, currency: 'ج.م', job: 'محاسب', yearsWorked: 30, rank: 2, savings: 1000000, debt: 0, investmentBalance: 0, investmentContribution: 0, investmentReturn: 0, investmentContributionsTotal: 0, investmentReturnsTotal: 0, investmentRisk: 'balanced', ownedProperties: [residence, rental], lastProcessedYear: 40, employmentState: 'working', employmentStatus: 'مستقر', history: [] };",
+    " const sibling = { id: siblingId, name: 'صاحب العقار', relation: 'الأخ', age: 60, job: 'محاسب', smart: 90, reliability: 100, generosity: 50, economicProfile: profile };",
+    " while ((siblingEmploymentDecision(sibling, profile, 41, 60).state !== 'working' || siblingInvestmentHash(siblingId + '|lease-signing|41|annual-rental') % 10000 >= 9000) && guard < 1000) { siblingId += 'x'; sibling.id = siblingId; guard += 1; }",
+    ' state.family = [sibling];',
+    ' const bankBefore = state.bank;',
+    ' const processed = advanceSiblingEconomies();',
+    ' const latest = profile.history[profile.history.length - 1];',
+    " const ownedRental = profile.ownedProperties.find(asset => asset.kind === 'rental');",
+    ' return { guard, processed, latest, ownedRental, bankBefore, bankAfter: state.bank, profile };',
+    '})()'
+  ].join(String.fromCharCode(10)), context, { timeout: 10000 });
+  assert.ok(result.guard < 1000, 'a deterministic fixture should find a working sibling and tenant');
+  assert.equal(result.processed, 1);
+  assert.equal(result.ownedRental.lease.status, 'active');
+  assert.equal(result.latest.rentLeaseEvents[0].event, 'signed');
+  assert.ok(result.latest.rentLeaseEvents[0].tenantName.length > 0);
+  assert.ok(result.profile.annualRentIncome > 0);
+  assert.ok(result.profile.rentalArrearsAddedTotal > 0);
+  assert.equal(result.bankAfter, result.bankBefore);
 });
