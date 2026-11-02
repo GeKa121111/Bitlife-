@@ -40,6 +40,13 @@ const siblingEconomySource = [
   extractFunction('siblingRentalPurchaseDecision'),
   extractFunction('siblingRentalAnnualIncome'),
   extractFunction('siblingRentalArrearsSettlement'),
+  extractFunction('siblingMortgageLiability'),
+  extractFunction('siblingProfileMortgageLiability'),
+  extractFunction('siblingMortgageAnnualPayment'),
+  extractFunction('siblingMortgageAnnualDue'),
+  extractFunction('siblingMortgageSettlement'),
+  extractFunction('siblingMortgagePrepaymentQuote'),
+  extractFunction('siblingMortgagePrepayment'),
   extractFunction('siblingManualRentalSaleQuote'),
   extractFunction('siblingManualRentalSale'),
   extractFunction('ensureSiblingEconomicProfile'),
@@ -992,8 +999,8 @@ test('البيع اليدوي للعقار الاستثماري يسوي الد�
     '(() => {',
     ' state = makeState(); state.yearCount = 50; state.age = 50; state.bank = 75000; state.place = { unit: "ج.م" };',
     " const residence = { id: 'manual-home', kind: 'residence', purchaseYear: 35, purchasePrice: 170000, marketValue: 180000, annualUpkeepRateBps: 120, lastMarketYear: 49 };",
-    " const rental = { id: 'manual-rental', kind: 'rental', purchaseYear: 40, purchasePrice: 190000, marketValue: 200000, annualUpkeepRateBps: 180, lastMarketYear: 49, monthlyRent: 900, lastRentYear: 49, rentArrears: 12000, rentArrearsAddedTotal: 12000, rentArrearsCollectedTotal: 0 };",
-    " const profile = { version: 1, currency: 'ج.م', job: 'محاسب', yearsWorked: 15, rank: 2, savings: 30000, debt: 40000, investmentBalance: 5000, investmentContribution: 0, investmentReturn: 0, investmentContributionsTotal: 0, investmentReturnsTotal: 0, investmentRisk: 'balanced', ownedProperties: [residence, rental], propertyExpensesAnnual: 0, propertyPurchasesTotal: 360000, propertySalesTotal: 0, propertySaleCostsTotal: 0, rentalArrearsWrittenOffTotal: 0, rentalArrearsBalance: 12000, lastProcessedYear: 49, employmentStatus: 'مستقر', employmentState: 'working', history: [], propertyTransactions: [] };",
+    " const rental = { id: 'manual-rental', kind: 'rental', purchaseYear: 40, purchasePrice: 190000, marketValue: 200000, annualUpkeepRateBps: 180, lastMarketYear: 49, monthlyRent: 900, lastRentYear: 49, rentArrears: 12000, rentArrearsAddedTotal: 12000, rentArrearsCollectedTotal: 0, mortgage: { principal: 100000, balance: 100000, interestRateBps: 650, annualPayment: 11000, termYears: 15, remainingYears: 10, arrears: 0, lastProcessedYear: 49, status: 'active' } };",
+    " const profile = { version: 1, currency: 'ج.م', job: 'محاسب', yearsWorked: 15, rank: 2, savings: 30000, debt: 140000, investmentBalance: 5000, investmentContribution: 0, investmentReturn: 0, investmentContributionsTotal: 0, investmentReturnsTotal: 0, investmentRisk: 'balanced', ownedProperties: [residence, rental], propertyExpensesAnnual: 0, propertyPurchasesTotal: 360000, propertySalesTotal: 0, propertySaleCostsTotal: 0, rentalArrearsWrittenOffTotal: 0, rentalArrearsBalance: 12000, lastProcessedYear: 49, employmentStatus: 'مستقر', employmentState: 'working', history: [], propertyTransactions: [] };",
     " const sibling = { id: 'manual-rental-owner', name: 'مالك العقار', relation: 'الأخ', age: 50, job: 'محاسب', economicProfile: profile };",
     " const quote = siblingManualRentalSaleQuote(profile, 'manual-rental');",
     ' const assetsBeforeSale = profile.ownedProperties.length;',
@@ -1006,21 +1013,26 @@ test('البيع اليدوي للعقار الاستثماري يسوي الد�
   assert.equal(result.quote.gross, 200000);
   assert.equal(result.quote.transactionCost, 10000);
   assert.equal(result.quote.netProceeds, 190000);
-  assert.equal(result.quote.debtPaid, 40000);
-  assert.equal(result.quote.cashRetained, 150000);
+  assert.equal(result.quote.mortgagePayoff, 100000);
+  assert.equal(result.quote.mortgagePaid, 100000);
+  assert.equal(result.quote.debtPaid, 140000);
+  assert.equal(result.quote.cashRetained, 50000);
   assert.equal(result.quote.arrearsWrittenOff, 12000);
   assert.equal(result.sale.year, 50);
-  assert.equal(result.profile.savings, 180000);
+  assert.equal(result.profile.savings, 80000);
   assert.equal(result.profile.debt, 0);
   assert.equal(result.profile.propertySalesTotal, 200000);
   assert.equal(result.profile.propertySaleCostsTotal, 10000);
   assert.equal(result.profile.rentalArrearsWrittenOffTotal, 12000);
+  assert.equal(result.profile.mortgageDebtPaidBySalesTotal, 100000);
   assert.equal(result.profile.rentalArrearsBalance, 0);
   assert.equal(result.profile.ownedProperties.length, 1);
   assert.equal(result.profile.ownedProperties[0].kind, 'residence');
-  assert.equal(result.profile.netWorth, 365000);
+  assert.equal(result.profile.netWorth, 265000);
   assert.equal(result.profile.propertyTransactions.length, 1);
   assert.equal(result.profile.propertyTransactions[0].year, 50);
+  assert.equal(result.profile.propertyTransactions[0].mortgagePayoff, 100000);
+  assert.equal(result.profile.propertyTransactions[0].mortgagePaid, 100000);
   assert.equal(result.duplicate, null, 'a sold rental asset cannot be sold twice');
   assert.equal(result.bank, 75000, 'manual sibling property sales must never change the active player bank');
 });
@@ -1045,6 +1057,103 @@ test('لا يسمح بالبيع اليدوي لعقار سكني أو لشقي�
   assert.equal(result.deceased, null);
 });
 
+
+test('قرار شراء العقار الاستثماري يتيح مقدمًا وتمويلًا عند عدم كفاية النقد الكامل', () => {
+  const context = vm.createContext({});
+  vm.runInNewContext(siblingEconomySource + String.fromCharCode(10) + harnessSource, context, { timeout: 10000 });
+  const result = vm.runInContext([
+    '(() => {',
+    " const sibling = { id: 'mortgage-buyer', relation: 'الأخ', age: 40, job: 'مطور', smart: 85, reliability: 95 };",
+    " const profile = { yearsWorked: 12, ownedProperties: [{ id: 'home', kind: 'residence', marketValue: 250000 }] };",
+    ' const price = siblingRentalPropertyPrice(sibling);',
+    ' const reserve = Math.max(60000, Math.round((9000 + 40 * 110) * 8));',
+    ' const savings = Math.ceil(price * .30) + reserve + 1000;',
+    ' let decision = null, guard = 0;',
+    " while (!decision && guard < 1000) { sibling.id += 'x'; decision = siblingRentalPurchaseDecision(sibling, profile, 40, 40, savings, 0, 'working'); guard += 1; }",
+    ' return { price, reserve, savings, decision, guard, expectedPayment: siblingMortgageAnnualPayment(decision && decision.loanPrincipal, 650, 15) };',
+    '})()'
+  ].join(String.fromCharCode(10)), context, { timeout: 10000 });
+  assert.ok(result.guard < 1000);
+  assert.ok(result.savings < result.price + result.reserve);
+  assert.equal(result.decision.financed, true);
+  assert.equal(result.decision.downPayment, Math.ceil(result.price * .30));
+  assert.equal(result.decision.loanPrincipal, result.price - result.decision.downPayment);
+  assert.equal(result.decision.interestRateBps, 650);
+  assert.equal(result.decision.termYears, 15);
+  assert.equal(result.decision.annualPayment, result.expectedPayment);
+});
+
+test('القسط السنوي يسدد المتأخرات ثم الفائدة ثم أصل التمويل ويمنع الخصم المكرر', () => {
+  const context = vm.createContext({});
+  vm.runInNewContext(siblingEconomySource + String.fromCharCode(10) + harnessSource, context, { timeout: 10000 });
+  const result = vm.runInContext([
+    '(() => {',
+    " const asset = { kind: 'rental', mortgage: { principal: 100000, balance: 100000, interestRateBps: 650, annualPayment: siblingMortgageAnnualPayment(100000, 650, 15), termYears: 15, remainingYears: 15, arrears: 0, lastProcessedYear: 40, status: 'active' } };",
+    ' const due = siblingMortgageAnnualDue(41, asset);',
+    ' const settlement = siblingMortgageSettlement(asset, 41, due, 0);',
+    ' const duplicate = siblingMortgageAnnualDue(41, asset);',
+    ' return { due, settlement, asset, duplicate };',
+    '})()'
+  ].join(String.fromCharCode(10)), context, { timeout: 10000 });
+  assert.ok(result.due.due > 0);
+  assert.equal(result.settlement.paid, result.due.due);
+  assert.equal(result.settlement.unpaid, 0);
+  assert.ok(result.settlement.interestPaid > 0);
+  assert.ok(result.settlement.principalPaid > 0);
+  assert.equal(result.asset.mortgage.balance, 100000 - result.settlement.principalPaid);
+  assert.equal(result.asset.mortgage.remainingYears, 14);
+  assert.equal(result.duplicate, null);
+});
+
+test('القسط غير المدفوع يتحول إلى متأخرات ولا يخفض أصل التمويل', () => {
+  const context = vm.createContext({});
+  vm.runInNewContext(siblingEconomySource + String.fromCharCode(10) + harnessSource, context, { timeout: 10000 });
+  const result = vm.runInContext([
+    '(() => {',
+    " const asset = { kind: 'rental', mortgage: { principal: 100000, balance: 100000, interestRateBps: 650, annualPayment: 30000, termYears: 15, remainingYears: 15, arrears: 0, lastProcessedYear: 40, status: 'active' } };",
+    ' const due = siblingMortgageAnnualDue(41, asset);',
+    ' const settlement = siblingMortgageSettlement(asset, 41, due, 20000);',
+    ' return { due, settlement, mortgage: asset.mortgage };',
+    '})()'
+  ].join(String.fromCharCode(10)), context, { timeout: 10000 });
+  assert.equal(result.settlement.unpaid, 20000);
+  assert.equal(result.mortgage.balance, 100000);
+  assert.equal(result.mortgage.arrears, 20000);
+  assert.equal(result.mortgage.lastProcessedYear, 41);
+});
+
+test('السداد المبكر يغلق التمويل ويخصم الرصيد والرسوم من مدخرات الشقيق فقط', () => {
+  const context = vm.createContext({});
+  vm.runInNewContext(siblingEconomySource + String.fromCharCode(10) + harnessSource, context, { timeout: 10000 });
+  const result = vm.runInContext([
+    '(() => {',
+    ' state = makeState(); state.yearCount = 45; state.place = { unit: "ج.م" }; state.bank = 99000;',
+    " const mortgage = { principal: 100000, balance: 80000, interestRateBps: 650, annualPayment: 12000, termYears: 15, remainingYears: 10, arrears: 5000, lastProcessedYear: 44, status: 'active' };",
+    " const rental = { id: 'prepay-rental', kind: 'rental', purchaseYear: 35, purchasePrice: 200000, marketValue: 210000, monthlyRent: 1200, lastRentYear: 44, rentArrears: 0, mortgage };",
+    " const profile = { savings: 100000, debt: 85000, investmentBalance: 5000, ownedProperties: [rental], propertyTransactions: [] };",
+    " const sibling = { id: 'prepay-sibling', relation: 'الأخ', age: 45, economicProfile: profile };",
+    " const quote = siblingMortgagePrepaymentQuote(profile, 'prepay-rental');",
+    " const payoff = siblingMortgagePrepayment(sibling, 'prepay-rental', 45);",
+    ' return { quote, payoff, profile, mortgage, bank: state.bank };',
+    '})()'
+  ].join(String.fromCharCode(10)), context, { timeout: 10000 });
+  assert.equal(result.quote.payoff, 85000);
+  assert.equal(result.quote.fee, 800);
+  assert.equal(result.quote.totalCashNeeded, 85800);
+  assert.equal(result.payoff.principalPaid, 80000);
+  assert.equal(result.payoff.arrearsPaid, 5000);
+  assert.equal(result.payoff.fee, 800);
+  assert.equal(result.profile.savings, 14200);
+  assert.equal(result.profile.debt, 0);
+  assert.equal(result.mortgage.balance, 0);
+  assert.equal(result.mortgage.arrears, 0);
+  assert.equal(result.mortgage.status, 'paid');
+  assert.equal(result.profile.mortgagePrepaymentsTotal, 85000);
+  assert.equal(result.profile.mortgageFeesTotal, 800);
+  assert.equal(result.profile.propertyTransactions[0].type, 'mortgage_prepayment');
+  assert.equal(result.bank, 99000);
+});
+
 test('الحفظ القديم يطبع متأخرات العقار الاستثماري المفقودة إلى صفر دون دخل رجعي', () => {
   const context = vm.createContext({});
   vm.runInNewContext(siblingEconomySource + String.fromCharCode(10) + harnessSource, context, { timeout: 10000 });
@@ -1053,7 +1162,7 @@ test('الحفظ القديم يطبع متأخرات العقار الاستث�
     ' state = makeState(); state.yearCount = 41; state.place = { unit: "ج.م" };',
     " const sibling = { id: 'legacy-rental-owner', relation: 'الأخ', age: 45, job: 'محاسب', economicProfile: { savings: 100000, debt: 0, lastProcessedYear: 40, ownedProperties: [{ id: 'legacy-rental', kind: 'rental', purchaseYear: 35, purchasePrice: 150000, marketValue: 160000, monthlyRent: 700, lastRentYear: 40 }] } };",
     ' const profile = ensureSiblingEconomicProfile(sibling);',
-    ' return { asset: profile.ownedProperties[0], balance: profile.rentalArrearsBalance, collected: profile.rentalArrearsCollectedTotal, added: profile.rentalArrearsAddedTotal, writtenOff: profile.rentalArrearsWrittenOffTotal, transactions: profile.propertyTransactions };',
+    ' return { asset: profile.ownedProperties[0], balance: profile.rentalArrearsBalance, collected: profile.rentalArrearsCollectedTotal, added: profile.rentalArrearsAddedTotal, writtenOff: profile.rentalArrearsWrittenOffTotal, mortgageDebt: profile.mortgageDebtBalance, transactions: profile.propertyTransactions };',
     '})()'
   ].join(String.fromCharCode(10)), context, { timeout: 10000 });
   assert.equal(result.asset.rentArrears, 0);
@@ -1063,6 +1172,8 @@ test('الحفظ القديم يطبع متأخرات العقار الاستث�
   assert.equal(result.collected, 0);
   assert.equal(result.added, 0);
   assert.equal(result.writtenOff, 0);
+  assert.equal(result.mortgageDebt, 0);
+  assert.equal(result.asset.mortgage, undefined);
   assert.deepEqual(Array.from(result.transactions), []);
 });
 
