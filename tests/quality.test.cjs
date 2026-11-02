@@ -2414,7 +2414,7 @@ test('الشريك الباقي يدخل دفتر تركة الأشقاء بحص
   vm.runInNewContext([
     shareSource, allocationSource, snapshotSource, ensureHouseholdSource, updateStatusSource, settlementSource,
     'globalThis.settleSiblingEstate = siblingEstateSettlement;'
-  ].join('\\n'), context);
+  ].join('\n'), context);
 
   const makeChild = (id, name) => ({
     id, name, age: 12, birthYear: 2014, lastAgeYear: 2026, independent: false, inheritance: { records: [] }
@@ -2504,7 +2504,7 @@ test('الحفظ القديم يهيئ حساب إرث الشريك إلى قي�
       return { records: Array.isArray(source.records) ? source.records : [] };
     }
   };
-  vm.runInNewContext(ensureHouseholdSource + '\\nglobalThis.normalizeHousehold = ensureSiblingHousehold;', context);
+  vm.runInNewContext(ensureHouseholdSource + '\nglobalThis.normalizeHousehold = ensureSiblingHousehold;', context);
   const normalized = context.normalizeHousehold(
     { id: 'old-sibling', age: 48, deceased: false },
     { household: { spouse: { id: 'old-spouse', name: 'شريك قديم' }, children: [] } },
