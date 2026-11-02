@@ -803,6 +803,9 @@ test('بيع مسكن الشقيق لا يحدث إلا بعد استمرار ا
     " const asset = { id: 'sibling-distress-home', kind: 'residence', label: 'مسكن مستقل', purchaseYear: 25, purchasePrice: 180000, marketValue: 200000, annualUpkeepRateBps: 120, lastMarketYear: 39 }; ",
     ' const profile = { version: 1, currency: \'ج.م\', yearsWorked: 0, rank: 1, savings: 0, debt: 10000, investmentBalance: 0, investmentContribution: 0, investmentReturn: 0, investmentContributionsTotal: 0, investmentReturnsTotal: 0, investmentRisk: \'conservative\', ownedProperties: [asset], propertyExpensesAnnual: 0, propertyPurchasesTotal: 180000, propertySalesTotal: 0, propertySaleCostsTotal: 0, annualIncome: 0, annualExpenses: 0, cumulativeIncome: 0, cumulativeExpenses: 0, lastProcessedYear: 39, employmentStatus: \'باحث عن عمل\', employmentState: \'seeking\', history: [{ year: 39, age: 39, job: \'محاسب\', income: 0, expenses: 15000, savings: 0, debt: 10000, investmentBalance: 0, investmentContribution: 0, investmentReturn: 0, investmentRisk: \'conservative\', propertyValue: 200000, propertyExpenses: 2400, propertyCount: 1, propertyPurchase: false, employmentState: \'seeking\', employmentEvent: \'laid_off\', netWorth: 190000 }] };',
     " const sibling = { id: siblingId, name: 'أخ يواجه بطالة طويلة', relation: 'الأخ', age: 40, job: 'محاسب', smart: 10, reliability: 10, generosity: 50, economicProfile: profile }; ",
+    " const firstYearProfile = { ...profile, history: [{ year: 39, employmentState: 'working' }] }; ",
+    " const firstYearDecision = siblingPropertySaleDecision(sibling, firstYearProfile, 40, 40, 'seeking', 20000); ",
+    " const coveredDeficitDecision = siblingPropertySaleDecision(sibling, profile, 40, 40, 'seeking', 0); ",
     ' const expectedValue = Math.max(0, Math.round(asset.marketValue * (10000 + siblingPropertyMarketChangeBps(sibling, 40, asset)) / 10000));',
     ' const expectedUpkeep = siblingPropertyAnnualUpkeep({ ...asset, marketValue: expectedValue });',
     ' const expectedExpenses = 9000 + 40 * 110 + expectedUpkeep;',
@@ -815,9 +818,11 @@ test('بيع مسكن الشقيق لا يحدث إلا بعد استمرار ا
     ' const after = JSON.parse(JSON.stringify(profile));',
     ' const snapshot = JSON.stringify(profile);',
     ' const duplicate = advanceSiblingEconomies();',
-    ' return { processed, duplicate, after, snapshot, afterDuplicate: JSON.stringify(profile), bankBefore, bankAfter: state.bank, expectedValue, expectedUpkeep, expectedExpenses, expectedCost, expectedNet, expectedRetained };',
+    ' return { processed, duplicate, after, snapshot, afterDuplicate: JSON.stringify(profile), bankBefore, bankAfter: state.bank, firstYearDecision, coveredDeficitDecision, expectedValue, expectedUpkeep, expectedExpenses, expectedCost, expectedNet, expectedRetained };',
     '})()'
   ].join(String.fromCharCode(10)), context, { timeout: 10000 });
+  assert.equal(result.firstYearDecision, null, 'one year of unemployment alone must not force a home sale');
+  assert.equal(result.coveredDeficitDecision, null, 'a home must not be sold when savings cover the deficit');
   assert.equal(result.processed, 1);
   assert.equal(result.duplicate, 0);
   assert.equal(result.after.ownedProperties.length, 0, 'the home should be liquidated after a second consecutive year of unemployment and an uncovered deficit');
