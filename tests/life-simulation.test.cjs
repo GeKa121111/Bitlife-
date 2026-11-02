@@ -1112,13 +1112,13 @@ test('القسط غير المدفوع يتحول إلى متأخرات ولا �
     '(() => {',
     " const asset = { kind: 'rental', mortgage: { principal: 100000, balance: 100000, interestRateBps: 650, annualPayment: 30000, termYears: 15, remainingYears: 15, arrears: 0, lastProcessedYear: 40, status: 'active' } };",
     ' const due = siblingMortgageAnnualDue(41, asset);',
-    ' const settlement = siblingMortgageSettlement(asset, 41, due, 20000);',
+    ' const settlement = siblingMortgageSettlement(asset, 41, due, 25000);',
     ' return { due, settlement, mortgage: asset.mortgage };',
     '})()'
   ].join(String.fromCharCode(10)), context, { timeout: 10000 });
-  assert.equal(result.settlement.unpaid, 20000);
+  assert.equal(result.settlement.unpaid, 25000);
   assert.equal(result.mortgage.balance, 100000);
-  assert.equal(result.mortgage.arrears, 20000);
+  assert.equal(result.mortgage.arrears, 25000);
   assert.equal(result.mortgage.lastProcessedYear, 41);
 });
 
