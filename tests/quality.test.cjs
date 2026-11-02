@@ -2293,10 +2293,10 @@ test('إدارة المالك اليدوية لعقود إيجار الأشقا�
 
 
 test('الأسرة المستقلة للأشقاء تحفظ الشريك والأبناء وتربط دخلهم ومصروفاتهم بالمحاكاة', () => {
-  assert.match(app, /function ensureSiblingHousehold\\(relative,profile,year\\)/);
-  assert.match(app, /function siblingHouseholdAnnualEffects\\(relative,profile,year,age\\)/);
-  assert.match(app, /householdEffects\\.spouseIncome/);
-  assert.match(app, /householdEffects\\.familyExpenses/);
+  assert.match(app, /function ensureSiblingHousehold\(relative,profile,year\)/);
+  assert.match(app, /function siblingHouseholdAnnualEffects\(relative,profile,year,age\)/);
+  assert.match(app, /householdEffects\.spouseIncome/);
+  assert.match(app, /householdEffects\.familyExpenses/);
   assert.match(app, /householdEvents/);
   assert.match(app, /الأسرة المستقلة:/);
   assert.match(read('sw.js'), /hayah-shell-v111/);
