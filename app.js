@@ -1987,7 +1987,7 @@ function familyTreeNode(p){
  const siblingEconomy=/أخ|أخت/.test(String(p.relation||''))&&p.economicProfile&&typeof p.economicProfile==='object'?p.economicProfile:null;
  const netWorth=Number(siblingEconomy&&siblingEconomy.netWorth)||0;
  const propertyCount=Array.isArray(siblingEconomy&&siblingEconomy.ownedProperties)?siblingEconomy.ownedProperties.length:0;
- const propertyValue=siblingOwnedPropertyValue(siblingEconomy);
+ const propertyValue=Array.isArray(siblingEconomy&&siblingEconomy.ownedProperties)?siblingEconomy.ownedProperties.reduce((sum,asset)=>sum+(Number.isFinite(Number(asset&&asset.marketValue))?Math.max(0,Number(asset.marketValue)):0),0):0;
  const propertyNote=propertyCount?' · عقارات '+propertyCount+' · قيمتها '+esc(cash(propertyValue)):'';
  const economyNote=siblingEconomy?'<small class="family-tree-foot">'+(netWorth<0?'مديونية ':'صافي الثروة ')+esc(cash(Math.abs(netWorth)))+' '+esc(siblingEconomy.currency||'')+' · استثمارات '+esc(cash(siblingEconomy.investmentBalance||0))+' · '+esc(siblingEmploymentStateLabel(siblingEconomy.employmentState))+propertyNote+'</small>':'';
  return '<article class="family-tree-node'+(gone?' family-tree-deceased':'')+'"><div class="family-tree-person"><span class="family-tree-avatar">'+esc(p.emoji||'👤')+'</span><span class="family-tree-copy"><strong>'+esc(p.name||'فرد من العائلة')+'</strong><small>'+esc(p.relation||'قريب')+(Number.isFinite(Number(p.age))?' · '+fmt(p.age)+' سنة':'')+(gone?' · متوفى':'')+'</small></span></div><div class="family-tree-meter"><span style="width:'+level+'%"></span></div><small class="family-tree-foot">العلاقة '+level+'%</small>'+inheritanceNote+economyNote+'</article>';
