@@ -721,7 +721,7 @@ test('الأشقاء يشترون مسكنًا مستقلًا من مدخرات�
     '(() => {',
     ' state = makeState();',
     " state.place = { unit: 'ج.م' };",
-    " const profile = { version: 1, currency: 'ج.م', yearsWorked: 10, rank: 1, savings: 900000, debt: 0, investmentBalance: 0, investmentContribution: 0, investmentReturn: 0, investmentContributionsTotal: 0, investmentReturnsTotal: 0, investmentRisk: 'balanced', annualIncome: 0, annualExpenses: 0, cumulativeIncome: 0, cumulativeExpenses: 0, lastProcessedYear: 0, employmentStatus: 'مستقر', employmentState: 'working', history: [], ownedAssets: [] };",
+    " const profile = { version: 1, currency: 'ج.م', yearsWorked: 10, rank: 1, savings: 900000, debt: 0, investmentBalance: 0, investmentContribution: 0, investmentReturn: 0, investmentContributionsTotal: 0, investmentReturnsTotal: 0, investmentRisk: 'balanced', annualIncome: 0, annualExpenses: 0, cumulativeIncome: 0, cumulativeExpenses: 0, lastProcessedYear: 0, employmentStatus: 'مستقر', employmentState: 'working', history: [], ownedProperties: [] };",
     " const sibling = { id: 'sibling-home-purchase-test', name: 'أخ يشتري مسكنًا', relation: 'الأخ', age: 35, job: 'مطور', smart: 90, reliability: 95, generosity: 40, economicProfile: profile };",
     ' let year = 1;',
     ' while (year < 300) {',
@@ -744,10 +744,10 @@ test('الأشقاء يشترون مسكنًا مستقلًا من مدخرات�
   assert.ok(result.year < 300, 'a financially stable adult sibling should eventually choose a home');
   assert.equal(result.processed, 1);
   assert.equal(result.duplicate, 0);
-  assert.equal(result.after.ownedAssets.length, 1);
-  assert.equal(result.after.ownedAssets[0].kind, 'residence');
-  assert.equal(result.after.ownedAssets[0].purchaseYear, result.year);
-  assert.equal(result.after.propertyPurchasesTotal, result.after.ownedAssets[0].purchasePrice);
+  assert.equal(result.after.ownedProperties.length, 1);
+  assert.equal(result.after.ownedProperties[0].kind, 'residence');
+  assert.equal(result.after.ownedProperties[0].purchaseYear, result.year);
+  assert.equal(result.after.propertyPurchasesTotal, result.after.ownedProperties[0].purchasePrice);
   assert.ok(result.after.savings >= 50000, 'the purchase must preserve an emergency cash reserve');
   assert.equal(result.after.netWorth, result.after.savings + result.after.investmentBalance + result.propertyValue - result.after.debt);
   assert.equal(result.after.history[0].propertyPurchase, true);
@@ -763,8 +763,8 @@ test('صيانة مسكن الشقيق وتغير قيمته يُحتسبان م
     ' state.yearCount = 40;',
     ' state.age = 40;',
     " state.place = { unit: 'ج.م' };",
-    " const sibling = { id: 'sibling-home-upkeep-test', name: 'أخت مالكة لمسكن', relation: 'الأخت', age: 40, job: 'محاسب', smart: 70, reliability: 100, generosity: 40, economicProfile: { version: 1, currency: 'ج.م', yearsWorked: 15, rank: 2, savings: 250000, debt: 0, investmentBalance: 0, investmentContribution: 0, investmentReturn: 0, investmentContributionsTotal: 0, investmentReturnsTotal: 0, investmentRisk: 'balanced', annualIncome: 0, annualExpenses: 0, cumulativeIncome: 0, cumulativeExpenses: 0, lastProcessedYear: 39, employmentStatus: 'مستقر', employmentState: 'working', propertyExpensesAnnual: 0, propertyPurchasesTotal: 200000, ownedAssets: [{ id: 'sibling-home-upkeep-test-home', kind: 'residence', label: 'شقة مستقلة', purchaseYear: 25, purchasePrice: 200000, marketValue: 300000, annualUpkeepRateBps: 120, lastMarketYear: 39 }], history: [] } };",
-    ' const original = JSON.parse(JSON.stringify(sibling.economicProfile.ownedAssets[0]));',
+    " const sibling = { id: 'sibling-home-upkeep-test', name: 'أخت مالكة لمسكن', relation: 'الأخت', age: 40, job: 'محاسب', smart: 70, reliability: 100, generosity: 40, economicProfile: { version: 1, currency: 'ج.م', yearsWorked: 15, rank: 2, savings: 250000, debt: 0, investmentBalance: 0, investmentContribution: 0, investmentReturn: 0, investmentContributionsTotal: 0, investmentReturnsTotal: 0, investmentRisk: 'balanced', annualIncome: 0, annualExpenses: 0, cumulativeIncome: 0, cumulativeExpenses: 0, lastProcessedYear: 39, employmentStatus: 'مستقر', employmentState: 'working', propertyExpensesAnnual: 0, propertyPurchasesTotal: 200000, ownedProperties: [{ id: 'sibling-home-upkeep-test-home', kind: 'residence', label: 'شقة مستقلة', purchaseYear: 25, purchasePrice: 200000, marketValue: 300000, annualUpkeepRateBps: 120, lastMarketYear: 39 }], history: [] } };",
+    ' const original = JSON.parse(JSON.stringify(sibling.economicProfile.ownedProperties[0]));',
     ' const changeBps = siblingPropertyMarketChangeBps(sibling, 40, original);',
     ' const expectedValue = Math.max(0, Math.round(original.marketValue * (10000 + changeBps) / 10000));',
     ' const expectedUpkeep = siblingPropertyAnnualUpkeep({ ...original, marketValue: expectedValue });',
@@ -778,7 +778,7 @@ test('صيانة مسكن الشقيق وتغير قيمته يُحتسبان م
   ].join(String.fromCharCode(10)), context, { timeout: 10000 });
   assert.equal(result.processed, 1);
   assert.equal(result.duplicate, 0);
-  assert.equal(result.profile.ownedAssets[0].marketValue, result.expectedValue);
+  assert.equal(result.profile.ownedProperties[0].marketValue, result.expectedValue);
   assert.equal(result.profile.propertyExpensesAnnual, result.expectedUpkeep);
   assert.equal(result.profile.history[0].propertyExpenses, result.expectedUpkeep);
   assert.ok(result.profile.annualExpenses >= result.expectedUpkeep);
@@ -797,7 +797,7 @@ test('الحفظ القديم لا يكتسب عقارات أو مصروفات �
     " state.place = { unit: 'ج.م' };",
     " const sibling = { id: 'legacy-sibling-no-home', relation: 'الأخ', age: 50, job: 'محاسب', economicProfile: { savings: 80000, debt: 10000, investmentBalance: 5000, lastProcessedYear: 59, history: [{ year: 59, age: 49, job: 'محاسب', income: 90000, expenses: 60000 }] } };",
     ' const profile = ensureSiblingEconomicProfile(sibling);',
-    ' return { assets: profile.ownedAssets, propertyExpenses: profile.propertyExpensesAnnual, propertyPurchases: profile.propertyPurchasesTotal, netWorth: profile.netWorth, history: profile.history };',
+    ' return { assets: profile.ownedProperties, propertyExpenses: profile.propertyExpensesAnnual, propertyPurchases: profile.propertyPurchasesTotal, netWorth: profile.netWorth, history: profile.history };',
     '})()'
   ].join(String.fromCharCode(10)), context, { timeout: 10000 });
   assert.deepEqual(Array.from(result.assets), []);
