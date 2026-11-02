@@ -18,6 +18,15 @@ function extractFunction(name) {
 }
 
 const ageSource = extractFunction('advanceAge');
+const siblingEconomySource = [
+  extractFunction('siblingEconomicHash'),
+  extractFunction('siblingSafeMoney'),
+  extractFunction('siblingSafeSigned'),
+  extractFunction('siblingCareerFor'),
+  extractFunction('siblingCareerBaseSalary'),
+  extractFunction('ensureSiblingEconomicProfile'),
+  extractFunction('advanceSiblingEconomies')
+].join('\n');
 const propertyOwnershipSource = [
   extractFunction('familyPropertyOwnershipRecords'),
   extractFunction('safeFamilyOwnershipShare'),
@@ -303,7 +312,7 @@ function runCohort(count) {
 
 test('الصيانة والضريبة السنوية للعقار المشترك تتوزعان حسب الملكية دون خصم مزدوج', () => {
   const context = vm.createContext({});
-  vm.runInContext(combatRecoverySource + '\n' + propertyOwnershipSource + '\n' + ageSource + '\n' + harnessSource, context, {
+  vm.runInContext(combatRecoverySource + '\n' + propertyOwnershipSource + '\n' + siblingEconomySource + '\n' + ageSource + '\n' + harnessSource, context, {
     timeout: 120000,
     filename: 'hayah-shared-property-upkeep-harness.js'
   });
@@ -458,9 +467,95 @@ test('الضريبة العقارية اختيارية للحفظ القديم �
 });
 
 
+
+test('الإخوة البالغون يديرون دخلهم ومصروفاتهم ومدخراتهم دون لمس رصيد اللاعب', () => {
+  const context = vm.createContext({});
+  vm.runInContext(siblingEconomySource + '\n' + harnessSource, context, {
+    timeout: 10000,
+    filename: 'hayah-sibling-economy-harness.js'
+  });
+  const result = vm.runInContext(`(() => {
+    state = makeState();
+    state.age = 30;
+    state.yearCount = 24;
+    state.place = { unit: 'ج.م' };
+    const sibling = {
+      id: 'adult-sibling', name: 'أخ تجريبي', relation: 'الأخ/الأخت', age: 30,
+      job: 'محاسب', smart: 72, reliability: 80, generosity: 40, money: 50
+    };
+    const minor = { id: 'minor-sibling', name: 'أخت صغيرة', relation: 'الأخت', age: 17, job: 'طالب' };
+    const deceased = { id: 'deceased-sibling', name: 'أخ متوفى', relation: 'الأخ', age: 44, deceased: true };
+    const friend = { id: 'friend', name: 'صديق', relation: 'صديق', age: 30 };
+    state.family = [sibling, minor, deceased, friend];
+    const bankBefore = state.bank;
+    const firstCount = advanceSiblingEconomies();
+    const first = JSON.parse(JSON.stringify(sibling.economicProfile));
+    const duplicateCount = advanceSiblingEconomies();
+    const duplicate = JSON.stringify(sibling.economicProfile);
+    state.yearCount = 25;
+    state.age = 31;
+    const secondCount = advanceSiblingEconomies();
+    return {
+      firstCount, duplicateCount, secondCount, first,
+      duplicateUnchanged: duplicate === JSON.stringify(first),
+      second: sibling.economicProfile,
+      bankBefore, bankAfter: state.bank,
+      minorHasProfile: !!minor.economicProfile,
+      deceasedHasProfile: !!deceased.economicProfile,
+      friendHasProfile: !!friend.economicProfile
+    };
+  })()`, context, { timeout: 10000 });
+
+  assert.equal(result.firstCount, 1);
+  assert.equal(result.duplicateCount, 0);
+  assert.equal(result.secondCount, 1);
+  assert.ok(result.first.annualIncome > 0);
+  assert.ok(result.first.annualExpenses > 0);
+  assert.ok(result.first.savings > 0);
+  assert.equal(result.first.debt, 0);
+  assert.equal(result.first.cumulativeIncome, result.first.annualIncome,
+    'older saves receive no retroactive wages when the optional profile is first created');
+  assert.equal(result.first.history.length, 1);
+  assert.equal(result.first.lastProcessedYear, 24);
+  assert.equal(result.duplicateUnchanged, true);
+  assert.equal(result.second.history.length, 2);
+  assert.ok(result.second.cumulativeIncome > result.first.cumulativeIncome);
+  assert.equal(result.second.lastProcessedYear, 25);
+  assert.equal(result.bankAfter, result.bankBefore, 'sibling finances must never credit or debit the active player');
+  assert.equal(result.minorHasProfile, false);
+  assert.equal(result.deceasedHasProfile, false);
+  assert.equal(result.friendHasProfile, false);
+});
+
+test('ملف الاقتصاد الاختياري يتطبع بأمان عند وجود بيانات قديمة أو تالفة', () => {
+  const context = vm.createContext({});
+  vm.runInContext(siblingEconomySource + '
+' + harnessSource, context, { timeout: 10000 });
+  const result = vm.runInContext(`(() => {
+    state = makeState();
+    state.yearCount = 50;
+    state.place = { unit: 'ج.م' };
+    const sibling = {
+      id: 'legacy-adult-sibling', relation: 'أخت', age: 45, job: 'طالب',
+      economicProfile: { savings: -900, debt: 'غير صالح', rank: 99, history: [{ year: 49, income: -1 }] }
+    };
+    state.family = [sibling];
+    const profile = ensureSiblingEconomicProfile(sibling);
+    return { job: sibling.job, savings: profile.savings, debt: profile.debt, rank: profile.rank,
+      history: profile.history, lastProcessedYear: profile.lastProcessedYear };
+  })()`, context, { timeout: 10000 });
+
+  assert.equal(result.job, 'محاسب');
+  assert.equal(result.savings, 0);
+  assert.equal(result.debt, 0);
+  assert.equal(result.rank, 6);
+  assert.equal(result.history[0].income, 0);
+  assert.equal(result.lastProcessedYear, 49);
+});
+
 test('محاكاة 10,000 مسار تقدم سنوي حتمي تتحقق من ثوابت العمر والمال والصحة', { timeout: 120000 }, () => {
   const context = vm.createContext({});
-  vm.runInContext(combatRecoverySource + '\n' + propertyOwnershipSource + '\n' + ageSource + '\n' + harnessSource, context, {
+  vm.runInContext(combatRecoverySource + '\n' + propertyOwnershipSource + '\n' + siblingEconomySource + '\n' + ageSource + '\n' + harnessSource, context, {
     timeout: 120000,
     filename: 'hayah-life-simulation-harness.js'
   });
