@@ -21,6 +21,10 @@ const ageSource = extractFunction('advanceAge');
 const siblingEconomySource = [
   extractFunction('siblingSafeMoney'),
   extractFunction('siblingSafeSigned'),
+  extractFunction('siblingInvestmentHash'),
+  extractFunction('siblingInvestmentRiskFor'),
+  extractFunction('siblingInvestmentRiskLabel'),
+  extractFunction('siblingInvestmentAnnualReturn'),
   extractFunction('siblingCareerFor'),
   extractFunction('siblingCareerBaseSalary'),
   extractFunction('ensureSiblingEconomicProfile'),
@@ -535,11 +539,12 @@ test('ملف الاقتصاد الاختياري يتطبع بأمان عند و
     state.place = { unit: 'ج.م' };
     const sibling = {
       id: 'legacy-adult-sibling', relation: 'أخت', age: 45, job: 'طالب', smart: 70,
-      economicProfile: { savings: -900, debt: 'غير صالح', rank: 99, history: [{ year: 49, income: -1 }] }
+      economicProfile: { savings: -900, debt: 'غير صالح', rank: 99, investmentBalance: -500, investmentRisk: 'wild', history: [{ year: 49, income: -1 }] }
     };
     state.family = [sibling];
     const profile = ensureSiblingEconomicProfile(sibling);
     return { job: sibling.job, savings: profile.savings, debt: profile.debt, rank: profile.rank,
+      investmentBalance: profile.investmentBalance, investmentRisk: profile.investmentRisk,
       history: profile.history, lastProcessedYear: profile.lastProcessedYear };
   })()`, context, { timeout: 10000 });
 
@@ -547,10 +552,35 @@ test('ملف الاقتصاد الاختياري يتطبع بأمان عند و
   assert.equal(result.savings, 0);
   assert.equal(result.debt, 0);
   assert.equal(result.rank, 6);
+  assert.equal(result.investmentBalance, 0);
+  assert.equal(result.investmentRisk, 'balanced');
   assert.equal(result.history[0].income, 0);
   assert.equal(result.lastProcessedYear, 49);
 });
 
+test('الأشقاء يبنون محافظ مستقلة بعائد سنوي حتمي مع أولوية سداد الديون', () => {
+  const context = vm.createContext({});
+  vm.runInContext(siblingEconomySource + '\n' + harnessSource, context, { timeout: 10000 });
+  const result = vm.runInContext("(() => {\n  state = makeState();\n  state.age = 34;\n  state.yearCount = 70;\n  state.place = { unit: 'ج.م' };\n  const growth = { id: 'sibling-growth', name: 'أخ مستثمر', relation: 'الأخ', age: 34, job: 'مطور', smart: 88, reliability: 85, generosity: 40, personality: 'طموح' };\n  const cautious = { id: 'sibling-cautious', name: 'أخت حذرة', relation: 'الأخت', age: 34, job: 'محاسب', smart: 40, reliability: 40, generosity: 40, personality: 'حذر' };\n  const indebted = { id: 'sibling-indebted', name: 'أخ مدين', relation: 'الأخ', age: 34, job: 'محاسب', smart: 65, reliability: 65, generosity: 50, economicProfile: { version: 1, currency: 'ج.م', yearsWorked: 10, rank: 1, savings: 0, debt: 1000000, annualIncome: 0, annualExpenses: 0, cumulativeIncome: 0, cumulativeExpenses: 0, lastProcessedYear: 69, employmentStatus: 'عليه التزامات', history: [], investmentBalance: 5000, investmentRisk: 'balanced' } };\n  state.family = [growth, cautious, indebted];\n  const bankBefore = state.bank;\n  const firstCount = advanceSiblingEconomies();\n  const first = JSON.parse(JSON.stringify(growth.economicProfile));\n  const duplicateSnapshot = JSON.stringify(growth.economicProfile);\n  const duplicateCount = advanceSiblingEconomies();\n  const duplicateUnchanged = duplicateSnapshot === JSON.stringify(growth.economicProfile);\n  state.yearCount = 71;\n  state.age = 35;\n  const secondCount = advanceSiblingEconomies();\n  const returns = { conservative: siblingInvestmentAnnualReturn(cautious, 71, 'conservative', 100000), balanced: siblingInvestmentAnnualReturn(growth, 71, 'balanced', 100000), growth: siblingInvestmentAnnualReturn(growth, 71, 'growth', 100000), growthRepeat: siblingInvestmentAnnualReturn(growth, 71, 'growth', 100000) };\n  return { firstCount, duplicateCount, secondCount, duplicateUnchanged, first, second: growth.economicProfile, cautious: cautious.economicProfile, indebted: indebted.economicProfile, returns, bankBefore, bankAfter: state.bank };\n})()", context, { timeout: 10000 });
+  assert.equal(result.firstCount, 3);
+  assert.equal(result.duplicateCount, 0);
+  assert.equal(result.secondCount, 3);
+  assert.equal(result.duplicateUnchanged, true);
+  assert.equal(result.first.investmentReturn, 0, 'a new legacy-compatible portfolio must not receive retroactive returns');
+  assert.ok(result.first.investmentContribution > 0);
+  assert.ok(result.first.investmentBalance > 0);
+  assert.equal(result.first.investmentRisk, 'growth');
+  assert.equal(result.cautious.investmentRisk, 'conservative');
+  assert.equal(result.indebted.investmentContribution, 0, 'siblings with remaining debt do not start new contributions');
+  assert.ok(result.indebted.debt > 0);
+  assert.equal(result.second.investmentBalance, Math.max(0, result.first.investmentBalance + result.second.investmentReturn + result.second.investmentContribution));
+  assert.equal(result.second.netWorth, result.second.savings + result.second.investmentBalance - result.second.debt);
+  assert.equal(result.returns.growth, result.returns.growthRepeat, 'the same sibling and year must receive the same simulated market return');
+  assert.ok(result.returns.conservative >= -2500 && result.returns.conservative <= 6000);
+  assert.ok(result.returns.balanced >= -7000 && result.returns.balanced <= 10000);
+  assert.ok(result.returns.growth >= -13000 && result.returns.growth <= 15000);
+  assert.equal(result.bankAfter, result.bankBefore, 'sibling investment portfolios must never change the active player bank');
+});
 test('محاكاة 10,000 مسار تقدم سنوي حتمي تتحقق من ثوابت العمر والمال والصحة', { timeout: 120000 }, () => {
   const context = vm.createContext({});
   vm.runInContext(combatRecoverySource + '\n' + propertyOwnershipSource + '\n' + siblingEconomySource + '\n' + ageSource + '\n' + harnessSource, context, {
