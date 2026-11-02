@@ -1864,6 +1864,51 @@ function siblingRentalArrearsSettlement(relative,year,asset){
  const collected=Math.min(openingArrears,Math.round(openingArrears*recoveryBps/10000));
  return {openingArrears,collected,closingArrears:siblingSafeMoney(openingArrears-collected),recoveryBps};
 }
+
+function siblingManualRentalSaleQuote(profile,assetId){
+ if(!profile||typeof profile!=='object')return null;
+ const assets=Array.isArray(profile.ownedProperties)?profile.ownedProperties:[];
+ const asset=assets.find(item=>item&&item.kind==='rental'&&String(item.id||'')===String(assetId||''));
+ if(!asset)return null;
+ const gross=siblingSafeMoney(asset.marketValue);
+ const transactionCost=Math.min(gross,Math.round(gross*.05));
+ const netProceeds=siblingSafeMoney(gross-transactionCost);
+ if(gross<=0||netProceeds<=0)return null;
+ const debtPaid=Math.min(siblingSafeMoney(profile.debt),netProceeds);
+ return {
+  assetId:String(asset.id||''),gross,transactionCost,netProceeds,debtPaid,
+  cashRetained:siblingSafeMoney(netProceeds-debtPaid),
+  arrearsWrittenOff:siblingSafeMoney(asset.rentArrears)
+ };
+}
+function siblingManualRentalSale(relative,assetId,year){
+ if(!relative||relative.deceased||Math.max(0,Number(relative.age)||0)<18)return null;
+ const profile=ensureSiblingEconomicProfile(relative);
+ if(!profile)return null;
+ const quote=siblingManualRentalSaleQuote(profile,assetId);
+ if(!quote)return null;
+ const assetIndex=profile.ownedProperties.findIndex(asset=>asset&&asset.kind==='rental'&&String(asset.id||'')===quote.assetId);
+ if(assetIndex<0)return null;
+ profile.ownedProperties.splice(assetIndex,1);
+ profile.debt=siblingSafeMoney(profile.debt-quote.debtPaid);
+ profile.savings=siblingSafeMoney(profile.savings+quote.cashRetained);
+ profile.propertySalesTotal=siblingSafeMoney(profile.propertySalesTotal+quote.gross);
+ profile.propertySaleCostsTotal=siblingSafeMoney(profile.propertySaleCostsTotal+quote.transactionCost);
+ profile.rentalArrearsWrittenOffTotal=siblingSafeMoney(profile.rentalArrearsWrittenOffTotal+quote.arrearsWrittenOff);
+ profile.rentalArrearsBalance=siblingSafeMoney(profile.ownedProperties.reduce((sum,asset)=>sum+(asset.kind==='rental'?siblingSafeMoney(asset.rentArrears):0),0));
+ profile.netWorth=siblingSafeSigned(profile.savings+profile.investmentBalance+siblingOwnedPropertyValue(profile)-profile.debt);
+ const numericYear=Number(year);
+ const transaction={
+  type:'rental_sale',year:Number.isSafeInteger(numericYear)?Math.max(0,numericYear):0,
+  assetId:quote.assetId,gross:quote.gross,transactionCost:quote.transactionCost,
+  netProceeds:quote.netProceeds,debtPaid:quote.debtPaid,cashRetained:quote.cashRetained,
+  arrearsWrittenOff:quote.arrearsWrittenOff
+ };
+ profile.propertyTransactions.push(transaction);
+ if(profile.propertyTransactions.length>12)profile.propertyTransactions.shift();
+ return {...transaction,debtRemaining:profile.debt,savingsAfterSale:profile.savings,netWorth:profile.netWorth};
+}
+
 function ensureSiblingEconomicProfile(relative){
  if(!relative||typeof relative!=='object'||Array.isArray(relative))return null;
  const age=Math.max(0,Math.floor(Number(relative.age)||0));
@@ -1978,6 +2023,15 @@ function ensureSiblingEconomicProfile(relative){
   employmentEvent:['laid_off','rehired','retired'].includes(item.employmentEvent)?item.employmentEvent:'',
   netWorth:siblingSafeSigned(item.netWorth)
  }));
+ profile.propertyTransactions=(Array.isArray(profile.propertyTransactions)?profile.propertyTransactions:[])
+  .filter(item=>item&&typeof item==='object'&&!Array.isArray(item)&&item.type==='rental_sale')
+  .slice(-12).map(item=>({
+   type:'rental_sale',year:Number.isSafeInteger(Number(item.year))?Math.max(0,Number(item.year)):year,
+   assetId:String(item.assetId||'').slice(0,80),gross:siblingSafeMoney(item.gross),
+   transactionCost:siblingSafeMoney(item.transactionCost),netProceeds:siblingSafeMoney(item.netProceeds),
+   debtPaid:siblingSafeMoney(item.debtPaid),cashRetained:siblingSafeMoney(item.cashRetained),
+   arrearsWrittenOff:siblingSafeMoney(item.arrearsWrittenOff)
+  }));
  return profile;
 }
 function advanceSiblingEconomies(){
@@ -5441,6 +5495,27 @@ function personModal(n){
 }
 
 
+
+function siblingManualRentalSaleConfirm(n,assetId){
+ const profile=n&&n.economicProfile;
+ const quote=siblingManualRentalSaleQuote(profile,assetId);
+ if(!quote){info('⚠️','العقار غير متاح للبيع','لم يتم العثور على عقار استثماري صالح لهذا القرار.');return;}
+ const currency=String(profile.currency||'ج.م');
+ const description='القيمة السوقية '+cash(quote.gross)+' '+currency+' · رسوم البيع 5%: '+cash(quote.transactionCost)+' · صافي الحصيلة: '+cash(quote.netProceeds)+'. سيُسدد من الحصيلة '+cash(quote.debtPaid)+' من الديون، ويُضاف '+cash(quote.cashRetained)+' إلى المدخرات. ستُشطب متأخرات الإيجار غير المحصلة بقيمة '+cash(quote.arrearsWrittenOff)+'.';
+ info('🏘️','مراجعة بيع العقار الاستثماري',description,[
+  choice('✓','تأكيد البيع','تنفيذ البيع وتحديث حسابات الشقيق فقط.',()=>{
+   const sale=siblingManualRentalSale(n,assetId,state&&state.yearCount);
+   if(!sale){info('⚠️','تعذر تنفيذ البيع','العقار لم يعد متاحًا للبيع أو تغيرت بياناته.');return;}
+   log('🏘️','بيع عقار استثماري بقرار المالك','باع '+String(n.name||'أحد إخوتك')+' عقاره الاستثماري بقيمة '+cash(sale.gross)+'. بعد رسوم البيع وتسوية '+cash(sale.debtPaid)+' من الديون، أضيف '+cash(sale.cashRetained)+' إلى مدخراته، وشُطبت متأخرات غير محصلة بقيمة '+cash(sale.arrearsWrittenOff)+'.','special');
+   const saved=save();
+   info(saved?'🏘️':'⚠️',saved?'تم تسجيل البيع':'تعذر تأكيد الحفظ',saved?'تم تحديث الأصول والمدخرات والديون وسجل العملية.':'تم تحديث الجلسة الحالية، لكن المتصفح لم يؤكد حفظ التغيير محليًا.',[
+    choice('📊','عرض الوضع المالي','راجع صافي الثروة والأصول بعد البيع.',()=>siblingEconomicDetails(n))
+   ]);
+  }),
+  choice('↩️','الاحتفاظ بالعقار','إلغاء القرار دون تغيير أي حساب.',()=>siblingEconomicDetails(n))
+ ]);
+}
+
 function siblingEconomicDetails(n){
  const profile=n&&n.economicProfile;
  if(!profile){info('📊','لا يوجد سجل مالي بعد','يبدأ الحساب المالي المستقل عند بلوغ الأخ أو الأخت سن 18 سنة.');return;}
@@ -5448,10 +5523,13 @@ function siblingEconomicDetails(n){
  const properties=Array.isArray(profile.ownedProperties)?profile.ownedProperties:[];
  const propertyValue=siblingOwnedPropertyValue(profile);
  const propertyText=properties.length?properties.map(asset=>String(asset.label||'مسكن مستقل')+' · '+cash(asset.marketValue||0)+' '+String(profile.currency||'')+(asset.kind==='rental'?' · إيجار شهري '+cash(asset.monthlyRent||0)+' · متأخرات قائمة '+cash(asset.rentArrears||0):'')).join('، '):'لا يمتلك عقارًا مستقلًا بعد';
+ const propertyTransactions=(Array.isArray(profile.propertyTransactions)?profile.propertyTransactions:[]).slice(-3).reverse();
+ const transactionText=propertyTransactions.length?propertyTransactions.map(item=>'سنة '+fmt(item.year)+' · بيع عقار '+cash(item.gross)+' · رسوم '+cash(item.transactionCost)+' · سداد دين '+cash(item.debtPaid)+' · صافي نقدي '+cash(item.cashRetained)+' · شطب متأخرات '+cash(item.arrearsWrittenOff)).join('؛ '):'لا توجد عمليات بيع يدوية مسجلة';
+ const rentalSaleChoices=properties.filter(asset=>asset&&asset.kind==='rental').map(asset=>choice('🏘️','مراجعة بيع '+String(asset.label||'العقار الاستثماري'),'القيمة السوقية '+cash(asset.marketValue||0)+' · متأخرات قائمة '+cash(asset.rentArrears||0)+' · البيع اختياري ويتطلب تأكيدًا.',()=>siblingManualRentalSaleConfirm(n,asset.id),cash(asset.marketValue||0)));
  const history=(Array.isArray(profile.history)?profile.history:[]).slice(-5).reverse();
  const historyText=history.length?history.map(item=>'سنة '+fmt(item.year)+' · '+siblingEmploymentStateLabel(item.employmentState)+(siblingEmploymentEventLabel(item.employmentEvent)?' ('+siblingEmploymentEventLabel(item.employmentEvent)+')':'')+' · دخل '+cash(item.income)+' · إيجار '+cash(item.rentIncome||0)+' · فاقد إيجار '+cash(item.rentLoss||0)+' · متأخرات محصلة '+cash(item.rentArrearsCollected||0)+' · رصيد متأخرات '+cash(item.rentArrearsBalance||0)+(item.rentArrearsWrittenOff?' · شطب متأخرات '+cash(item.rentArrearsWrittenOff):'')+' · مصروف '+cash(item.expenses)+' · مدخرات '+cash(item.savings)+' · محفظة '+cash(item.investmentBalance||0)+' · قيمة العقار '+cash(item.propertyValue||0)+' · صيانة '+cash(item.propertyExpenses||0)+(item.propertyPurchase?' · شراء مسكن':'')+(item.rentalPurchase?' · شراء عقار استثماري':'')+(item.propertySale?' · بيع عقار '+cash(item.propertySaleGross||0)+' وصافي '+cash(item.propertySaleNet||0):'')).join('؛ '):'لا توجد سنوات مالية مسجلة بعد.';
- const description='المهنة: '+String(profile.job||n.job||'غير محدد')+' · حالة العمل: '+siblingEmploymentStateLabel(profile.employmentState)+' · المستوى المهني '+fmt(profile.rank||1)+' · الخبرة '+fmt(profile.yearsWorked||0)+' سنة. الدخل السنوي '+cash(profile.annualIncome||0)+' '+String(profile.currency||'')+'، منه دخل إيجار '+cash(profile.annualRentIncome||0)+' وإجمالي إيجارات محصلة '+cash(profile.rentalIncomeTotal||0)+' وفاقد إيجاري '+cash(profile.rentalLossTotal||0)+'، ومتأخرات إيجار قائمة '+cash(profile.rentalArrearsBalance||0)+' ومحصلة '+cash(profile.rentalArrearsCollectedTotal||0)+' ومضافة '+cash(profile.rentalArrearsAddedTotal||0)+' ومشطوبة '+cash(profile.rentalArrearsWrittenOffTotal||0)+'، والمصروفات '+cash(profile.annualExpenses||0)+' منها صيانة عقارية '+cash(profile.propertyExpensesAnnual||0)+'. المدخرات '+cash(profile.savings||0)+'، والمحفظة الاستثمارية '+cash(profile.investmentBalance||0)+' بمخاطرة '+siblingInvestmentRiskLabel(profile.investmentRisk)+'، والعائد التراكمي '+cash(profile.investmentReturnsTotal||0)+'، والديون '+cash(profile.debt||0)+'. العقارات المستقلة: '+properties.length+' · '+propertyText+' · إجمالي قيمتها '+cash(propertyValue)+' · إجمالي مبيعات العقارات '+cash(profile.propertySalesTotal||0)+' · صافي الثروة '+(netWorth<0?'سالب ':'')+cash(Math.abs(netWorth))+'. المتأخرات غير المحصلة لا تدخل في صافي الثروة إلا بعد تحصيلها. الحالة المالية: '+String(profile.employmentStatus||'مستقر')+'. آخر السنوات: '+historyText;
- info('📊','الاستقلال المالي · '+String(n.name||'أحد الإخوة'),description,[choice('↩️','العودة لملف الشخصية','',()=>personModal(n))]);
+ const description='المهنة: '+String(profile.job||n.job||'غير محدد')+' · حالة العمل: '+siblingEmploymentStateLabel(profile.employmentState)+' · المستوى المهني '+fmt(profile.rank||1)+' · الخبرة '+fmt(profile.yearsWorked||0)+' سنة. الدخل السنوي '+cash(profile.annualIncome||0)+' '+String(profile.currency||'')+'، منه دخل إيجار '+cash(profile.annualRentIncome||0)+' وإجمالي إيجارات محصلة '+cash(profile.rentalIncomeTotal||0)+' وفاقد إيجاري '+cash(profile.rentalLossTotal||0)+'، ومتأخرات إيجار قائمة '+cash(profile.rentalArrearsBalance||0)+' ومحصلة '+cash(profile.rentalArrearsCollectedTotal||0)+' ومضافة '+cash(profile.rentalArrearsAddedTotal||0)+' ومشطوبة '+cash(profile.rentalArrearsWrittenOffTotal||0)+'، والمصروفات '+cash(profile.annualExpenses||0)+' منها صيانة عقارية '+cash(profile.propertyExpensesAnnual||0)+'. المدخرات '+cash(profile.savings||0)+'، والمحفظة الاستثمارية '+cash(profile.investmentBalance||0)+' بمخاطرة '+siblingInvestmentRiskLabel(profile.investmentRisk)+'، والعائد التراكمي '+cash(profile.investmentReturnsTotal||0)+'، والديون '+cash(profile.debt||0)+'. العقارات المستقلة: '+properties.length+' · '+propertyText+' · إجمالي قيمتها '+cash(propertyValue)+' · إجمالي مبيعات العقارات '+cash(profile.propertySalesTotal||0)+' · صافي الثروة '+(netWorth<0?'سالب ':'')+cash(Math.abs(netWorth))+'. المتأخرات غير المحصلة لا تدخل في صافي الثروة إلا بعد تحصيلها. سجل البيع اليدوي: '+transactionText+'. الحالة المالية: '+String(profile.employmentStatus||'مستقر')+'. آخر السنوات: '+historyText;
+ info('📊','الاستقلال المالي · '+String(n.name||'أحد الإخوة'),description,[...rentalSaleChoices,choice('↩️','العودة لملف الشخصية','',()=>personModal(n))]);
 }
 function relationshipHistory(n){
  const history=Array.isArray(n.interactions)?n.interactions.slice().reverse():[];
