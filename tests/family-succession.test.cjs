@@ -1646,6 +1646,100 @@ test('بيع حصة العقار ينقلها إلى مالك خارجي ويح�
   assert.equal(record.totalOwnershipShare, 1);
 });
 
+test('بيع الحصة يسدد متأخرات المالك من حصيلة البيع قبل إضافة الصافي', () => {
+  const context = makeContext();
+  const record = {
+    id: 'family-home-sale-arrears', title: 'بيت العائلة', marketValue: 1000000, currency: 'جنيه',
+    encumberedShare: 0, auditStatus: 'balanced',
+    propertyExpenseOwedTotal: 50000,
+    propertyExpensePaidTotal: 15000,
+    propertyExpenseActivePaidTotal: 8000,
+    owners: [
+      { beneficiaryId: 'active-seller', name: 'المالك الحالي', share: 0.4, status: 'active', propertyExpenseOwed: 40000 },
+      { beneficiaryId: 'sibling-owner', name: 'الأخت مريم', share: 0.6, status: 'reserved', propertyExpenseOwed: 10000 }
+    ],
+    transactions: []
+  };
+  context.state = {
+    lifeId: 'active-seller', name: 'المالك الحالي', age: 42, bank: 50000,
+    place: { unit: 'جنيه' },
+    legacy: { activeBeneficiaryId: 'active-seller', familyPropertyOwnership: [record] }
+  };
+  const asset = { id: 'shared-home-share', familyAssetId: record.id, ownerBeneficiaryId: 'active-seller',
+    kind: 'property', ownershipShare: 0.4, value: 400000 };
+  const result = context.recordFamilyPropertySale(asset, 300000);
+  assert.equal(result.ok, true);
+  assert.equal(result.netProceeds, 260000);
+  assert.equal(result.settledArrears, 40000);
+  assert.equal(record.propertyExpenseOwedTotal, 10000);
+  assert.equal(record.propertyExpensePaidTotal, 55000);
+  assert.equal(record.propertyExpenseActivePaidTotal, 48000);
+  assert.equal(record.owners.some(owner => owner.beneficiaryId === 'active-seller'), false);
+  assert.equal(record.owners.find(owner => owner.beneficiaryId === 'sibling-owner').propertyExpenseOwed, 10000);
+  assert.equal(record.owners.find(owner => owner.kind === 'external').share, 0.4);
+  assert.equal(record.totalOwnershipShare, 1);
+  const settlement = record.transactions.find(item => item.type === 'property_expense_settlement');
+  const sale = record.transactions.find(item => item.type === 'sale');
+  assert.equal(settlement.amount, 40000);
+  assert.equal(settlement.source, 'sale_proceeds');
+  assert.equal(sale.amount, 300000);
+  assert.equal(sale.netProceeds, 260000);
+  assert.equal(sale.settledArrears, 40000);
+  assert.equal(context.state.bank, 50000);
+});
+
+test('بيع الحصة يتوقف دون أي تغيير إذا كانت الحصيلة أقل من المتأخرات', () => {
+  const context = makeContext();
+  const record = {
+    id: 'family-home-sale-shortfall', title: 'بيت العائلة', marketValue: 1000000, currency: 'جنيه',
+    encumberedShare: 0, auditStatus: 'balanced',
+    propertyExpenseOwedTotal: 450000,
+    owners: [
+      { beneficiaryId: 'active-seller', name: 'المالك الحالي', share: 0.4, status: 'active', propertyExpenseOwed: 350000 },
+      { beneficiaryId: 'sibling-owner', name: 'الأخت مريم', share: 0.6, status: 'reserved', propertyExpenseOwed: 100000 }
+    ],
+    transactions: []
+  };
+  context.state = {
+    lifeId: 'active-seller', name: 'المالك الحالي', age: 42, bank: 50000,
+    legacy: { activeBeneficiaryId: 'active-seller', familyPropertyOwnership: [record] }
+  };
+  const asset = { familyAssetId: record.id, ownerBeneficiaryId: 'active-seller',
+    kind: 'property', ownershipShare: 0.4, value: 400000 };
+  const before = JSON.stringify(record);
+  const result = context.recordFamilyPropertySale(asset, 300000);
+  assert.equal(result.ok, false);
+  assert.equal(result.reason, 'sale_proceeds_below_arrears');
+  assert.equal(result.required, 350000);
+  assert.equal(result.available, 300000);
+  assert.equal(JSON.stringify(record), before);
+  assert.equal(context.state.bank, 50000);
+});
+
+test('دفتر متأخرات غير متطابق يمنع بيع الحصة دون إسقاط دين أي مالك', () => {
+  const context = makeContext();
+  const record = {
+    id: 'family-home-sale-ledger-mismatch', title: 'بيت العائلة', marketValue: 1000000, currency: 'جنيه',
+    encumberedShare: 0, auditStatus: 'balanced', propertyExpenseOwedTotal: 20000,
+    owners: [
+      { beneficiaryId: 'active-seller', name: 'المالك الحالي', share: 0.4, status: 'active', propertyExpenseOwed: 40000 },
+      { beneficiaryId: 'sibling-owner', name: 'الأخت مريم', share: 0.6, status: 'reserved', propertyExpenseOwed: 10000 }
+    ],
+    transactions: []
+  };
+  context.state = {
+    lifeId: 'active-seller', name: 'المالك الحالي', age: 42,
+    legacy: { activeBeneficiaryId: 'active-seller', familyPropertyOwnership: [record] }
+  };
+  const asset = { familyAssetId: record.id, ownerBeneficiaryId: 'active-seller',
+    kind: 'property', ownershipShare: 0.4, value: 400000 };
+  const before = JSON.stringify(record);
+  const result = context.recordFamilyPropertySale(asset, 300000);
+  assert.equal(result.ok, false);
+  assert.equal(result.reason, 'property_expense_ledger_mismatch');
+  assert.equal(JSON.stringify(record), before);
+});
+
 test('صيانة الحصة الموروثة تحدث القيمة الكاملة للعقار دون تغيير نسب الملاك', () => {
   const context = makeContext();
   const record = {
