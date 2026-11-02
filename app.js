@@ -1672,11 +1672,21 @@ function siblingSafeSigned(value){
 function siblingCareerFor(relative){
  const age=Math.max(0,Math.floor(Number(relative&&relative.age)||0));
  if(age<22)return 'عمل جزئي';
- const smart=clamp(relative?(relative.smart??relative.careerPotential??55):55);
- if(smart>=75)return 'مطور';
- if(smart>=65)return 'محاسب';
- if(smart>=55)return 'مصمم';
- if(smart>=45)return 'مدرس';
+ const rawSkill=relative&&(relative.smart??relative.careerPotential);
+ if(rawSkill!==undefined&&rawSkill!==null&&Number.isFinite(Number(rawSkill))){
+  const smart=clamp(rawSkill);
+  if(smart>=75)return 'مطور';
+  if(smart>=65)return 'محاسب';
+  if(smart>=55)return 'مصمم';
+  if(smart>=45)return 'مدرس';
+  return 'موظف';
+ }
+ const personality=String(relative&&relative.personality||'');
+ if(personality==='فضولي')return 'مطور';
+ if(personality==='عملي')return 'محاسب';
+ if(personality==='جاد')return 'مدرس';
+ if(personality==='طموح')return 'مدير مبتدئ';
+ if(personality==='مرح')return 'مصمم';
  return 'موظف';
 }
 function siblingCareerBaseSalary(job){
