@@ -40,6 +40,8 @@ const siblingEconomySource = [
   extractFunction('siblingRentalPurchaseDecision'),
   extractFunction('siblingRentalTenantName'),
   extractFunction('siblingRentalLeaseDecision'),
+  extractFunction('siblingManualRentalLeaseQuote'),
+  extractFunction('siblingManualRentalLeaseAction'),
   extractFunction('siblingRentalAnnualIncome'),
   extractFunction('siblingRentalArrearsSettlement'),
   extractFunction('siblingMortgageLiability'),
@@ -1365,6 +1367,98 @@ test('دورة الإيجار تسجل توقيع العقد في تاريخ ا�
   assert.equal(result.bankAfter, result.bankBefore);
 });
 
+
+
+test('مالك العقار يدير توقيع العقد وإنهاءه يدويًا دون تجديد تلقائي', () => {
+  const context = vm.createContext({});
+  vm.runInNewContext(siblingEconomySource + String.fromCharCode(10) + harnessSource, context, { timeout: 10000 });
+  const result = vm.runInContext([
+    '(() => {',
+    ' state = makeState(); state.yearCount = 51; state.age = 51; state.place = { unit: "ج.م" };',
+    " const asset = { id: 'owner-managed-rental', kind: 'rental', purchaseYear: 40, purchasePrice: 180000, marketValue: 190000, monthlyRent: 1000, lastRentYear: 50, lease: { status: 'active', tenantName: 'مستأجر قائم', monthlyRent: 1000, startYear: 45, endYear: 60, termYears: 3, lastProcessedYear: 50, renewals: 1, history: [] } };",
+    " const profile = { version: 1, currency: 'ج.م', job: 'محاسب', yearsWorked: 20, rank: 2, savings: 50000, debt: 0, investmentBalance: 0, ownedProperties: [asset], lastProcessedYear: 50, employmentState: 'working', history: [], propertyTransactions: [] };",
+    " const sibling = { id: 'owner-managed-owner', name: 'مالك يدوي', relation: 'الأخ', age: 51, job: 'محاسب', reliability: 80, economicProfile: profile };",
+    " const terminated = siblingManualRentalLeaseAction(sibling, asset.id, 'terminate', 0, 10000, 51);",
+    " const duplicateTerminate = siblingManualRentalLeaseAction(sibling, asset.id, 'terminate', 0, 10000, 51);",
+    " const vacantIncome = siblingRentalAnnualIncome(sibling, 52, asset);",
+    " const stillVacant = siblingRentalLeaseDecision(sibling, 53, asset);",
+    " state.yearCount = 53; state.age = 53;",
+    " const signed = siblingManualRentalLeaseAction(sibling, asset.id, 'sign', 2, 10000, 53);",
+    " const normalized = ensureSiblingEconomicProfile(sibling).ownedProperties[0].lease;",
+    " const income = siblingRentalAnnualIncome(sibling, 54, asset);",
+    " return { terminated, duplicateTerminate, vacantIncome, stillVacant, signed, normalized, income, bank: state.bank };",
+    '})()'
+  ].join(String.fromCharCode(10)), context, { timeout: 10000 });
+  assert.equal(result.terminated.status, 'vacant');
+  assert.equal(result.terminated.ownerManaged, true);
+  assert.equal(result.duplicateTerminate, null, 'one owner action is allowed per property per game year');
+  assert.equal(result.vacantIncome.leaseStatus, 'vacant');
+  assert.equal(result.vacantIncome.collected, 0);
+  assert.equal(result.stillVacant.status, 'vacant', 'owner-managed vacancy must not auto-sign a tenant');
+  assert.equal(result.signed.status, 'active');
+  assert.equal(result.signed.startYear, 54);
+  assert.equal(result.signed.endYear, 55);
+  assert.equal(result.normalized.ownerManaged, true, 'the manual-management flag must survive save normalization');
+  assert.equal(result.normalized.startYear, 54, 'a next-year lease must survive normalization');
+  assert.equal(result.income.leaseStatus, 'active');
+  assert.ok(result.income.collected > 0);
+});
+
+test('تجديد عقد يدوي يغير الإيجار من السنة التالية ويوقف التجديد التلقائي بعد انتهاء المدة', () => {
+  const context = vm.createContext({});
+  vm.runInNewContext(siblingEconomySource + String.fromCharCode(10) + harnessSource, context, { timeout: 10000 });
+  const result = vm.runInContext([
+    '(() => {',
+    ' state = makeState(); state.yearCount = 51; state.age = 51; state.place = { unit: "ج.م" };',
+    " const asset = { id: 'manual-renewal-rental', kind: 'rental', purchaseYear: 40, purchasePrice: 180000, marketValue: 190000, monthlyRent: 1000, lastRentYear: 50, lease: { status: 'active', tenantName: 'مستأجر التجديد', monthlyRent: 1000, startYear: 45, endYear: 51, termYears: 3, lastProcessedYear: 50, renewals: 1, ownerManaged: true, history: [] } };",
+    " const profile = { version: 1, currency: 'ج.م', job: 'محاسب', yearsWorked: 20, rank: 2, savings: 50000, debt: 0, investmentBalance: 0, ownedProperties: [asset], lastProcessedYear: 50, employmentState: 'working', history: [], propertyTransactions: [] };",
+    " const sibling = { id: 'manual-renewal-owner', name: 'مالك التجديد', relation: 'الأخ', age: 51, job: 'محاسب', reliability: 80, economicProfile: profile };",
+    " const earlyRenewal = siblingManualRentalLeaseAction(sibling, asset.id, 'renew', 2, 10500, 50);",
+    " const renewed = siblingManualRentalLeaseAction(sibling, asset.id, 'renew', 2, 10500, 51);",
+    " const duplicate = siblingManualRentalLeaseAction(sibling, asset.id, 'renew', 2, 10500, 51);",
+    " const normalized = ensureSiblingEconomicProfile(sibling).ownedProperties[0].lease;",
+    " const income = siblingRentalAnnualIncome(sibling, 52, asset);",
+    " const expired = siblingRentalLeaseDecision(sibling, 54, asset);",
+    " const remainsVacant = siblingRentalLeaseDecision(sibling, 55, asset);",
+    " return { earlyRenewal, renewed, duplicate, normalized, income, expired, remainsVacant };",
+    '})()'
+  ].join(String.fromCharCode(10)), context, { timeout: 10000 });
+  assert.equal(result.earlyRenewal, null, 'a lease must not be shortened before its current expiry year');
+  assert.equal(result.renewed.monthlyRent, 1050);
+  assert.equal(result.renewed.startYear, 52);
+  assert.equal(result.renewed.endYear, 53);
+  assert.equal(result.renewed.tenantName, 'مستأجر التجديد');
+  assert.equal(result.duplicate, null);
+  assert.equal(result.normalized.ownerManaged, true);
+  assert.equal(result.income.leaseStatus, 'active');
+  assert.equal(result.income.collected > 0, true);
+  assert.equal(result.expired.event, 'expired');
+  assert.equal(result.remainsVacant.status, 'vacant', 'an owner-managed contract must not renew itself after expiry');
+});
+
+test('تولي المالك إدارة عقد قائم يحافظ على شروطه ويوقف التجديد الآلي', () => {
+  const context = vm.createContext({});
+  vm.runInNewContext(siblingEconomySource + String.fromCharCode(10) + harnessSource, context, { timeout: 10000 });
+  const result = vm.runInContext([
+    '(() => {',
+    ' state = makeState(); state.yearCount = 41; state.age = 41; state.place = { unit: "ج.م" };',
+    " const asset = { id: 'takeover-rental', kind: 'rental', purchaseYear: 35, monthlyRent: 900, lastRentYear: 40, lease: { status: 'active', tenantName: 'مستأجر مستمر', monthlyRent: 900, startYear: 38, endYear: 42, termYears: 3, lastProcessedYear: 40, renewals: 0, history: [] } };",
+    " const profile = { version: 1, currency: 'ج.م', savings: 30000, debt: 0, ownedProperties: [asset], history: [] };",
+    " const sibling = { id: 'takeover-owner', name: 'مالك العقد', relation: 'الأخ', age: 41, economicProfile: profile };",
+    " const managed = siblingManualRentalLeaseAction(sibling, asset.id, 'manage', 0, 10000, 41);",
+    " const unchangedRentYear = asset.lastRentYear;",
+    " const expires = siblingRentalLeaseDecision(sibling, 43, asset);",
+    " const stillVacant = siblingRentalLeaseDecision(sibling, 44, asset);",
+    " return { managed, unchangedRentYear, expires, stillVacant, lease: asset.lease };",
+    '})()'
+  ].join(String.fromCharCode(10)), context, { timeout: 10000 });
+  assert.equal(result.managed.ownerManaged, true);
+  assert.equal(result.managed.tenantName, 'مستأجر مستمر');
+  assert.equal(result.managed.monthlyRent, 900);
+  assert.equal(result.unchangedRentYear, 40, 'taking over management must not suppress current-year rent');
+  assert.equal(result.expires.event, 'expired');
+  assert.equal(result.stillVacant.status, 'vacant', 'owner-managed contracts must not auto-renew');
+});
 
 test('العقار الاستثماري القديم دون عقد يحتفظ بحساب الإشغال والتحصيل السابق', () => {
   const context = vm.createContext({});
