@@ -2195,7 +2195,7 @@ test('البيع اليدوي للعقار الاستثماري يحتاج تأ�
   const confirm = functionSource('siblingManualRentalSaleConfirm', 'siblingEconomicDetails');
   const details = functionSource('siblingEconomicDetails', 'relationshipHistory');
   const profile = functionSource('ensureSiblingEconomicProfile', 'advanceSiblingEconomies');
-  assert.match(quote, /asset\.kind!=='rental'/);
+  assert.match(quote, /item\.kind==='rental'/);
   assert.match(quote, /transactionCost/);
   assert.match(sale, /propertySalesTotal/);
   assert.match(sale, /rentalArrearsWrittenOffTotal/);
