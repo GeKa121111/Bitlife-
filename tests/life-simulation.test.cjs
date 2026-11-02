@@ -35,6 +35,7 @@ const siblingEconomySource = [
   extractFunction('siblingPropertyMarketChangeBps'),
   extractFunction('siblingPropertyAnnualUpkeep'),
   extractFunction('siblingPropertyPurchaseDecision'),
+  extractFunction('siblingPropertySaleDecision'),
   extractFunction('ensureSiblingEconomicProfile'),
   extractFunction('advanceSiblingEconomies')
 ].join('\n');
@@ -785,6 +786,66 @@ test('صيانة مسكن الشقيق وتغير قيمته يُحتسبان م
   assert.equal(result.profile.netWorth, result.profile.savings + result.profile.investmentBalance + result.expectedValue - result.profile.debt);
   assert.equal(result.snapshot, result.afterDuplicate, 'retrying the same year must not revalue or charge upkeep twice');
   assert.equal(result.bankAfter, result.bankBefore);
+});
+
+test('بيع مسكن الشقيق لا يحدث إلا بعد استمرار البطالة ويغطي الالتزامات قبل تسجيل دين جديد', () => {
+  const context = vm.createContext({});
+  vm.runInNewContext(siblingEconomySource + String.fromCharCode(10) + harnessSource, context, { timeout: 10000 });
+  const result = vm.runInContext([
+    '(() => {',
+    ' state = makeState();',
+    ' state.yearCount = 40;',
+    ' state.age = 40;',
+    ' state.bank = 750000;',
+    " state.place = { unit: 'ج.م' }; ",
+    " let siblingId = 'sibling-distress-sale';",
+    ' while (siblingInvestmentHash(siblingId + \'|employment|40|rehire\') % 10000 < 3320) siblingId += \'x\';',
+    " const asset = { id: 'sibling-distress-home', kind: 'residence', label: 'مسكن مستقل', purchaseYear: 25, purchasePrice: 180000, marketValue: 200000, annualUpkeepRateBps: 120, lastMarketYear: 39 }; ",
+    ' const profile = { version: 1, currency: \'ج.م\', yearsWorked: 0, rank: 1, savings: 0, debt: 10000, investmentBalance: 0, investmentContribution: 0, investmentReturn: 0, investmentContributionsTotal: 0, investmentReturnsTotal: 0, investmentRisk: \'conservative\', ownedProperties: [asset], propertyExpensesAnnual: 0, propertyPurchasesTotal: 180000, propertySalesTotal: 0, propertySaleCostsTotal: 0, annualIncome: 0, annualExpenses: 0, cumulativeIncome: 0, cumulativeExpenses: 0, lastProcessedYear: 39, employmentStatus: \'باحث عن عمل\', employmentState: \'seeking\', history: [{ year: 39, age: 39, job: \'محاسب\', income: 0, expenses: 15000, savings: 0, debt: 10000, investmentBalance: 0, investmentContribution: 0, investmentReturn: 0, investmentRisk: \'conservative\', propertyValue: 200000, propertyExpenses: 2400, propertyCount: 1, propertyPurchase: false, employmentState: \'seeking\', employmentEvent: \'laid_off\', netWorth: 190000 }] };',
+    " const sibling = { id: siblingId, name: 'أخ يواجه بطالة طويلة', relation: 'الأخ', age: 40, job: 'محاسب', smart: 10, reliability: 10, generosity: 50, economicProfile: profile }; ",
+    " const firstYearProfile = { ...profile, history: [{ year: 39, employmentState: 'working' }] }; ",
+    " const firstYearDecision = siblingPropertySaleDecision(sibling, firstYearProfile, 40, 40, 'seeking', 20000); ",
+    " const coveredDeficitDecision = siblingPropertySaleDecision(sibling, profile, 40, 40, 'seeking', 0); ",
+    " const gapYearDecision = siblingPropertySaleDecision(sibling, { ...profile, history: [{ year: 38, employmentState: 'seeking' }] }, 40, 40, 'seeking', 20000);",
+    ' const expectedValue = Math.max(0, Math.round(asset.marketValue * (10000 + siblingPropertyMarketChangeBps(sibling, 40, asset)) / 10000));',
+    ' const expectedUpkeep = siblingPropertyAnnualUpkeep({ ...asset, marketValue: expectedValue });',
+    ' const expectedExpenses = 9000 + 40 * 110 + expectedUpkeep;',
+    ' const expectedCost = Math.round(expectedValue * 0.05);',
+    ' const expectedNet = expectedValue - expectedCost;',
+    ' const expectedRetained = expectedNet - 10000 - expectedExpenses;',
+    ' state.family = [sibling];',
+    ' const bankBefore = state.bank;',
+    ' const processed = advanceSiblingEconomies();',
+    ' const after = JSON.parse(JSON.stringify(profile));',
+    ' const snapshot = JSON.stringify(profile);',
+    ' const duplicate = advanceSiblingEconomies();',
+    ' return { processed, duplicate, after, snapshot, afterDuplicate: JSON.stringify(profile), bankBefore, bankAfter: state.bank, firstYearDecision, coveredDeficitDecision, gapYearDecision, expectedValue, expectedUpkeep, expectedExpenses, expectedCost, expectedNet, expectedRetained };',
+    '})()'
+  ].join(String.fromCharCode(10)), context, { timeout: 10000 });
+  assert.equal(result.firstYearDecision, null, 'one year of unemployment alone must not force a home sale');
+  assert.equal(result.coveredDeficitDecision, null, 'a home must not be sold when savings cover the deficit');
+  assert.equal(result.gapYearDecision, null, 'non-consecutive unemployment records must not trigger a forced sale');
+  assert.equal(result.processed, 1);
+  assert.equal(result.duplicate, 0);
+  assert.equal(result.after.ownedProperties.length, 0, 'the home should be liquidated after a second consecutive year of unemployment and an uncovered deficit');
+  assert.equal(result.after.debt, 0, 'sale proceeds should clear existing debt before any new debt is recorded');
+  assert.equal(result.after.employmentStatus, 'باحث عن عمل', 'selling the home must not incorrectly mark an unemployed sibling as financially stable');
+  assert.equal(result.after.savings, result.expectedRetained, 'remaining proceeds should cover this year\'s deficit and become savings');
+  assert.equal(result.after.propertyExpensesAnnual, result.expectedUpkeep, 'the current year\'s upkeep remains recorded because it accrued before the sale');
+  assert.equal(result.after.annualExpenses, result.expectedExpenses);
+  assert.equal(result.after.propertySalesTotal, result.expectedValue);
+  assert.equal(result.after.propertySaleCostsTotal, result.expectedCost);
+  assert.equal(result.after.netWorth, result.expectedRetained);
+  const saleYear = result.after.history[result.after.history.length - 1];
+  assert.equal(saleYear.propertySale, true);
+  assert.equal(saleYear.propertySaleGross, result.expectedValue);
+  assert.equal(saleYear.propertySaleCosts, result.expectedCost);
+  assert.equal(saleYear.propertySaleNet, result.expectedNet);
+  assert.equal(saleYear.propertySaleDebtPaid, 10000);
+  assert.equal(saleYear.propertySaleShortfallPaid, result.expectedExpenses);
+  assert.equal(saleYear.propertySaleCashRetained, result.expectedRetained);
+  assert.equal(result.bankAfter, result.bankBefore, 'the active player\'s bank must remain untouched');
+  assert.equal(result.snapshot, result.afterDuplicate, 'retrying the same year must not sell or charge the home twice');
 });
 
 test('الحفظ القديم لا يكتسب عقارات أو مصروفات سكنية بأثر رجعي', () => {
