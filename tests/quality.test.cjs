@@ -2282,6 +2282,8 @@ test('إدارة المالك اليدوية لعقود إيجار الأشقا�
   assert.match(details, /rentalLeaseChoices/);
   assert.match(details, /siblingManualRentalLeaseMenu/);
   assert.match(menu, /تولي إدارة العقد يدويًا/);
+  assert.match(menu, /actionAlreadyUsed/);
+  assert.match(menu, /تم تسجيل قرار لهذا العام/);
   assert.match(menu, /تجديد سنة دون زيادة/);
   assert.match(menu, /إنهاء العقد من السنة القادمة/);
   assert.match(read('sw.js'), /hayah-shell-v110/);
