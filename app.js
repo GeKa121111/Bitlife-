@@ -2184,14 +2184,14 @@ function siblingEstateAssetSnapshot(asset){
   mortgageRemainingYears:clamp(mortgage&&mortgage.remainingYears!==undefined?mortgage.remainingYears:(mortgage&&mortgage.termYears!==undefined?mortgage.termYears:15),0,40),
   mortgageTermYears:clamp(mortgage&&mortgage.termYears!==undefined?mortgage.termYears:15,0,40),
   mortgageStatus:String(mortgage&&mortgage.status||'active').slice(0,16),
-  mortgageLastProcessedYear:Number.isSafeInteger(Number(mortgage&&mortgage.lastProcessedYear))?Math.max(0,Number(mortgage.lastProcessedYear)):null,
+  mortgageLastProcessedYear:mortgage&&mortgage.lastProcessedYear!==null&&mortgage.lastProcessedYear!==undefined&&Number.isSafeInteger(Number(mortgage.lastProcessedYear))?Math.max(0,Number(mortgage.lastProcessedYear)):null,
   rentArrears:siblingSafeMoney(asset&&asset.rentArrears),monthlyRent,
   leaseStatus:lease&&lease.status==='active'?'active':'vacant',tenantName:String(lease&&lease.tenantName||'').slice(0,60),
   leaseStartYear:clamp(lease&&lease.startYear!==undefined?lease.startYear:asset&&asset.purchaseYear||0,0,9999),
   leaseEndYear:clamp(lease&&lease.endYear!==undefined?lease.endYear:0,0,9999),
   leaseTermYears:clamp(lease&&lease.termYears!==undefined?lease.termYears:0,0,3),
   leaseRenewals:clamp(lease&&lease.renewals!==undefined?lease.renewals:0,0,99),
-  leaseLastProcessedYear:Number.isSafeInteger(Number(lease&&lease.lastProcessedYear))?Math.max(0,Number(lease.lastProcessedYear)):null,
+  leaseLastProcessedYear:lease&&lease.lastProcessedYear!==null&&lease.lastProcessedYear!==undefined&&Number.isSafeInteger(Number(lease.lastProcessedYear))?Math.max(0,Number(lease.lastProcessedYear)):null,
   leaseOwnerManaged:lease&&lease.ownerManaged===true};
 }
 function siblingNormalizeChildOwnedProperties(raw,year){
