@@ -1658,12 +1658,160 @@ function advanceChildren(){
   if([4,6,12,15,16,18,21,22].includes(age)){c.growthHistory.push({age,stage:childDevelopmentStage(age),schoolPerformance:c.schoolPerformance,careerPotential:c.careerPotential,independence:c.independence});if(c.growthHistory.length>12)c.growthHistory.shift();}
  });
 }
+
+function siblingEconomicHash(value){
+ const source=String(value||'');let hash=2166136261;
+ for(let i=0;i<source.length;i++)hash=Math.imul(hash^source.charCodeAt(i),16777619);
+ return hash>>>0;
+}
+function siblingSafeMoney(value){
+ const amount=Number(value);
+ if(!Number.isFinite(amount))return 0;
+ return Math.max(0,Math.min(9000000000000,Math.round(amount)));
+}
+function siblingSafeSigned(value){
+ const amount=Number(value);
+ if(!Number.isFinite(amount))return 0;
+ return Math.max(-9000000000000,Math.min(9000000000000,Math.round(amount)));
+}
+function siblingCareerFor(relative){
+ const age=Math.max(0,Math.floor(Number(relative&&relative.age)||0));
+ if(age<22)return 'عمل جزئي';
+ const smart=clamp(relative&&(relative.smart??relative.careerPotential)??55);
+ if(smart>=75)return 'مطور';
+ if(smart>=65)return 'محاسب';
+ if(smart>=55)return 'مصمم';
+ if(smart>=45)return 'مدرس';
+ return 'موظف';
+}
+function siblingCareerBaseSalary(job){
+ const label=String(job||'');
+ if(/طبيب|طبيبة/.test(label))return 150000;
+ if(/مهندس|مهندسة|مطور|مبرمج/.test(label))return 125000;
+ if(/مدير|مديرة/.test(label))return 138000;
+ if(/محاسب|محاسبة/.test(label))return 92000;
+ if(/مصمم|مصممة/.test(label))return 86000;
+ if(/مدرس|مدرسة|معلم/.test(label))return 80000;
+ if(/صاحب محل|تاجر|مشروع/.test(label))return 95000;
+ if(/عمل جزئي/.test(label))return 36000;
+ if(/موظف|موظفة/.test(label))return 68000;
+ if(/عامل/.test(label))return 54000;
+ return 65000;
+}
+function ensureSiblingEconomicProfile(relative){
+ if(!relative||typeof relative!=='object'||Array.isArray(relative))return null;
+ const age=Math.max(0,Math.floor(Number(relative.age)||0));
+ const year=Number.isSafeInteger(Number(state&&state.yearCount))?Math.max(0,Number(state.yearCount)):age;
+ let profile=relative.economicProfile&&typeof relative.economicProfile==='object'&&!Array.isArray(relative.economicProfile)?relative.economicProfile:null;
+ if(!profile){
+  profile={
+   version:1,currency:String(state&&state.place&&state.place.unit||'ج.م'),
+   yearsWorked:Math.min(30,Math.max(0,age-22)),rank:1,
+   savings:0,debt:0,annualIncome:0,annualExpenses:0,
+   cumulativeIncome:0,cumulativeExpenses:0,lastProcessedYear:year-1,
+   employmentStatus:'مستقر',history:[]
+  };
+  relative.economicProfile=profile;
+ }
+ const currentJob=String(relative.job||profile.job||'');
+ if(!currentJob||/طالب|باحث عن فرصة|خريج/.test(currentJob)||(/عمل جزئي/.test(currentJob)&&age>=22)){
+  relative.job=siblingCareerFor(relative);
+ }
+ profile.version=1;
+ profile.currency=String(profile.currency||state&&state.place&&state.place.unit||'ج.م').slice(0,16);
+ profile.job=String(relative.job||currentJob||siblingCareerFor(relative)).slice(0,64);
+ if(!relative.job)relative.job=profile.job;
+ profile.yearsWorked=clamp(profile.yearsWorked??Math.min(30,Math.max(0,age-22)),0,60);
+ profile.rank=clamp(profile.rank??1,1,6);
+ profile.savings=siblingSafeMoney(profile.savings);
+ profile.debt=siblingSafeMoney(profile.debt);
+ profile.annualIncome=siblingSafeMoney(profile.annualIncome);
+ profile.annualExpenses=siblingSafeMoney(profile.annualExpenses);
+ profile.cumulativeIncome=siblingSafeMoney(profile.cumulativeIncome);
+ profile.cumulativeExpenses=siblingSafeMoney(profile.cumulativeExpenses);
+ profile.netWorth=siblingSafeSigned(profile.savings-profile.debt);
+ if(profile.lastProcessedYear===null||profile.lastProcessedYear===undefined||!Number.isSafeInteger(Number(profile.lastProcessedYear)))profile.lastProcessedYear=year-1;
+ else profile.lastProcessedYear=Number(profile.lastProcessedYear);
+ profile.employmentStatus=String(profile.employmentStatus||'مستقر').slice(0,32);
+ profile.history=(Array.isArray(profile.history)?profile.history:[]).filter(item=>item&&typeof item==='object'&&!Array.isArray(item)).slice(-12).map(item=>({
+  year:clamp(item.year??0,0,9999),age:clamp(item.age??age,0,120),
+  job:String(item.job||profile.job).slice(0,64),
+  income:siblingSafeMoney(item.income),expenses:siblingSafeMoney(item.expenses),
+  savings:siblingSafeMoney(item.savings),debt:siblingSafeMoney(item.debt),
+  netWorth:siblingSafeSigned(item.netWorth)
+ }));
+ return profile;
+}
+function advanceSiblingEconomies(){
+ if(!state||!Array.isArray(state.family))return 0;
+ const year=Number.isSafeInteger(Number(state.yearCount))?Math.max(0,Number(state.yearCount)):Math.max(0,Math.floor(Number(state.age)||0));
+ let processed=0;
+ state.family.forEach(relative=>{
+  if(!relative||relative.deceased||!/(أخ|أخت)/.test(String(relative.relation||'')))return;
+  const age=Math.max(0,Math.floor(Number(relative.age)||0));
+  if(age<18)return;
+  const profile=ensureSiblingEconomicProfile(relative);
+  if(!profile||profile.lastProcessedYear>=year)return;
+  const previousDebt=profile.debt;
+  const yearsWorked=profile.yearsWorked;
+  const rank=profile.rank;
+  const retired=age>=65;
+  const smart=clamp(relative.smart??relative.careerPotential??55);
+  const reliability=clamp(relative.reliability??55);
+  const generosity=clamp(relative.generosity??50);
+  const baseSalary=siblingCareerBaseSalary(relative.job);
+  const experienceFactor=1+Math.min(.75,yearsWorked*.025);
+  const rankFactor=1+(rank-1)*.075;
+  let income=Math.round(baseSalary*experienceFactor*rankFactor*(.86+smart/400)*(.9+reliability/1000));
+  if(retired)income=Math.round(income*.28);
+  const fixedLiving=Math.round(9000+age*110);
+  const expenseRate=Math.max(.52,Math.min(.76,(64+(generosity-50)*.12-(reliability-50)*.06)/100));
+  const expenses=siblingSafeMoney(fixedLiving+income*expenseRate);
+  let savings=profile.savings,debt=profile.debt;
+  const cashFlow=income-expenses;
+  if(cashFlow>=0){
+   const repayment=Math.min(debt,Math.round(cashFlow*.35));
+   debt-=repayment;savings=siblingSafeMoney(savings+cashFlow-repayment);
+  }else{
+   const shortfall=-cashFlow,fromSavings=Math.min(savings,shortfall);
+   savings-=fromSavings;debt=siblingSafeMoney(debt+shortfall-fromSavings);
+  }
+  const nextYearsWorked=yearsWorked+(retired?0:1);
+  let nextRank=rank,promoted=false;
+  if(!retired&&nextYearsWorked>0&&nextYearsWorked%5===0&&rank<6&&(smart>=55||reliability>=60)){
+   nextRank=rank+1;promoted=true;
+  }
+  profile.job=String(relative.job||profile.job||'موظف').slice(0,64);
+  profile.yearsWorked=nextYearsWorked;
+  profile.rank=nextRank;
+  profile.savings=savings;
+  profile.debt=debt;
+  profile.annualIncome=siblingSafeMoney(income);
+  profile.annualExpenses=expenses;
+  profile.cumulativeIncome=siblingSafeMoney(profile.cumulativeIncome+income);
+  profile.cumulativeExpenses=siblingSafeMoney(profile.cumulativeExpenses+expenses);
+  profile.netWorth=siblingSafeSigned(savings-debt);
+  profile.employmentStatus=retired?'متقاعد':debt>0&&savings===0?'عليه التزامات':'مستقر';
+  profile.lastProcessedYear=year;
+  profile.history.push({year,age,job:profile.job,income:profile.annualIncome,expenses:profile.annualExpenses,savings,debt,netWorth:profile.netWorth});
+  if(profile.history.length>12)profile.history.shift();
+  if(age===18)log('💼','بداية الاستقلال المالي','بدأ '+String(relative.name||'أحد إخوتك')+' مساره المهني، بدخل سنوي '+cash(income)+' '+profile.currency+'.','good');
+  else if(promoted)log('📈','تقدم مهني في العائلة','حصل '+String(relative.name||'أحد إخوتك')+' على ترقية بعد سنوات من الخبرة.','good');
+  else if(debt>0&&previousDebt===0)log('💳','التزام مالي لأحد الإخوة','واجه '+String(relative.name||'أحد إخوتك')+' عجزًا ماليًا هذا العام وسُجلت عليه التزامات في حسابه المستقل.','bad');
+  processed++;
+ });
+ return processed;
+}
+
 function familyTreeNode(p){
  const gone=!!p.deceased,level=clamp(p.relationshipLevel??0);
  const hasInheritance=!!p.inheritanceStatus&&Number.isFinite(Number(p.inheritanceShare));
  const inheritanceStatus=String(p.inheritanceAccountStatus||p.inheritanceStatus||'استحقاق مسجل');
  const inheritanceNote=hasInheritance?'<small class="family-tree-foot">حصة الإرث '+formatInheritancePercent(p.inheritanceShare)+'% · تقدير '+esc(cash(p.inheritanceEstimate||0))+' · '+esc(inheritanceStatus)+'</small>':'';
- return '<article class="family-tree-node'+(gone?' family-tree-deceased':'')+'"><div class="family-tree-person"><span class="family-tree-avatar">'+esc(p.emoji||'👤')+'</span><span class="family-tree-copy"><strong>'+esc(p.name||'فرد من العائلة')+'</strong><small>'+esc(p.relation||'قريب')+(Number.isFinite(Number(p.age))?' · '+fmt(p.age)+' سنة':'')+(gone?' · متوفى':'')+'</small></span></div><div class="family-tree-meter"><span style="width:'+level+'%"></span></div><small class="family-tree-foot">العلاقة '+level+'%</small>'+inheritanceNote+'</article>';
+ const siblingEconomy=/أخ|أخت/.test(String(p.relation||''))&&p.economicProfile&&typeof p.economicProfile==='object'?p.economicProfile:null;
+ const netWorth=Number(siblingEconomy&&siblingEconomy.netWorth)||0;
+ const economyNote=siblingEconomy?'<small class="family-tree-foot">'+(netWorth<0?'مديونية ':'صافي الثروة ')+esc(cash(Math.abs(netWorth)))+' '+esc(siblingEconomy.currency||'')+'</small>':'';
+ return '<article class="family-tree-node'+(gone?' family-tree-deceased':'')+'"><div class="family-tree-person"><span class="family-tree-avatar">'+esc(p.emoji||'👤')+'</span><span class="family-tree-copy"><strong>'+esc(p.name||'فرد من العائلة')+'</strong><small>'+esc(p.relation||'قريب')+(Number.isFinite(Number(p.age))?' · '+fmt(p.age)+' سنة':'')+(gone?' · متوفى':'')+'</small></span></div><div class="family-tree-meter"><span style="width:'+level+'%"></span></div><small class="family-tree-foot">العلاقة '+level+'%</small>'+inheritanceNote+economyNote+'</article>';
 }
 function buildBeneficiaryWallets(previousLegacy,currentRegistry,sourceName,sourceAge){
  const legacy=previousLegacy&&typeof previousLegacy==='object'?previousLegacy:{};
@@ -3118,6 +3266,7 @@ function advanceAge(){
  if(state.specialCareer&&state.specialCareer.id==='fighter'&&state.combatCareer){const cc=ensureCombatCareer();cc.energy=100;if(cc.coach&&cc.coach.yearsLeft>0){const annualCost=cc.coach.annualCost||0;if(state.bank<annualCost){log('💳','تعذر دفع مصاريف المدرب','الرصيد لا يكفي مصاريف المدرب السنوية؛ انتهى التعاقد دون خصم المصروف.','bad');cc.coach=null;}else{state.bank-=annualCost;cc.coach.yearsLeft--;if(cc.coach.yearsLeft<=0){log('🧑‍🏫','انتهاء عقد المدرب','انتهى عقد المدرب. يمكنك تجديده من مسيرة القتال.');cc.coach=null;}}}}
  advanceChildren();
  (state.family||[]).forEach(relative=>{if(relative.deceased)return;relative.age=(relative.age||0)+1;const oldest=relative.age>=100;const parent=/(الأب|الأم|والد|والدة)/.test(relative.relation||'');const risk=relative.age>75?Math.min(.45,.012+(relative.age-75)*.012):0;if(oldest||(risk&&chance(risk))){relative.deceased=true;const close=(relative.relationshipLevel||50)>=70;state.stats.happiness=clamp(state.stats.happiness-(close?12:5));log('🕯️','وفاة أحد أفراد العائلة','توفي '+relative.name+' بعد رحلة من العمر. الخبر أثر عليك وعلى علاقتك بالعائلة.','bad');achievement('وداع '+relative.name);}});
+ advanceSiblingEconomies();
  if(state.partner&&typeof state.partner.age==='number'){
   state.partner.age++;
   const partnerRisk=state.partner.age>78?Math.min(.38,.008+(state.partner.age-78)*.012):0;
@@ -4908,15 +5057,29 @@ function personModal(n){
   :isPartner?[['الوفاء',n.loyalty],['الغيرة',n.jealousy],['الاعتمادية',n.reliability]]
   :[['الكرم',n.generosity],['الجنون',n.craziness],['المال',n.money]];
  const bars=stats.map(([label,value])=>{const v=clamp(value??50);return '<div class="npc-stat"><span>'+label+'</span><div class="mini-track"><span style="width:'+v+'%"></span></div><b>'+v+'%</b></div>';}).join('');
- const progress='<div class="relationship-progress"><div class="muted">قوة العلاقة · '+clamp(n.relationshipLevel)+'%</div><div class="progressline"><div style="width:'+clamp(n.relationshipLevel)+'%"></div></div></div><div class="npc-stats">'+bars+'</div><div class="pillrow"><span class="pill">💼 '+esc(n.job||'غير محدد')+'</span><span class="pill">🧠 '+esc(n.personality||'غير محدد')+'</span><span class="pill">🎂 '+fmt(n.age||0)+' سنة</span></div>';
+ const economicProfile=isSibling&&n.economicProfile&&typeof n.economicProfile==='object'?n.economicProfile:null;
+ const economySummary=economicProfile?'<div class="relationship-progress"><div class="muted">الاستقلال المالي · '+esc(economicProfile.employmentStatus||'مستقر')+'</div><div class="pillrow"><span class="pill">📈 دخل '+esc(cash(economicProfile.annualIncome||0))+'</span><span class="pill">💰 مدخرات '+esc(cash(economicProfile.savings||0))+'</span><span class="pill">🧾 ديون '+esc(cash(economicProfile.debt||0))+'</span></div></div>':'';
+ const progress='<div class="relationship-progress"><div class="muted">قوة العلاقة · '+clamp(n.relationshipLevel)+'%</div><div class="progressline"><div style="width:'+clamp(n.relationshipLevel)+'%"></div></div></div><div class="npc-stats">'+bars+'</div><div class="pillrow"><span class="pill">💼 '+esc(n.job||'غير محدد')+'</span><span class="pill">🧠 '+esc(n.personality||'غير محدد')+'</span><span class="pill">🎂 '+fmt(n.age||0)+' سنة</span></div>'+economySummary;
  modal(n.emoji,n.name+' · '+n.relation,'بيشتغل '+(n.job||'غير محدد')+'، وشخصيته '+(n.personality||'غير محدد')+'.',[
   choice('☕','قضاء وقت','خصص وقت للشخص ده.',()=>relationshipAction(n,'time')),
   choice('💬','محادثة','اسأل عن أخباره واسمعه كويس.',()=>relationshipAction(n,'talk')),
   choice('🎁','تقديم هدية','هدية صغيرة بتكلفة 500 '+state.place.unit+'.',()=>relationshipAction(n,'gift'),'500 '+state.place.unit),
   choice('😤','شجار','الخلاف ممكن يقلل مستوى العلاقة.',()=>relationshipAction(n,'argue')),
+  ...(isSibling&&n.economicProfile?[choice('📊','الوضع المالي','راجع الدخل والمدخرات والديون المستقلة.',()=>siblingEconomicDetails(n))]:[]),
   ...(n===state.partner&&state.age>=18?[choice('🛡️','وقت خاص مع الشريك','اختيار بالغ داخل اللعبة؛ فيه احتمال مضاعفة صحية خيالية، ويمكن لدرع العافية تعطيل الخطر.',()=>relationshipAction(n,'intimate'))]:[]),
   choice('📜','سجل العلاقة','راجع آخر التفاعلات وأثرها على مستوى العلاقة.',()=>relationshipHistory(n))
  ],true,progress);
+}
+
+
+function siblingEconomicDetails(n){
+ const profile=n&&n.economicProfile;
+ if(!profile){info('📊','لا يوجد سجل مالي بعد','يبدأ الحساب المالي المستقل عند بلوغ الأخ أو الأخت سن 18 سنة.');return;}
+ const netWorth=Number(profile.netWorth)||0;
+ const history=(Array.isArray(profile.history)?profile.history:[]).slice(-5).reverse();
+ const historyText=history.length?history.map(item=>'سنة '+fmt(item.year)+' · دخل '+cash(item.income)+' · مصروف '+cash(item.expenses)+' · مدخرات '+cash(item.savings)).join('؛ '):'لا توجد سنوات مالية مسجلة بعد.';
+ const description='المهنة: '+String(profile.job||n.job||'غير محدد')+' · المستوى المهني '+fmt(profile.rank||1)+' · الخبرة '+fmt(profile.yearsWorked||0)+' سنة. الدخل السنوي '+cash(profile.annualIncome||0)+' '+String(profile.currency||'')+'، والمصروفات '+cash(profile.annualExpenses||0)+'. المدخرات '+cash(profile.savings||0)+'، والديون '+cash(profile.debt||0)+'، وصافي الثروة '+(netWorth<0?'سالب ':'')+cash(Math.abs(netWorth))+'. الحالة: '+String(profile.employmentStatus||'مستقر')+'. آخر السنوات: '+historyText;
+ info('📊','الاستقلال المالي · '+String(n.name||'أحد الإخوة'),description,[choice('↩️','العودة لملف الشخصية','',()=>personModal(n))]);
 }
 
 function relationshipHistory(n){
