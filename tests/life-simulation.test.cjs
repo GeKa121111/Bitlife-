@@ -390,6 +390,7 @@ test('الصيانة والضريبة السنوية للعقار المشترك
       taxAmount: taxAssessment.amount,
       insurancePremiumAmount: insuranceAssessment.amount,
       insurancePremiumPaidYear: record.insurancePremiumPaidYear,
+      insurancePremiumPaidLifeId: record.insurancePremiumPaidLifeId,
       propertyExpenseTotal: record.propertyExpenseTotal,
       activePaid: record.propertyExpenseActivePaidTotal,
       walletPaid: record.propertyExpenseWalletPaidTotal,
@@ -409,6 +410,7 @@ test('الصيانة والضريبة السنوية للعقار المشترك
   assert.equal(result.taxAmount, 5125);
   assert.equal(result.insurancePremiumAmount, 5125);
   assert.equal(result.insurancePremiumPaidYear, 41);
+  assert.equal(result.insurancePremiumPaidLifeId, 'life');
   assert.equal(result.bankAfterYear, 18496, 'the active owner pays only their maintenance, tax, insurance and living shares');
   assert.equal(result.walletAfterYear, 14874, 'the sibling wallet pays only its own maintenance, tax and insurance shares');
   assert.equal(result.propertyExpenseTotal, 30250);
