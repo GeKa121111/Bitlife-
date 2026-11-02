@@ -1909,24 +1909,83 @@ function recordFamilyPropertySale(asset,saleValue){
  const record=familyPropertyOwnershipRecords(state.legacy).find(item=>String(item.id||item.familyAssetId)===String(asset.familyAssetId||''));
  if(!record)return {ok:true,tracked:false};
  if(record.auditStatus!=='balanced')return {ok:false,reason:'ownership_audit_incomplete'};
+ const saleAmount=Number(saleValue);
+ if(!Number.isSafeInteger(saleAmount)||saleAmount<0)return {ok:false,reason:'invalid_sale_amount'};
+ const currency=String(record.currency||state.place&&state.place.unit||'ج.م');
+ if(state.place&&state.place.unit&&String(state.place.unit)!==currency)return {ok:false,reason:'currency_mismatch'};
  const ownerId=String(asset.ownerBeneficiaryId||state.legacy.activeBeneficiaryId||state.lifeId||'');
- const ownerIndex=(record.owners||[]).findIndex(owner=>owner&&String(owner.beneficiaryId)===ownerId&&['active','reserved'].includes(String(owner.status||'active')));
- if(ownerIndex<0)return {ok:false,reason:'owner_not_found'};
- const owner=record.owners[ownerIndex],share=safeFamilyOwnershipShare(owner.share);
- if(share===null||share<=0)return {ok:false,reason:'owner_share_invalid'};
+ const owners=Array.isArray(record.owners)?record.owners:[];
+ const ids=new Set();let totalShare=0,totalOwnerArrears=0;
+ const normalizedOwners=owners.map(owner=>{
+  if(!owner||typeof owner!=='object'||Array.isArray(owner))return null;
+  const id=String(owner.beneficiaryId||'').trim(),share=safeFamilyOwnershipShare(owner.share);
+  const arrears=Number(owner.propertyExpenseOwed===undefined?0:owner.propertyExpenseOwed);
+  if(!id||share===null||ids.has(id)||!Number.isSafeInteger(arrears)||arrears<0)return null;
+  ids.add(id);totalShare+=share;totalOwnerArrears+=arrears;
+  return {owner,id,share,arrears};
+ });
+ if(!normalizedOwners.length||normalizedOwners.some(item=>!item)||!Number.isSafeInteger(totalOwnerArrears))return {ok:false,reason:'ownership_register_invalid'};
+ const encumbered=record.encumberedShare===undefined||record.encumberedShare===null?0:safeFamilyOwnershipShare(record.encumberedShare);
+ if(encumbered===null||Math.abs(totalShare+encumbered-1)>.005)return {ok:false,reason:'ownership_total_mismatch'};
+ const ownerEntry=normalizedOwners.find(item=>item.id===ownerId);
+ if(!ownerEntry||!['active','reserved'].includes(String(ownerEntry.owner.status||'active')))return {ok:false,reason:'owner_not_found'};
+ if(ownerEntry.share<=0)return {ok:false,reason:'owner_share_invalid'};
+ const declaredShare=asset.ownershipShare===undefined||asset.ownershipShare===null?ownerEntry.share:safeFamilyOwnershipShare(asset.ownershipShare);
+ if(declaredShare===null||Math.abs(declaredShare-ownerEntry.share)>.005)return {ok:false,reason:'asset_share_mismatch'};
+ const activePaidTotal=record.propertyExpenseActivePaidTotal===undefined||record.propertyExpenseActivePaidTotal===null
+  ?0:Number(record.propertyExpenseActivePaidTotal);
+ const paidTotal=record.propertyExpensePaidTotal===undefined||record.propertyExpensePaidTotal===null
+  ?activePaidTotal:Number(record.propertyExpensePaidTotal);
+ const aggregateOwed=record.propertyExpenseOwedTotal===undefined||record.propertyExpenseOwedTotal===null
+  ?totalOwnerArrears:Number(record.propertyExpenseOwedTotal);
+ if(!Number.isSafeInteger(aggregateOwed)||aggregateOwed<totalOwnerArrears
+  ||!Number.isSafeInteger(paidTotal)||paidTotal<0
+  ||!Number.isSafeInteger(activePaidTotal)||activePaidTotal<0||activePaidTotal>paidTotal){
+  return {ok:false,reason:'property_expense_ledger_mismatch'};
+ }
+ const settledArrears=ownerEntry.arrears;
+ if(saleAmount<settledArrears)return {ok:false,reason:'sale_proceeds_below_arrears',required:settledArrears,available:saleAmount};
+ const netProceeds=saleAmount-settledArrears;
+ const nextOwed=aggregateOwed-settledArrears;
+ const nextPaid=paidTotal+settledArrears;
+ const nextActivePaid=activePaidTotal+settledArrears;
+ if(![nextOwed,nextPaid,nextActivePaid,netProceeds].every(value=>Number.isSafeInteger(value)&&value>=0)||nextActivePaid>nextPaid){
+  return {ok:false,reason:'property_expense_ledger_overflow'};
+ }
  const transactionId='family-property-sale-'+Date.now()+'-'+Math.random().toString(36).slice(2,8);
+ const settlementId=transactionId+'-expense-settlement';
  const buyerId='external-buyer-'+transactionId;
- const nextOwners=record.owners.filter((item,index)=>index!==ownerIndex);
- nextOwners.push({beneficiaryId:buyerId,name:'مشتري خارجي',kind:'external',share,status:'external',sourceLifeId:String(state.lifeId||''),allocatedValue:Math.round(Math.max(0,Number(record.marketValue)||0)*share)});
- const nextTotal=nextOwners.reduce((sum,item)=>sum+(safeFamilyOwnershipShare(item.share)||0),0)+(safeFamilyOwnershipShare(record.encumberedShare)||0);
+ const existingTransactions=Array.isArray(record.transactions)?record.transactions:[];
+ if(existingTransactions.some(item=>item&&(String(item.id)===transactionId||String(item.id)===settlementId)))return {ok:false,reason:'duplicate_sale_transaction'};
+ const ownerIndex=owners.findIndex(item=>item&&String(item.beneficiaryId)===ownerId);
+ const nextOwners=owners.filter((item,index)=>index!==ownerIndex);
+ nextOwners.push({beneficiaryId:buyerId,name:'مشتري خارجي',kind:'external',share:ownerEntry.share,status:'external',sourceLifeId:String(state.lifeId||''),allocatedValue:Math.round(Math.max(0,Number(record.marketValue)||0)*ownerEntry.share)});
+ const nextTotal=nextOwners.reduce((sum,item)=>sum+(safeFamilyOwnershipShare(item&&item.share)||0),0)+encumbered;
  if(Math.abs(nextTotal-1)>.005)return {ok:false,reason:'ownership_total_mismatch'};
+ const nextTransactions=existingTransactions.slice();
+ if(settledArrears>0)nextTransactions.push({
+  id:settlementId,type:'property_expense_settlement',beneficiaryId:ownerId,
+  amount:settledArrears,source:'sale_proceeds',currency,
+  reason:'تسوية متأخرات العقار من حصيلة البيع',
+  age:Number.isFinite(Number(state.age))?Number(state.age):null
+ });
+ nextTransactions.push({
+  id:transactionId,type:'sale',fromBeneficiaryId:ownerId,fromName:String(state.name||'المالك'),
+  toBeneficiaryId:buyerId,share:ownerEntry.share,amount:saleAmount,
+  settledArrears,netProceeds,currency,
+  age:Number.isFinite(Number(state.age))?Number(state.age):null
+ });
+ if(settledArrears>0){
+  ownerEntry.owner.propertyExpenseOwed=0;
+  record.propertyExpenseOwedTotal=nextOwed;
+  record.propertyExpensePaidTotal=nextPaid;
+  record.propertyExpenseActivePaidTotal=nextActivePaid;
+ }
  record.owners=nextOwners;
- if(!Array.isArray(record.transactions))record.transactions=[];
- record.transactions.push({id:transactionId,type:'sale',fromBeneficiaryId:ownerId,fromName:String(state.name||'المالك'),toBeneficiaryId:buyerId,share,amount:Math.max(0,Math.round(Number(saleValue)||0)),currency:String(record.currency||'ج.م'),age:Number.isFinite(Number(state.age))?Number(state.age):null});
- record.transactions=record.transactions.slice(-100);
+ record.transactions=nextTransactions.slice(-100);
  record.totalOwnershipShare=nextTotal;
  record.auditStatus='balanced';
- return {ok:true,tracked:true,reason:null};
+ return {ok:true,tracked:true,reason:null,netProceeds,settledArrears};
 }
 function safeFamilyOwnershipShare(value){
  if(value===null||value===undefined||value==='')return null;
@@ -4165,14 +4224,33 @@ function sellAsset(index){
  closeModal();const a=state.assets[index];if(!a)return;
  const condition=(a.kind==='property'||a.kind==='car')?clamp(a.condition??100):null;
  const sale=Math.round(a.value*(condition===null?0.8:(.6+.004*condition)));
+ let netSale=sale,settledPropertyExpenses=0;
  if(a.kind==='property'){
   const ownershipSale=recordFamilyPropertySale(a,sale);
-  if(!ownershipSale.ok){info('⚠️','بيع العقار متوقف','سجل الملكية المشتركة غير مكتمل أو لا يطابق حصة المالك الحالية. راجع سجل ملكية عقارات العائلة قبل البيع.');return;}
+  if(!ownershipSale.ok){
+   const insufficient=ownershipSale.reason==='sale_proceeds_below_arrears';
+   const ledgerIssue=ownershipSale.reason==='property_expense_ledger_mismatch'||ownershipSale.reason==='property_expense_ledger_overflow';
+   const title=insufficient?'حصيلة البيع لا تكفي':ledgerIssue?'دفتر المصروفات يحتاج مراجعة':'بيع العقار متوقف';
+   const detail=insufficient
+    ?'قيمة البيع '+cash(sale)+' لا تكفي لتسوية متأخرات العقار البالغة '+cash(ownershipSale.required)+'. لم يتم البيع أو تغيير الملكية.'
+    :ledgerIssue
+     ?'تعذر التحقق من متأخرات العقار والمدفوعات السابقة؛ لم يتم البيع أو خصم أي مبلغ.'
+     :'سجل الملكية المشتركة غير مكتمل أو لا يطابق حصة المالك الحالية. راجع سجل ملكية عقارات العائلة قبل البيع.';
+   info('⚠️',title,detail);return;
+  }
+  if(ownershipSale.tracked){
+   netSale=ownershipSale.netProceeds;
+   settledPropertyExpenses=ownershipSale.settledArrears||0;
+  }
  }
  state.assets.splice(index,1);
  if(a.kind==='business'&&state.business&&state.business.assetId===a.id)state.business=null;
- state.bank+=sale;log('💵','بيع أصل','بعت '+a.title+' مقابل '+cash(sale)+'.','good');render();
- info('💵','تم بيع الأصل','اتضاف '+cash(sale)+' لرصيدك بعد احتساب حالة الأصل.');
+ state.bank+=netSale;
+ const settlementText=settledPropertyExpenses>0
+  ?'، وتم تسوية '+cash(settledPropertyExpenses)+' من متأخرات العقار، وصافي حصيلتك '+cash(netSale)+'.'
+  :' مقابل '+cash(netSale)+'.';
+ log('💵','بيع أصل','بعت '+a.title+' بقيمة '+cash(sale)+settlementText,'good');render();
+ info('💵','تم بيع الأصل','اتضاف '+cash(netSale)+' لرصيدك'+(settledPropertyExpenses>0?' بعد تسوية '+cash(settledPropertyExpenses)+' من متأخرات العقار.':'.'));
 }
 function maintainAsset(index){
  closeModal();const a=state.assets[index];if(!a)return;
