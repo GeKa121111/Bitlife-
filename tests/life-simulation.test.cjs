@@ -59,6 +59,7 @@ const siblingEconomySource = [
   extractFunction('siblingChildEconomicAnnualEffects'),
   extractFunction('ensureSiblingHousehold'),
   extractFunction('siblingHouseholdAnnualEffects'),
+  extractFunction('siblingDeceasedHouseholdAnnualEffects'),
   extractFunction('ensureSiblingEconomicProfile'),
   extractFunction('advanceSiblingEconomies')
 ].join('\n');
@@ -1629,3 +1630,57 @@ test('الحفظ القديم يهيئ أسرة الشقيق كحقل اختيا
   assert.equal(result.household.lastProcessedYear, 69);
 });
 
+
+
+test('أبناء الشقيق المتوفى يواصلون العمر والتعليم والعمل دون تحريك حساب الوالد', () => {
+  const context = vm.createContext({});
+  vm.runInNewContext(siblingEconomySource + String.fromCharCode(10) + harnessSource, context, { timeout: 10000 });
+  const result = vm.runInContext([
+    '(() => {',
+    ' state = makeState(); state.yearCount = 100; state.place = { unit: "ج.م" };',
+    ' const child = { id: "deceased-parent-child", name: "ابن مستقل لاحقًا", age: 17, birthYear: 80, lastAgeYear: 97, independent: false };',
+    ' const sibling = { id: "deceased-parent", name: "أخ راحل", relation: "الأخ", age: 80, deceased: true, economicProfile: {',
+    '  savings: 20000, debt: 0, lastProcessedYear: 99, household: { status: "married", lastProcessedYear: 97, history: [],',
+    '   spouse: { id: "surviving-spouse", name: "شريك باقٍ", age: 70, job: "محاسب", annualIncome: 70000, marriedYear: 50, lastAgeYear: 97, deceased: false },',
+    '   children: [child] } } };',
+    ' state.family = [sibling];',
+    ' const parentSavingsBefore = sibling.economicProfile.savings;',
+    ' const first = advanceSiblingEconomies();',
+    ' const householdSnapshot = JSON.stringify(sibling.economicProfile.household);',
+    ' const second = advanceSiblingEconomies();',
+    ' return { first, second, child: sibling.economicProfile.household.children[0], household: sibling.economicProfile.household,',
+    '  spouse: sibling.economicProfile.household.spouse, parentSavingsBefore, parentSavingsAfter: sibling.economicProfile.savings,',
+    '  unchanged: householdSnapshot === JSON.stringify(sibling.economicProfile.household) };',
+    '})()'
+  ].join(String.fromCharCode(10)), context, { timeout: 10000 });
+  assert.equal(result.first, 1);
+  assert.equal(result.second, 0, 'the same year must not process the deceased branch twice');
+  assert.equal(result.child.age, 20, 'missed child ages should catch up one year at a time');
+  assert.equal(result.child.independent, true);
+  assert.equal(result.child.independentYear, 98);
+  assert.equal(result.child.lastAgeYear, 100);
+  assert.equal(result.child.economy.lastProcessedYear, 100);
+  assert.equal(result.child.economy.history.length, 3, 'each catch-up year should create exactly one financial record');
+  assert.ok(result.household.history.some(event => event.type === 'child_independent'));
+  assert.ok(result.household.history.some(event => event.type === 'child_started_study' || event.type === 'child_started_work'));
+  assert.equal(result.household.ownerDeceased, true);
+  assert.equal(result.household.status, 'widowed');
+  assert.equal(result.spouse.age, 73);
+  assert.equal(result.spouse.lastAgeYear, 100);
+  assert.equal(result.parentSavingsBefore, result.parentSavingsAfter, 'the deceased parent wallet must remain untouched');
+  assert.equal(result.unchanged, true, 'reprocessing the same year must not alter descendants or balances');
+});
+
+test('الأخ المتوفى بلا سجل أسرة قديم لا يحصل على أسرة أو أرصدة رجعية', () => {
+  const context = vm.createContext({});
+  vm.runInNewContext(siblingEconomySource + String.fromCharCode(10) + harnessSource, context, { timeout: 10000 });
+  const result = vm.runInContext([
+    '(() => {',
+    ' state = makeState(); state.yearCount = 100; state.family = [{ id: "legacy-deceased-sibling", name: "أخت قديمة", relation: "الأخت", age: 80, deceased: true }];',
+    ' const processed = advanceSiblingEconomies();',
+    ' return { processed, sibling: state.family[0] };',
+    '})()'
+  ].join(String.fromCharCode(10)), context, { timeout: 10000 });
+  assert.equal(result.processed, 0);
+  assert.equal(result.sibling.economicProfile, undefined);
+});
