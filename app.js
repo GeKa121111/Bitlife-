@@ -1805,9 +1805,32 @@ function ensureSiblingChildEconomy(relative,child,year){
  };
  return child.economy;
 }
+function siblingReleaseChildInheritance(relative,child,year){
+ const numericYear=Number.isSafeInteger(Number(year))?Math.max(0,Number(year)):0;
+ if(!child||typeof child!=='object'||!child.independent||Math.max(0,Number(child.age)||0)<18)return {released:false,cash:0,debt:0,count:0};
+ child.inheritance=siblingNormalizeInheritanceRecords(child.inheritance);
+ const pending=child.inheritance.records.filter(record=>record.releasedYear===null);
+ if(!pending.length)return {released:false,cash:0,debt:0,count:0};
+ const economy=ensureSiblingChildEconomy(relative,child,numericYear);
+ if(!economy)return {released:false,cash:0,debt:0,count:0};
+ let cash=0,debt=0;
+ pending.forEach(record=>{
+  const recordCash=siblingSafeMoney(record.cashHeld),recordDebt=siblingSafeMoney(record.debtHeld);
+  cash=siblingSafeMoney(cash+recordCash);debt=siblingSafeMoney(debt+recordDebt);
+  record.cashReleased=recordCash;record.debtReleased=recordDebt;record.cashHeld=0;record.debtHeld=0;record.releasedYear=numericYear;
+  record.history.push({year:numericYear,type:'released',cash:recordCash,debt:recordDebt});
+  if(record.history.length>8)record.history.splice(0,record.history.length-8);
+ });
+ economy.savings=siblingSafeMoney(economy.savings+cash);
+ economy.debt=siblingSafeMoney(economy.debt+debt);
+ economy.netWorth=siblingSafeSigned(economy.savings-economy.debt);
+ return {released:true,cash,debt,count:pending.length};
+}
+
 function siblingChildEconomicAnnualEffects(relative,child,year){
  const numericYear=Number(year),age=Math.max(0,Math.floor(Number(child&&child.age)||0));
  if(!Number.isSafeInteger(numericYear)||numericYear<0||!child||!child.independent||age<18)return null;
+ siblingReleaseChildInheritance(relative,child,numericYear);
  const economy=ensureSiblingChildEconomy(relative,child,numericYear);
  if(!economy)return null;
  if(economy.lastProcessedYear>=numericYear)return {duplicate:true,events:[],income:0,expenses:0};
@@ -1859,6 +1882,29 @@ function siblingChildEconomicAnnualEffects(relative,child,year){
  if(economy.history.length>8)economy.history.splice(0,economy.history.length-8);
  return {duplicate:false,events,income:annualIncome,expenses:annualExpenses,savings,debt,netWorth:economy.netWorth};
 }
+function siblingNormalizeInheritanceRecords(raw){
+ const source=raw&&typeof raw==='object'&&!Array.isArray(raw)?raw:{};
+ const records=(Array.isArray(source.records)?source.records:[]).slice(-20).filter(record=>record&&typeof record==='object'&&!Array.isArray(record)).map(record=>{
+  const estateId=String(record.estateId||'').slice(0,120);
+  if(!estateId)return null;
+  const releasedRaw=record.releasedYear;
+  const releasedYear=releasedRaw!==null&&releasedRaw!==undefined&&Number.isSafeInteger(Number(releasedRaw))?Math.max(0,Number(releasedRaw)):null;
+  const assetClaims=(Array.isArray(record.assetClaims)?record.assetClaims:[]).slice(0,12).filter(asset=>asset&&typeof asset==='object'&&!Array.isArray(asset)).map(asset=>({
+   assetId:String(asset.assetId||'').slice(0,80),kind:['residence','rental'].includes(asset.kind)?asset.kind:'residence',
+   label:String(asset.label||'عقار موروث').slice(0,48),shareBps:clamp(asset.shareBps??0,0,10000),
+   marketValueShare:siblingSafeMoney(asset.marketValueShare),mortgageBalanceShare:siblingSafeMoney(asset.mortgageBalanceShare),
+   mortgageArrearsShare:siblingSafeMoney(asset.mortgageArrearsShare),rentArrearsShare:siblingSafeMoney(asset.rentArrearsShare)
+  })).filter(asset=>asset.assetId);
+  const history=(Array.isArray(record.history)?record.history:[]).slice(-8).filter(item=>item&&typeof item==='object'&&!Array.isArray(item)&&['received','released'].includes(item.type)).map(item=>({
+   year:clamp(item.year??0,0,9999),type:item.type,cash:siblingSafeMoney(item.cash),debt:siblingSafeMoney(item.debt)
+  }));
+  return {estateId,year:clamp(record.year??0,0,9999),cashHeld:siblingSafeMoney(record.cashHeld),debtHeld:siblingSafeMoney(record.debtHeld),
+   cashReleased:siblingSafeMoney(record.cashReleased),debtReleased:siblingSafeMoney(record.debtReleased),releasedYear,
+   assetClaims,assetsPending:record.assetsPending===true||assetClaims.length>0,history};
+ }).filter(Boolean);
+ return {records};
+}
+
 function ensureSiblingHousehold(relative,profile,year){
  const numericYear=Number.isSafeInteger(Number(year))?Math.max(0,Number(year)):0;
  const raw=profile.household&&typeof profile.household==='object'&&!Array.isArray(profile.household)?profile.household:{};
@@ -1877,7 +1923,8 @@ function ensureSiblingHousehold(relative,profile,year){
    lastAgeYear:Number.isSafeInteger(Number(child.lastAgeYear))?Number(child.lastAgeYear):numericYear,
    independent:child.independent===true||age>=18,
    independentYear:child.independentYear!==null&&child.independentYear!==undefined&&Number.isSafeInteger(Number(child.independentYear))?Math.max(0,Number(child.independentYear)):(age>=18?Math.max(0,birthYear+18):null),
-   economy:child.economy&&typeof child.economy==='object'&&!Array.isArray(child.economy)?child.economy:null};
+   economy:child.economy&&typeof child.economy==='object'&&!Array.isArray(child.economy)?child.economy:null,
+   inheritance:siblingNormalizeInheritanceRecords(child.inheritance)};
  });
  const ownerDeceased=raw.ownerDeceased===true||!!(relative&&relative.deceased===true);
  const status=ownerDeceased?(spouse?'widowed':'single'):spouse?(spouse.deceased?'widowed':'married'):(raw.status==='widowed'?'widowed':'single');
@@ -1992,6 +2039,133 @@ function siblingDeceasedHouseholdAnnualEffects(relative,profile,year){
  household.status=household.spouse?'widowed':'single';
  return {duplicate:false,events,processedChildren,status:household.status};
 }
+function siblingEstatePlanNormalize(raw,year){
+ const source=raw&&typeof raw==='object'&&!Array.isArray(raw)?raw:{};
+ const mode=['equal_children','eldest_child','youngest_child'].includes(source.mode)?source.mode:'equal_children';
+ const updatedRaw=Number(source.updatedYear);
+ return {mode,updatedYear:Number.isSafeInteger(updatedRaw)?Math.max(-1,Math.min(Number(year)||0,updatedRaw)):-1};
+}
+function siblingEstatePlanLabel(mode){
+ return ({equal_children:'بالتساوي بين الأبناء',eldest_child:'للأكبر سنًا',youngest_child:'للأصغر سنًا'})[mode]||'بالتساوي بين الأبناء';
+}
+function siblingEstateBeneficiaryShares(children,mode){
+ const unique=[],seen=new Set();
+ (Array.isArray(children)?children:[]).forEach(child=>{
+  if(!child||typeof child!=='object'||Array.isArray(child))return;
+  const id=String(child.id||child.name||'').slice(0,80);
+  if(!id||seen.has(id))return;
+  seen.add(id);unique.push(child);
+ });
+ unique.sort((a,b)=>{
+  const birthA=Number.isSafeInteger(Number(a.birthYear))?Number(a.birthYear):9999;
+  const birthB=Number.isSafeInteger(Number(b.birthYear))?Number(b.birthYear):9999;
+  return birthA-birthB||String(a.id||a.name||'').localeCompare(String(b.id||b.name||''),'ar');
+ });
+ if(!unique.length)return [];
+ if(mode==='eldest_child')return [{child:unique[0],shareBps:10000}];
+ if(mode==='youngest_child')return [{child:unique[unique.length-1],shareBps:10000}];
+ const base=Math.floor(10000/unique.length),remainder=10000-base*unique.length;
+ return unique.map((child,index)=>({child,shareBps:base+(index===0?remainder:0)}));
+}
+function siblingEstatePlanAction(relative,mode){
+ if(!relative||relative.deceased||Math.max(0,Number(relative.age)||0)<18||!['equal_children','eldest_child','youngest_child'].includes(mode))return false;
+ const profile=ensureSiblingEconomicProfile(relative);
+ if(!profile||profile.estate&&profile.estate.settled)return false;
+ const household=profile.household&&typeof profile.household==='object'?profile.household:null;
+ if(!household||!Array.isArray(household.children)||!household.children.length)return false;
+ const year=Number.isSafeInteger(Number(state&&state.yearCount))?Math.max(0,Number(state.yearCount)):Math.max(0,Number(relative.age)||0);
+ profile.estatePlan={mode,updatedYear:year};
+ return true;
+}
+function siblingAllocateEstateAmount(totalAmount,beneficiaryShares){
+ const amount=siblingSafeMoney(totalAmount),shares=Array.isArray(beneficiaryShares)?beneficiaryShares:[];
+ if(!shares.length)return null;
+ const weights=shares.map(item=>clamp(item&&item.shareBps!==undefined?item.shareBps:0,0,10000));
+ if(weights.reduce((sum,value)=>sum+value,0)!==10000)return null;
+ const whole=Math.floor(amount/10000),remainderAmount=amount%10000;
+ const allocations=weights.map((shareBps,index)=>{
+  const remainderProduct=remainderAmount*shareBps;
+  return {index,amount:whole*shareBps+Math.floor(remainderProduct/10000),remainder:remainderProduct%10000};
+ });
+ const allocated=allocations.reduce((sum,item)=>sum+item.amount,0),remainder=amount-allocated;
+ if(!Number.isSafeInteger(allocated)||!Number.isSafeInteger(remainder)||remainder<0||remainder>=allocations.length)return null;
+ const order=allocations.slice().sort((a,b)=>b.remainder-a.remainder||a.index-b.index);
+ for(let index=0;index<remainder;index++)order[index].amount++;
+ return allocations.sort((a,b)=>a.index-b.index).map(item=>item.amount);
+}
+function siblingEstateAssetSnapshot(asset){
+ const mortgage=asset&&asset.mortgage&&typeof asset.mortgage==='object'?asset.mortgage:null;
+ const lease=asset&&asset.lease&&typeof asset.lease==='object'?asset.lease:null;
+ return {assetId:String(asset&&asset.id||'').slice(0,80),kind:asset&&asset.kind==='rental'?'rental':'residence',
+  label:String(asset&&asset.label||'عقار عائلي').slice(0,48),marketValue:siblingSafeMoney(asset&&asset.marketValue),
+  mortgageBalance:siblingSafeMoney(mortgage&&mortgage.balance),mortgageArrears:siblingSafeMoney(mortgage&&mortgage.arrears),
+  rentArrears:siblingSafeMoney(asset&&asset.rentArrears),monthlyRent:siblingSafeMoney(asset&&asset.monthlyRent),
+  leaseStatus:lease&&lease.status==='active'?'active':'vacant',tenantName:String(lease&&lease.tenantName||'').slice(0,60)};
+}
+function siblingEstateSettlement(relative,profile,year){
+ const numericYear=Number(year);
+ if(!relative||!relative.deceased||!profile||typeof profile!=='object'||Array.isArray(profile)||!Number.isSafeInteger(numericYear)||numericYear<0)return null;
+ if(profile.estate&&typeof profile.estate==='object'&&profile.estate.settled===true)return {duplicate:true,settled:true,estate:profile.estate};
+ if(!profile.household||typeof profile.household!=='object'||Array.isArray(profile.household))return null;
+ const household=ensureSiblingHousehold(relative,profile,numericYear);
+ household.ownerDeceased=true;
+ const children=Array.isArray(household.children)?household.children:[];
+ const assets=(Array.isArray(profile.ownedProperties)?profile.ownedProperties:[]).filter(asset=>asset&&typeof asset==='object'&&!Array.isArray(asset)).map(siblingEstateAssetSnapshot);
+ const securedDebt=siblingProfileMortgageLiability(profile),totalDebt=siblingSafeMoney(profile.debt);
+ const unsecuredDebt=Math.max(0,totalDebt-securedDebt),liquidAssets=siblingSafeMoney(profile.savings+profile.investmentBalance);
+ const identity=String(relative.id||relative.name||relative.relation||'sibling').slice(0,160);
+ const estateId='sibling-estate-'+siblingInvestmentHash(identity+'|estate|'+numericYear).toString(36);
+ const plan=siblingEstatePlanNormalize(profile.estatePlan,numericYear);
+ if(!children.length){
+  profile.estate={version:1,id:estateId,settled:true,settledYear:numericYear,status:'unclaimed_no_children',planMode:plan.mode,
+   liquidAssetsBefore:liquidAssets,unsecuredDebtBefore:unsecuredDebt,unsecuredDebtPaid:0,unsecuredDebtRemaining:unsecuredDebt,
+   securedDebtRetained:securedDebt,distributedCash:0,retainedCash:liquidAssets,retainedAssets:assets,assetTransferStatus:assets.length?'pending':'none',beneficiaries:[]};
+  return {duplicate:false,settled:true,estate:profile.estate,beneficiaries:[],distributedCash:0,unsecuredDebtPaid:0};
+ }
+ const shares=siblingEstateBeneficiaryShares(children,plan.mode);
+ if(!shares.length)return null;
+ const assetAllocations=assets.map(asset=>({
+  asset,
+  marketValue:siblingAllocateEstateAmount(asset.marketValue,shares),
+  mortgageBalance:siblingAllocateEstateAmount(asset.mortgageBalance,shares),
+  mortgageArrears:siblingAllocateEstateAmount(asset.mortgageArrears,shares),
+  rentArrears:siblingAllocateEstateAmount(asset.rentArrears,shares)
+ }));
+ if(assetAllocations.some(item=>['marketValue','mortgageBalance','mortgageArrears','rentArrears'].some(key=>!Array.isArray(item[key])||item[key].length!==shares.length)))return null;
+ const unsecuredDebtPaid=Math.min(liquidAssets,unsecuredDebt),distributableCash=siblingSafeMoney(liquidAssets-unsecuredDebtPaid);
+ const unsecuredDebtRemaining=siblingSafeMoney(unsecuredDebt-unsecuredDebtPaid);
+ let cashRemaining=distributableCash,debtRemaining=unsecuredDebtRemaining;
+ const beneficiaries=[];
+ shares.forEach((share,index)=>{
+  const child=share.child,shareBps=clamp(share.shareBps,0,10000),last=index===shares.length-1;
+  const cashShare=last?cashRemaining:Math.floor(distributableCash*shareBps/10000);
+  const debtShare=last?debtRemaining:Math.floor(unsecuredDebtRemaining*shareBps/10000);
+  cashRemaining=siblingSafeMoney(cashRemaining-cashShare);debtRemaining=siblingSafeMoney(debtRemaining-debtShare);
+  child.inheritance=siblingNormalizeInheritanceRecords(child.inheritance);
+  let record=child.inheritance.records.find(item=>item.estateId===estateId);
+  if(!record){
+   const assetClaims=assetAllocations.map(item=>({assetId:item.asset.assetId,kind:item.asset.kind,label:item.asset.label,shareBps,
+    marketValueShare:item.marketValue[index],mortgageBalanceShare:item.mortgageBalance[index],
+    mortgageArrearsShare:item.mortgageArrears[index],rentArrearsShare:item.rentArrears[index]}));
+   record={estateId,year:numericYear,cashHeld:cashShare,debtHeld:debtShare,cashReleased:0,debtReleased:0,releasedYear:null,
+    assetClaims,assetsPending:assetClaims.length>0,history:[{year:numericYear,type:'received',cash:cashShare,debt:debtShare}]};
+   child.inheritance.records.push(record);
+   if(child.inheritance.records.length>20)child.inheritance.records.splice(0,child.inheritance.records.length-20);
+  }
+  let releaseResult={released:false,cash:0,debt:0,count:0};
+  if(child.independent&&Number(child.age)>=18)releaseResult=siblingReleaseChildInheritance(relative,child,numericYear);
+  const currentRecord=child.inheritance.records.find(item=>item.estateId===estateId)||record;
+  beneficiaries.push({beneficiaryId:String(child.id||child.name||'').slice(0,80),name:String(child.name||'ابن/ابنة').slice(0,80),
+   shareBps,cashAllocated:cashShare,debtAllocated:debtShare,cashReleased:siblingSafeMoney(currentRecord&&currentRecord.cashReleased),
+   debtReleased:siblingSafeMoney(currentRecord&&currentRecord.debtReleased),assetClaimCount:assets.length,adultRelease:!!releaseResult.released});
+ });
+ profile.estate={version:1,id:estateId,settled:true,settledYear:numericYear,status:assets.length?'cash_distributed_assets_pending':'cash_distributed',
+  planMode:plan.mode,liquidAssetsBefore:liquidAssets,unsecuredDebtBefore:unsecuredDebt,unsecuredDebtPaid,
+  unsecuredDebtRemaining,securedDebtRetained:securedDebt,distributedCash:distributableCash,retainedCash:0,
+  retainedAssets:assets,assetTransferStatus:assets.length?'pending':'none',beneficiaries};
+ return {duplicate:false,settled:true,estate:profile.estate,beneficiaries,distributedCash:distributableCash,unsecuredDebtPaid};
+}
+
 function siblingOwnedPropertyValue(profile){
  const assets=Array.isArray(profile&&profile.ownedProperties)?profile.ownedProperties:[];
  return siblingSafeMoney(assets.reduce((sum,asset)=>sum+siblingSafeMoney(asset&&asset.marketValue),0));
@@ -2383,6 +2557,7 @@ function ensureSiblingEconomicProfile(relative){
  const currentJob=String(relative.job||profile.job||'');
  if(!currentJob||/طالب|باحث عن فرصة|خريج/.test(currentJob)||(/عمل جزئي/.test(currentJob)&&age>=22))relative.job=siblingCareerFor(relative);
  profile.version=1;profile.currency=String(profile.currency||state&&state.place&&state.place.unit||'ج.م').slice(0,16);
+ profile.estatePlan=siblingEstatePlanNormalize(profile.estatePlan,year);
  profile.job=String(relative.job||currentJob||siblingCareerFor(relative)).slice(0,64);if(!relative.job)relative.job=profile.job;
  profile.yearsWorked=clamp(profile.yearsWorked??Math.min(30,Math.max(0,age-22)),0,60);profile.rank=clamp(profile.rank??1,1,6);
  profile.savings=siblingSafeMoney(profile.savings);profile.debt=siblingSafeMoney(profile.debt);
@@ -2502,6 +2677,13 @@ function advanceSiblingEconomies(){
   if(relative.deceased){
    const deceasedProfile=relative.economicProfile&&typeof relative.economicProfile==='object'&&!Array.isArray(relative.economicProfile)?relative.economicProfile:null;
    if(!deceasedProfile||!deceasedProfile.household)return;
+   const estateResult=siblingEstateSettlement(relative,deceasedProfile,year);
+   if(estateResult&&!estateResult.duplicate&&estateResult.settled){
+    const estateDetail=estateResult.beneficiaries&&estateResult.beneficiaries.length
+     ?'تم تسجيل '+estateResult.beneficiaries.length+' مستفيد/مستفيدين وتوزيع سيولة '+cash(estateResult.distributedCash)+'. العقارات وحصص التمويل محفوظة كاستحقاقات قيد نقل الملكية.'
+     :'لا يوجد أبناء مستفيدون؛ حُفظت السيولة والأصول في سجل تركة غير موزع.';
+    log('📜','تسوية تركة '+String(relative.name||'أحد الأشقاء'),estateDetail,'special');
+   }
    const descendants=siblingDeceasedHouseholdAnnualEffects(relative,deceasedProfile,year);
    if(!descendants.duplicate){
     const titles={child_independent:'استمرار حياة أحد أبناء العائلة',child_started_study:'مسار تعليمي بعد وفاة الوالد',child_started_work:'بداية مهنية بعد وفاة الوالد',child_graduated:'تخرج أحد أبناء العائلة',child_retired:'تقاعد أحد أبناء العائلة'};
@@ -3690,6 +3872,48 @@ function siblingHouseholdChildNode(relative,child){
  const branchStatus=relative&&relative.deceased?' · فرع مستمر بعد وفاة '+esc(relative.name||'الوالد/الوالدة'):'';
  return '<article class="family-tree-node"><div class="family-tree-person"><span class="family-tree-avatar">🧑</span><span class="family-tree-copy"><strong>'+esc(child&&child.name||'ابن/ابنة')+'</strong><small>ابن/ابنة '+esc(relative&&relative.name||'أحد الإخوة')+' · '+fmt(child&&child.age||0)+' سنة'+branchStatus+'</small></span></div><small class="family-tree-foot">'+esc(detail)+'</small></article>';
 }
+function siblingEstatePlanConfirm(relative,mode){
+ const profile=relative&&relative.economicProfile,household=profile&&profile.household;
+ if(!profile||!household||!Array.isArray(household.children)||!household.children.length){info('📜','لا توجد وصية متاحة','تحتاج الأسرة إلى أبناء مسجلين قبل تحديد المستفيدين.');return;}
+ const shares=siblingEstateBeneficiaryShares(household.children,mode);
+ const preview=shares.map(item=>String(item.child.name||'ابن/ابنة')+' · '+(item.shareBps/100)+'%').join('، ');
+ info('📜','مراجعة وصية '+String(relative.name||'الشقيق'),'طريقة التوزيع: '+siblingEstatePlanLabel(mode)+'. المستفيدون: '+preview+'. ستظل العقارات والتمويل في سجل التركة لحين تنفيذ نقل الملكية في مرحلة لاحقة.',[
+  choice('✓','تأكيد الوصية','حفظ الاختيار في سجل الشقيق.',()=>{
+   if(!siblingEstatePlanAction(relative,mode)){info('⚠️','تعذر حفظ الوصية','تأكد أن الشقيق على قيد الحياة وأن لديه أبناء، ولم تتم تسوية تركته.');return;}
+   save();log('📜','تحديث وصية '+String(relative.name||'الشقيق'),'تم اختيار '+siblingEstatePlanLabel(mode)+'.','special');render();
+   info('📜','تم حفظ الوصية','سيُستخدم هذا الاختيار عند تسوية التركة. يمكن تغييره ما دام الشقيق على قيد الحياة ولم تبدأ التسوية.');
+  }),
+  choice('↩️','رجوع','',()=>siblingEstatePlanMenu(relative))
+ ]);
+}
+function siblingEstatePlanMenu(relative){
+ if(!relative||relative.deceased||Math.max(0,Number(relative.age)||0)<18){info('🔒','إدارة الوصية غير متاحة','يمكن للشقيق البالغ وعلى قيد الحياة تحديد وصيته.');return;}
+ const profile=ensureSiblingEconomicProfile(relative),household=profile&&profile.household;
+ const children=household&&Array.isArray(household.children)?household.children:[];
+ if(!children.length){info('📜','لا يوجد مستفيدون بعد','ستظهر خيارات الوصية بعد تكوّن أبناء في هذا الفرع العائلي.');return;}
+ const plan=siblingEstatePlanNormalize(profile.estatePlan,state&&state.yearCount);
+ const summary=children.map(child=>String(child.name||'ابن/ابنة')+' · '+fmt(child.age||0)+' سنة').join('، ');
+ const opts=[
+  choice('⚖️','بالتساوي بين الأبناء',plan.mode==='equal_children'?'الخيار الحالي':'تقسيم متساوٍ بين الأبناء المسجلين.',()=>siblingEstatePlanConfirm(relative,'equal_children')),
+  choice('👑','للأكبر سنًا',plan.mode==='eldest_child'?'الخيار الحالي':'تخصيص الحصة للأكبر سنًا.',()=>siblingEstatePlanConfirm(relative,'eldest_child')),
+  choice('🌱','للأصغر سنًا',plan.mode==='youngest_child'?'الخيار الحالي':'تخصيص الحصة للأصغر سنًا.',()=>siblingEstatePlanConfirm(relative,'youngest_child')),
+  choice('↩️','رجوع للملف','',()=>personModal(relative))
+ ];
+ modal('📜','وصية '+String(relative.name||'الشقيق'),'اختر طريقة توزيع السيولة والديون غير المضمونة. حاليًا تظل العقارات والتمويل في سجل التركة كحصص قيد نقل الملكية. الأبناء القاصرون يحتفظون بنصيبهم في أمانة حتى بلوغ 18 سنة.',opts,true,
+  '<div class="relationship-progress"><strong>الأبناء المسجلون</strong><p>'+esc(summary)+'</p><small>الاختيار الحالي: '+esc(siblingEstatePlanLabel(plan.mode))+'</small></div>');
+}
+function siblingEstateSummaryMenu(relative){
+ const profile=relative&&relative.economicProfile,estate=profile&&profile.estate;
+ if(!estate||typeof estate!=='object'||estate.settled!==true){info('📜','لا توجد تسوية تركة مسجلة','لم يبدأ دفتر التركة لهذا الفرع بعد، أو أن الحفظ القديم لا يحتوي على سجل أسرة.');return;}
+ const beneficiaries=(Array.isArray(estate.beneficiaries)?estate.beneficiaries:[]).map(item=>String(item.name||'ابن/ابنة')+' · '+fmt((Number(item.shareBps)||0)/100)+'% · سيولة '+cash(item.cashAllocated||0)+' · دين '+cash(item.debtAllocated||0)).join('؛ ')||'لا يوجد أبناء مستفيدون مسجلون.';
+ const assets=(Array.isArray(estate.retainedAssets)?estate.retainedAssets:[]).map(item=>String(item.label||'عقار')+' · '+cash(item.marketValue||0)+' · تمويل '+cash((Number(item.mortgageBalance)||0)+(Number(item.mortgageArrears)||0))).join('؛ ')||'لا توجد عقارات ضمن التركة.';
+ const extra='<div class="relationship-progress"><div class="pillrow"><span class="pill">💰 سيولة قبل التسوية '+esc(cash(estate.liquidAssetsBefore||0))+'</span><span class="pill">🧾 دين غير مضمون متبقٍ '+esc(cash(estate.unsecuredDebtRemaining||0))+'</span><span class="pill">🏦 تمويل مرتبط بالعقارات '+esc(cash(estate.securedDebtRetained||0))+'</span></div><p><strong>المستفيدون</strong><br>'+esc(beneficiaries)+'</p><p><strong>الأصول قيد نقل الملكية</strong><br>'+esc(assets)+'</p></div>';
+ modal('📜','تركة '+String(relative.name||'أحد الأشقاء'),'سجل التسوية سنة '+fmt(estate.settledYear||0)+' · '+(estate.assetTransferStatus==='pending'?'نقل ملكية العقارات لم يكتمل بعد.':'لا توجد أصول عقارية معلقة.'),[
+  choice('🌳','شجرة العائلة','',familyTreeMenu),
+  choice('↩️','رجوع','',familyTreeMenu)
+ ],true,extra);
+}
+
 function familyTreeMenu(){
  if(!state)return;const fam=Array.isArray(state.family)?state.family:[],kids=Array.isArray(state.children)?state.children:[];
  const siblings=fam.filter(p=>/(أخ|أخت)/.test(String(p.relation||''))),parents=fam.filter(p=>/(الأب|الأم|والد|والدة|جد|جدة|أب|أم)/.test(String(p.relation||''))&&!siblings.includes(p)),others=fam.filter(p=>!siblings.includes(p)&&!parents.includes(p));
@@ -3701,7 +3925,7 @@ function familyTreeMenu(){
  const childNodes=kids.length?kids.map(c=>familyTreeNode({...ensureChildGrowthProfile(c),relation:(c.adopted?'ابن/ابنة بالتبنّي':'ابن/ابنة')+' · '+childDevelopmentStage(c.age)})).join(''):'<div class="family-tree-empty">لم يتكوّن جيل الأبناء بعد.</div>';
  const extra='<div class="family-tree-view"><section class="family-tree-generation"><h3>الجيل السابق والعائلة</h3><div class="family-tree-branches">'+nodes([...parents,...others])+'</div></section><div class="family-tree-connector">↓</div><section class="family-tree-generation"><h3>الشخصية الحالية</h3><div class="family-tree-node family-tree-player"><div class="family-tree-person"><span class="family-tree-avatar">'+(state.gender==='female'?'👩':'👨')+'</span><span class="family-tree-copy"><strong>'+esc(state.name)+'</strong><small>أنت · '+fmt(state.age)+' سنة</small></span></div><small class="family-tree-foot">الجيل الحالي</small></div><div class="family-tree-connector">↔</div><div class="family-tree-branches">'+partner+'</div></section><div class="family-tree-connector">↓</div><section class="family-tree-generation"><h3>جيل الأبناء · '+kids.length+'</h3><div class="family-tree-branches">'+childNodes+'</div></section>'+(siblings.length?'<section class="family-tree-generation"><h3>الإخوة والأخوات</h3><div class="family-tree-branches">'+nodes(siblings)+'</div></section>':'')+(siblingChildren.length?'<section class="family-tree-generation"><h3>أبناء الإخوة والأخوات · '+siblingChildren.length+'</h3><div class="family-tree-branches">'+siblingChildrenNodes+'</div></section>':'')+(ex.length?'<section class="family-tree-generation"><h3>العلاقات السابقة</h3><div class="family-tree-branches">'+nodes(ex)+'</div></section>':'')+'</div>';
  const opts=[];
- [...parents,...others,...siblings,...ex].forEach(p=>opts.push(choice(p.deceased?'🕯️':(p.emoji||'👤'),(p.name||'فرد من العائلة')+' · '+(p.relation||'قريب'),'العمر '+fmt(p.age||0)+' · العلاقة '+clamp(p.relationshipLevel??0)+'%',()=>{closeModal();if(p.deceased)info('🕯️',p.name||'ذكرى عائلية','الشخص ده محفوظ في سجل الأسرة.');else personModal(p);},clamp(p.relationshipLevel??0)+'%')));
+ [...parents,...others,...siblings,...ex].forEach(p=>opts.push(choice(p.deceased?'🕯️':(p.emoji||'👤'),(p.name||'فرد من العائلة')+' · '+(p.relation||'قريب'),'العمر '+fmt(p.age||0)+' · العلاقة '+clamp(p.relationshipLevel??0)+'%',()=>{closeModal();if(p.deceased&&/(أخ|أخت)/.test(String(p.relation||'')))siblingEstateSummaryMenu(p);else if(p.deceased)info('🕯️',p.name||'ذكرى عائلية','الشخص ده محفوظ في سجل الأسرة.');else personModal(p);},clamp(p.relationshipLevel??0)+'%')));
  if(state.partner)opts.push(choice('💞',state.partner.name+' · الشريك','العلاقة '+clamp(state.partner.relationshipLevel)+'%',()=>{closeModal();personModal(state.partner)}));
  kids.forEach((c,i)=>opts.push(choice(c.emoji||'🧒',c.name+' · '+childDevelopmentStage(c.age),'العمر '+fmt(c.age)+' سنة · التحصيل '+clamp(c.schoolPerformance??50)+'%',()=>{closeModal();childMenu(i)},clamp(c.relationshipLevel??0)+'%')));
  const walletCount=getBeneficiaryWallets(state.legacy).length;
@@ -5966,6 +6190,7 @@ function personModal(n){
   choice('🎁','تقديم هدية','هدية صغيرة بتكلفة 500 '+state.place.unit+'.',()=>relationshipAction(n,'gift'),'500 '+state.place.unit),
   choice('😤','شجار','الخلاف ممكن يقلل مستوى العلاقة.',()=>relationshipAction(n,'argue')),
   ...(isSibling&&n.economicProfile?[choice('📊','الوضع المالي','راجع الدخل والمدخرات والديون المستقلة.',()=>siblingEconomicDetails(n))]:[]),
+  ...(isSibling&&!n.deceased&&Math.max(0,Number(n.age)||0)>=18?[choice('📜','وصية الأسرة','حدد طريقة توزيع التركة على الأبناء.',()=>siblingEstatePlanMenu(n))]:[]),
   ...(n===state.partner&&state.age>=18?[choice('🛡️','وقت خاص مع الشريك','اختيار بالغ داخل اللعبة؛ فيه احتمال مضاعفة صحية خيالية، ويمكن لدرع العافية تعطيل الخطر.',()=>relationshipAction(n,'intimate'))]:[]),
   choice('📜','سجل العلاقة','راجع آخر التفاعلات وأثرها على مستوى العلاقة.',()=>relationshipHistory(n))
  ],true,progress);

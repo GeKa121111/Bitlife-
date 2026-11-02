@@ -21,6 +21,7 @@ const ageSource = extractFunction('advanceAge');
 const siblingEconomySource = [
   extractFunction('siblingSafeMoney'),
   extractFunction('siblingSafeSigned'),
+  extractFunction('siblingNormalizeInheritanceRecords'),
   extractFunction('siblingInvestmentHash'),
   extractFunction('siblingInvestmentRiskFor'),
   extractFunction('siblingInvestmentRiskLabel'),
@@ -56,10 +57,18 @@ const siblingEconomySource = [
   extractFunction('siblingHouseholdName'),
   extractFunction('siblingChildCareerFor'),
   extractFunction('ensureSiblingChildEconomy'),
+  extractFunction('siblingReleaseChildInheritance'),
   extractFunction('siblingChildEconomicAnnualEffects'),
   extractFunction('ensureSiblingHousehold'),
   extractFunction('siblingHouseholdAnnualEffects'),
   extractFunction('siblingDeceasedHouseholdAnnualEffects'),
+  extractFunction('siblingEstatePlanNormalize'),
+  extractFunction('siblingEstatePlanLabel'),
+  extractFunction('siblingEstateBeneficiaryShares'),
+  extractFunction('siblingEstatePlanAction'),
+  extractFunction('siblingAllocateEstateAmount'),
+  extractFunction('siblingEstateAssetSnapshot'),
+  extractFunction('siblingEstateSettlement'),
   extractFunction('ensureSiblingEconomicProfile'),
   extractFunction('advanceSiblingEconomies')
 ].join('\n');
@@ -1683,4 +1692,164 @@ test('الأخ المتوفى بلا سجل أسرة قديم لا يحصل عل
   ].join(String.fromCharCode(10)), context, { timeout: 10000 });
   assert.equal(result.processed, 0);
   assert.equal(result.sibling.economicProfile, undefined);
+});
+
+
+test('وصية الشقيق توزع السيولة بالتساوي أو على الابن الأكبر أو الأصغر دون تغيير الحفظ الأساسي', () => {
+  const context = vm.createContext({});
+  vm.runInNewContext(siblingEconomySource + String.fromCharCode(10) + harnessSource, context, { timeout: 10000 });
+  const result = vm.runInContext([
+    '(() => {',
+    ' state = makeState(); state.yearCount = 50; state.place = { unit: "ج.م" };',
+    ' const sibling = { id: "will-sibling", name: "أخت صاحبة وصية", relation: "الأخت", age: 45, deceased: false, job: "مدرسة", economicProfile: {',
+    '  savings: 10000, debt: 0, household: { status: "married", lastProcessedYear: 49, history: [],',
+    '   children: [{ id: "older", name: "الابن الأكبر", age: 20, birthYear: 30, lastAgeYear: 49, independent: true },',
+    '    { id: "younger", name: "الابن الأصغر", age: 16, birthYear: 34, lastAgeYear: 49, independent: false }] } } };',
+    ' const saved = siblingEstatePlanAction(sibling, "youngest_child");',
+    ' const mode = sibling.economicProfile.estatePlan.mode;',
+    ' const shares = siblingEstateBeneficiaryShares(sibling.economicProfile.household.children, mode);',
+    ' sibling.deceased = true;',
+    ' const blockedAfterDeath = siblingEstatePlanAction(sibling, "eldest_child");',
+    ' return { saved, mode, shares: shares.map(item => ({ id: item.child.id, shareBps: item.shareBps })), blockedAfterDeath };',
+    '})()'
+  ].join(String.fromCharCode(10)), context, { timeout: 10000 });
+  assert.equal(result.saved, true);
+  assert.equal(result.mode, 'youngest_child');
+  assert.deepEqual(Array.from(result.shares, item => ({ id: item.id, shareBps: item.shareBps })), [
+    { id: 'younger', shareBps: 10000 }
+  ]);
+  assert.equal(result.blockedAfterDeath, false, 'a deceased sibling cannot edit the will');
+});
+
+test('دفتر التركة يسدد الدين غير المضمون أولًا ويوزع السيولة ويحتفظ بحصص العقارات والتمويل دون تكرار', () => {
+  const context = vm.createContext({});
+  vm.runInNewContext(siblingEconomySource + String.fromCharCode(10) + harnessSource, context, { timeout: 10000 });
+  const result = vm.runInContext([
+    '(() => {',
+    ' state = makeState(); state.yearCount = 100; state.place = { unit: "ج.م" };',
+    ' const adult = { id: "estate-adult", name: "ابن بالغ", age: 25, birthYear: 75, lastAgeYear: 99, independent: true, economy: { savings: 5000, debt: 0, history: [] } };',
+    ' const minor = { id: "estate-minor", name: "ابن قاصر", age: 17, birthYear: 83, lastAgeYear: 99, independent: false };',
+    ' const sibling = { id: "estate-parent", name: "أخ راحل", relation: "الأخ", age: 75, deceased: true, economicProfile: {',
+    '  savings: 100000, investmentBalance: 50000, debt: 80000, household: { status: "widowed", ownerDeceased: true, lastProcessedYear: 99, history: [],',
+    '   children: [adult, minor] }, ownedProperties: [',
+    '    { id: "estate-home", kind: "residence", label: "مسكن العائلة", marketValue: 300000 },',
+    '    { id: "estate-rental", kind: "rental", label: "عقار مؤجر", marketValue: 200000, rentArrears: 8000, mortgage: { balance: 50000, arrears: 5000 }, lease: { status: "active", tenantName: "مستأجر", monthlyRent: 1000 } }',
+    '   ] } };',
+    ' const parentSavings = sibling.economicProfile.savings, parentInvestments = sibling.economicProfile.investmentBalance;',
+    ' const first = siblingEstateSettlement(sibling, sibling.economicProfile, 100);',
+    ' const household = sibling.economicProfile.household, adultAfter = household.children[0], minorAfter = household.children[1];',
+    ' const adultRecord = adultAfter.inheritance.records[0], minorRecord = minorAfter.inheritance.records[0];',
+    ' const adultSavings = adultAfter.economy.savings;',
+    ' const second = siblingEstateSettlement(sibling, sibling.economicProfile, 100);',
+    ' return { first, second, estate: sibling.economicProfile.estate, adultRecord, minorRecord, adultSavings,',
+    '  parentSavings, parentSavingsAfter: sibling.economicProfile.savings, parentInvestments, parentInvestmentsAfter: sibling.economicProfile.investmentBalance };',
+    '})()'
+  ].join(String.fromCharCode(10)), context, { timeout: 10000 });
+  assert.equal(result.first.duplicate, false);
+  assert.equal(result.estate.unsecuredDebtPaid, 25000);
+  assert.equal(result.estate.securedDebtRetained, 55000);
+  assert.equal(result.estate.distributedCash, 125000);
+  assert.equal(result.estate.assetTransferStatus, 'pending');
+  assert.equal(result.estate.retainedAssets.length, 2);
+  assert.equal(result.estate.beneficiaries.length, 2);
+  assert.equal(result.adultRecord.cashReleased, 62500);
+  assert.equal(result.adultRecord.releasedYear, 100);
+  assert.equal(result.adultSavings, 67500);
+  assert.equal(result.minorRecord.cashHeld, 62500);
+  assert.equal(result.minorRecord.releasedYear, null);
+  assert.equal(result.adultRecord.assetClaims.length, 2);
+  assert.equal(result.adultRecord.assetClaims[1].mortgageBalanceShare, 25000);
+  assert.equal(result.parentSavings, result.parentSavingsAfter, 'the deceased profile remains an audit snapshot');
+  assert.equal(result.parentInvestments, result.parentInvestmentsAfter, 'the deceased investment snapshot is not mutated');
+  assert.equal(result.second.duplicate, true, 'settling the same estate twice must not distribute a second time');
+});
+
+test('نصيب الابن القاصر يتحول إلى محفظته عند 18 سنة مرة واحدة فقط', () => {
+  const context = vm.createContext({});
+  vm.runInNewContext(siblingEconomySource + String.fromCharCode(10) + harnessSource, context, { timeout: 10000 });
+  const result = vm.runInContext([
+    '(() => {',
+    ' state = makeState(); state.yearCount = 100; state.place = { unit: "ج.م" };',
+    ' const child = { id: "trust-child", name: "ابن قاصر", age: 17, birthYear: 83, lastAgeYear: 99, independent: false };',
+    ' const sibling = { id: "trust-parent", name: "أخت راحلة", relation: "الأخت", age: 70, deceased: true, economicProfile: {',
+    '  savings: 40000, debt: 0, investmentBalance: 0, household: { status: "single", ownerDeceased: true, lastProcessedYear: 99, history: [], children: [child] }, ownedProperties: [] } };',
+    ' const estate = siblingEstateSettlement(sibling, sibling.economicProfile, 100);',
+    ' const heir = sibling.economicProfile.household.children[0];',
+    ' const heldBefore = heir.inheritance.records[0].cashHeld;',
+    ' heir.age = 18; heir.independent = true; heir.lastAgeYear = 100;',
+    ' const released = siblingReleaseChildInheritance(sibling, heir, 101);',
+    ' const savingsAfter = heir.economy.savings;',
+    ' const duplicate = siblingReleaseChildInheritance(sibling, heir, 102);',
+    ' return { estate, heldBefore, released, savingsAfter, duplicate, record: heir.inheritance.records[0] };',
+    '})()'
+  ].join(String.fromCharCode(10)), context, { timeout: 10000 });
+  assert.equal(result.estate.distributedCash, 40000);
+  assert.equal(result.heldBefore, 40000);
+  assert.equal(result.released.released, true);
+  assert.equal(result.released.cash, 40000);
+  assert.equal(result.savingsAfter, 40000);
+  assert.equal(result.duplicate.released, false);
+  assert.equal(result.record.releasedYear, 101);
+  assert.equal(result.record.cashHeld, 0);
+});
+
+test('العجز النقدي في التركة يوزع الدين غير المضمون ولا يخلط التمويل العقاري به', () => {
+  const context = vm.createContext({});
+  vm.runInNewContext(siblingEconomySource + String.fromCharCode(10) + harnessSource, context, { timeout: 10000 });
+  const result = vm.runInContext([
+    '(() => {',
+    ' state = makeState(); state.yearCount = 100; state.place = { unit: "ج.م" };',
+    ' const child = { id: "debt-heir", name: "ابن وارث", age: 30, birthYear: 70, lastAgeYear: 99, independent: true };',
+    ' const sibling = { id: "debt-parent", name: "أخ راحل", relation: "الأخ", age: 70, deceased: true, economicProfile: {',
+    '  savings: 10000, investmentBalance: 0, debt: 90000, household: { status: "single", ownerDeceased: true, lastProcessedYear: 99, history: [], children: [child] },',
+    '  ownedProperties: [{ id: "mortgaged-rental", kind: "rental", marketValue: 100000, mortgage: { balance: 30000, arrears: 0 } }] } };',
+    ' const estate = siblingEstateSettlement(sibling, sibling.economicProfile, 100);',
+    ' const heir = sibling.economicProfile.household.children[0];',
+    ' return { estate: sibling.economicProfile.estate, heirDebt: heir.economy.debt, result: estate };',
+    '})()'
+  ].join(String.fromCharCode(10)), context, { timeout: 10000 });
+  assert.equal(result.estate.unsecuredDebtPaid, 10000);
+  assert.equal(result.estate.unsecuredDebtRemaining, 50000);
+  assert.equal(result.estate.securedDebtRetained, 30000);
+  assert.equal(result.heirDebt, 50000);
+  assert.equal(result.estate.distributedCash, 0);
+});
+
+test('حصص العقارات والتمويل ومتأخرات الإيجار تتوزع دون فقد أو خلق قيمة بين ثلاثة ورثة', () => {
+  const context = vm.createContext({});
+  vm.runInNewContext(siblingEconomySource + String.fromCharCode(10) + harnessSource, context, { timeout: 10000 });
+  const result = vm.runInContext([
+    '(() => {',
+    ' state = makeState(); state.yearCount = 70; state.place = { unit: "ج.م" };',
+    ' const children = [',
+    '  { id: "oldest", name: "الابن الأكبر", age: 16, birthYear: 54, lastAgeYear: 69, independent: false },',
+    '  { id: "middle", name: "الابن الأوسط", age: 15, birthYear: 55, lastAgeYear: 69, independent: false },',
+    '  { id: "youngest", name: "الابن الأصغر", age: 14, birthYear: 56, lastAgeYear: 69, independent: false }',
+    ' ];',
+    ' const sibling = { id: "odd-value-estate", name: "شقيق متوفى", relation: "الأخ", age: 70, deceased: true, economicProfile: {',
+    '  savings: 0, investmentBalance: 0, debt: 0, household: { status: "single", lastProcessedYear: 69, history: [], children },',
+    '  ownedProperties: [{ id: "odd-rental", kind: "rental", label: "عقار بقيم غير قابلة للقسمة", marketValue: 101, rentArrears: 11, mortgage: { balance: 17, arrears: 7 } }] } };',
+    ' const settled = siblingEstateSettlement(sibling, sibling.economicProfile, 70);',
+    ' const heirs = sibling.economicProfile.household.children;',
+    ' const claims = heirs.map(child => child.inheritance.records[0].assetClaims[0]);',
+    ' const sums = {',
+    '  marketValue: claims.reduce((sum, item) => sum + item.marketValueShare, 0),',
+    '  mortgageBalance: claims.reduce((sum, item) => sum + item.mortgageBalanceShare, 0),',
+    '  mortgageArrears: claims.reduce((sum, item) => sum + item.mortgageArrearsShare, 0),',
+    '  rentArrears: claims.reduce((sum, item) => sum + item.rentArrearsShare, 0)',
+    ' };',
+    ' const duplicate = siblingEstateSettlement(sibling, sibling.economicProfile, 70);',
+    ' return { settled, duplicate, shares: settled.beneficiaries.map(item => item.shareBps), claims, sums,',
+    '  recordCounts: heirs.map(child => child.inheritance.records.length), retained: sibling.economicProfile.estate.retainedAssets[0] };',
+    '})()'
+  ].join(String.fromCharCode(10)), context, { timeout: 10000 });
+  assert.equal(result.settled.duplicate, false);
+  assert.deepEqual(Array.from(result.shares), [3334, 3333, 3333]);
+  assert.deepEqual(JSON.parse(JSON.stringify(result.sums)), {
+    marketValue: 101, mortgageBalance: 17, mortgageArrears: 7, rentArrears: 11
+  });
+  assert.ok(result.claims.every(item => Object.values(item).filter(value => typeof value === 'number').every(value => Number.isSafeInteger(value) && value >= 0)));
+  assert.equal(result.duplicate.duplicate, true, 'the same estate cannot allocate property claims a second time');
+  assert.deepEqual(Array.from(result.recordCounts), [1, 1, 1]);
+  assert.equal(result.retained.marketValue, 101, 'the deceased sibling property remains an unchanged audit snapshot');
 });
