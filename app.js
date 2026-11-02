@@ -1677,7 +1677,7 @@ function siblingSafeSigned(value){
 function siblingCareerFor(relative){
  const age=Math.max(0,Math.floor(Number(relative&&relative.age)||0));
  if(age<22)return 'عمل جزئي';
- const smart=clamp(relative&&(relative.smart??relative.careerPotential)??55);
+ const smart=clamp(relative?(relative.smart??relative.careerPotential??55):55);
  if(smart>=75)return 'مطور';
  if(smart>=65)return 'محاسب';
  if(smart>=55)return 'مصمم';
