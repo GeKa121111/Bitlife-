@@ -2303,3 +2303,20 @@ test('الأسرة المستقلة للأشقاء تحفظ الشريك وال�
   assert.match(app, /const KEY = 'hekayat_hayah_save_v1';/);
   assert.ok(app.includes('return {version:1,lifeId:'), 'legacy save format remains version 1');
 });
+
+ 
+test('أبناء الإخوة والأخوات يظهرون في شجرة العائلة بمساراتهم التعليمية والمهنية المستقلة', () => {
+  assert.match(app, /function siblingChildCareerFor\(aptitude\)/);
+  assert.match(app, /function ensureSiblingChildEconomy\(relative,child,year\)/);
+  assert.match(app, /function siblingChildEconomicAnnualEffects\(relative,child,year\)/);
+  const node = functionSource('siblingHouseholdChildNode', 'familyTreeMenu');
+  assert.match(node, /educationStatus/);
+  assert.match(node, /annualIncome/);
+  const tree = functionSource('familyTreeMenu', 'familyPropertyOwnershipMenu');
+  assert.match(tree, /أبناء الإخوة والأخوات/);
+  assert.match(tree, /siblingHouseholdChildNode/);
+  const details = functionSource('siblingEconomicDetails', 'relationshipHistory');
+  assert.match(details, /childCareerSummary/);
+  assert.match(app, /independentYear/);
+  assert.match(app, /child_graduated/);
+});
