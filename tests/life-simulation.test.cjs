@@ -1753,7 +1753,7 @@ test('دفتر التركة يسدد الدين غير المضمون أولًا
   assert.equal(result.estate.unsecuredDebtPaid, 25000);
   assert.equal(result.estate.securedDebtRetained, 55000);
   assert.equal(result.estate.distributedCash, 125000);
-  assert.equal(result.estate.assetTransferStatus, 'pending');
+  assert.equal(result.estate.assetTransferStatus, 'partially_transferred');
   assert.equal(result.estate.retainedAssets.length, 2);
   assert.equal(result.estate.beneficiaries.length, 2);
   assert.equal(result.adultRecord.cashReleased, 62500);
@@ -1924,7 +1924,8 @@ test('ملكية العقار الموروث تبقى في الأمانة للق
     ' const before = { hasEconomy: !!heir.economy, pending: heldRecord.assetsPending, estateStatus: sibling.economicProfile.estate.assetTransferStatus };',
     ' heir.age = 18; heir.independent = true; heir.independentYear = 51; heir.lastAgeYear = 51;',
     ' const release = siblingReleaseChildInheritance(sibling, heir, 51);',
-    ' const after = { count: heir.economy.ownedProperties.length, pending: heldRecord.assetsPending, releasedYear: heldRecord.assetsTransferredYear,',
+    ' const afterRecord = heir.inheritance.records[0];',
+    ' const after = { count: heir.economy.ownedProperties.length, pending: afterRecord.assetsPending, releasedYear: afterRecord.assetsTransferredYear,',
     '  estateStatus: sibling.economicProfile.estate.assetTransferStatus, value: heir.economy.ownedProperties[0] && heir.economy.ownedProperties[0].marketValue };',
     ' const duplicate = siblingReleaseChildInheritance(sibling, heir, 52);',
     ' return { settlement, before, release, after, duplicate, finalCount: heir.economy.ownedProperties.length };',
