@@ -31,6 +31,10 @@ const siblingEconomySource = [
   extractFunction('siblingEmploymentDecision'),
   extractFunction('siblingCareerFor'),
   extractFunction('siblingCareerBaseSalary'),
+  extractFunction('siblingNormalizeChildOwnedProperties'),
+  extractFunction('siblingChildEstatePropertyPlan'),
+  extractFunction('siblingUpdateEstateAssetTransferStatus'),
+  extractFunction('siblingChildInheritedPropertyAnnualEffects'),
   extractFunction('siblingOwnedPropertyValue'),
   extractFunction('siblingPropertyPrice'),
   extractFunction('siblingPropertyMarketChangeBps'),
@@ -1749,7 +1753,7 @@ test('دفتر التركة يسدد الدين غير المضمون أولًا
   assert.equal(result.estate.unsecuredDebtPaid, 25000);
   assert.equal(result.estate.securedDebtRetained, 55000);
   assert.equal(result.estate.distributedCash, 125000);
-  assert.equal(result.estate.assetTransferStatus, 'pending');
+  assert.equal(result.estate.assetTransferStatus, 'partially_transferred');
   assert.equal(result.estate.retainedAssets.length, 2);
   assert.equal(result.estate.beneficiaries.length, 2);
   assert.equal(result.adultRecord.cashReleased, 62500);
@@ -1828,7 +1832,7 @@ test('حصص العقارات والتمويل ومتأخرات الإيجار �
     ' ];',
     ' const sibling = { id: "odd-value-estate", name: "شقيق متوفى", relation: "الأخ", age: 70, deceased: true, economicProfile: {',
     '  savings: 0, investmentBalance: 0, debt: 0, household: { status: "single", lastProcessedYear: 69, history: [], children },',
-    '  ownedProperties: [{ id: "odd-rental", kind: "rental", label: "عقار بقيم غير قابلة للقسمة", marketValue: 101, rentArrears: 11, mortgage: { balance: 17, arrears: 7 } }] } };',
+    '  ownedProperties: [{ id: "odd-rental", kind: "rental", label: "عقار بقيم غير قابلة للقسمة", marketValue: 101, upkeep: 13, annualUpkeepRateBps: 120, monthlyRent: 19, rentArrears: 11, lease: { status: "active", tenantName: "مستأجر", monthlyRent: 19, startYear: 60, endYear: 90, termYears: 30, lastProcessedYear: 69, ownerManaged: true }, mortgage: { balance: 17, arrears: 7, annualPayment: 5, interestRateBps: 0, remainingYears: 10, termYears: 10, lastProcessedYear: 69 } }] } };',
     ' const settled = siblingEstateSettlement(sibling, sibling.economicProfile, 70);',
     ' const heirs = sibling.economicProfile.household.children;',
     ' const claims = heirs.map(child => child.inheritance.records[0].assetClaims[0]);',
@@ -1836,6 +1840,9 @@ test('حصص العقارات والتمويل ومتأخرات الإيجار �
     '  marketValue: claims.reduce((sum, item) => sum + item.marketValueShare, 0),',
     '  mortgageBalance: claims.reduce((sum, item) => sum + item.mortgageBalanceShare, 0),',
     '  mortgageArrears: claims.reduce((sum, item) => sum + item.mortgageArrearsShare, 0),',
+    '  mortgageAnnualPayment: claims.reduce((sum, item) => sum + item.mortgageAnnualPaymentShare, 0),',
+    '  upkeep: claims.reduce((sum, item) => sum + item.upkeepShare, 0),',
+    '  monthlyRent: claims.reduce((sum, item) => sum + item.monthlyRentShare, 0),',
     '  rentArrears: claims.reduce((sum, item) => sum + item.rentArrearsShare, 0)',
     ' };',
     ' const duplicate = siblingEstateSettlement(sibling, sibling.economicProfile, 70);',
@@ -1846,10 +1853,93 @@ test('حصص العقارات والتمويل ومتأخرات الإيجار �
   assert.equal(result.settled.duplicate, false);
   assert.deepEqual(Array.from(result.shares), [3334, 3333, 3333]);
   assert.deepEqual(JSON.parse(JSON.stringify(result.sums)), {
-    marketValue: 101, mortgageBalance: 17, mortgageArrears: 7, rentArrears: 11
+    marketValue: 101, mortgageBalance: 17, mortgageArrears: 7, mortgageAnnualPayment: 5,
+    upkeep: 13, monthlyRent: 19, rentArrears: 11
   });
   assert.ok(result.claims.every(item => Object.values(item).filter(value => typeof value === 'number').every(value => Number.isSafeInteger(value) && value >= 0)));
   assert.equal(result.duplicate.duplicate, true, 'the same estate cannot allocate property claims a second time');
   assert.deepEqual(Array.from(result.recordCounts), [1, 1, 1]);
   assert.equal(result.retained.marketValue, 101, 'the deceased sibling property remains an unchanged audit snapshot');
+});
+
+test('حصة العقار تنتقل فعليًا إلى ملكية الابن البالغ مرة واحدة مع التمويل والإيجار', () => {
+  const context = vm.createContext({});
+  vm.runInNewContext(siblingEconomySource + String.fromCharCode(10) + harnessSource, context, { timeout: 10000 });
+  const result = vm.runInContext([
+    '(() => {',
+    ' state = makeState(); state.yearCount = 80; state.place = { unit: "ج.م" };',
+    ' const child = { id: "adult-property-heir", name: "ابن بالغ", age: 25, birthYear: 55, lastAgeYear: 79, independent: true, independentYear: 73, economy: { savings: 1000, debt: 0, yearsWorked: 4, lastProcessedYear: 79, history: [] } };',
+    ' const sibling = { id: "deceased-property-owner", name: "شقيق متوفى", relation: "الأخ", age: 70, deceased: true, economicProfile: {',
+    '  savings: 10000, investmentBalance: 0, debt: 0, household: { status: "single", lastProcessedYear: 79, history: [], children: [child] },',
+    '  ownedProperties: [{ id: "inherited-rental-source", kind: "rental", label: "عقار موروث", marketValue: 101, upkeep: 13, annualUpkeepRateBps: 120, monthlyRent: 19, rentArrears: 11,',
+    '   lease: { status: "active", tenantName: "مستأجر قائم", monthlyRent: 19, startYear: 70, endYear: 90, termYears: 20, lastProcessedYear: 79, ownerManaged: true },',
+    '   mortgage: { balance: 17, arrears: 7, annualPayment: 5, interestRateBps: 0, remainingYears: 10, termYears: 10, lastProcessedYear: 79 } }] } };',
+    ' const settlement = siblingEstateSettlement(sibling, sibling.economicProfile, 80);',
+    ' const heir = sibling.economicProfile.household.children[0], economy = heir.economy;',
+    ' const asset = economy.ownedProperties[0], record = heir.inheritance.records[0];',
+    ' const duplicateRelease = siblingReleaseChildInheritance(sibling, heir, 81);',
+    ' const afterDuplicate = economy.ownedProperties.length;',
+    ' const annual = siblingChildEconomicAnnualEffects(sibling, heir, 81);',
+    ' return { settlement, transferStatus: sibling.economicProfile.estate.assetTransferStatus, asset, record, duplicateRelease,',
+    '  afterDuplicate, annual, finalAsset: heir.economy.ownedProperties[0], economy: heir.economy };',
+    '})()'
+  ].join(String.fromCharCode(10)), context, { timeout: 10000 });
+  assert.equal(result.settlement.duplicate, false);
+  assert.equal(result.transferStatus, 'transferred');
+  assert.equal(result.asset.sourceEstateId, result.record.estateId);
+  assert.equal(result.asset.sourceAssetId, 'inherited-rental-source');
+  assert.equal(result.asset.marketValue, 101);
+  assert.equal(result.asset.upkeep, 13);
+  assert.equal(result.asset.monthlyRent, 19);
+  assert.equal(result.asset.rentArrears, 11);
+  assert.equal(result.asset.mortgage.balance, 17);
+  assert.equal(result.asset.mortgage.arrears, 7);
+  assert.equal(result.asset.lease.tenantName, 'مستأجر قائم');
+  assert.equal(result.asset.ownershipShareBps, 10000);
+  assert.equal(result.record.assetsPending, false);
+  assert.equal(result.record.assetsTransferredYear, 80);
+  assert.equal(result.record.transferredAssetIds.length, 1);
+  assert.equal(result.duplicateRelease.properties, 0);
+  assert.equal(result.afterDuplicate, 1, 'duplicate release must not create another inherited title');
+  assert.equal(result.annual.duplicate, false);
+  assert.ok(result.annual.rentalIncome > 0, 'the inherited rental property should start producing rent');
+  assert.equal(result.finalAsset.mortgage.balance, 12, 'the annual mortgage principal should be serviced once');
+  assert.equal(result.finalAsset.mortgage.arrears, 0);
+  assert.equal(result.economy.lastProcessedYear, 81);
+  assert.ok(result.economy.netWorth >= 0);
+});
+
+test('ملكية العقار الموروث تبقى في الأمانة للقاصر ثم تنتقل عند بلوغه 18 سنة دون تكرار', () => {
+  const context = vm.createContext({});
+  vm.runInNewContext(siblingEconomySource + String.fromCharCode(10) + harnessSource, context, { timeout: 10000 });
+  const result = vm.runInContext([
+    '(() => {',
+    ' state = makeState(); state.yearCount = 50; state.place = { unit: "ج.م" };',
+    ' const child = { id: "minor-property-heir", name: "ابنة قاصر", age: 17, birthYear: 33, lastAgeYear: 49, independent: false };',
+    ' const sibling = { id: "minor-property-parent", name: "أخت راحلة", relation: "الأخت", age: 70, deceased: true, economicProfile: {',
+    '  savings: 5000, investmentBalance: 0, debt: 0, household: { status: "single", lastProcessedYear: 49, history: [], children: [child] },',
+    '  ownedProperties: [{ id: "minor-home-source", kind: "residence", label: "مسكن موروث", marketValue: 90001, upkeep: 900, annualUpkeepRateBps: 100 }] } };',
+    ' const settlement = siblingEstateSettlement(sibling, sibling.economicProfile, 50);',
+    ' const heir = sibling.economicProfile.household.children[0],heldRecord = heir.inheritance.records[0];',
+    ' const before = { hasEconomy: !!heir.economy, pending: heldRecord.assetsPending, estateStatus: sibling.economicProfile.estate.assetTransferStatus };',
+    ' heir.age = 18; heir.independent = true; heir.independentYear = 51; heir.lastAgeYear = 51;',
+    ' const release = siblingReleaseChildInheritance(sibling, heir, 51);',
+    ' const afterRecord = heir.inheritance.records[0];',
+    ' const after = { count: heir.economy.ownedProperties.length, pending: afterRecord.assetsPending, releasedYear: afterRecord.assetsTransferredYear,',
+    '  estateStatus: sibling.economicProfile.estate.assetTransferStatus, value: heir.economy.ownedProperties[0] && heir.economy.ownedProperties[0].marketValue };',
+    ' const duplicate = siblingReleaseChildInheritance(sibling, heir, 52);',
+    ' return { settlement, before, release, after, duplicate, finalCount: heir.economy.ownedProperties.length };',
+    '})()'
+  ].join(String.fromCharCode(10)), context, { timeout: 10000 });
+  assert.equal(result.before.hasEconomy, false);
+  assert.equal(result.before.pending, true);
+  assert.equal(result.before.estateStatus, 'pending');
+  assert.equal(result.release.properties, 1);
+  assert.equal(result.after.count, 1);
+  assert.equal(result.after.value, 90001);
+  assert.equal(result.after.pending, false);
+  assert.equal(result.after.releasedYear, 51);
+  assert.equal(result.after.estateStatus, 'transferred');
+  assert.equal(result.duplicate.properties, 0);
+  assert.equal(result.finalCount, 1);
 });

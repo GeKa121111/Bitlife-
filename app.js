@@ -1789,52 +1789,87 @@ function ensureSiblingChildEconomy(relative,child,year){
  const job=String(raw.job||(age<22?studentJobs[educationPath]:careerJob)).slice(0,64);
  const educationStatus=String(raw.educationStatus||(age<22?(educationPath==='university'?'يدرس بالجامعة':educationPath==='vocational'?'تدريب مهني':'تعليم ثانوي'):(educationPath==='university'?'جامعي':educationPath==='vocational'?'مؤهل مهني':'تعليم ثانوي'))).slice(0,32);
  const lastRaw=Number(raw.lastProcessedYear);
+ const ownedProperties=siblingNormalizeChildOwnedProperties(raw.ownedProperties,numericYear);
  const history=(Array.isArray(raw.history)?raw.history:[]).filter(item=>item&&typeof item==='object'&&!Array.isArray(item)).slice(-8).map(item=>({
   year:clamp(item.year??numericYear,0,9999),age:clamp(item.age??age,18,120),
   educationStatus:String(item.educationStatus||educationStatus).slice(0,32),job:String(item.job||job).slice(0,64),
   income:siblingSafeMoney(item.income),expenses:siblingSafeMoney(item.expenses),
-  savings:siblingSafeMoney(item.savings),debt:siblingSafeMoney(item.debt),netWorth:siblingSafeSigned(item.netWorth)
+  savings:siblingSafeMoney(item.savings),debt:siblingSafeMoney(item.debt),netWorth:siblingSafeSigned(item.netWorth),
+  rentalIncome:siblingSafeMoney(item.rentalIncome),propertyExpenses:siblingSafeMoney(item.propertyExpenses),
+  mortgagePaid:siblingSafeMoney(item.mortgagePaid),propertyValue:siblingSafeMoney(item.propertyValue)
  }));
  child.economy={
   educationPath,educationStatus,aptitude,job,careerJob,
   employmentState:age>=65?(raw.employmentState==='working'?'working':'retired'):'working',
   yearsWorked:clamp(raw.yearsWorked??0,0,60),
   annualIncome:siblingSafeMoney(raw.annualIncome),annualExpenses:siblingSafeMoney(raw.annualExpenses),
-  savings:siblingSafeMoney(raw.savings),debt:siblingSafeMoney(raw.debt),netWorth:siblingSafeSigned(raw.netWorth),
+  savings:siblingSafeMoney(raw.savings),debt:siblingSafeMoney(raw.debt),netWorth:0,
+  ownedProperties,propertyExpensesAnnual:siblingSafeMoney(raw.propertyExpensesAnnual),
+  annualRentIncome:siblingSafeMoney(raw.annualRentIncome),cumulativeRentIncome:siblingSafeMoney(raw.cumulativeRentIncome),
+  mortgagePaymentAnnual:siblingSafeMoney(raw.mortgagePaymentAnnual),mortgageInterestAnnual:siblingSafeMoney(raw.mortgageInterestAnnual),
+  mortgagePrincipalAnnual:siblingSafeMoney(raw.mortgagePrincipalAnnual),mortgageDebtBalance:0,mortgageArrearsBalance:0,
   lastProcessedYear:Number.isSafeInteger(lastRaw)?lastRaw:numericYear-1,history
  };
+ const propertyValue=siblingOwnedPropertyValue(child.economy),securedDebt=siblingProfileMortgageLiability(child.economy);
+ const rentReceivable=ownedProperties.reduce((sum,asset)=>sum+siblingSafeMoney(asset.rentArrears),0);
+ child.economy.mortgageDebtBalance=securedDebt;
+ child.economy.mortgageArrearsBalance=ownedProperties.reduce((sum,asset)=>sum+siblingSafeMoney(asset.mortgage&&asset.mortgage.arrears),0);
+ child.economy.netWorth=siblingSafeSigned(child.economy.savings-child.economy.debt+propertyValue-securedDebt+rentReceivable);
  return child.economy;
 }
 function siblingReleaseChildInheritance(relative,child,year){
  const numericYear=Number.isSafeInteger(Number(year))?Math.max(0,Number(year)):0;
- if(!child||typeof child!=='object'||!child.independent||Math.max(0,Number(child.age)||0)<18)return {released:false,cash:0,debt:0,count:0};
+ if(!child||typeof child!=='object'||!child.independent||Math.max(0,Number(child.age)||0)<18)return {released:false,cash:0,debt:0,count:0,properties:0};
  child.inheritance=siblingNormalizeInheritanceRecords(child.inheritance);
- const pending=child.inheritance.records.filter(record=>record.releasedYear===null);
- if(!pending.length)return {released:false,cash:0,debt:0,count:0};
+ const pending=child.inheritance.records.filter(record=>record.releasedYear===null||record.assetsPending===true);
+ if(!pending.length)return {released:false,cash:0,debt:0,count:0,properties:0};
  const economy=ensureSiblingChildEconomy(relative,child,numericYear);
- if(!economy)return {released:false,cash:0,debt:0,count:0};
- let cash=0,debt=0;
+ if(!economy)return {released:false,cash:0,debt:0,count:0,properties:0};
+ let nextProperties=Array.isArray(economy.ownedProperties)?economy.ownedProperties.slice():[],propertyPlans=[];
+ for(const record of pending){
+  if(record.assetsPending!==true)continue;
+  const plan=siblingChildEstatePropertyPlan(relative,child,{...economy,ownedProperties:nextProperties},record,numericYear);
+  if(!plan||plan.ok!==true)return {released:false,cash:0,debt:0,count:0,properties:0,reason:plan&&plan.reason||'property_transfer_invalid'};
+  nextProperties=plan.ownedProperties;propertyPlans.push({record,transferIds:plan.transferIds,propertyCount:plan.propertyCount});
+ }
+ let cash=0,debt=0,recordsReleased=0,properties=0;
+ economy.ownedProperties=nextProperties;
  pending.forEach(record=>{
-  const recordCash=siblingSafeMoney(record.cashHeld),recordDebt=siblingSafeMoney(record.debtHeld);
-  cash=siblingSafeMoney(cash+recordCash);debt=siblingSafeMoney(debt+recordDebt);
-  record.cashReleased=recordCash;record.debtReleased=recordDebt;record.cashHeld=0;record.debtHeld=0;record.releasedYear=numericYear;
-  record.history.push({year:numericYear,type:'released',cash:recordCash,debt:recordDebt});
+  if(record.releasedYear===null){
+   const recordCash=siblingSafeMoney(record.cashHeld),recordDebt=siblingSafeMoney(record.debtHeld);
+   cash=siblingSafeMoney(cash+recordCash);debt=siblingSafeMoney(debt+recordDebt);
+   record.cashReleased=recordCash;record.debtReleased=recordDebt;record.cashHeld=0;record.debtHeld=0;record.releasedYear=numericYear;
+   record.history.push({year:numericYear,type:'released',cash:recordCash,debt:recordDebt,properties:0});
+   recordsReleased++;
+  }
+  const transfer=propertyPlans.find(item=>item.record===record);
+  if(transfer){
+   record.assetsPending=false;record.assetsTransferredYear=numericYear;
+   record.transferredAssetIds=transfer.transferIds.slice(0,12);
+   properties+=transfer.propertyCount;
+   record.history.push({year:numericYear,type:'assets_transferred',cash:0,debt:0,properties:transfer.propertyCount});
+  }
   if(record.history.length>8)record.history.splice(0,record.history.length-8);
  });
  economy.savings=siblingSafeMoney(economy.savings+cash);
  economy.debt=siblingSafeMoney(economy.debt+debt);
- economy.netWorth=siblingSafeSigned(economy.savings-economy.debt);
- return {released:true,cash,debt,count:pending.length};
+ const securedDebt=siblingProfileMortgageLiability(economy);
+ const propertyValue=siblingOwnedPropertyValue(economy);
+ const rentReceivable=nextProperties.reduce((sum,asset)=>sum+siblingSafeMoney(asset&&asset.rentArrears),0);
+ economy.netWorth=siblingSafeSigned(economy.savings-economy.debt+propertyValue-securedDebt+rentReceivable);
+ if(relative&&relative.economicProfile)siblingUpdateEstateAssetTransferStatus(relative.economicProfile,relative.economicProfile.household);
+ return {released:recordsReleased>0||properties>0,cash,debt,count:pending.length,properties};
 }
 
 function siblingChildEconomicAnnualEffects(relative,child,year){
  const numericYear=Number(year),age=Math.max(0,Math.floor(Number(child&&child.age)||0));
  if(!Number.isSafeInteger(numericYear)||numericYear<0||!child||!child.independent||age<18)return null;
- siblingReleaseChildInheritance(relative,child,numericYear);
+ const inheritanceRelease=siblingReleaseChildInheritance(relative,child,numericYear);
  const economy=ensureSiblingChildEconomy(relative,child,numericYear);
  if(!economy)return null;
  if(economy.lastProcessedYear>=numericYear)return {duplicate:true,events:[],income:0,expenses:0};
  const events=[],previousEmploymentState=economy.employmentState;
+ if(inheritanceRelease&&inheritanceRelease.properties>0)events.push({type:'child_inherited_property',properties:inheritanceRelease.properties});
  let annualIncome=0,baseSalary=0;
  if(age<22){
   if(economy.educationPath==='university'){
@@ -1863,8 +1898,11 @@ function siblingChildEconomicAnnualEffects(relative,child,year){
  annualIncome=siblingSafeMoney(annualIncome);
  const expenseRate=age<22?(economy.educationPath==='university'?.88:.78):age>=65?.72:.68;
  const annualExpenses=siblingSafeMoney(Math.max(18000,Math.round(annualIncome*expenseRate)));
- let savings=economy.savings,debt=economy.debt;
- const cashFlow=annualIncome-annualExpenses;
+ const propertyEffects=siblingChildInheritedPropertyAnnualEffects(relative,child,economy,numericYear);
+ const totalIncome=siblingSafeMoney(annualIncome+propertyEffects.rentalIncome);
+ const totalExpenses=siblingSafeMoney(annualExpenses+propertyEffects.propertyExpenses+propertyEffects.mortgageDueTotal);
+ let savings=economy.savings,debt=economy.debt,uncoveredShortfall=0,mortgageUnpaidTotal=0,mortgagePaid=0,mortgageInterestPaid=0,mortgagePrincipalPaid=0;
+ const cashFlow=totalIncome-totalExpenses;
  if(cashFlow>=0){
   const repayment=Math.min(debt,Math.round(cashFlow*.25));
   debt=siblingSafeMoney(debt-repayment);
@@ -1872,35 +1910,73 @@ function siblingChildEconomicAnnualEffects(relative,child,year){
  }else{
   const fromSavings=Math.min(savings,-cashFlow);
   savings=siblingSafeMoney(savings-fromSavings);
-  debt=siblingSafeMoney(debt+(-cashFlow-fromSavings));
+  uncoveredShortfall=siblingSafeMoney(-cashFlow-fromSavings);
  }
- economy.annualIncome=annualIncome;economy.annualExpenses=annualExpenses;
- economy.savings=savings;economy.debt=debt;economy.netWorth=siblingSafeSigned(savings-debt);
+ propertyEffects.mortgageDues.forEach(entry=>{
+  const unpaid=Math.min(entry.due.due,Math.max(0,uncoveredShortfall-mortgageUnpaidTotal));
+  const settlement=siblingMortgageSettlement(entry.asset,numericYear,entry.due,unpaid);
+  if(!settlement)return;
+  mortgageUnpaidTotal=siblingSafeMoney(mortgageUnpaidTotal+settlement.unpaid);
+  mortgagePaid=siblingSafeMoney(mortgagePaid+settlement.paid);
+  mortgageInterestPaid=siblingSafeMoney(mortgageInterestPaid+settlement.interestPaid);
+  mortgagePrincipalPaid=siblingSafeMoney(mortgagePrincipalPaid+settlement.principalPaid);
+ });
+ const generalShortfall=siblingSafeMoney(Math.max(0,uncoveredShortfall-mortgageUnpaidTotal));
+ if(generalShortfall>0){debt=siblingSafeMoney(debt+generalShortfall);}
+ const propertyValue=siblingOwnedPropertyValue(economy),securedDebt=siblingProfileMortgageLiability(economy);
+ const rentReceivable=economy.ownedProperties.reduce((sum,asset)=>sum+siblingSafeMoney(asset.rentArrears),0);
+ economy.annualIncome=annualIncome;economy.annualRentIncome=propertyEffects.rentalIncome;
+ economy.annualExpenses=totalExpenses;economy.propertyExpensesAnnual=siblingSafeMoney(economy.propertyExpensesAnnual+propertyEffects.propertyExpenses);
+ economy.cumulativeRentIncome=siblingSafeMoney(economy.cumulativeRentIncome+propertyEffects.rentalIncome);
+ economy.mortgagePaymentAnnual=mortgagePaid;economy.mortgageInterestAnnual=mortgageInterestPaid;
+ economy.mortgagePrincipalAnnual=mortgagePrincipalPaid;economy.mortgageDebtBalance=securedDebt;
+ economy.mortgageArrearsBalance=economy.ownedProperties.reduce((sum,asset)=>sum+siblingSafeMoney(asset.mortgage&&asset.mortgage.arrears),0);
+ economy.savings=siblingSafeMoney(savings);economy.debt=siblingSafeMoney(debt);
+ economy.netWorth=siblingSafeSigned(economy.savings-economy.debt+propertyValue-securedDebt+rentReceivable);
  economy.lastProcessedYear=numericYear;
  economy.history.push({year:numericYear,age,educationStatus:economy.educationStatus,job:economy.job,
-  income:annualIncome,expenses:annualExpenses,savings,debt,netWorth:economy.netWorth});
+  income:annualIncome,expenses:totalExpenses,savings:economy.savings,debt:economy.debt,netWorth:economy.netWorth,
+  rentalIncome:propertyEffects.rentalIncome,propertyExpenses:propertyEffects.propertyExpenses,mortgagePaid,
+  propertyValue,securedDebt});
  if(economy.history.length>8)economy.history.splice(0,economy.history.length-8);
- return {duplicate:false,events,income:annualIncome,expenses:annualExpenses,savings,debt,netWorth:economy.netWorth};
+ return {duplicate:false,events,income:totalIncome,expenses:totalExpenses,savings:economy.savings,debt:economy.debt,
+  rentalIncome:propertyEffects.rentalIncome,propertyExpenses:propertyEffects.propertyExpenses,mortgagePaid,
+  propertyCount:economy.ownedProperties.length,netWorth:economy.netWorth,
+  propertyClaimsReleased:inheritanceRelease&&inheritanceRelease.properties||0};
 }
 function siblingNormalizeInheritanceRecords(raw){
  const source=raw&&typeof raw==='object'&&!Array.isArray(raw)?raw:{};
  const records=(Array.isArray(source.records)?source.records:[]).slice(-20).filter(record=>record&&typeof record==='object'&&!Array.isArray(record)).map(record=>{
   const estateId=String(record.estateId||'').slice(0,120);
   if(!estateId)return null;
-  const releasedRaw=record.releasedYear;
-  const releasedYear=releasedRaw!==null&&releasedRaw!==undefined&&Number.isSafeInteger(Number(releasedRaw))?Math.max(0,Number(releasedRaw)):null;
+  const releasedRaw=Number(record.releasedYear);
+  const releasedYear=record.releasedYear!==null&&record.releasedYear!==undefined&&Number.isSafeInteger(releasedRaw)?Math.max(0,releasedRaw):null;
+  const assetsTransferredRaw=Number(record.assetsTransferredYear);
+  const assetsTransferredYear=record.assetsTransferredYear!==null&&record.assetsTransferredYear!==undefined&&Number.isSafeInteger(assetsTransferredRaw)?Math.max(0,assetsTransferredRaw):null;
   const assetClaims=(Array.isArray(record.assetClaims)?record.assetClaims:[]).slice(0,12).filter(asset=>asset&&typeof asset==='object'&&!Array.isArray(asset)).map(asset=>({
    assetId:String(asset.assetId||'').slice(0,80),kind:['residence','rental'].includes(asset.kind)?asset.kind:'residence',
    label:String(asset.label||'عقار موروث').slice(0,48),shareBps:clamp(asset.shareBps??0,0,10000),
-   marketValueShare:siblingSafeMoney(asset.marketValueShare),mortgageBalanceShare:siblingSafeMoney(asset.mortgageBalanceShare),
-   mortgageArrearsShare:siblingSafeMoney(asset.mortgageArrearsShare),rentArrearsShare:siblingSafeMoney(asset.rentArrearsShare)
+   marketValueShare:siblingSafeMoney(asset.marketValueShare),upkeepShare:siblingSafeMoney(asset.upkeepShare),
+   annualUpkeepRateBps:clamp(asset.annualUpkeepRateBps??120,0,500),monthlyRentShare:siblingSafeMoney(asset.monthlyRentShare),
+   mortgageBalanceShare:siblingSafeMoney(asset.mortgageBalanceShare),mortgageArrearsShare:siblingSafeMoney(asset.mortgageArrearsShare),
+   mortgageAnnualPaymentShare:siblingSafeMoney(asset.mortgageAnnualPaymentShare),
+   mortgageInterestRateBps:clamp(asset.mortgageInterestRateBps??650,0,3000),
+   mortgageRemainingYears:clamp(asset.mortgageRemainingYears??asset.mortgageTermYears??15,0,40),
+   mortgageTermYears:clamp(asset.mortgageTermYears??15,0,40),mortgageStatus:String(asset.mortgageStatus||'active').slice(0,16),
+   mortgageLastProcessedYear:Number.isSafeInteger(Number(asset.mortgageLastProcessedYear))?Math.max(0,Number(asset.mortgageLastProcessedYear)):null,
+   rentArrearsShare:siblingSafeMoney(asset.rentArrearsShare),leaseStatus:asset.leaseStatus==='active'?'active':'vacant',
+   tenantName:String(asset.tenantName||'').slice(0,60),leaseStartYear:clamp(asset.leaseStartYear??0,0,9999),
+   leaseEndYear:clamp(asset.leaseEndYear??0,0,9999),leaseTermYears:clamp(asset.leaseTermYears??0,0,3),
+   leaseRenewals:clamp(asset.leaseRenewals??0,0,99),leaseOwnerManaged:asset.leaseOwnerManaged===true
   })).filter(asset=>asset.assetId);
-  const history=(Array.isArray(record.history)?record.history:[]).slice(-8).filter(item=>item&&typeof item==='object'&&!Array.isArray(item)&&['received','released'].includes(item.type)).map(item=>({
-   year:clamp(item.year??0,0,9999),type:item.type,cash:siblingSafeMoney(item.cash),debt:siblingSafeMoney(item.debt)
+  const history=(Array.isArray(record.history)?record.history:[]).slice(-8).filter(item=>item&&typeof item==='object'&&!Array.isArray(item)&&['received','released','assets_transferred'].includes(item.type)).map(item=>({
+   year:clamp(item.year??0,0,9999),type:item.type,cash:siblingSafeMoney(item.cash),debt:siblingSafeMoney(item.debt),
+   properties:clamp(item.properties??0,0,12)
   }));
+  const transferredAssetIds=[...new Set((Array.isArray(record.transferredAssetIds)?record.transferredAssetIds:[]).map(value=>String(value||'').slice(0,180)).filter(Boolean))].slice(0,12);
   return {estateId,year:clamp(record.year??0,0,9999),cashHeld:siblingSafeMoney(record.cashHeld),debtHeld:siblingSafeMoney(record.debtHeld),
    cashReleased:siblingSafeMoney(record.cashReleased),debtReleased:siblingSafeMoney(record.debtReleased),releasedYear,
-   assetClaims,assetsPending:record.assetsPending===true||assetClaims.length>0,history};
+   assetClaims,assetsPending:record.assetsPending===false?false:assetClaims.length>0,assetsTransferredYear,transferredAssetIds,history};
  }).filter(Boolean);
  return {records};
 }
@@ -2096,11 +2172,171 @@ function siblingAllocateEstateAmount(totalAmount,beneficiaryShares){
 function siblingEstateAssetSnapshot(asset){
  const mortgage=asset&&asset.mortgage&&typeof asset.mortgage==='object'?asset.mortgage:null;
  const lease=asset&&asset.lease&&typeof asset.lease==='object'?asset.lease:null;
+ const marketValue=siblingSafeMoney(asset&&asset.marketValue);
+ const upkeep=siblingSafeMoney(asset&&asset.upkeep!==undefined?asset.upkeep:siblingPropertyAnnualUpkeep(asset));
+ const monthlyRent=siblingSafeMoney(lease&&lease.monthlyRent!==undefined?lease.monthlyRent:asset&&asset.monthlyRent);
  return {assetId:String(asset&&asset.id||'').slice(0,80),kind:asset&&asset.kind==='rental'?'rental':'residence',
-  label:String(asset&&asset.label||'عقار عائلي').slice(0,48),marketValue:siblingSafeMoney(asset&&asset.marketValue),
+  label:String(asset&&asset.label||'عقار عائلي').slice(0,48),marketValue,upkeep,
+  annualUpkeepRateBps:clamp(asset&&asset.annualUpkeepRateBps!==undefined?asset.annualUpkeepRateBps:120,0,500),
   mortgageBalance:siblingSafeMoney(mortgage&&mortgage.balance),mortgageArrears:siblingSafeMoney(mortgage&&mortgage.arrears),
-  rentArrears:siblingSafeMoney(asset&&asset.rentArrears),monthlyRent:siblingSafeMoney(asset&&asset.monthlyRent),
-  leaseStatus:lease&&lease.status==='active'?'active':'vacant',tenantName:String(lease&&lease.tenantName||'').slice(0,60)};
+  mortgageAnnualPayment:siblingSafeMoney(mortgage&&mortgage.annualPayment),
+  mortgageInterestRateBps:clamp(mortgage&&mortgage.interestRateBps!==undefined?mortgage.interestRateBps:650,0,3000),
+  mortgageRemainingYears:clamp(mortgage&&mortgage.remainingYears!==undefined?mortgage.remainingYears:(mortgage&&mortgage.termYears!==undefined?mortgage.termYears:15),0,40),
+  mortgageTermYears:clamp(mortgage&&mortgage.termYears!==undefined?mortgage.termYears:15,0,40),
+  mortgageStatus:String(mortgage&&mortgage.status||'active').slice(0,16),
+  mortgageLastProcessedYear:mortgage&&mortgage.lastProcessedYear!==null&&mortgage.lastProcessedYear!==undefined&&Number.isSafeInteger(Number(mortgage.lastProcessedYear))?Math.max(0,Number(mortgage.lastProcessedYear)):null,
+  rentArrears:siblingSafeMoney(asset&&asset.rentArrears),monthlyRent,
+  leaseStatus:lease&&lease.status==='active'?'active':'vacant',tenantName:String(lease&&lease.tenantName||'').slice(0,60),
+  leaseStartYear:clamp(lease&&lease.startYear!==undefined?lease.startYear:asset&&asset.purchaseYear||0,0,9999),
+  leaseEndYear:clamp(lease&&lease.endYear!==undefined?lease.endYear:0,0,9999),
+  leaseTermYears:clamp(lease&&lease.termYears!==undefined?lease.termYears:0,0,3),
+  leaseRenewals:clamp(lease&&lease.renewals!==undefined?lease.renewals:0,0,99),
+  leaseLastProcessedYear:lease&&lease.lastProcessedYear!==null&&lease.lastProcessedYear!==undefined&&Number.isSafeInteger(Number(lease.lastProcessedYear))?Math.max(0,Number(lease.lastProcessedYear)):null,
+  leaseOwnerManaged:lease&&lease.ownerManaged===true};
+}
+function siblingNormalizeChildOwnedProperties(raw,year){
+ const numericYear=Number.isSafeInteger(Number(year))?Math.max(0,Number(year)):0,seen=new Set();
+ return (Array.isArray(raw)?raw:[]).slice(-60).filter(asset=>asset&&typeof asset==='object'&&!Array.isArray(asset)).map((asset,index)=>{
+  const id=String(asset.id||'inherited-property-'+index).slice(0,160);
+  const transferId=String(asset.inheritanceTransferId||'').slice(0,240);
+  if(transferId&&seen.has(transferId))return null;
+  if(transferId)seen.add(transferId);
+  const mortgageRaw=asset.mortgage&&typeof asset.mortgage==='object'&&!Array.isArray(asset.mortgage)?asset.mortgage:null;
+  const mortgage=mortgageRaw?{
+   balance:siblingSafeMoney(mortgageRaw.balance),arrears:siblingSafeMoney(mortgageRaw.arrears),
+   annualPayment:siblingSafeMoney(mortgageRaw.annualPayment),interestRateBps:clamp(mortgageRaw.interestRateBps??650,0,3000),
+   remainingYears:clamp(mortgageRaw.remainingYears??mortgageRaw.termYears??15,0,40),
+   termYears:clamp(mortgageRaw.termYears??15,0,40),status:String(mortgageRaw.status||'active').slice(0,16),
+   lastProcessedYear:Number.isSafeInteger(Number(mortgageRaw.lastProcessedYear))?Math.max(0,Number(mortgageRaw.lastProcessedYear)):numericYear
+  }:null;
+  const leaseRaw=asset.lease&&typeof asset.lease==='object'&&!Array.isArray(asset.lease)?asset.lease:null;
+  const lease=leaseRaw?{
+   status:leaseRaw.status==='active'?'active':'vacant',tenantName:String(leaseRaw.tenantName||'').slice(0,60),
+   monthlyRent:siblingSafeMoney(leaseRaw.monthlyRent),startYear:clamp(leaseRaw.startYear??numericYear,0,9999),
+   endYear:clamp(leaseRaw.endYear??numericYear-1,0,9999),termYears:clamp(leaseRaw.termYears??0,0,3),
+   renewals:clamp(leaseRaw.renewals??0,0,99),lastProcessedYear:Number.isSafeInteger(Number(leaseRaw.lastProcessedYear))?Math.max(0,Number(leaseRaw.lastProcessedYear)):numericYear,
+   ownerManaged:leaseRaw.ownerManaged===true,history:(Array.isArray(leaseRaw.history)?leaseRaw.history:[]).slice(-6)
+  }:null;
+  return {id,inheritanceTransferId:transferId||null,sourceEstateId:String(asset.sourceEstateId||'').slice(0,120),
+   sourceAssetId:String(asset.sourceAssetId||'').slice(0,80),kind:asset.kind==='rental'?'rental':'residence',
+   label:String(asset.label||'عقار موروث').slice(0,48),marketValue:siblingSafeMoney(asset.marketValue),
+   upkeep:siblingSafeMoney(asset.upkeep),annualUpkeepRateBps:clamp(asset.annualUpkeepRateBps??120,0,500),
+   monthlyRent:siblingSafeMoney(asset.monthlyRent),rentArrears:siblingSafeMoney(asset.rentArrears),
+   rentIncomeTotal:siblingSafeMoney(asset.rentIncomeTotal),rentLossTotal:siblingSafeMoney(asset.rentLossTotal),
+   rentArrearsAddedTotal:siblingSafeMoney(asset.rentArrearsAddedTotal),rentArrearsCollectedTotal:siblingSafeMoney(asset.rentArrearsCollectedTotal),
+   ownershipShareBps:clamp(asset.ownershipShareBps??10000,0,10000),
+   lastMarketYear:Number.isSafeInteger(Number(asset.lastMarketYear))?Math.max(0,Number(asset.lastMarketYear)):numericYear,
+   lastRentYear:Number.isSafeInteger(Number(asset.lastRentYear))?Math.max(0,Number(asset.lastRentYear)):numericYear,
+   lastPropertyYear:Number.isSafeInteger(Number(asset.lastPropertyYear))?Math.max(0,Number(asset.lastPropertyYear)):numericYear,
+   purchaseYear:clamp(asset.purchaseYear??numericYear,0,9999),mortgage,lease,
+   history:(Array.isArray(asset.history)?asset.history:[]).slice(-8)};
+ }).filter(Boolean);
+}
+function siblingChildEstatePropertyPlan(relative,child,economy,record,year){
+ const claims=Array.isArray(record&&record.assetClaims)?record.assetClaims:[];
+ const existing=Array.isArray(economy&&economy.ownedProperties)?economy.ownedProperties.slice():[];
+ const beneficiaryId=String(child&& (child.id||child.name)||'child').slice(0,100);
+ const transferIds=[],next=existing.slice();let propertyCount=0;
+ for(const claim of claims){
+  const assetId=String(claim&&claim.assetId||'').trim();
+  if(!assetId)return {ok:false,reason:'asset_id_missing'};
+  const transferId=String(record.estateId)+'|'+assetId+'|'+beneficiaryId;
+  transferIds.push(transferId);
+  if(next.some(asset=>asset&&String(asset.inheritanceTransferId||'')===transferId))continue;
+  const marketValue=siblingSafeMoney(claim.marketValueShare),mortgageBalance=siblingSafeMoney(claim.mortgageBalanceShare);
+  const mortgageArrears=siblingSafeMoney(claim.mortgageArrearsShare),rentArrears=siblingSafeMoney(claim.rentArrearsShare);
+  const mortgageAnnualPayment=siblingSafeMoney(claim.mortgageAnnualPaymentShare);
+  const hasMortgage=mortgageBalance>0||mortgageArrears>0||mortgageAnnualPayment>0;
+  const mortgage=hasMortgage?{
+   balance:mortgageBalance,arrears:mortgageArrears,annualPayment:mortgageAnnualPayment,
+   interestRateBps:clamp(claim.mortgageInterestRateBps??650,0,3000),
+   remainingYears:clamp(claim.mortgageRemainingYears??claim.mortgageTermYears??15,0,40),
+   termYears:clamp(claim.mortgageTermYears??15,0,40),
+   status:mortgageBalance===0&&mortgageArrears===0?'paid':String(claim.mortgageStatus||'active').slice(0,16),
+   lastProcessedYear:Math.max(0,Number(year)||0)
+  }:null;
+  const lease=claim.kind==='rental'?{
+   status:claim.leaseStatus==='active'?'active':'vacant',tenantName:String(claim.tenantName||'').slice(0,60),
+   monthlyRent:siblingSafeMoney(claim.monthlyRentShare),startYear:clamp(claim.leaseStartYear??year,0,9999),
+   endYear:clamp(claim.leaseEndYear??year-1,0,9999),termYears:clamp(claim.leaseTermYears??0,0,3),
+   renewals:clamp(claim.leaseRenewals??0,0,99),lastProcessedYear:Math.max(0,Number(year)||0),
+   ownerManaged:claim.leaseOwnerManaged===true,history:[]
+  }:null;
+  const id='inherited-property-'+siblingInvestmentHash(transferId).toString(36);
+  next.push({id,inheritanceTransferId:transferId,sourceEstateId:String(record.estateId),sourceAssetId:assetId,
+   kind:claim.kind==='rental'?'rental':'residence',label:String(claim.label||'عقار موروث').slice(0,48),
+   marketValue,upkeep:siblingSafeMoney(claim.upkeepShare),annualUpkeepRateBps:clamp(claim.annualUpkeepRateBps??120,0,500),
+   monthlyRent:siblingSafeMoney(claim.monthlyRentShare),rentArrears,
+   rentIncomeTotal:0,rentLossTotal:0,rentArrearsAddedTotal:0,rentArrearsCollectedTotal:0,
+   ownershipShareBps:clamp(claim.shareBps??0,0,10000),purchaseYear:Math.max(0,Number(year)||0),
+   lastMarketYear:Math.max(0,Number(year)||0),lastRentYear:Math.max(0,Number(year)||0),
+   lastPropertyYear:Math.max(0,Number(year)||0),mortgage,lease,history:[]});
+  propertyCount++;
+ }
+ if(next.length>60)return {ok:false,reason:'property_limit_reached'};
+ return {ok:true,ownedProperties:next,transferIds,propertyCount};
+}
+function siblingUpdateEstateAssetTransferStatus(profile,household){
+ const estate=profile&&profile.estate;
+ if(!estate||typeof estate!=='object'||estate.settled!==true)return null;
+ const children=household&&Array.isArray(household.children)?household.children:[];
+ const records=children.flatMap(child=>{
+  child.inheritance=siblingNormalizeInheritanceRecords(child.inheritance);
+  return child.inheritance.records.filter(record=>record.estateId===String(estate.id||''));
+ });
+ const totalClaims=records.reduce((sum,record)=>sum+(record.assetClaims||[]).length,0);
+ const pendingClaims=records.reduce((sum,record)=>sum+(record.assetsPending?record.assetClaims.length:0),0);
+ estate.assetClaimsCount=totalClaims;estate.assetClaimsPendingCount=pendingClaims;
+ estate.assetClaimsTransferredCount=Math.max(0,totalClaims-pendingClaims);
+ estate.assetTransferStatus=totalClaims===0?'none':pendingClaims===0?'transferred':estate.assetClaimsTransferredCount>0?'partially_transferred':'pending';
+ const byId=new Map(records.map(record=>[record.estateId+'|'+(record.assetClaims[0]&&record.assetClaims[0].assetId||''),record]));
+ estate.beneficiaries=(Array.isArray(estate.beneficiaries)?estate.beneficiaries:[]).map(item=>{
+  const child=children.find(candidate=>String(candidate.id||candidate.name||'')===String(item.beneficiaryId||''));
+  const childRecords=child&&child.inheritance?child.inheritance.records.filter(record=>record.estateId===String(estate.id||'')):[];
+  const total=childRecords.reduce((sum,record)=>sum+record.assetClaims.length,0);
+  const pending=childRecords.reduce((sum,record)=>sum+(record.assetsPending?record.assetClaims.length:0),0);
+  return {...item,assetsTransferredCount:Math.max(0,total-pending),assetsPendingCount:pending,assetsPending:pending>0};
+ });
+ if(pendingClaims===0&&totalClaims>0)estate.status='cash_distributed_assets_transferred';
+ else if(estate.assetClaimsTransferredCount>0)estate.status='cash_distributed_assets_partially_transferred';
+ return estate;
+}
+function siblingChildInheritedPropertyAnnualEffects(relative,child,economy,year){
+ const numericYear=Number(year),properties=Array.isArray(economy&&economy.ownedProperties)?economy.ownedProperties:[];
+ let propertyExpenses=0,rentalIncome=0,rentLoss=0,rentArrearsCollected=0,mortgageDueTotal=0;
+ const mortgageDues=[],leaseEvents=[];
+ properties.forEach(asset=>{
+  if(!asset||typeof asset!=='object'||Number(asset.lastPropertyYear)>=numericYear)return;
+  if(Number(asset.lastMarketYear)<numericYear){
+   const changeBps=siblingPropertyMarketChangeBps(relative,numericYear,asset);
+   asset.marketValue=siblingSafeMoney(Math.max(0,Math.round(asset.marketValue*(10000+changeBps)/10000)));
+   asset.lastMarketYear=numericYear;
+  }
+  propertyExpenses=siblingSafeMoney(propertyExpenses+siblingPropertyAnnualUpkeep(asset));
+  if(asset.kind==='rental'){
+   const rent=siblingRentalAnnualIncome(relative,numericYear,asset);
+   if(rent){
+    const settlement=siblingRentalArrearsSettlement(relative,numericYear,asset);
+    const arrearsCollected=siblingSafeMoney(settlement&&settlement.collected),arrearsAdded=siblingSafeMoney(rent.collectionLoss);
+    asset.rentArrears=siblingSafeMoney((settlement?settlement.closingArrears:siblingSafeMoney(asset.rentArrears))+arrearsAdded);
+    asset.rentArrearsCollectedTotal=siblingSafeMoney(asset.rentArrearsCollectedTotal+arrearsCollected);
+    asset.rentArrearsAddedTotal=siblingSafeMoney(asset.rentArrearsAddedTotal+arrearsAdded);
+    asset.lastRentYear=numericYear;asset.lastOccupancyBps=rent.occupancyBps;asset.lastCollectionBps=rent.collectionBps;
+    asset.rentIncomeTotal=siblingSafeMoney(asset.rentIncomeTotal+rent.collected+arrearsCollected);
+    asset.rentLossTotal=siblingSafeMoney(asset.rentLossTotal+rent.totalLoss);
+    rentalIncome=siblingSafeMoney(rentalIncome+rent.collected+arrearsCollected);
+    rentArrearsCollected=siblingSafeMoney(rentArrearsCollected+arrearsCollected);rentLoss=siblingSafeMoney(rentLoss+rent.totalLoss);
+    if(['signed','renewed','expired'].includes(rent.leaseEvent)){
+     leaseEvents.push({assetId:String(asset.id||'').slice(0,120),event:rent.leaseEvent,status:rent.leaseStatus,
+      tenantName:String(rent.tenantName||'').slice(0,60),monthlyRent:siblingSafeMoney(asset.lease&&asset.lease.monthlyRent||asset.monthlyRent)});
+    }
+   }
+  }
+  const due=siblingMortgageAnnualDue(numericYear,asset);
+  if(due){mortgageDues.push({asset,due});mortgageDueTotal=siblingSafeMoney(mortgageDueTotal+due.due);}
+  asset.lastPropertyYear=numericYear;
+ });
+ return {propertyExpenses,rentalIncome,rentLoss,rentArrearsCollected,mortgageDueTotal,mortgageDues,leaseEvents,propertyCount:properties.length};
 }
 function siblingEstateSettlement(relative,profile,year){
  const numericYear=Number(year);
@@ -2127,11 +2363,14 @@ function siblingEstateSettlement(relative,profile,year){
  const assetAllocations=assets.map(asset=>({
   asset,
   marketValue:siblingAllocateEstateAmount(asset.marketValue,shares),
+  upkeep:siblingAllocateEstateAmount(asset.upkeep,shares),
+  monthlyRent:siblingAllocateEstateAmount(asset.monthlyRent,shares),
   mortgageBalance:siblingAllocateEstateAmount(asset.mortgageBalance,shares),
   mortgageArrears:siblingAllocateEstateAmount(asset.mortgageArrears,shares),
+  mortgageAnnualPayment:siblingAllocateEstateAmount(asset.mortgageAnnualPayment,shares),
   rentArrears:siblingAllocateEstateAmount(asset.rentArrears,shares)
  }));
- if(assetAllocations.some(item=>['marketValue','mortgageBalance','mortgageArrears','rentArrears'].some(key=>!Array.isArray(item[key])||item[key].length!==shares.length)))return null;
+ if(assetAllocations.some(item=>['marketValue','upkeep','monthlyRent','mortgageBalance','mortgageArrears','mortgageAnnualPayment','rentArrears'].some(key=>!Array.isArray(item[key])||item[key].length!==shares.length)))return null;
  const unsecuredDebtPaid=Math.min(liquidAssets,unsecuredDebt),distributableCash=siblingSafeMoney(liquidAssets-unsecuredDebtPaid);
  const unsecuredDebtRemaining=siblingSafeMoney(unsecuredDebt-unsecuredDebtPaid);
  let cashRemaining=distributableCash,debtRemaining=unsecuredDebtRemaining;
@@ -2145,8 +2384,14 @@ function siblingEstateSettlement(relative,profile,year){
   let record=child.inheritance.records.find(item=>item.estateId===estateId);
   if(!record){
    const assetClaims=assetAllocations.map(item=>({assetId:item.asset.assetId,kind:item.asset.kind,label:item.asset.label,shareBps,
-    marketValueShare:item.marketValue[index],mortgageBalanceShare:item.mortgageBalance[index],
-    mortgageArrearsShare:item.mortgageArrears[index],rentArrearsShare:item.rentArrears[index]}));
+    marketValueShare:item.marketValue[index],upkeepShare:item.upkeep[index],annualUpkeepRateBps:item.asset.annualUpkeepRateBps,
+    monthlyRentShare:item.monthlyRent[index],mortgageBalanceShare:item.mortgageBalance[index],mortgageArrearsShare:item.mortgageArrears[index],
+    mortgageAnnualPaymentShare:item.mortgageAnnualPayment[index],mortgageInterestRateBps:item.asset.mortgageInterestRateBps,
+    mortgageRemainingYears:item.asset.mortgageRemainingYears,mortgageTermYears:item.asset.mortgageTermYears,
+    mortgageStatus:item.asset.mortgageStatus,mortgageLastProcessedYear:item.asset.mortgageLastProcessedYear,
+    rentArrearsShare:item.rentArrears[index],leaseStatus:item.asset.leaseStatus,tenantName:item.asset.tenantName,
+    leaseStartYear:item.asset.leaseStartYear,leaseEndYear:item.asset.leaseEndYear,leaseTermYears:item.asset.leaseTermYears,
+    leaseRenewals:item.asset.leaseRenewals,leaseOwnerManaged:item.asset.leaseOwnerManaged}));
    record={estateId,year:numericYear,cashHeld:cashShare,debtHeld:debtShare,cashReleased:0,debtReleased:0,releasedYear:null,
     assetClaims,assetsPending:assetClaims.length>0,history:[{year:numericYear,type:'received',cash:cashShare,debt:debtShare}]};
    child.inheritance.records.push(record);
@@ -2163,6 +2408,7 @@ function siblingEstateSettlement(relative,profile,year){
   planMode:plan.mode,liquidAssetsBefore:liquidAssets,unsecuredDebtBefore:unsecuredDebt,unsecuredDebtPaid,
   unsecuredDebtRemaining,securedDebtRetained:securedDebt,distributedCash:distributableCash,retainedCash:0,
   retainedAssets:assets,assetTransferStatus:assets.length?'pending':'none',beneficiaries};
+ siblingUpdateEstateAssetTransferStatus(profile,household);
  return {duplicate:false,settled:true,estate:profile.estate,beneficiaries,distributedCash:distributableCash,unsecuredDebtPaid};
 }
 
@@ -2439,7 +2685,7 @@ function siblingMortgageAnnualPayment(principal,interestRateBps,termYears){
 }
 function siblingMortgageAnnualDue(year,asset){
  const numericYear=Number(year),mortgage=asset&&asset.mortgage;
- if(!asset||asset.kind!=='rental'||!mortgage||typeof mortgage!=='object'||!Number.isSafeInteger(numericYear)||numericYear<0||
+ if(!asset||!mortgage||typeof mortgage!=='object'||!Number.isSafeInteger(numericYear)||numericYear<0||
   (Number.isSafeInteger(Number(mortgage.lastProcessedYear))&&Number(mortgage.lastProcessedYear)>=numericYear))return null;
  const balance=siblingSafeMoney(mortgage.balance),arrears=siblingSafeMoney(mortgage.arrears);
  if(balance<=0&&arrears<=0)return null;
@@ -2686,11 +2932,11 @@ function advanceSiblingEconomies(){
    }
    const descendants=siblingDeceasedHouseholdAnnualEffects(relative,deceasedProfile,year);
    if(!descendants.duplicate){
-    const titles={child_independent:'استمرار حياة أحد أبناء العائلة',child_started_study:'مسار تعليمي بعد وفاة الوالد',child_started_work:'بداية مهنية بعد وفاة الوالد',child_graduated:'تخرج أحد أبناء العائلة',child_retired:'تقاعد أحد أبناء العائلة'};
-    const icons={child_independent:'🌱',child_started_study:'🎓',child_started_work:'💼',child_graduated:'🎓',child_retired:'🌅'};
+    const titles={child_independent:'استمرار حياة أحد أبناء العائلة',child_started_study:'مسار تعليمي بعد وفاة الوالد',child_started_work:'بداية مهنية بعد وفاة الوالد',child_graduated:'تخرج أحد أبناء العائلة',child_retired:'تقاعد أحد أبناء العائلة',child_inherited_property:'انتقال ملكية عقار موروث'};
+    const icons={child_independent:'🌱',child_started_study:'🎓',child_started_work:'💼',child_graduated:'🎓',child_retired:'🌅',child_inherited_property:'🏠'};
     descendants.events.forEach(event=>{
      const childName=String(event.name||'أحد الأبناء'),parentName=String(relative.name||'الوالد/الوالدة');
-     const detail=childName+' يواصل مساره بعد وفاة '+parentName+' · السنة '+fmt(event.year??year)+'.';
+     const detail=event.type==='child_inherited_property'?childName+' استلم ملكية '+fmt(event.properties||0)+' حصة عقارية من تركة '+parentName+'.':childName+' يواصل مساره بعد وفاة '+parentName+' · السنة '+fmt(event.year??year)+'.';
      log(icons[event.type]||'🌱',titles[event.type]||'تطور في فرع العائلة',detail,'special');
     });
     processed++;
@@ -3866,8 +4112,12 @@ function supportBeneficiaryWallet(walletId,amount){
 }
 function siblingHouseholdChildNode(relative,child){
  const economy=child&&child.economy&&typeof child.economy==='object'?child.economy:null;
+ const properties=economy&&Array.isArray(economy.ownedProperties)?economy.ownedProperties:[];
+ const propertyValue=properties.reduce((sum,asset)=>sum+siblingSafeMoney(asset&&asset.marketValue),0);
+ const propertyDebt=properties.reduce((sum,asset)=>sum+siblingMortgageLiability(asset),0);
+ const propertyNote=properties.length?' · عقارات موروثة '+fmt(properties.length)+' ('+cash(propertyValue)+') · تمويل '+cash(propertyDebt):'';
  const detail=child&&child.independent&&economy
-  ?String(economy.educationStatus||'مسار تعليمي غير محدد')+' · '+String(economy.job||'مهنة غير محددة')+' · دخل '+cash(economy.annualIncome||0)+' · مدخرات '+cash(economy.savings||0)+' · ديون '+cash(economy.debt||0)
+  ?String(economy.educationStatus||'مسار تعليمي غير محدد')+' · '+String(economy.job||'مهنة غير محددة')+' · دخل '+cash(economy.annualIncome||0)+' · مدخرات '+cash(economy.savings||0)+' · ديون '+cash(economy.debt||0)+propertyNote
   :child&&child.independent?'بالغ · يبدأ سجله المهني في دورة التقدم التالية':'تحت إعالة الأسرة';
  const branchStatus=relative&&relative.deceased?' · فرع مستمر بعد وفاة '+esc(relative.name||'الوالد/الوالدة'):'';
  return '<article class="family-tree-node"><div class="family-tree-person"><span class="family-tree-avatar">🧑</span><span class="family-tree-copy"><strong>'+esc(child&&child.name||'ابن/ابنة')+'</strong><small>ابن/ابنة '+esc(relative&&relative.name||'أحد الإخوة')+' · '+fmt(child&&child.age||0)+' سنة'+branchStatus+'</small></span></div><small class="family-tree-foot">'+esc(detail)+'</small></article>';
@@ -3907,8 +4157,9 @@ function siblingEstateSummaryMenu(relative){
  if(!estate||typeof estate!=='object'||estate.settled!==true){info('📜','لا توجد تسوية تركة مسجلة','لم يبدأ دفتر التركة لهذا الفرع بعد، أو أن الحفظ القديم لا يحتوي على سجل أسرة.');return;}
  const beneficiaries=(Array.isArray(estate.beneficiaries)?estate.beneficiaries:[]).map(item=>String(item.name||'ابن/ابنة')+' · '+fmt((Number(item.shareBps)||0)/100)+'% · سيولة '+cash(item.cashAllocated||0)+' · دين '+cash(item.debtAllocated||0)).join('؛ ')||'لا يوجد أبناء مستفيدون مسجلون.';
  const assets=(Array.isArray(estate.retainedAssets)?estate.retainedAssets:[]).map(item=>String(item.label||'عقار')+' · '+cash(item.marketValue||0)+' · تمويل '+cash((Number(item.mortgageBalance)||0)+(Number(item.mortgageArrears)||0))).join('؛ ')||'لا توجد عقارات ضمن التركة.';
- const extra='<div class="relationship-progress"><div class="pillrow"><span class="pill">💰 سيولة قبل التسوية '+esc(cash(estate.liquidAssetsBefore||0))+'</span><span class="pill">🧾 دين غير مضمون متبقٍ '+esc(cash(estate.unsecuredDebtRemaining||0))+'</span><span class="pill">🏦 تمويل مرتبط بالعقارات '+esc(cash(estate.securedDebtRetained||0))+'</span></div><p><strong>المستفيدون</strong><br>'+esc(beneficiaries)+'</p><p><strong>الأصول قيد نقل الملكية</strong><br>'+esc(assets)+'</p></div>';
- modal('📜','تركة '+String(relative.name||'أحد الأشقاء'),'سجل التسوية سنة '+fmt(estate.settledYear||0)+' · '+(estate.assetTransferStatus==='pending'?'نقل ملكية العقارات لم يكتمل بعد.':'لا توجد أصول عقارية معلقة.'),[
+ const transferStatus=estate.assetTransferStatus==='transferred'?'تم نقل ملكية حصص العقارات للمستفيدين':estate.assetTransferStatus==='partially_transferred'?'تم نقل بعض حصص العقارات، وما زالت حصص أخرى معلقة':estate.assetTransferStatus==='pending'?'حصص العقارات قيد النقل عند بلوغ المستفيدين 18 سنة':'لا توجد حصص عقارية معلقة';
+ const extra='<div class="relationship-progress"><div class="pillrow"><span class="pill">💰 سيولة قبل التسوية '+esc(cash(estate.liquidAssetsBefore||0))+'</span><span class="pill">🧾 دين غير مضمون متبقٍ '+esc(cash(estate.unsecuredDebtRemaining||0))+'</span><span class="pill">🏦 تمويل مرتبط بالعقارات '+esc(cash(estate.securedDebtRetained||0))+'</span></div><p><strong>حالة الملكية</strong><br>'+esc(transferStatus)+' · تم نقل '+fmt(estate.assetClaimsTransferredCount||0)+' من '+fmt(estate.assetClaimsCount||0)+' حصة</p><p><strong>المستفيدون</strong><br>'+esc(beneficiaries)+'</p><p><strong>الأصول في سجل التركة</strong><br>'+esc(assets)+'</p></div>';
+ modal('📜','تركة '+String(relative.name||'أحد الأشقاء'),'سجل التسوية سنة '+fmt(estate.settledYear||0)+' · '+(estate.assetTransferStatus==='transferred'?'تم نقل حصص العقارات للمستفيدين.':estate.assetTransferStatus==='partially_transferred'?'نقل الملكية جارٍ لبعض المستفيدين.':estate.assetTransferStatus==='pending'?'حصص العقارات تنتظر اكتمال شروط نقل الملكية.':'لا توجد حصص عقارية معلقة.'),[
   choice('🌳','شجرة العائلة','',familyTreeMenu),
   choice('↩️','رجوع','',familyTreeMenu)
  ],true,extra);
