@@ -2084,6 +2084,7 @@ test('التأمين العقاري العائلي اختياري ويربط ا�
   assert.match(menu, /التغطية/);
   assert.match(annualAge, /annual-insurance-premium/);
   assert.match(annualAge, /requireFullPayment:true/);
+  assert.match(annualAge, /insurancePremiumPaidLifeId/);
   assert.match(maintenance, /calculateFamilyPropertyInsuranceClaim/);
   assert.match(maintenance, /recordFamilyPropertyInsuranceClaim/);
   assert.match(expense, /insufficient_owner_funds/);
