@@ -2416,6 +2416,9 @@ test('التأمين العقاري اختياري ويحسب القسط وال�
   assert.equal(unpaidClaim.reason, 'premium_not_paid');
   record.insurancePremiumPaidYear = 45;
   record.insurancePremiumPaidLifeId = 'insurance-policy-life';
+  const wrongLife = context.calculateFamilyPropertyInsuranceClaim(record, 20000, 45);
+  assert.equal(wrongLife.reason, 'premium_not_paid');
+  context.state.lifeId = 'insurance-policy-life';
   const claim = context.calculateFamilyPropertyInsuranceClaim(record, 20000, 45);
   assert.equal(claim.ok, true);
   assert.equal(claim.coveredAmount, 15000);
@@ -2427,6 +2430,10 @@ test('التأمين العقاري اختياري ويحسب القسط وال�
   assert.equal(record.transactions[0].type, 'insurance_claim');
   assert.equal(context.calculateFamilyPropertyInsuranceClaim(record, 20000, 45).reason, 'duplicate_claim');
   assert.equal(context.setFamilyPropertyInsurancePolicy(record, 'unknown').ok, false);
+  const changedPolicy = { ...record, insurancePolicy: { ...record.insurancePolicy }, insurancePremiumPaidYear: 45, insurancePremiumPaidLifeId: 'insurance-policy-life' };
+  assert.equal(context.setFamilyPropertyInsurancePolicy(changedPolicy, 'basic').ok, true);
+  assert.equal(changedPolicy.insurancePremiumPaidYear, null);
+  assert.equal(changedPolicy.insurancePremiumPaidLifeId, null);
   const invalid = { ...record, auditStatus: 'needs_review' };
   assert.equal(context.calculateFamilyPropertyAnnualInsurancePremium(invalid).reason, 'ownership_audit_incomplete');
 });
