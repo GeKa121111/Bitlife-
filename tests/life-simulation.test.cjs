@@ -673,15 +673,15 @@ test('سن التقاعد ينقل الشقيق إلى معاش محاكي ول�
     " const sibling = { id: 'sibling-retire-test', name: 'أخت متقاعدة', relation: 'الأخت', age: 65, job: 'مدرس', smart: 65, reliability: 75, economicProfile: { version: 1, currency: 'ج.م', yearsWorked: 30, rank: 3, savings: 50000, debt: 0, investmentBalance: 10000, investmentContribution: 0, investmentReturn: 0, investmentContributionsTotal: 0, investmentReturnsTotal: 0, investmentRisk: 'conservative', annualIncome: 0, annualExpenses: 0, cumulativeIncome: 0, cumulativeExpenses: 0, lastProcessedYear: 69, employmentStatus: 'مستقر', employmentState: 'working', history: [] } };",
     ' state.family = [sibling];',
     ' advanceSiblingEconomies();',
-    ' return sibling.economicProfile;',
+    ' return { profile: sibling.economicProfile, stateLabel: siblingEmploymentStateLabel(sibling.economicProfile.employmentState) };',
     '})()'
   ].join('\n'), context, { timeout: 10000 });
-  assert.equal(result.employmentState, 'retired');
-  assert.equal(result.lastEmploymentEvent, 'retired');
-  assert.equal(result.yearsWorked, 30);
-  assert.ok(result.annualIncome > 0);
-  assert.equal(result.history[0].employmentEvent, 'retired');
-  assert.equal(siblingEmploymentStateLabel(result.employmentState), 'متقاعد');
+  assert.equal(result.profile.employmentState, 'retired');
+  assert.equal(result.profile.lastEmploymentEvent, 'retired');
+  assert.equal(result.profile.yearsWorked, 30);
+  assert.ok(result.profile.annualIncome > 0);
+  assert.equal(result.profile.history[0].employmentEvent, 'retired');
+  assert.equal(result.stateLabel, 'متقاعد');
 });
 
 test('محاكاة 10,000 مسار تقدم سنوي حتمي تتحقق من ثوابت العمر والمال والصحة', { timeout: 120000 }, () => {
