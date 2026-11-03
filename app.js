@@ -1295,6 +1295,7 @@ function load(){
   normalizeCoreState(x);
   const defaults={lifeId:Date.now()+Math.random(),cemeterySaved:false,jobHistory:[],specialCareer:null,specialCareerHistory:[],combatCareer:null,filmStudio:null,investments:[],business:null,married:false,children:[],coParentingPlans:[],pets:[],hobbies:[],fame:0,followers:0,socialMediaAccount:false,socialMediaPosts:0,socialFeed:[],recentEventTitles:[],pendingLifeConsequences:[],seasonalEvent:null,seasonalEventArchive:[],reputation:50,crimeRecord:0,prison:null,debt:0,willDistribution:'الأسرة بالتساوي',heirlooms:[],dailyRewardDate:null,dailyChallenges:null,boostUsedAge:null,timeMachineSnapshots:[],legacy:{name:null,inheritance:0,heirloom:null},driversLicense:false,travelHistory:[]};
   Object.keys(defaults).forEach(k=>{if(x[k]===undefined||x[k]===null)x[k]=defaults[k];});
+  x.pendingLifeConsequences=normalizePendingLifeConsequences(x.pendingLifeConsequences,x.age);
   x.recentEventTitles=Array.isArray(x.recentEventTitles)?x.recentEventTitles.filter(title=>typeof title==='string'&&title.trim()).map(title=>title.trim().slice(0,120)).slice(-6):[];
   if(!Array.isArray(x.family))x.family=[];if(!Array.isArray(x.friends))x.friends=[];if(!Array.isArray(x.assets))x.assets=[];if(!Array.isArray(x.timeMachineSnapshots))x.timeMachineSnapshots=[];if(!Array.isArray(x.coParentingPlans))x.coParentingPlans=[];x.coParentingPlans.forEach(p=>{if(p&&typeof p==='object'){if(!Array.isArray(p.childIds))p.childIds=[];if(!Array.isArray(p.history))p.history=[];if(!Number.isFinite(Number(p.supportPerChild)))p.supportPerChild=2200;if(!Number.isFinite(Number(p.arrears)))p.arrears=0;}});
   if(!x.education||typeof x.education!=='object')x.education={level:0,school:'لم تبدأ الدراسة',major:null,yearsLeft:0,tuition:0};
@@ -1700,20 +1701,53 @@ function chooseAdaptiveEvent(pool){
  for(let i=0;i<pool.length;i++){roll-=weights[i];if(roll<=0)return pool[i];}
  return pool[pool.length-1];
 }
+function sanitizeLifeConsequenceEffects(raw){
+ const source=raw&&typeof raw==='object'&&!Array.isArray(raw)?raw:{};
+ const allowed=new Set(['happiness','health','smart','looks','bank','fame','reputation','debt']);
+ const safeEffects={};
+ Object.keys(source).forEach(key=>{
+  const value=Number(source[key]);
+  if(allowed.has(key)&&Number.isFinite(value)&&value!==0)safeEffects[key]=Math.max(-1000000,Math.min(1000000,Math.round(value)));
+ });
+ return safeEffects;
+}
+function normalizePendingLifeConsequences(items,currentAge){
+ if(!Array.isArray(items))return [];
+ const ageValue=Number(currentAge);
+ const age=Number.isFinite(ageValue)?Math.max(0,Math.floor(ageValue)):0;
+ const seen=new Set();
+ const normalized=[];
+ items.forEach(item=>{
+  if(!item||typeof item!=='object'||Array.isArray(item))return;
+  if(item.scheduledAtAge===null||item.scheduledAtAge===''||item.dueAge===null||item.dueAge==='')return;
+  const scheduledValue=Number(item.scheduledAtAge),dueValue=Number(item.dueAge);
+  if(!Number.isFinite(scheduledValue)||!Number.isFinite(dueValue))return;
+  const scheduledAtAge=Math.floor(scheduledValue),dueAge=Math.floor(dueValue);
+  if(scheduledAtAge<0||scheduledAtAge>age||dueAge<=scheduledAtAge||dueAge>scheduledAtAge+10)return;
+  const id=String(item.id||'').trim().slice(0,180);
+  const title=String(item.title||'').trim().slice(0,100);
+  const text=String(item.text||'').trim().slice(0,260);
+  if(!id||!title||!text||seen.has(id))return;
+  const safeEffects=sanitizeLifeConsequenceEffects(item.effects);
+  if(!Object.keys(safeEffects).length)return;
+  seen.add(id);
+  normalized.push({
+   id,scheduledAtAge,dueAge,
+   icon:String(item.icon||'📌').slice(0,8),
+   title,text,effects:safeEffects,
+   tone:item.tone==='good'?'good':'special'
+  });
+ });
+ return normalized.slice(-20);
+}
 function queueLifeConsequence(followUp){
  if(!state||!followUp||typeof followUp!=='object')return false;
  const delay=Math.max(1,Math.min(10,Math.floor(Number(followUp.delay)||1)));
  const title=String(followUp.title||'أثر قرار سابق').trim().slice(0,100);
  const text=String(followUp.text||'ظهر أثر قرار سابق في حياتك.').trim().slice(0,260);
- const raw=followUp.effects&&typeof followUp.effects==='object'&&!Array.isArray(followUp.effects)?followUp.effects:{};
- const allowed=new Set(['happiness','health','smart','looks','bank','fame','reputation','debt']);
- const safeEffects={};
- Object.keys(raw).forEach(key=>{
-  const value=Number(raw[key]);
-  if(allowed.has(key)&&Number.isFinite(value)&&value!==0)safeEffects[key]=Math.max(-1000000,Math.min(1000000,Math.round(value)));
- });
+ const safeEffects=sanitizeLifeConsequenceEffects(followUp.effects);
  if(!title||!text||!Object.keys(safeEffects).length)return false;
- if(!Array.isArray(state.pendingLifeConsequences))state.pendingLifeConsequences=[];
+ state.pendingLifeConsequences=normalizePendingLifeConsequences(state.pendingLifeConsequences,state.age);
  const scheduledAtAge=Math.max(0,Math.floor(Number(state.age)||0));
  const id=String(state.lifeId||'life')+':'+scheduledAtAge+':'+title;
  if(state.pendingLifeConsequences.some(item=>item&&item.id===id))return false;
@@ -5154,9 +5188,9 @@ function simulateBusinessEntityYear(business,kind){
 }
 function resolveLifeConsequences(){
  if(!state||typeof state!=='object')return 0;
- if(!Array.isArray(state.pendingLifeConsequences))state.pendingLifeConsequences=[];
- const queue=state.pendingLifeConsequences;
  const currentAge=Math.max(0,Math.floor(Number(state.age)||0));
+ state.pendingLifeConsequences=normalizePendingLifeConsequences(state.pendingLifeConsequences,currentAge);
+ const queue=state.pendingLifeConsequences;
  const due=queue.filter(item=>item&&typeof item==='object'&&Number.isFinite(Number(item.dueAge))&&Number(item.dueAge)<=currentAge);
  let processed=0;
  due.forEach(item=>{
@@ -5164,13 +5198,7 @@ function resolveLifeConsequences(){
   if(index<0)return;
   queue.splice(index,1);
   state.pendingLifeConsequences=queue;
-  const raw=item.effects&&typeof item.effects==='object'&&!Array.isArray(item.effects)?item.effects:{};
-  const allowed=new Set(['happiness','health','smart','looks','bank','fame','reputation','debt']);
-  const safeEffects={};
-  Object.keys(raw).forEach(key=>{
-   const value=Number(raw[key]);
-   if(allowed.has(key)&&Number.isFinite(value)&&value!==0)safeEffects[key]=Math.max(-1000000,Math.min(1000000,Math.round(value)));
-  });
+  const safeEffects=sanitizeLifeConsequenceEffects(item.effects);
   if(Object.keys(safeEffects).length)effects(safeEffects);
   log(String(item.icon||'📌').slice(0,8),String(item.title||'أثر قرار سابق').slice(0,100),String(item.text||'ظهر أثر قرار سابق في حياتك.').slice(0,260),item.tone==='good'?'good':'special');
   processed++;
