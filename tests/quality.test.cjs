@@ -81,6 +81,8 @@ test('كتالوج الأحداث الأصلي يضم 71 موقفًا صالحً
 
 
 test('تبعات بعض القرارات تُحفظ وتظهر في العمر المحدد مرة واحدة فقط', () => {
+  const sanitizeSource = functionSource('sanitizeLifeConsequenceEffects', 'normalizePendingLifeConsequences');
+  const normalizeSource = functionSource('normalizePendingLifeConsequences', 'queueLifeConsequence');
   const queueSource = functionSource('queueLifeConsequence', 'randomEvent');
   const resolveSource = functionSource('resolveLifeConsequences', 'advanceAge');
   const state = { lifeId: 77, age: 24, pendingLifeConsequences: [] };
@@ -91,7 +93,7 @@ test('تبعات بعض القرارات تُحفظ وتظهر في العمر �
     effects(value) { applied.push({ ...value }); },
     log(...args) { logs.push(args); }
   };
-  vm.runInNewContext(queueSource + '\n' + resolveSource
+  vm.runInNewContext(sanitizeSource + '\n' + normalizeSource + '\n' + queueSource + '\n' + resolveSource
     + '\nglobalThis.first=queueLifeConsequence({delay:1,icon:"🎓",title:"أثر التدريب",text:"ظهرت نتيجة التدريب.",effects:{smart:2,bank:900}});'
     + '\nglobalThis.duplicate=queueLifeConsequence({delay:1,title:"أثر التدريب",text:"تكرار غير مطلوب.",effects:{smart:9}});', context);
   assert.equal(context.first, true);
