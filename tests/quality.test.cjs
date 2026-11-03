@@ -3024,13 +3024,15 @@ test('مجتمع المقاتلين يستقبل منافسين جددًا كل 
     globalThis.initialCount = career.community.length;
     globalThis.beforeDueAge = advanceCombatCommunityRoster(career);
     state.age = 23; state.yearCount = 5;
-    globalThis.first = advanceCombatCommunityRoster(career);
+    const first = advanceCombatCommunityRoster(career);
+    globalThis.first = first;
     globalThis.firstName = first && first.name;
     globalThis.firstCount = career.community.length;
     globalThis.firstNextAge = career.nextRecruitmentAge;
     globalThis.repeatSameYear = advanceCombatCommunityRoster(career);
     state.age = 28; state.yearCount = 10;
-    globalThis.second = advanceCombatCommunityRoster(career);
+    const second = advanceCombatCommunityRoster(career);
+    globalThis.second = second;
     globalThis.secondName = second && second.name;
     globalThis.secondCount = career.community.length;
     globalThis.roundTrip = normalizeCombatCommunity(career.community, state.yearCount);
