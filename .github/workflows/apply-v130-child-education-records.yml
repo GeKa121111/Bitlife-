@@ -1,0 +1,69 @@
+name: Apply and validate child education records v130
+
+on:
+  push:
+    branches:
+      - automation/v130-child-education-records-20261103
+    paths:
+      - scripts/apply-v130-child-education-records.cjs
+
+permissions:
+  contents: write
+
+jobs:
+  patch-and-validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out development branch
+        uses: actions/checkout@v4
+        with:
+          ref: \${{ github.ref }}
+          persist-credentials: true
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Apply the v130 source patch
+        run: node scripts/apply-v130-child-education-records.cjs
+
+      - name: Check JavaScript syntax
+        run: |
+          node --check app.js
+          node --check sw.js
+          node --check tests/quality.test.cjs
+
+      - name: Run smoke and regression tests
+        run: |
+          node tests/smoke.cjs
+          node --test tests/quality.test.cjs
+          node --test tests/life-simulation.test.cjs
+          node --test tests/business-simulation.test.cjs
+          node --test tests/business-market-simulation.test.cjs
+          node --test tests/business-lifecycle.test.cjs
+          node --test tests/family-succession.test.cjs
+          node --test tests/service-worker.test.cjs
+          node --test tests/spouse-portfolio.test.cjs
+          node --test tests/child-property-management.test.cjs
+
+      - name: Install Playwright and Chromium
+        run: |
+          npm install --no-save --package-lock=false playwright@1.64.1
+          npx playwright install --with-deps chromium
+
+      - name: Run mobile browser end-to-end tests
+        run: node tests/browser.cjs
+
+      - name: Commit validated source changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -- app.js sw.js README.md BITLIFE_PARITY_ROADMAP.md tests
+          if git diff --cached --quiet; then
+            echo "No generated source changes were found."
+            exit 1
+          fi
+          git commit -m "feat(v130): persist education outcomes on each child"
+          git push origin "HEAD:\${GITHUB_REF_NAME}"
