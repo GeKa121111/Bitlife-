@@ -2420,7 +2420,7 @@ function siblingSpouseEstateAnnualEffects(relative,spouse,year){
  const release=siblingReleaseSpouseInheritance(relative,spouse,numericYear);
  const portfolio=spouse.portfolio||siblingNormalizeSpousePortfolio(spouse,numericYear);
  if(portfolio.lastProcessedYear>=numericYear)return {duplicate:true,propertiesReleased:0};
- const propertyEffects=siblingChildInheritedPropertyAnnualEffects(relative,{id:spouse.id,name:spouse.name,age:spouse.age},portfolio,numericYear)||{
+ const propertyEffects=siblingChildInheritedPropertyAnnualEffects(spouse,spouse,portfolio,numericYear)||{
   propertyExpenses:0,rentalIncome:0,mortgageDueTotal:0,mortgageDues:[],propertyCount:portfolio.ownedProperties.length
  };
  const rentalIncome=siblingSafeMoney(propertyEffects.rentalIncome),propertyExpenses=siblingSafeMoney(propertyEffects.propertyExpenses);
