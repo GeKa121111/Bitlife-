@@ -274,6 +274,26 @@ async function run() {
     assert.equal(await page.locator('#adSlot, #closeAdSlot, .ad-slot').count(), 0,
       'the trial advertising placeholder should not render in the mobile UI');
 
+    const headerTouchTargets = await page.evaluate(() => {
+      const selectors = ['#menuBtn', '#profileBtn', '#marketBtn', '#characterInfoBtn'];
+      return selectors.map(selector => {
+        const element = document.querySelector(selector);
+        const rect = element ? element.getBoundingClientRect() : null;
+        return {
+          selector,
+          width: rect ? rect.width : 0,
+          height: rect ? rect.height : 0,
+          visible: !!rect && rect.width > 0 && rect.height > 0
+        };
+      });
+    });
+    for (const target of headerTouchTargets) {
+      assert.ok(target.visible, target.selector + ' should be visible in the mobile header');
+      assert.ok(target.width >= 44 && target.height >= 44,
+        target.selector + ' should expose at least a 44×44 CSS-pixel touch target; got ' +
+        target.width + '×' + target.height);
+    }
+
     const shownName = (await page.locator('#characterName').innerText()).trim();
     assert.ok(shownName.includes(seedSave.name), 'the legacy v1 save should render the seeded player');
 
@@ -462,6 +482,28 @@ async function run() {
       'the compact drawer should begin directly below the shortened app header');
     assert.equal(await page.locator('#modalRoot .modal.drawer').count(), 1,
       'the Arabic activities screen should use the organized drawer layout');
+
+    const drawerCloseTarget = await page.locator('#modalRoot .drawer-head .closebtn').first().boundingBox();
+    assert.ok(drawerCloseTarget && drawerCloseTarget.width >= 44 && drawerCloseTarget.height >= 44,
+      'the drawer close control should expose a 44×44 CSS-pixel touch target');
+
+    const smallButtonProbe = await page.evaluate(() => {
+      const root = document.querySelector('#modalRoot');
+      const button = document.createElement('button');
+      button.className = 'smallbtn';
+      button.textContent = 'اختبار مساحة اللمس';
+      button.style.position = 'fixed';
+      button.style.left = '-10000px';
+      button.style.top = '0';
+      root.appendChild(button);
+      const rect = button.getBoundingClientRect();
+      const result = { width: rect.width, height: rect.height };
+      button.remove();
+      return result;
+    });
+    assert.ok(smallButtonProbe.width >= 44 && smallButtonProbe.height >= 44,
+      'secondary modal buttons should expose a 44×44 CSS-pixel touch target');
+
     await page.keyboard.press('Escape');
     await page.waitForFunction(() => !document.querySelector('#modalRoot [role="dialog"]'));
     await page.setViewportSize({ width: 390, height: 844 });
