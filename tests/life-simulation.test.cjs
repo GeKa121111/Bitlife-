@@ -103,6 +103,7 @@ const combatStart = app.indexOf('function normalizeCombatInjuryYears(');
 const combatEnd = app.indexOf('const combatMoveMasteryThresholds=', combatStart);
 assert.ok(combatStart >= 0 && combatEnd > combatStart, 'combat recovery helpers must exist');
 const combatRecoverySource = app.slice(combatStart, combatEnd);
+const combatCommunitySource = extractFunction('advanceCombatCommunity');
 
 const harnessSource = String.raw`
 'use strict';
@@ -365,7 +366,7 @@ function runCohort(count) {
 
 test('الصيانة والضريبة السنوية للعقار المشترك تتوزعان حسب الملكية دون خصم مزدوج', () => {
   const context = vm.createContext({});
-  vm.runInContext(combatRecoverySource + '\n' + propertyOwnershipSource + '\n' + siblingEconomySource + '\n' + consequenceSanitizerSource + '\n' + consequenceNormalizerSource + '\n' + consequenceSource + '\n' + ageSource + '\n' + harnessSource, context, {
+  vm.runInContext(combatRecoverySource + '\n' + combatCommunitySource + '\n' + propertyOwnershipSource + '\n' + siblingEconomySource + '\n' + consequenceSanitizerSource + '\n' + consequenceNormalizerSource + '\n' + consequenceSource + '\n' + ageSource + '\n' + harnessSource, context, {
     timeout: 120000,
     filename: 'hayah-shared-property-upkeep-harness.js'
   });
