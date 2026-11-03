@@ -78,7 +78,8 @@ test('نقل حصص الشريك يتم مرة واحدة ويحافظ على س
  const profile={household:{spouse,children:[]},estate:{id:record.estateId,settled:true,beneficiaries:[]}},relative={id:'relative-1',name:'الشقيق المتوفى',deceased:true,economicProfile:profile};
  const result=context.releaseSpouseInheritance(relative,spouse,2028);
  assert.equal(result.released,true);assert.equal(result.properties,1);assert.equal(spouse.portfolio.ownedProperties.length,1);
- assert.equal(record.assetsPending,false);assert.equal(record.assetsTransferredYear,2028);assert.equal(record.transferredAssetIds.length,1);
+ const normalizedRecord=spouse.inheritance.records[0];
+ assert.equal(normalizedRecord.assetsPending,false);assert.equal(normalizedRecord.assetsTransferredYear,2028);assert.equal(normalizedRecord.transferredAssetIds.length,1);
  assert.equal(spouse.inheritanceCashBalance,25000);assert.equal(spouse.inheritanceDebtBalance,5000);
  const duplicate=context.releaseSpouseInheritance(relative,spouse,2029);assert.equal(duplicate.properties,0);assert.equal(spouse.portfolio.ownedProperties.length,1);
 });
