@@ -233,12 +233,18 @@ quality = replaceOnce(
   ].join('\n'),
   'queue test child selection context'
 );
-quality = replaceOnce(
-  quality,
-  "vm.runInNewContext(sanitizeSource + '\\n' + normalizeSource + '\\n' + queueSource",
-  "vm.runInNewContext(sanitizeSource + '\\n' + functionSource('sanitizeChildEducationOutcome', 'normalizePendingLifeConsequences') + '\\n' + normalizeSource + '\\n' + functionSource('selectChildForEducationOutcome', 'queueLifeConsequence') + '\\n' + queueSource",
-  'include child education queue helpers in regression test'
-);
+{
+  const testStart=quality.indexOf("test('الاختيارات المهنية والعمل المستقل والمشروع العائلي والتعليم الأسري تترك نتائج مؤجلة'");
+  const testEnd=quality.indexOf("\\ntest('تحميل طابور التبعات ينظف السجلات التالفة",testStart);
+  if(testStart<0||testEnd<0)throw new Error('follow-up regression test boundaries not found for helper wiring');
+  const block=replaceOnce(
+    quality.slice(testStart,testEnd),
+    "vm.runInNewContext(sanitizeSource + '\\n' + normalizeSource + '\\n' + queueSource",
+    "vm.runInNewContext(sanitizeSource + '\\n' + functionSource('sanitizeChildEducationOutcome', 'normalizePendingLifeConsequences') + '\\n' + normalizeSource + '\\n' + functionSource('selectChildForEducationOutcome', 'queueLifeConsequence') + '\\n' + queueSource",
+    'include child education queue helpers in follow-up regression test'
+  );
+  quality=quality.slice(0,testStart)+block+quality.slice(testEnd);
+}
 
 const childEducationRegression = [
 "",
