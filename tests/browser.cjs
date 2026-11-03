@@ -439,6 +439,50 @@ async function run() {
     };
     assertDockAligned(await measureDock(), '390px mobile viewport');
 
+    // Guard the original Arabic five-zone layout on narrow phones, not only the common 390px viewport.
+    for (const width of [320, 360, 390]) {
+      await page.setViewportSize({ width, height: 844 });
+      await page.waitForTimeout(40);
+      const narrowViewport = await page.evaluate(() => {
+        const box = selector => {
+          const element = document.querySelector(selector);
+          if (!element) return null;
+          const rect = element.getBoundingClientRect();
+          return { left: rect.left, right: rect.right, width: rect.width, height: rect.height };
+        };
+        const headerParts = ['#menuBtn', '.brandlogo', '.top-actions'].map(selector => ({
+          selector, ...box(selector)
+        }));
+        const headerOverlap = headerParts.some((left, index) =>
+          headerParts.slice(index + 1).some(right =>
+            Number.isFinite(left.left) && Number.isFinite(right.left) &&
+            left.left < right.right - 1 && left.right > right.left + 1));
+        return {
+          documentWidth: document.documentElement.scrollWidth,
+          appWidth: box('#app')?.width || 0,
+          headerOverlap,
+          headerParts,
+          targets: ['#menuBtn', '#profileBtn', '#marketBtn', '#characterInfoBtn', '#ageUpBtn'].map(box)
+        };
+      });
+      assert.ok(narrowViewport.documentWidth <= width + 1,
+        width + 'px viewport should not create horizontal page scrolling');
+      assert.ok(narrowViewport.appWidth > 0 && narrowViewport.appWidth <= width + 1,
+        width + 'px viewport should contain the app shell');
+      assert.equal(narrowViewport.headerOverlap, false,
+        width + 'px viewport should keep the menu, brand, and header actions separated: ' +
+        JSON.stringify(narrowViewport.headerParts));
+      for (const [index, target] of narrowViewport.targets.entries()) {
+        const selector = ['#menuBtn', '#profileBtn', '#marketBtn', '#characterInfoBtn', '#ageUpBtn'][index];
+        assert.ok(target && target.width > 0 && target.height > 0,
+          selector + ' should remain visible at ' + width + 'px');
+        assert.ok(target.left >= -1 && target.right <= width + 1,
+          selector + ' should remain inside the ' + width + 'px viewport');
+      }
+    }
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.waitForTimeout(40);
+
     await page.setViewportSize({ width: 710, height: 1100 });
     await page.waitForTimeout(40);
     assertDockAligned(await measureDock(), '710px portrait/tablet viewport');

@@ -2692,3 +2692,9 @@ body.theme-gold{--hayah-focus-ring:#76520f}
   box-sizing:border-box;
   flex-shrink:0;
 }
+
+
+/* v132: keep the 44px menu target inside its grid track on narrow phones. */
+#app > .topbar{
+  grid-template-columns:44px minmax(0,1fr) auto!important;
+}
