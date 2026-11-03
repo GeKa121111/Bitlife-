@@ -371,7 +371,7 @@ function runCohort(count) {
 
 test('الصيانة والضريبة السنوية للعقار المشترك تتوزعان حسب الملكية دون خصم مزدوج', () => {
   const context = vm.createContext({});
-  vm.runInContext(combatRecoverySource + '\n' + combatCommunitySource + '\n' + propertyOwnershipSource + '\n' + siblingEconomySource + '\n' + consequenceSanitizerSource + '\n' + consequenceNormalizerSource + '\n' + consequenceSource + '\n' + ageSource + '\n' + harnessSource, context, {
+  vm.runInContext(combatRecoverySource + '\n' + combatCommunityProfilesSource + '\n' + combatCommunitySource + '\n' + combatCommunityRosterSource + '\n' + propertyOwnershipSource + '\n' + siblingEconomySource + '\n' + consequenceSanitizerSource + '\n' + consequenceNormalizerSource + '\n' + consequenceSource + '\n' + ageSource + '\n' + harnessSource, context, {
     timeout: 120000,
     filename: 'hayah-shared-property-upkeep-harness.js'
   });
@@ -739,7 +739,7 @@ test('سن التقاعد ينقل الشقيق إلى معاش محاكي ول�
 
 test('محاكاة 10,000 مسار تقدم سنوي حتمي تتحقق من ثوابت العمر والمال والصحة', { timeout: 120000 }, () => {
   const context = vm.createContext({});
-  vm.runInContext(combatRecoverySource + '\n' + combatCommunitySource + '\n' + propertyOwnershipSource + '\n' + siblingEconomySource + '\n' + consequenceSanitizerSource + '\n' + consequenceNormalizerSource + '\n' + consequenceSource + '\n' + ageSource + '\n' + harnessSource, context, {
+  vm.runInContext(combatRecoverySource + '\n' + combatCommunityProfilesSource + '\n' + combatCommunitySource + '\n' + combatCommunityRosterSource + '\n' + propertyOwnershipSource + '\n' + siblingEconomySource + '\n' + consequenceSanitizerSource + '\n' + consequenceNormalizerSource + '\n' + consequenceSource + '\n' + ageSource + '\n' + harnessSource, context, {
     timeout: 120000,
     filename: 'hayah-life-simulation-harness.js'
   });
