@@ -3015,7 +3015,7 @@ test('مجتمع المقاتلين يستقبل منافسين جددًا كل 
     }
   };
 
-  vm.runInNewContext(catalogSource + '\\n' + rosterSource + `
+  vm.runInNewContext(catalogSource + '\n' + rosterSource + `
     globalThis.career = {
       startedAge: 18,
       community: normalizeCombatCommunity([], state.yearCount),
