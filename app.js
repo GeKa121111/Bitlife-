@@ -2010,7 +2010,7 @@ function siblingNormalizeSpousePortfolio(spouse,year){
     cashBalance:siblingSafeMoney(item.cashBalance),debtBalance:siblingSafeMoney(item.debtBalance),
     netWorth:siblingSafeSigned(item.netWorth),assetId:String(item.assetId||'').slice(0,160),
     gross:siblingSafeMoney(item.gross),transactionCost:siblingSafeMoney(item.transactionCost),
-    securedDebt:siblingSafeMoney(item.securedDebt),proceeds:siblingSafeMoney(item.proceeds)
+    securedDebt:siblingSafeMoney(item.securedDebt),proceeds:siblingSafeMoney(item.proceeds),rentArrearsWrittenOff:siblingSafeMoney(item.rentArrearsWrittenOff)
   }));
   spouse.portfolio={
     ownedProperties:siblingNormalizeChildOwnedProperties(raw.ownedProperties,numericYear),
@@ -2463,7 +2463,7 @@ function siblingSpousePropertySaleQuote(asset){
  const mortgage=asset.mortgage&&typeof asset.mortgage==='object'?asset.mortgage:null;
  const securedDebt=siblingSafeMoney(siblingSafeMoney(mortgage&&mortgage.balance)+siblingSafeMoney(mortgage&&mortgage.arrears));
  const proceeds=siblingSafeSigned(gross-transactionCost-securedDebt);
- return {ok:proceeds>=0&&gross>0,reason:proceeds<0?'negative_equity':gross<=0?'no_market_value':'',gross,transactionCost,securedDebt,proceeds};
+ return {ok:proceeds>=0&&gross>0,reason:proceeds<0?'negative_equity':gross<=0?'no_market_value':'',gross,transactionCost,securedDebt,proceeds,rentArrearsWrittenOff:siblingSafeMoney(asset.rentArrears)};
 }
 function siblingSpouseSellInheritedProperty(relative,spouse,assetId,year){
  const numericYear=Number(year);
@@ -2476,7 +2476,7 @@ function siblingSpouseSellInheritedProperty(relative,spouse,assetId,year){
  portfolio.ownedProperties.splice(index,1);
  spouse.inheritanceCashBalance=siblingSafeMoney(siblingSafeMoney(spouse.inheritanceCashBalance)+quote.proceeds);
  portfolio.history.push({year:numericYear,type:'asset_sold',assetId:String(asset.id||'').slice(0,160),
-  gross:quote.gross,transactionCost:quote.transactionCost,securedDebt:quote.securedDebt,proceeds:quote.proceeds,
+  gross:quote.gross,transactionCost:quote.transactionCost,securedDebt:quote.securedDebt,proceeds:quote.proceeds,rentArrearsWrittenOff:quote.rentArrearsWrittenOff,
   cashBalance:spouse.inheritanceCashBalance,debtBalance:siblingSafeMoney(spouse.inheritanceDebtBalance),netWorth:0});
  if(portfolio.history.length>8)portfolio.history.splice(0,portfolio.history.length-8);
  const propertyValue=siblingOwnedPropertyValue(portfolio),securedDebt=siblingProfileMortgageLiability(portfolio);
@@ -4363,7 +4363,7 @@ function siblingSpousePropertyMenu(relative,assetId){
   ' · الإيجار الشهري '+cash(lease&&lease.monthlyRent||asset.monthlyRent||0)+' '+currency+
   ' · التمويل والمتأخرات '+cash(siblingSafeMoney(mortgage&&mortgage.balance)+siblingSafeMoney(mortgage&&mortgage.arrears))+' '+currency+
   (lease&&lease.status==='active'?' · عقد نشط مع '+String(lease.tenantName||'مستأجر مسجل'):' · لا يوجد عقد نشط');
- const saleDetail=quote.ok?'صافي متوقع '+cash(quote.proceeds)+' '+currency+' بعد تكلفة البيع وسداد التمويل.':
+ const saleDetail=quote.ok?'صافي متوقع '+cash(quote.proceeds)+' '+currency+' بعد تكلفة البيع وسداد التمويل.'+(quote.rentArrearsWrittenOff>0?' · تُسقط متأخرات الإيجار غير المحصلة '+cash(quote.rentArrearsWrittenOff):''):
   quote.reason==='negative_equity'?'قيمة البيع لا تكفي لتغطية تكلفة البيع والتمويل الحالي.':'لا توجد قيمة سوقية صالحة للبيع.';
  const opts=[choice('💰','بيع الحصة العقارية',saleDetail,()=>siblingSpouseSellPropertyConfirm(relative,asset.id))];
  opts.push(choice('↩️','رجوع للمحفظة','',()=>siblingSpousePortfolioMenu(relative)));
@@ -4376,7 +4376,7 @@ function siblingSpouseSellPropertyConfirm(relative,assetId){
  const quote=siblingSpousePropertySaleQuote(asset);
  if(!quote.ok){info('⚠️','تعذر بيع الحصة',quote.reason==='negative_equity'?'قيمة البيع بعد التكلفة أقل من التمويل والمتأخرات؛ لم يتم تغيير الملكية.':'لا توجد قيمة سوقية صالحة للبيع.');return;}
  const currency=String(state&&state.place&&state.place.unit||'ج.م');
- info('💰','تأكيد بيع الحصة العقارية','القيمة '+cash(quote.gross)+' · تكلفة البيع '+cash(quote.transactionCost)+' · سداد التمويل '+cash(quote.securedDebt)+' · صافي '+cash(quote.proceeds)+' '+currency+'.',[
+ info('💰','تأكيد بيع الحصة العقارية','القيمة '+cash(quote.gross)+' · تكلفة البيع '+cash(quote.transactionCost)+' · سداد التمويل '+cash(quote.securedDebt)+' · صافي '+cash(quote.proceeds)+' '+currency+(quote.rentArrearsWrittenOff>0?' · إسقاط متأخرات إيجار '+cash(quote.rentArrearsWrittenOff):'')+'.',[
   choice('✓','تأكيد البيع','إزالة الحصة من المحفظة وإضافة صافي العائد إلى السيولة.',()=>{
    const result=siblingSpouseSellInheritedProperty(relative,spouse,assetId,Number(state&&state.yearCount)||0);
    if(!result.ok){info('⚠️','لم يتم البيع','تعذر إتمام العملية؛ لم تتغير المحفظة.');return;}
