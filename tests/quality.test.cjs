@@ -687,12 +687,12 @@ test('واجهة الهاتف تحافظ على تخطيط حياة العربي
 
 test('الشاشات القصيرة تضغط المساحات الثابتة وتحافظ على يوميات قابلة للتمرير', () => {
   const compactLayout = css.slice(css.lastIndexOf('/* v120: reclaim vertical space'));
-  assert.match(compactLayout, /@media\\(max-height:620px\\)/);
-  assert.match(compactLayout, /#app > \\.topbar/);
-  assert.match(compactLayout, /#app > \\.bottom-dock > \\.nav > \\.agebtn/);
-  assert.match(compactLayout, /#modalRoot \\.drawer-overlay/);
-  assert.match(compactLayout, /height:56px!important/);
-  assert.match(compactLayout, /height:52px!important/);
+  assert.ok(compactLayout.includes('@media(max-height:620px)'));
+  assert.ok(compactLayout.includes('#app > .topbar'));
+  assert.ok(compactLayout.includes('#app > .bottom-dock > .nav > .agebtn'));
+  assert.ok(compactLayout.includes('#modalRoot .drawer-overlay'));
+  assert.ok(compactLayout.includes('height:56px!important'));
+  assert.ok(compactLayout.includes('height:52px!important'));
 });
 
 test('الرجوع بالزمن يستعيد سجل الأحداث الصحيح بعد بلوغ حد السجل الدوّار', () => {
