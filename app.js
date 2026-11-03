@@ -7664,7 +7664,7 @@ function combatTrainingMenu(){
   choice('🥋','تدريب حركة محددة','جلسة مركزة ترفع إتقان حركة تعلمتها؛ جلسة واحدة في كل سنة من اللعبة.',practiceCombatMoveMenu),
   choice('↩️','رجوع لمسيرة القتال','',combatCareerMenu)
  ];
- modal('🏋️','تدريب المقاتل','كل جلسة تكلف 1,500 '+state.place.unit+'. '+(coachBonus?'مدربك يضيف مكافأة تدريب بمقدار '+coachBonus+' نقاط.':'تعيين مدرب يحسّن أثر التدريب.'),opts);
+ modal('🏋️','تدريب المقاتل','جلسات تطوير القدرات تكلف 1,500 '+state.place.unit+'. جلسة تدريب الحركة المحددة تكلف 1,200 '+state.place.unit+'. '+(coachBonus?'مدربك يضيف مكافأة تدريب بمقدار '+coachBonus+' نقاط.':'تعيين مدرب يحسّن أثر التدريب.'),opts);
 }
 function trainCombatAttribute(key,label){
  if(!validState()||!state.specialCareer||state.specialCareer.id!=='fighter')return;
