@@ -928,7 +928,7 @@ events.push(
   C('أعتذر عن المشاركة','وقتك مش مناسب حاليًا',{smart:1},'اعتذرت باحترام، واحتفظت بفرصة المشاركة في وقت تاني.')
  ]),
  E([16,24],'🎓','منحة تدريب قصيرة','ظهر إعلان عن منحة تدريب في مهارة ممكن تساعدك في الدراسة أو بداية الشغل.',[
-  C('أقدم فورًا','جهّز طلبك بعناية',{smart:5,happiness:2},'قدمت طلبًا منظمًا واتعلمت تعرض مهاراتك بشكل أفضل.',{cost:500,risk:.18,win:{smart:2},fail:{happiness:-2},failText:'ما اتقبلتش المرة دي، لكنك احتفظت بخبرة التقديم.'}),
+  C('أقدم فورًا','جهّز طلبك بعناية',{smart:5,happiness:2},'قدمت طلبًا منظمًا واتعلمت تعرض مهاراتك بشكل أفضل.',{cost:500,risk:.18,win:{smart:2},fail:{happiness:-2},failText:'ما اتقبلتش المرة دي، لكنك احتفظت بخبرة التقديم.',followUp:{delay:1,icon:'🎓',title:'أثر المنحة التدريبية',text:'بعد سنة، بدأت تستفيد من المهارات اللي اكتسبتها، وده فتح لك فرصة جديدة للتعلم والعمل.',effects:{smart:3,bank:1200}}}),
   C('أطلب رأي شخص خبير','راجع التفاصيل الأول',{smart:3},'المراجعة كشفت لك نقاطًا كان ممكن تفوتك.'),
   C('أؤجل التقديم','اختار توقيتًا أنسب',{happiness:1},'قررت تستعد أكتر قبل ما تدخل تجربة جديدة.')
  ]),
@@ -984,7 +984,7 @@ events.push(
  ]),
  E([45,90],'💻','مهارة رقمية جديدة','ظهر قدامك تدريب بسيط على أداة رقمية ممكن تسهّل شغلك أو تفتح لك مجال جديد.',[
   C('أتعلم الأساسيات','خصص وقتًا للتجربة',{smart:5,happiness:2},'اتعلمت مهارة جديدة وبدأت تستخدمها في مهام يومية.'),
-  C('أطبقها في مشروع صغير','التجربة تثبت التعلم',{smart:4},'طبقت اللي اتعلمته واحتجت تعدّل شوية قبل ما توصل لنتيجة كويسة.',{cost:600}),
+  C('أطبقها في مشروع صغير','التجربة تثبت التعلم',{smart:4},'طبقت اللي اتعلمته واحتجت تعدّل شوية قبل ما توصل لنتيجة كويسة.',{cost:600,followUp:{delay:2,icon:'💼',title:'أثر المهارة الرقمية',text:'بعد سنتين، ساعدتك المهارة في إنجاز مشروع مدفوع وبناء سمعة أفضل في مجالك.',effects:{bank:2200,smart:2,reputation:2}}}),
   C('أكتفي بالمشاهدة','ابدأ لما يكون عندك وقت',{happiness:1},'احتفظت بالمصدر وقررت ترجع له في وقت أنسب.')
  ]),
  E([60,100],'🗣️','حكاية من الماضي','أحد أفراد العائلة الأصغر سنًا سألك عن موقف قديم غيّر طريقة تفكيرك.',[
@@ -1293,7 +1293,7 @@ function load(){
   }
   if(isValidSaveData(x)){
   normalizeCoreState(x);
-  const defaults={lifeId:Date.now()+Math.random(),cemeterySaved:false,jobHistory:[],specialCareer:null,specialCareerHistory:[],combatCareer:null,filmStudio:null,investments:[],business:null,married:false,children:[],coParentingPlans:[],pets:[],hobbies:[],fame:0,followers:0,socialMediaAccount:false,socialMediaPosts:0,socialFeed:[],recentEventTitles:[],seasonalEvent:null,seasonalEventArchive:[],reputation:50,crimeRecord:0,prison:null,debt:0,willDistribution:'الأسرة بالتساوي',heirlooms:[],dailyRewardDate:null,dailyChallenges:null,boostUsedAge:null,timeMachineSnapshots:[],legacy:{name:null,inheritance:0,heirloom:null},driversLicense:false,travelHistory:[]};
+  const defaults={lifeId:Date.now()+Math.random(),cemeterySaved:false,jobHistory:[],specialCareer:null,specialCareerHistory:[],combatCareer:null,filmStudio:null,investments:[],business:null,married:false,children:[],coParentingPlans:[],pets:[],hobbies:[],fame:0,followers:0,socialMediaAccount:false,socialMediaPosts:0,socialFeed:[],recentEventTitles:[],pendingLifeConsequences:[],seasonalEvent:null,seasonalEventArchive:[],reputation:50,crimeRecord:0,prison:null,debt:0,willDistribution:'الأسرة بالتساوي',heirlooms:[],dailyRewardDate:null,dailyChallenges:null,boostUsedAge:null,timeMachineSnapshots:[],legacy:{name:null,inheritance:0,heirloom:null},driversLicense:false,travelHistory:[]};
   Object.keys(defaults).forEach(k=>{if(x[k]===undefined||x[k]===null)x[k]=defaults[k];});
   x.recentEventTitles=Array.isArray(x.recentEventTitles)?x.recentEventTitles.filter(title=>typeof title==='string'&&title.trim()).map(title=>title.trim().slice(0,120)).slice(-6):[];
   if(!Array.isArray(x.family))x.family=[];if(!Array.isArray(x.friends))x.friends=[];if(!Array.isArray(x.assets))x.assets=[];if(!Array.isArray(x.timeMachineSnapshots))x.timeMachineSnapshots=[];if(!Array.isArray(x.coParentingPlans))x.coParentingPlans=[];x.coParentingPlans.forEach(p=>{if(p&&typeof p==='object'){if(!Array.isArray(p.childIds))p.childIds=[];if(!Array.isArray(p.history))p.history=[];if(!Number.isFinite(Number(p.supportPerChild)))p.supportPerChild=2200;if(!Number.isFinite(Number(p.arrears)))p.arrears=0;}});
@@ -1700,6 +1700,31 @@ function chooseAdaptiveEvent(pool){
  for(let i=0;i<pool.length;i++){roll-=weights[i];if(roll<=0)return pool[i];}
  return pool[pool.length-1];
 }
+function queueLifeConsequence(followUp){
+ if(!state||!followUp||typeof followUp!=='object')return false;
+ const delay=Math.max(1,Math.min(10,Math.floor(Number(followUp.delay)||1)));
+ const title=String(followUp.title||'أثر قرار سابق').trim().slice(0,100);
+ const text=String(followUp.text||'ظهر أثر قرار سابق في حياتك.').trim().slice(0,260);
+ const raw=followUp.effects&&typeof followUp.effects==='object'&&!Array.isArray(followUp.effects)?followUp.effects:{};
+ const allowed=new Set(['happiness','health','smart','looks','bank','fame','reputation','debt']);
+ const safeEffects={};
+ Object.keys(raw).forEach(key=>{
+  const value=Number(raw[key]);
+  if(allowed.has(key)&&Number.isFinite(value)&&value!==0)safeEffects[key]=Math.max(-1000000,Math.min(1000000,Math.round(value)));
+ });
+ if(!title||!text||!Object.keys(safeEffects).length)return false;
+ if(!Array.isArray(state.pendingLifeConsequences))state.pendingLifeConsequences=[];
+ const scheduledAtAge=Math.max(0,Math.floor(Number(state.age)||0));
+ const id=String(state.lifeId||'life')+':'+scheduledAtAge+':'+title;
+ if(state.pendingLifeConsequences.some(item=>item&&item.id===id))return false;
+ state.pendingLifeConsequences.push({
+  id,scheduledAtAge,dueAge:scheduledAtAge+delay,
+  icon:String(followUp.icon||'📌').slice(0,8),title,text,effects:safeEffects,
+  tone:followUp.tone==='good'?'good':'special'
+ });
+ if(state.pendingLifeConsequences.length>20)state.pendingLifeConsequences.splice(0,state.pendingLifeConsequences.length-20);
+ return true;
+}
 function randomEvent(){
  if(!validState())return;
  if(state.prison){prisonEvent();return;}
@@ -1713,6 +1738,7 @@ function randomEvent(){
    let failed=false,result=c.result||'اخدت قرارك وكمّلت طريقك.';
    if(c.risk&&chance(c.risk)){failed=true;result=c.failText||'النتيجة ما كانتش زي ما توقعت.';effects(c.fail);}
    else{effects(c.effects);if(c.win)effects(c.win);}
+   if(!failed&&c.followUp)queueLifeConsequence(c.followUp);
    if(c.effects&&c.effects.bank){} 
    log(e.icon,e.title,result,failed?'bad':'special');render();
    if(state.stats.health<=0){death('تدهور الحالة الصحية');return;}
@@ -5126,6 +5152,32 @@ function simulateBusinessEntityYear(business,kind){
   if(asset)asset.value=business.value;
  }
 }
+function resolveLifeConsequences(){
+ if(!state||typeof state!=='object')return 0;
+ if(!Array.isArray(state.pendingLifeConsequences))state.pendingLifeConsequences=[];
+ const queue=state.pendingLifeConsequences;
+ const currentAge=Math.max(0,Math.floor(Number(state.age)||0));
+ const due=queue.filter(item=>item&&typeof item==='object'&&Number.isFinite(Number(item.dueAge))&&Number(item.dueAge)<=currentAge);
+ let processed=0;
+ due.forEach(item=>{
+  const index=queue.indexOf(item);
+  if(index<0)return;
+  queue.splice(index,1);
+  state.pendingLifeConsequences=queue;
+  const raw=item.effects&&typeof item.effects==='object'&&!Array.isArray(item.effects)?item.effects:{};
+  const allowed=new Set(['happiness','health','smart','looks','bank','fame','reputation','debt']);
+  const safeEffects={};
+  Object.keys(raw).forEach(key=>{
+   const value=Number(raw[key]);
+   if(allowed.has(key)&&Number.isFinite(value)&&value!==0)safeEffects[key]=Math.max(-1000000,Math.min(1000000,Math.round(value)));
+  });
+  if(Object.keys(safeEffects).length)effects(safeEffects);
+  log(String(item.icon||'📌').slice(0,8),String(item.title||'أثر قرار سابق').slice(0,100),String(item.text||'ظهر أثر قرار سابق في حياتك.').slice(0,260),item.tone==='good'?'good':'special');
+  processed++;
+ });
+ state.pendingLifeConsequences=queue.filter(item=>item&&typeof item==='object'&&Number.isFinite(Number(item.dueAge))&&Number(item.dueAge)>currentAge).slice(-20);
+ return processed;
+}
 function advanceAge(){
  if(!validState())return;
  state.age++;state.yearCount++;if(perkEnabled('hollywoodStar')&&(state.job||state.specialCareer))state.fame=100;
@@ -5273,6 +5325,7 @@ function advanceAge(){
  if(state.age===60&&!state.retired){state.retired=true;if(state.job){archiveCurrentJob('تقاعد');log('🌅','التقاعد','وصلت لسن التقاعد. حان وقت الراحة والاستمتاع باللي بنيته.','special');state.job=null;}achievement('وصلت لمرحلة التقاعد');}
  if(state.age===60)log('🌅','ستون سنة من الحكايات','وصلت لمرحلة جديدة. اهتم بصحتك وعلاقاتك وخططك للسنين الجاية.','special');
  if(state.age>=65&&chance(.12))state.stats.health=clamp(state.stats.health-5);
+ resolveLifeConsequences();
  state.wealthPeak=Math.max(state.wealthPeak,state.bank);render();save();
  if(state.stats.health<=0){death('تدهور الحالة الصحية');return;}
  let risk=state.age>95?.2:state.age>90?.12:state.age>85?.06:state.age>80?.025:0;
