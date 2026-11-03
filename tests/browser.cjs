@@ -340,17 +340,48 @@ async function run() {
     await page.setViewportSize({ width: 710, height: 1100 });
     await page.waitForTimeout(40);
     assertDockAligned(await measureDock(), '710px portrait/tablet viewport');
-    await page.setViewportSize({ width: 390, height: 844 });
+    await page.setViewportSize({ width: 390, height: 600 });
     await page.waitForTimeout(40);
-
+    const compactLayout = await page.evaluate(() => {
+      const rect = selector => document.querySelector(selector).getBoundingClientRect();
+      const topbar = rect('.topbar'), hero = rect('.hero'), heading = rect('.story-heading');
+      const feed = rect('.feed'), dock = rect('.bottom-dock'), nav = rect('.nav'), ageButton = rect('.agebtn');
+      return {
+        headerBottom: heading.bottom,
+        feedHeight: feed.height,
+        feedBottom: feed.bottom,
+        dockTop: dock.top,
+        navHeight: nav.height,
+        ageButtonHeight: ageButton.height,
+        topbarHeight: topbar.height,
+        heroHeight: hero.height,
+        headingHeight: heading.height
+      };
+    });
+    assert.ok(compactLayout.topbarHeight <= 70, 'short screens should use a compact top bar');
+    assert.ok(compactLayout.heroHeight <= 70, 'short screens should compact the identity panel');
+    assert.ok(compactLayout.headingHeight <= 48, 'short screens should compact the diary heading');
+    assert.ok(compactLayout.navHeight <= 58, 'short screens should compact the bottom navigation');
+    assert.ok(compactLayout.ageButtonHeight <= 54, 'the age-up action should shrink without disappearing');
+    assert.ok(compactLayout.feedHeight >= 180, 'short screens should preserve a useful scrollable diary area');
+    assert.ok(compactLayout.feedBottom <= compactLayout.dockTop + 1.5,
+      'the compact diary must remain above the bottom dock');
 
     await page.locator('[data-panel="activities"]').click();
     await page.getByText('اختيارات سريعة').waitFor();
     await page.getByText('إدارة الشخصية').waitFor();
+    const compactDrawerAlignment = await page.evaluate(() => ({
+      overlayTop: document.querySelector('#modalRoot .drawer-overlay').getBoundingClientRect().top,
+      headingBottom: document.querySelector('.story-heading').getBoundingClientRect().bottom
+    }));
+    assert.ok(Math.abs(compactDrawerAlignment.overlayTop - compactDrawerAlignment.headingBottom) <= 2,
+      'the compact drawer should begin directly below the shortened app header');
     assert.equal(await page.locator('#modalRoot .modal.drawer').count(), 1,
       'the Arabic activities screen should use the organized drawer layout');
     await page.keyboard.press('Escape');
     await page.waitForFunction(() => !document.querySelector('#modalRoot [role="dialog"]'));
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.waitForTimeout(40);
 
     await page.locator('[data-panel="relations"]').click();
     await page.getByText('الوالدان').waitFor();

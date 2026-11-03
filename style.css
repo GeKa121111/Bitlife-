@@ -2559,3 +2559,63 @@ body.theme-gold .statboost-btn{background:#f7edcf;color:#89631a;border-color:#c8
 
 /* Keyboard bypass for the long life diary; motion remains optional. */
 @media(prefers-reduced-motion:reduce){.skip-link{transition:none!important}}
+
+
+/* v120: reclaim vertical space on short mobile viewports without hiding life information. */
+@media(max-height:620px){
+  #app > .topbar{
+    height:calc(50px + env(safe-area-inset-top))!important;
+    min-height:calc(50px + env(safe-area-inset-top))!important;
+  }
+  #app > .hero{
+    height:68px!important;
+    min-height:68px!important;
+    flex-basis:68px!important;
+    padding-block:6px!important;
+    gap:8px!important;
+  }
+  #app > .hero .avatar{
+    width:42px!important;
+    height:42px!important;
+    flex-basis:42px!important;
+  }
+  #app > .story-heading{
+    height:46px!important;
+    min-height:46px!important;
+    flex-basis:46px!important;
+    padding-block:5px!important;
+  }
+  #app > .story-heading h1{font-size:12px!important}
+  #app > .feed{padding-top:2px!important;padding-bottom:8px!important}
+  #app > .bottom-dock > .stats{
+    padding:6px 10px 5px!important;
+    gap:4px 8px!important;
+  }
+  #app > .bottom-dock > .stats .stathead{margin-bottom:2px!important}
+  #app > .bottom-dock > .stats .track{height:5px!important}
+  #app > .bottom-dock > .nav{
+    height:56px!important;
+    min-height:56px!important;
+    flex-basis:56px!important;
+    padding-top:2px!important;
+    padding-bottom:1px!important;
+  }
+  #app > .bottom-dock > .nav > .navbtn{
+    min-height:48px!important;
+    padding-top:2px!important;
+    padding-bottom:2px!important;
+    gap:2px!important;
+  }
+  #app > .bottom-dock > .nav > .agebtn{
+    width:52px!important;
+    height:52px!important;
+    min-width:52px!important;
+    flex-basis:52px!important;
+    margin-top:-10px!important;
+  }
+  #modalRoot .drawer-overlay{
+    inset:calc(50px + 68px + 46px + env(safe-area-inset-top)) 0 0!important;
+    left:calc(50% - min(310px,50vw))!important;
+    right:calc(50% - min(310px,50vw))!important;
+  }
+}
