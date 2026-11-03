@@ -3035,11 +3035,13 @@ test('مجتمع المقاتلين يستقبل منافسين جددًا كل 
     globalThis.secondCount = career.community.length;
     globalThis.roundTrip = normalizeCombatCommunity(career.community, state.yearCount);
     globalThis.unknown = normalizeCombatCommunity([...career.community, { id: 'unknown-rival', name: 'اسم غير موثوق' }], state.yearCount);
+    state.age = 22; state.yearCount = 4;
     globalThis.legacyCareer = { startedAge: 18, community: normalizeCombatCommunity([], state.yearCount) };
     globalThis.legacyBefore = advanceCombatCommunityRoster(legacyCareer);
     globalThis.legacyNextAge = legacyCareer.nextRecruitmentAge;
     state.age = 23; state.yearCount = 11;
     globalThis.legacyFirst = advanceCombatCommunityRoster(legacyCareer);
+    state.age = 22; state.yearCount = 4;
     globalThis.invalidCareer = { startedAge: 18, nextRecruitmentAge: 999, community: normalizeCombatCommunity([], state.yearCount) };
     globalThis.invalidBefore = advanceCombatCommunityRoster(invalidCareer);
     globalThis.invalidNextAge = invalidCareer.nextRecruitmentAge;
@@ -3050,6 +3052,7 @@ test('مجتمع المقاتلين يستقبل منافسين جددًا كل 
     }
     globalThis.finalCount = career.community.length;
     globalThis.uniqueIds = new Set(career.community.map(fighter => fighter.id)).size;
+    state.age = career.nextRecruitmentAge; state.yearCount++;
     globalThis.exhausted = advanceCombatCommunityRoster(career);
     globalThis.exhaustedNextAge = career.nextRecruitmentAge;
   `, context);
