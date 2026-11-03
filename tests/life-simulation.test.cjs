@@ -104,6 +104,11 @@ const combatEnd = app.indexOf('const combatMoveMasteryThresholds=', combatStart)
 assert.ok(combatStart >= 0 && combatEnd > combatStart, 'combat recovery helpers must exist');
 const combatRecoverySource = app.slice(combatStart, combatEnd);
 const combatCommunitySource = extractFunction('advanceCombatCommunity');
+const combatCommunityProfilesStart = app.indexOf('const combatCommunityProfiles=[');
+const combatCommunityProfilesEnd = app.indexOf('function combatRoundEnergy', combatCommunityProfilesStart);
+assert.ok(combatCommunityProfilesStart >= 0 && combatCommunityProfilesEnd > combatCommunityProfilesStart, 'combat community catalog must be available to the annual simulation harness');
+const combatCommunityProfilesSource = app.slice(combatCommunityProfilesStart, combatCommunityProfilesEnd);
+const combatCommunityRosterSource = extractFunction('advanceCombatCommunityRoster');
 
 const harnessSource = String.raw`
 'use strict';
