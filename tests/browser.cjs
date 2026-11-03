@@ -450,14 +450,18 @@ async function run() {
           const rect = element.getBoundingClientRect();
           return { left: rect.left, right: rect.right, width: rect.width, height: rect.height };
         };
-        const headerParts = ['#menuBtn', '.brandlogo', '.top-actions'].map(box);
+        const headerParts = ['#menuBtn', '.brandlogo', '.top-actions'].map(selector => ({
+          selector, ...box(selector)
+        }));
         const headerOverlap = headerParts.some((left, index) =>
           headerParts.slice(index + 1).some(right =>
-            left && right && left.left < right.right - 1 && left.right > right.left + 1));
+            Number.isFinite(left.left) && Number.isFinite(right.left) &&
+            left.left < right.right - 1 && left.right > right.left + 1));
         return {
           documentWidth: document.documentElement.scrollWidth,
           appWidth: box('#app')?.width || 0,
           headerOverlap,
+          headerParts,
           targets: ['#menuBtn', '#profileBtn', '#marketBtn', '#characterInfoBtn', '#ageUpBtn'].map(box)
         };
       });
@@ -466,7 +470,8 @@ async function run() {
       assert.ok(narrowViewport.appWidth > 0 && narrowViewport.appWidth <= width + 1,
         width + 'px viewport should contain the app shell');
       assert.equal(narrowViewport.headerOverlap, false,
-        width + 'px viewport should keep the menu, brand, and header actions separated');
+        width + 'px viewport should keep the menu, brand, and header actions separated: ' +
+        JSON.stringify(narrowViewport.headerParts));
       for (const [index, target] of narrowViewport.targets.entries()) {
         const selector = ['#menuBtn', '#profileBtn', '#marketBtn', '#characterInfoBtn', '#ageUpBtn'][index];
         assert.ok(target && target.width > 0 && target.height > 0,
