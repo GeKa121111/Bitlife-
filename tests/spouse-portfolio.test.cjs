@@ -38,7 +38,7 @@ function makeContext(overrides={}){
    }
    return {ok:true,ownedProperties:next,transferIds,propertyCount};
   },
-  siblingChildInheritedPropertyAnnualEffects(relative,beneficiary,portfolio,year){return context.nextEffects.length?context.nextEffects.shift():{propertyExpenses:0,rentalIncome:0,mortgageDueTotal:0,mortgageDues:[],propertyCount:portfolio.ownedProperties.length};},
+  siblingChildInheritedPropertyAnnualEffects(relative,beneficiary,portfolio,year){context.lastPropertyOwner=relative;return context.nextEffects.length?context.nextEffects.shift():{propertyExpenses:0,rentalIncome:0,mortgageDueTotal:0,mortgageDues:[],propertyCount:portfolio.ownedProperties.length};},
   siblingProfileMortgageLiability(profile){return (profile.ownedProperties||[]).reduce((sum,asset)=>sum+Number(asset.mortgage&&asset.mortgage.balance||0)+Number(asset.mortgage&&asset.mortgage.arrears||0),0);},
   siblingOwnedPropertyValue(profile){return (profile.ownedProperties||[]).reduce((sum,asset)=>sum+Number(asset.marketValue||0),0);},
   siblingMortgageSettlement(asset,year,due,unpaid){
@@ -88,7 +88,7 @@ test('المحفظة تعالج الإيجار والصيانة وتسدد جز�
  const spouse={id:'spouse-cashflow',name:'شريك المحفظة',age:60,deceased:false,inheritance:{records:[]},inheritanceCashBalance:1000,inheritanceDebtBalance:500,
   portfolio:{ownedProperties:[{id:'rental-1',kind:'rental',marketValue:10000,lastPropertyYear:2027,lastMarketYear:2027,lastRentYear:2027}],lastProcessedYear:2027,history:[]}};
  const relative={id:'relative-cashflow',deceased:true,economicProfile:{household:{spouse}}},result=context.processSpousePortfolioYear(relative,spouse,2028);
- assert.equal(result.duplicate,false);assert.equal(result.rentalIncome,1000);assert.equal(result.propertyExpenses,100);
+ assert.equal(result.duplicate,false);assert.equal(context.lastPropertyOwner.id,spouse.id);assert.equal(result.rentalIncome,1000);assert.equal(result.propertyExpenses,100);
  assert.equal(spouse.inheritanceCashBalance,1675);assert.equal(spouse.inheritanceDebtBalance,275);assert.equal(spouse.portfolio.lastProcessedYear,2028);assert.equal(spouse.portfolio.netWorth,11400);
  const before=spouse.inheritanceCashBalance,duplicate=context.processSpousePortfolioYear(relative,spouse,2028);
  assert.equal(duplicate.duplicate,true);assert.equal(spouse.inheritanceCashBalance,before);
