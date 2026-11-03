@@ -2088,7 +2088,7 @@ test('تدريب حركة محددة يرفع الإتقان مرة سنويًا
     'the selected move progress and yearly guard should be persisted together');
   assert.ok(app.includes('تقدم الإتقان') && app.includes('25 نقطة إتقان'),
     'the UI should describe progress accurately without counting practice as a live bout');
-  assert.match(app, /جلسات تطوير القدرات تكلف 1,500[\\s\\S]{0,120}جلسة تدريب الحركة المحددة تكلف 1,200/,
+  assert.ok(app.includes("جلسات تطوير القدرات تكلف 1,500 '+state.place.unit+'. جلسة تدريب الحركة المحددة تكلف 1,200 '+state.place.unit+'."),
     'the training menu should show the separate, correct price for focused move practice');
   assert.match(read('sw.js'), /hayah-shell-v133/);
 });
