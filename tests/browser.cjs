@@ -582,6 +582,40 @@ async function run() {
       return focusable.length > 0 && document.activeElement === focusable[0];
     });
     assert.equal(wrappedToFirst, true, 'Tab from the last control should wrap to the first control');
+    const modalFocusProbe = await page.evaluate(() => {
+      const dialog = document.querySelector('#modalRoot [role="dialog"]');
+      const target = document.activeElement;
+      const measure = () => {
+        const style = getComputedStyle(target);
+        return {
+          inside: !!dialog && dialog.contains(target),
+          keyboardVisible: target.matches(':focus-visible'),
+          outlineStyle: style.outlineStyle,
+          outlineWidth: style.outlineWidth,
+          outlineOffset: style.outlineOffset,
+          outlineColor: style.outlineColor
+        };
+      };
+      const light = measure();
+      document.body.classList.add('theme-dark');
+      const dark = measure();
+      document.body.classList.remove('theme-dark');
+      document.body.classList.add('theme-gold');
+      const gold = measure();
+      document.body.classList.remove('theme-gold');
+      return { light, dark, gold };
+    });
+    assert.equal(modalFocusProbe.light.inside, true,
+      'the focused control should remain inside the open dialog');
+    assert.equal(modalFocusProbe.light.keyboardVisible, true,
+      'keyboard navigation inside a dialog should expose the focus ring');
+    assert.equal(modalFocusProbe.light.outlineStyle, 'solid');
+    assert.equal(modalFocusProbe.light.outlineWidth, '3px');
+    assert.equal(modalFocusProbe.light.outlineOffset, '3px');
+    assert.notEqual(modalFocusProbe.light.outlineColor, modalFocusProbe.dark.outlineColor,
+      'dialog focus should use a distinct dark-theme color');
+    assert.notEqual(modalFocusProbe.light.outlineColor, modalFocusProbe.gold.outlineColor,
+      'dialog focus should use a distinct gold-theme color');
     await page.keyboard.press('Escape');
     await page.waitForFunction(() => !document.querySelector('#modalRoot [role="dialog"]'));
     assert.equal(await page.evaluate(() => document.activeElement && document.activeElement.getAttribute('data-panel')), 'career',

@@ -2662,3 +2662,18 @@ body.theme-gold{--hayah-focus-ring:#76520f}
   outline:3px solid var(--hayah-focus-ring,#075e59);
   outline-offset:3px;
 }
+
+
+/* v127: keep keyboard focus equally visible inside modal drawers and dialogs. */
+#modalRoot .modal button:focus-visible,
+#modalRoot .modal input:focus-visible,
+#modalRoot .modal select:focus-visible,
+#modalRoot .modal textarea:focus-visible,
+#modalRoot .modal a[href]:focus-visible,
+#modalRoot .modal [role="button"]:focus-visible,
+#modalRoot .modal [tabindex="0"]:focus-visible{
+  outline:3px solid var(--hayah-focus-ring,#075e59)!important;
+  outline-offset:3px!important;
+  position:relative;
+  z-index:4;
+}
