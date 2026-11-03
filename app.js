@@ -5819,7 +5819,37 @@ function applyJob(job){
    log('💼','انتقال مهني ناجح','انتقلت من '+previousJob.title+' إلى '+job.title+' براتب سنوي '+cash(job.salary)+'. تم حفظ مسارك السابق في السجل.','good');
    info('🎉','مبروك الانتقال','اتقبلت في '+job.title+'. بدأت درجة جديدة مع الاحتفاظ بتاريخك الوظيفي وتقييم أدائك السابق.');
   }else{
-   log('💼','اتقبلت في وظيفة جديدة','بدأت شغfunction assets(){
+   log('💼','اتقبلت في وظيفة جديدة','بدأت شغل '+job.title+' براتب سنوي '+cash(job.salary)+'.','good');
+   info('🎉','مبروك الوظيفة','اتقبلت في '+job.title+'. كل سنة هتستلم دخل على قد أداءك.');
+  }
+  achievement('بدأت العمل: '+job.title);
+ }else{
+  log('📨','طلب وظيفة','قدمت على '+job.title+' لكنهم اختاروا مرشحًا آخر. جهّز نفسك وحاول تاني.','bad');
+  info('📨','المرة الجاية','طوّر مهاراتك وخليك مستمر في التقديم. وظيفتك الحالية لم تتأثر.');
+ }
+ render();
+}
+
+function university(from18){
+ if(state.age<18){info('🔒','لسه بدري','تقدر تقدم للجامعة بعد سن 18.');return;}
+ if(state.education.yearsLeft>0){info('🎓','أنت طالب جامعي','تخصصك الحالي '+state.education.major+'. المتبقي '+state.education.yearsLeft+' سنوات.');return;}
+ const majorOptions=majors.map(m=>'<option value="'+esc(m.id)+'">'+esc(m.title+' — '+m.years+' سنوات — '+cash(m.cost)+' سنويًا')+'</option>').join('');
+ const form='<div class="event-form"><label for="majorSelect">اختار تخصصك:</label><select id="majorSelect" data-surpriseable="true">'+majorOptions+'</select><p class="field-note">القبول بيتطلب مستوى ذكاء مناسب ورصيد يغطي رسوم أول سنة.</p></div>';
+ const applyMajor=()=>{
+  const m=majors.find(item=>item.id===$('majorSelect')?.value);
+  if(!m){info('🎓','اختار تخصصك','حدد تخصصًا من القائمة الأول.');return;}
+  closeModal();
+  if(state.stats.smart<m.min){info('🧠','محتاج تستعد أكتر','التخصص ده محتاج ذكاء '+m.min+'% على الأقل. استخدم المكتبة وطوّر مهاراتك.');return;}
+  if(state.bank<m.cost){info('💳','الرسوم مش متاحة','محتاج '+cash(m.cost)+' كبداية. ممكن تبدأ شغل أو تجمع فلوس.');return;}
+  state.bank-=m.cost;flash('-'+cash(m.cost),true);state.education.major=m.title;state.education.yearsLeft=m.years;state.education.tuition=m.cost;state.education.prepaidYear=true;state.education.school='جامعة - '+m.title;state.stats.smart=clamp(state.stats.smart+3);log('🏛️','بدأت الجامعة','اتقبلت في '+m.title+'. دفعت رسوم السنة الأولى '+cash(m.cost)+'.','special');achievement('الالتحاق بالجامعة: '+m.title);render();info('🎓','أهلًا بالجامعة','هتتقدم في الدراسة مع مرور السنين. حاول تحافظ على صحتك ومستواك.');
+ };
+ modal('🏛️','التخصصات الجامعية','قدّم للجامعة واختار التخصص اللي يناسبك.',[
+  choice('🎓','التقديم للجامعة','تأكيد التخصص ودفع رسوم السنة الأولى.',applyMajor),
+  choice('📚','أستعد للدراسة','نشاط مجاني يزيد الذكاء.',()=>{closeModal();stat('smart',4);log('📚','استعداد للجامعة','قضيت وقتًا في التعلم قبل التقديم.');render();})
+ ],true,form);
+}
+
+function assets(){
  const opts=[
   section('المالية'),
   markMenuRow(choice('💰','الحسابات والمالية','الرصيد '+cash(state.bank)+' · صافي الثروة '+cash(state.bank+(state.assets||[]).reduce((sum,a)=>sum+(a.value||0),0)+(state.investments||[]).reduce((sum,a)=>sum+(a.value||0),0)-(state.debt||0))+'.',()=>{closeModal();financeMenu();})),
@@ -5843,22 +5873,6 @@ function applyJob(job){
  modal('🏠','الأصول','إدارة المال والممتلكات والمشروعات والمقتنيات التي تملكها.',opts);
 }
 
-,()=>{closeModal();shoppingMenu();},'',null,false),
-  choice('🦁','حديقة الحيوانات','امتلك حديقة حيوان واعتنِ بالحيوانات.',()=>routePack('zooExpansionPack',zooMenu),'',null,!perkOwned('zooExpansionPack')),
-  ...((state.assets||[]).some(a=>a.kind==='property')?[section('العقارات'),...(state.assets||[]).filter(a=>a.kind==='property').map(a=>choice(a.emoji||'🏠',a.title,'القيمة '+cash(a.value)+' · '+(a.tenant?'مؤجر':'غير مؤجر'),manageAssets,cash(a.value)))]:[]),
-  ...((state.assets||[]).some(a=>['car','bike','racecar','aircraft','helicopter','boat'].includes(a.kind))?[section('المركبات'),...(state.assets||[]).filter(a=>['car','bike','racecar','aircraft','helicopter','boat'].includes(a.kind)).map(a=>choice(a.emoji||'🚘',a.title,(Number.isFinite(Number(a.condition))?'الحالة '+clamp(a.condition)+'% · ':'')+'القيمة '+cash(a.value||0),manageAssets,cash(a.value||0),Number.isFinite(Number(a.condition))?clamp(a.condition):null))]:[section('المركبات'),choice('🚘','لا توجد مركبات بعد','تصفّح معارض السيارات والمركبات.',shoppingMenu)]),
-  section('المقتنيات'),
-  choice('🎒','ممتلكاتي','إدارة الممتلكات والأصول التي تملكها بالفعل.',manageAssets),
-  choice('🐾','الحيوانات الأليفة','عرض الحيوانات الأليفة ورعايتها.',petsMenu),
-  ...(state.business?[choice('🏪','إدارة مشروعي','قيمة المشروع '+cash(state.business.value)+' · المستوى '+(state.business.level||1)+'.',openPrimaryBusinessMenu)]:[]),
-  ...((state.companies||[]).length?[section('الشركات المملوكة'),...(state.companies||[]).map((company,i)=>choice(company.emoji||'🏢',company.title,'القطاع '+company.sector+' · القيمة '+cash(company.value)+' · الفريق '+(Array.isArray(company.staff)?company.staff.length:0)+' · المنتجات '+(Array.isArray(company.products)?company.products.filter(product=>product&&product.active!==false).length:0),()=>companyDetailMenu(i),cash(company.value)))]:[]),
-  section('متفرقات'),
-  choice('📱','السوشيال ميديا','أنشئ حسابات على منصات مختلفة وتابع جمهورك.',()=>{closeModal();socialMediaMenu();}),
-  choice('🏢','محفظة الشركات','اشترِ شركات إضافية وراجع تقاريرها.',()=>routePack('businessPack',companyPortfolioMenu),'',null,!perkOwned('businessPack'))
- ];
- const shopBanner=choice('🛍️','التسوّق','دراجات، سيارات، مجوهرات، آلات موسيقية، عقارات ومركبات خاصة.',shoppingMenu);shopBanner.banner=true;opts.push(shopBanner);
- modal('🏠','الأصول','إدارة المال والأصول والمقتنيات والمركبات التي تملكها.',opts);
-}
 function markMenuRow(row){row.menuDots=true;return row;}
 function shoppingMenu(){
  const opts=[
