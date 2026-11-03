@@ -2619,3 +2619,33 @@ body.theme-gold .statboost-btn{background:#f7edcf;color:#89631a;border-color:#c8
     right:calc(50% - min(310px,50vw))!important;
   }
 }
+
+
+/* v121: extend the readable-text preference across decisions and supporting UI. */
+body.text-large .choice .ctitle{font-size:14px!important;line-height:1.55!important}
+body.text-large .choice .cdesc,
+body.text-large .desc,
+body.text-large .muted,
+body.text-large .sectionmeta,
+body.text-large .story-year,
+body.text-large .story-eyebrow{font-size:12px!important;line-height:1.75!important}
+body.text-large .sectiontitle,
+body.text-large .modaltitle,
+body.text-large .listtitle{font-size:16px!important;line-height:1.55!important}
+body.text-large .choice{min-height:62px}
+body.text-large .choice .choiceico{font-size:24px}
+body.text-large .smallbtn,
+body.text-large .primarybtn,
+body.text-large .closebtn{font-size:13px!important}
+body.text-large .statlabel,
+body.text-large .statvalue,
+body.text-large .navbtn{font-size:11px!important}
+
+/* Respect the operating system's reduced-motion preference throughout the interface. */
+@media(prefers-reduced-motion:reduce){
+  *,*::before,*::after{
+    animation:none!important;
+    transition:none!important;
+    scroll-behavior:auto!important;
+  }
+}
