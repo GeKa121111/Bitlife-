@@ -222,6 +222,31 @@ async function run() {
     assert.equal(await page.evaluate(() => location.hash), '#lifeFeed',
       'activating the skip link should move keyboard focus to the life diary');
     await page.evaluate(() => { history.replaceState(null, '', location.pathname); window.scrollTo(0, 0); });
+    await page.keyboard.press('Tab');
+    const keyboardFocusProbe = await page.evaluate(() => {
+      const target = document.activeElement;
+      const measure = () => {
+        const style = getComputedStyle(target);
+        return { color: style.outlineColor, style: style.outlineStyle, width: style.outlineWidth, offset: style.outlineOffset };
+      };
+      const light = measure();
+      document.body.classList.add('theme-dark');
+      const dark = measure();
+      document.body.classList.remove('theme-dark');
+      document.body.classList.add('theme-gold');
+      const gold = measure();
+      document.body.classList.remove('theme-gold');
+      return { tag: target.tagName, className: String(target.className || ''), light, dark, gold };
+    });
+    assert.equal(keyboardFocusProbe.tag, 'BUTTON', 'keyboard navigation should reach the first main navigation button');
+    assert.match(keyboardFocusProbe.className, /navbtn/, 'the first sequential control after the diary should be a main navigation item');
+    assert.equal(keyboardFocusProbe.light.style, 'solid', 'keyboard focus should have a visible outline');
+    assert.equal(keyboardFocusProbe.light.width, '3px', 'keyboard focus should use a clearly visible three-pixel ring');
+    assert.equal(keyboardFocusProbe.light.offset, '3px', 'keyboard focus should be separated from the control edge');
+    assert.notEqual(keyboardFocusProbe.light.color, keyboardFocusProbe.dark.color,
+      'dark mode should use its own high-contrast focus color');
+    assert.notEqual(keyboardFocusProbe.light.color, keyboardFocusProbe.gold.color,
+      'the gold theme should use its own high-contrast focus color');
     assert.equal(await page.locator('#adSlot, #closeAdSlot, .ad-slot').count(), 0,
       'the trial advertising placeholder should not render in the mobile UI');
 

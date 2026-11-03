@@ -2649,3 +2649,16 @@ body.text-large .navbtn{font-size:11px!important}
     scroll-behavior:auto!important;
   }
 }
+
+
+/* v126: theme-aware, high-contrast keyboard focus for the main Hayah shell. */
+:root{--hayah-focus-ring:#075e59}
+body.theme-dark{--hayah-focus-ring:#a6ead5}
+body.theme-gold{--hayah-focus-ring:#76520f}
+#app button:focus-visible,
+#app a[href]:focus-visible,
+#app [role="button"]:focus-visible,
+#app [tabindex="0"]:focus-visible{
+  outline:3px solid var(--hayah-focus-ring,#075e59);
+  outline-offset:3px;
+}
