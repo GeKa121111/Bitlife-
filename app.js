@@ -5819,51 +5819,31 @@ function applyJob(job){
    log('💼','انتقال مهني ناجح','انتقلت من '+previousJob.title+' إلى '+job.title+' براتب سنوي '+cash(job.salary)+'. تم حفظ مسارك السابق في السجل.','good');
    info('🎉','مبروك الانتقال','اتقبلت في '+job.title+'. بدأت درجة جديدة مع الاحتفاظ بتاريخك الوظيفي وتقييم أدائك السابق.');
   }else{
-   log('💼','اتقبلت في وظيفة جديدة','بدأت شغل '+job.title+' براتب سنوي '+cash(job.salary)+'.','good');
-   info('🎉','مبروك الوظيفة','اتقبلت في '+job.title+'. كل سنة هتستلم دخل على قد أداءك.');
-  }
-  achievement('بدأت العمل: '+job.title);
- }else{
-  log('📨','طلب وظيفة','قدمت على '+job.title+' لكنهم اختاروا مرشحًا آخر. جهّز نفسك وحاول تاني.','bad');
-  info('📨','المرة الجاية','طوّر مهاراتك وخليك مستمر في التقديم. وظيفتك الحالية لم تتأثر.');
- }
- render();
-}
-
-function university(from18){
- if(state.age<18){info('🔒','لسه بدري','تقدر تقدم للجامعة بعد سن 18.');return;}
- if(state.education.yearsLeft>0){info('🎓','أنت طالب جامعي','تخصصك الحالي '+state.education.major+'. المتبقي '+state.education.yearsLeft+' سنوات.');return;}
- const majorOptions=majors.map(m=>'<option value="'+esc(m.id)+'">'+esc(m.title+' — '+m.years+' سنوات — '+cash(m.cost)+' سنويًا')+'</option>').join('');
- const form='<div class="event-form"><label for="majorSelect">اختار تخصصك:</label><select id="majorSelect" data-surpriseable="true">'+majorOptions+'</select><p class="field-note">القبول بيتطلب مستوى ذكاء مناسب ورصيد يغطي رسوم أول سنة.</p></div>';
- const applyMajor=()=>{
-  const m=majors.find(item=>item.id===$('majorSelect')?.value);
-  if(!m){info('🎓','اختار تخصصك','حدد تخصصًا من القائمة الأول.');return;}
-  closeModal();
-  if(state.stats.smart<m.min){info('🧠','محتاج تستعد أكتر','التخصص ده محتاج ذكاء '+m.min+'% على الأقل. استخدم المكتبة وطوّر مهاراتك.');return;}
-  if(state.bank<m.cost){info('💳','الرسوم مش متاحة','محتاج '+cash(m.cost)+' كبداية. ممكن تبدأ شغل أو تجمع فلوس.');return;}
-  state.bank-=m.cost;flash('-'+cash(m.cost),true);state.education.major=m.title;state.education.yearsLeft=m.years;state.education.tuition=m.cost;state.education.prepaidYear=true;state.education.school='جامعة - '+m.title;state.stats.smart=clamp(state.stats.smart+3);log('🏛️','بدأت الجامعة','اتقبلت في '+m.title+'. دفعت رسوم السنة الأولى '+cash(m.cost)+'.','special');achievement('الالتحاق بالجامعة: '+m.title);render();info('🎓','أهلًا بالجامعة','هتتقدم في الدراسة مع مرور السنين. حاول تحافظ على صحتك ومستواك.');
- };
- modal('🏛️','التخصصات الجامعية','قدّم للجامعة واختار التخصص اللي يناسبك.',[
-  choice('🎓','التقديم للجامعة','تأكيد التخصص ودفع رسوم السنة الأولى.',applyMajor),
-  choice('📚','أستعد للدراسة','نشاط مجاني يزيد الذكاء.',()=>{closeModal();stat('smart',4);log('📚','استعداد للجامعة','قضيت وقتًا في التعلم قبل التقديم.');render();})
- ],true,form);
-}
-
-function assets(){
+   log('💼','اتقبلت في وظيفة جديدة','بدأت شغfunction assets(){
  const opts=[
   section('المالية'),
   markMenuRow(choice('💰','الحسابات والمالية','الرصيد '+cash(state.bank)+' · صافي الثروة '+cash(state.bank+(state.assets||[]).reduce((sum,a)=>sum+(a.value||0),0)+(state.investments||[]).reduce((sum,a)=>sum+(a.value||0),0)-(state.debt||0))+'.',()=>{closeModal();financeMenu();})),
   choice('📊','الاستثمارات','إدارة محفظة الأسهم والسندات والأصول المالية.',()=>{closeModal();investingMenu();}),
-  choice('💎','نمط الحياة الفاخر','صافي ثروتك الحالية '+cash(Math.max(0,state.bank+(state.assets||[]).reduce((sum,a)=>sum+(a.value||0),0)-(state.debt||0)))+'.',()=>{closeModal();manageAssets();},'',clamp(Math.round(Math.log10(Math.max(1,state.bank+(state.assets||[]).reduce((sum,a)=>sum+(a.value||0),0)))*13))),
-  section('مزايا خاصة ليك'),
-  choice('🎬','حزمة مخرج الأفلام','أخرج أفلامًا، اختبر الممثلين، واكسب الجوائز.',()=>routePack('movieDirectorPack',movieDirectorMenu),'',null,!perkOwned('movieDirectorPack')),
-  choice('🎲','توسعة الكازينو','امتلك كازينو وأدر الألعاب والمرافق.',()=>routePack('casinoPack',casinoMenu),'',null,!perkOwned('casinoPack')),
+  choice('💎','إدارة نمط المعيشة','صافي ثروتك الحالية '+cash(Math.max(0,state.bank+(state.assets||[]).reduce((sum,a)=>sum+(a.value||0),0)-(state.debt||0)))+'.',()=>{closeModal();manageAssets();},'',clamp(Math.round(Math.log10(Math.max(1,state.bank+(state.assets||[]).reduce((sum,a)=>sum+(a.value||0),0)))*13))),
+  section('إدارة الأصول المتخصصة'),
   choice('🏘️','العقارات والملاك','أدر المستأجرين والعقود والعقارات المتقدمة.',()=>routePack('landlordPack',landlordPortfolioMenu),'',null,!perkOwned('landlordPack')),
-  section('الأصول المميزة'),
-  choice('🔨','بيوت المزادات','اقتناء المقتنيات النادرة وعرضها.',()=>routePack('blackMarketPack',blackMarketMenu),'',null,!perkOwned('blackMarketPack')),
-  choice('🎰','الكازينو','إدارة الألعاب والمرافق داخل الكازينو.',()=>routePack('casinoPack',casinoMenu),'',null,!perkOwned('casinoPack')),
+  choice('🎰','الكازينو','امتلك كازينو وأدر الألعاب والمرافق.',()=>routePack('casinoPack',casinoMenu),'',null,!perkOwned('casinoPack')),
+  choice('🔨','بيوت المزادات','اقتناء المقتنيات النادرة وإدارة المزادات.',()=>routePack('blackMarketPack',blackMarketMenu),'',null,!perkOwned('blackMarketPack')),
   choice('🏛️','المتحف','اعرض مقتنياتك واجذب الزوار.',()=>routePack('blackMarketPack',museumMenu),'',null,!perkOwned('blackMarketPack')),
-  choice('🏎️','مرآب سيارات السباق','شراء سيارات سباق وإدارة المركبات.',()=>{closeModal();shoppingMenu();},'',null,false),
+  choice('🦁','حديقة الحيوانات','امتلك حديقة حيوان واعتنِ بالحيوانات.',()=>routePack('zooExpansionPack',zooMenu),'',null,!perkOwned('zooExpansionPack')),
+  ...((state.assets||[]).some(a=>a.kind==='property')?[section('العقارات المملوكة'),...(state.assets||[]).filter(a=>a.kind==='property').map(a=>choice(a.emoji||'🏠',a.title,'القيمة '+cash(a.value)+' · '+(a.tenant?'مؤجر':'غير مؤجر'),manageAssets,cash(a.value)))]:[]),
+  ...((state.assets||[]).some(a=>['car','bike','racecar','aircraft','helicopter','boat'].includes(a.kind))?[section('المركبات المملوكة'),...(state.assets||[]).filter(a=>['car','bike','racecar','aircraft','helicopter','boat'].includes(a.kind)).map(a=>choice(a.emoji||'🚘',a.title,(Number.isFinite(Number(a.condition))?'الحالة '+clamp(a.condition)+'% · ':'')+'القيمة '+cash(a.value||0),manageAssets,cash(a.value||0),Number.isFinite(Number(a.condition))?clamp(a.condition):null))]:[section('المركبات'),choice('🚘','لا توجد مركبات بعد','تصفّح معارض السيارات والمركبات.',shoppingMenu)]),
+  section('الممتلكات والمشروعات'),
+  choice('🎒','ممتلكاتي','إدارة الممتلكات والأصول التي تملكها بالفعل.',manageAssets),
+  ...(state.business?[choice('🏪','إدارة مشروعي','قيمة المشروع '+cash(state.business.value)+' · المستوى '+(state.business.level||1)+'.',openPrimaryBusinessMenu)]:[]),
+  ...((state.companies||[]).length?[section('الشركات المملوكة'),...(state.companies||[]).map((company,i)=>choice(company.emoji||'🏢',company.title,'القطاع '+company.sector+' · القيمة '+cash(company.value)+' · الفريق '+(Array.isArray(company.staff)?company.staff.length:0)+' · المنتجات '+(Array.isArray(company.products)?company.products.filter(product=>product&&product.active!==false).length:0),()=>companyDetailMenu(i),cash(company.value)))]:[]),
+  choice('🏢','محفظة الشركات','اشترِ شركات إضافية وراجع تقاريرها.',()=>routePack('businessPack',companyPortfolioMenu),'',null,!perkOwned('businessPack'))
+ ];
+ const shopBanner=choice('🛍️','التسوّق','دراجات، سيارات، مجوهرات، آلات موسيقية، عقارات ومركبات خاصة.',shoppingMenu);shopBanner.banner=true;opts.push(shopBanner);
+ modal('🏠','الأصول','إدارة المال والممتلكات والمشروعات والمقتنيات التي تملكها.',opts);
+}
+
+,()=>{closeModal();shoppingMenu();},'',null,false),
   choice('🦁','حديقة الحيوانات','امتلك حديقة حيوان واعتنِ بالحيوانات.',()=>routePack('zooExpansionPack',zooMenu),'',null,!perkOwned('zooExpansionPack')),
   ...((state.assets||[]).some(a=>a.kind==='property')?[section('العقارات'),...(state.assets||[]).filter(a=>a.kind==='property').map(a=>choice(a.emoji||'🏠',a.title,'القيمة '+cash(a.value)+' · '+(a.tenant?'مؤجر':'غير مؤجر'),manageAssets,cash(a.value)))]:[]),
   ...((state.assets||[]).some(a=>['car','bike','racecar','aircraft','helicopter','boat'].includes(a.kind))?[section('المركبات'),...(state.assets||[]).filter(a=>['car','bike','racecar','aircraft','helicopter','boat'].includes(a.kind)).map(a=>choice(a.emoji||'🚘',a.title,(Number.isFinite(Number(a.condition))?'الحالة '+clamp(a.condition)+'% · ':'')+'القيمة '+cash(a.value||0),manageAssets,cash(a.value||0),Number.isFinite(Number(a.condition))?clamp(a.condition):null))]:[section('المركبات'),choice('🚘','لا توجد مركبات بعد','تصفّح معارض السيارات والمركبات.',shoppingMenu)]),
@@ -10820,51 +10800,31 @@ function buyLuxuryItem(){
 function activities(){
  const netWorth=netWorthForLuxury();
  const opts=[
-  section('اختيارات سريعة'),
-  choice('❤️','الحب والعلاقات','تعرّف على شريك أو تابع علاقتك الحالية',()=>{closeModal();if(state.partner)relations();else meetPartner();}),
-  choice('🧘','الصحة والعافية','اهتم بصحتك ولياقتك وراحتك النفسية',healthMenu),
-  (()=>{const row=choice('🐕','الحيوانات الأليفة','تبنَّ حيوانًا أو تابع رعايته',petsMenu);row.menuDots=true;return row;})(),
-  choice('💆','العناية بالمظهر','غيّر إطلالتك وخد وقتًا لنفسك',salonMenu),
-  section('مسارات وتوسعات'),
-  (()=>{const row=choice('🎬','إخراج الأفلام','أخرج أعمالًا سينمائية وابنِ مسيرتك الفنية',()=>routePack('movieDirectorPack',movieDirectorMenu));row.cardClass='activity-movie-row';row.stamp='إخراج الأفلام';return row;})(),
-  (()=>{const row=choice('🧛','نمط مصاص الدماء','ابدأ حياة خارقة وابنِ سلالة خاصة',()=>routePack('vampireMode',vampireModeMenu));row.cardClass='activity-vampire-row';row.stamp='نمط خارق';return row;})(),
-  (()=>{const row=choice('🌲','الحياة في الطبيعة','استكشف الأنشطة الخارجية والرحلات',()=>routePack('outdoorsPack',outdoorLifestyleMenu));row.cardClass='activity-outdoors-row';row.stamp='الطبيعة';return row;})(),
-  (()=>{const row=choice('💎','نمط الحياة الفاخر','طوّر مستوى معيشتك واستثمر في الرفاهية',()=>routePack('gatedCommunityPack',gatedCommunityMenu),'',clamp(netWorth/20000000*100));row.cardClass='activity-luxury-row';row.menuDots=true;return row;})(),
-  choice('🎰','الكازينو','أنشئ كازينو وأدر ألعابه ومرافقه',()=>routePack('casinoPack',casinoMenu),'',null,!perkOwned('casinoPack')),
-  choice('🕶️','السوق الخفي','استكشف المقتنيات النادرة وأدر متحفك',()=>routePack('blackMarketPack',blackMarketMenu),'',null,!perkOwned('blackMarketPack')),
-  choice('🕯️','مجتمع خيالي','أنشئ مجتمعًا خاصًا وأدر أعضاءه وموارده',()=>routePack('cultPack',cultMenu),'',null,!perkOwned('cultPack')),
-  choice('🏁','سباقات السيارات','شارك في منافسات السرعة والتحديات',()=>{closeModal();specialCareers();},'',null,true),
-  choice('🕵️','العميل السري','افتح مسار المهمات والعمليات الخاصة',()=>{closeModal();premiumPerksMenu();},'',null,true),
-  choice('🦁','حديقة الحيوانات','امتلك حديقة حيوان واعتنِ بالحيوانات',()=>routePack('zooExpansionPack',zooMenu),'',null,!perkOwned('zooExpansionPack')),
-  section('أنشطة الحياة اليومية'),
-  choice('🩺','الصحة والعلاج','زيارة الطبيب والتمرين والراحة',healthMenu),
-  choice('🎨','الهوايات والمهارات','ابدأ هواية أو طوّر مهاراتك',hobbiesMenu),
-  choice('🐾','رعاية الحيوانات','تبنَّ حيوانًا أو اهتم بحيواناتك الحالية',petsMenu),
-  choice('🌟','المهن الخاصة','التمثيل والموسيقى وصناعة المحتوى والرياضة',specialCareers),
-  choice('⚖️','الجريمة والقانون','قرارات محفوفة بالمخاطر ولها عواقب',crimeMenu),
-  choice('🌍','السفر والهجرة','سافر في عطلة أو انتقل إلى بلد آخر',travelMenu),
-  choice('👪','الأسرة والأبناء','أدر الزواج والعلاقات ورعاية الأبناء',familyMenu),
-  choice('💈','المظهر والأناقة','غيّر أسلوبك واهتم بمظهرك',salonMenu),
-  choice('🎬','السينما','اختر فيلمًا لقضاء وقت ممتع',cinemaMenu),
-  choice('🩺','زيارة الطبيب','التكلفة '+cash(1200)+' · استعادة جزء من الصحة',()=>activity('doctor'),cash(1200)),
-  choice('🏋️','النادي الرياضي','التكلفة '+cash(300)+' · تحسين الصحة والمظهر',()=>activity('gym'),cash(300)),
-  choice('📚','المكتبة','نشاط مجاني لزيادة الذكاء',()=>activity('library'),'مجانًا'),
-  choice('🏖️','إجازة','التكلفة '+cash(1800)+' · تحسين السعادة',()=>activity('vacation'),cash(1800)),
-  choice('🤝','التطوع','نشاط مجاني لتحسين السعادة والسمعة',()=>activity('volunteer'),'مجانًا'),
-  choice('🎟️','اليانصيب','تذكرة بقيمة '+cash(100)+' مع فرصة محدودة للفوز',()=>activity('lottery'),cash(100)),
-  choice('🌃','الحياة الليلية','متاحة من سن 18 · التكلفة '+cash(1200),()=>activity('nightlife'),cash(1200)),
-  choice('❤️','التبرع','تبرع بقيمة '+cash(1000)+' لتحسين السمعة',()=>activity('donate'),cash(1000)),
-  section('إدارة الشخصية'),
-  choice('📊','البنك والاستثمارات','القروض وسداد الديون وإدارة المحافظ الاستثمارية',financeMenu),
-  choice('🏆','الإنجازات والأوسمة','إنجازاتك وأوسمة الحيوات والمكافآت اليومية',achievementsMenu),
-  choice('✨','متجر مزايا حياة','المزايا الدائمة والمسارات المهنية الإضافية',premiumPerksMenu),
-  choice('🪪','ملف الشخصية','تعديل الاسم ورخصة القيادة وتصدير الحفظ',customizeMenu),
-  choice('📱','السوشيال ميديا','الحسابات والمنشورات والمتابعون والتعاونات',socialMediaMenu),
-  choice('💾','تصدير الحفظ','نسخة كاملة من الحياة والمقبرة والإعدادات والمزايا المملوكة',exportSave),
-  choice('🌱','حياة جديدة','ابدأ شخصية جديدة بمكان ميلاد ونوع تختارهما',()=>{closeModal();info('🌱','حياة جديدة','بدء حياة جديدة سيستبدل الحفظ الحالي.',[choice('↻','متابعة','',()=>{closeModal();if(confirm('تبدأ حياة جديدة وتستبدل الحفظ الحالي؟'))newLifeSetup();}),choice('↩️','الاحتفاظ بالحياة الحالية','',closeModal)]);})
+  section('الحياة اليومية'),
+  choice('❤️','الصحة والعافية','الرعاية الصحية والتمرين والراحة والنوم في مكان واحد.',healthMenu),
+  choice('🎨','الهوايات والمهارات','ابدأ هواية جديدة أو طوّر مهاراتك الحالية.',hobbiesMenu),
+  choice('🐾','الحيوانات الأليفة','تبنَّ حيوانًا أو تابع رعاية الحيوانات التي تملكها.',petsMenu),
+  choice('💈','العناية بالمظهر','جدّد إطلالتك من خلال الصالون والملابس.',salonMenu),
+  choice('🌍','السفر والهجرة','خطط لرحلة أو انتقل إلى بلد آخر.',travelMenu),
+  choice('🎬','السينما والترفيه','اختر فيلمًا لقضاء وقت ممتع.',cinemaMenu),
+  choice('📱','السوشيال ميديا','أنشئ حسابات وانشر محتوى وتابع تفاعل الجمهور.',socialMediaMenu),
+  choice('⚖️','الجريمة والقانون','قرارات خيالية محفوفة بالمخاطر ولها عواقب.',crimeMenu),
+  section('أنشطة سريعة'),
+  choice('📚','المكتبة','نشاط مجاني لزيادة الذكاء.',()=>activity('library'),'مجانًا'),
+  choice('🏖️','إجازة','التكلفة '+cash(1800)+' · تحسين السعادة.',()=>activity('vacation'),cash(1800)),
+  choice('🤝','التطوع','نشاط مجاني لتحسين السعادة والسمعة.',()=>activity('volunteer'),'مجانًا'),
+  choice('🎟️','اليانصيب','تذكرة بقيمة '+cash(100)+' مع فرصة محدودة للفوز.',()=>activity('lottery'),cash(100)),
+  choice('🌃','الحياة الليلية','متاحة من سن 18 · التكلفة '+cash(1200)+'.',()=>activity('nightlife'),cash(1200)),
+  choice('❤️','التبرع','تبرع بقيمة '+cash(1000)+' لتحسين السمعة.',()=>activity('donate'),cash(1000)),
+  section('تجارب ومسارات خاصة'),
+  (()=>{const row=choice('🧛','نمط مصاص الدماء','ابدأ مسارًا خياليًا مختلفًا وابنِ سلالة خاصة.',()=>routePack('vampireMode',vampireModeMenu));row.cardClass='activity-vampire-row';row.stamp='نمط خارق';return row;})(),
+  (()=>{const row=choice('🌲','الحياة في الطبيعة','استكشف الأنشطة الخارجية والرحلات.',()=>routePack('outdoorsPack',outdoorLifestyleMenu));row.cardClass='activity-outdoors-row';row.stamp='الطبيعة';return row;})(),
+  (()=>{const row=choice('💎','نمط الحياة الفاخر','طوّر مستوى معيشتك واستثمر في الرفاهية.',()=>routePack('gatedCommunityPack',gatedCommunityMenu),'',clamp(netWorth/20000000*100));row.cardClass='activity-luxury-row';row.menuDots=true;return row;})(),
+  choice('🕯️','مجتمع خيالي','أنشئ مجتمعًا خاصًا وأدر أعضاءه وموارده.',()=>routePack('cultPack',cultMenu),'',null,!perkOwned('cultPack'))
  ];
- modal('☰','الأنشطة والحياة اليومية','اختار القسم المناسب، وكل اختياراتك محفوظة في نفس حكايتك.',opts);
+ modal('☰','الأنشطة والحياة اليومية','كل نشاط له مدخل واحد واضح. الأقسام المالية والمهنية والعائلية وإعدادات الحفظ موجودة في تبويباتها وقائمتها المخصصة.',opts);
 }
+
 function healthMenu(){
  const healthDesc='حالتك الصحية بتتأثر بالعمر والعادات والعلاقات والمخاطر. دي أنشطة داخل اللعبة وليست نصيحة طبية. '+(state.sti?'فيه حالة صحية محاكية مسجلة؛ زيارة الطبيب داخل اللعبة تقدر تعالجها.':'لا توجد حالة صحية محاكية مسجلة حاليًا.');
  modal('❤️','الصحة والعافية',healthDesc,[
