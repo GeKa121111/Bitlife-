@@ -18,7 +18,7 @@ jobs:
       - name: Check out development branch
         uses: actions/checkout@v4
         with:
-          ref: \${{ github.ref }}
+          ref: ${{ github.ref }}
           persist-credentials: true
 
       - name: Set up Node.js
@@ -66,4 +66,4 @@ jobs:
             exit 1
           fi
           git commit -m "feat(v130): persist education outcomes on each child"
-          git push origin "HEAD:\${GITHUB_REF_NAME}"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
