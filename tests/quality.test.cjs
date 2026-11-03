@@ -762,11 +762,11 @@ test('القائمة الرئيسية مقسمة بوضوح وحالة التب�
 test('قوائم الأنشطة والعلاقات منظمة ومترجمة بالكامل إلى العربية', () => {
   const activities = functionSource('activities', 'healthMenu');
   const relations = functionSource('relations', 'custodyModeLabel');
-  assert.match(activities, /section\('اختيارات سريعة'\)/);
-  assert.match(activities, /section\('أنشطة الحياة اليومية'\)/);
-  assert.match(activities, /section\('إدارة الشخصية'\)/);
+  assert.match(activities, /section\('الحياة اليومية'\)/);
+  assert.match(activities, /section\('أنشطة سريعة'\)/);
+  assert.match(activities, /section\('تجارب ومسارات خاصة'\)/);
   assert.match(activities, /modal\('☰','الأنشطة والحياة اليومية'/);
-  assert.doesNotMatch(activities, /Favorites|Premium Activities|Health & Wellness|Export Save|New Life/);
+  assert.doesNotMatch(activities, /Favorites|Premium Activities|Health & Wellness|Export Save|New Life|سباقات السيارات|العميل السري/);
   assert.match(relations, /section\('الوالدان'\)/);
   assert.match(relations, /section\('الأصدقاء'\)/);
   assert.match(relations, /section\('الأبناء'\)/);
@@ -1193,8 +1193,8 @@ test('واجهة الهاتف الجديدة تطابق تخطيط الصفحا�
   assert.match(css, /\.drawer-action-banner/);
   assert.match(css, /\.pack-offer-buy/);
   assert.match(app, /section\('الوالدان'\)/);
-  assert.match(app, /section\('مسارات وتوسعات'\)/);
-  assert.match(app, /section\('الأصول المميزة'\)/);
+  assert.match(app, /section\('تجارب ومسارات خاصة'\)/);
+  assert.match(app, /section\('إدارة الأصول المتخصصة'\)/);
   assert.match(app, /id="majorSelect"/);
   assert.match(app, /function startDrivingTest\(\)/);
   assert.match(app, /function finishDrivingTest\(passed\)/);
