@@ -1811,6 +1811,13 @@ function ensureSiblingChildEconomy(relative,child,year){
   rentalIncome:siblingSafeMoney(item.rentalIncome),propertyExpenses:siblingSafeMoney(item.propertyExpenses),
   mortgagePaid:siblingSafeMoney(item.mortgagePaid),propertyValue:siblingSafeMoney(item.propertyValue)
  }));
+
+ const propertyTransactions=(Array.isArray(raw.propertyTransactions)?raw.propertyTransactions:[]).filter(item=>item&&typeof item==='object'&&!Array.isArray(item)).slice(-12).map(item=>({
+  type:String(item.type||'inherited_property_sale').slice(0,32),year:clamp(item.year??numericYear,0,9999),
+  assetId:String(item.assetId||'').slice(0,160),gross:siblingSafeMoney(item.gross),transactionCost:siblingSafeMoney(item.transactionCost),
+  netProceeds:siblingSafeMoney(item.netProceeds),mortgagePayoff:siblingSafeMoney(item.mortgagePayoff),mortgagePaid:siblingSafeMoney(item.mortgagePaid),
+  debtPaid:siblingSafeMoney(item.debtPaid),cashRetained:siblingSafeMoney(item.cashRetained),arrearsWrittenOff:siblingSafeMoney(item.arrearsWrittenOff)
+ }));
  child.economy={
   educationPath,educationStatus,aptitude,job,careerJob,
   employmentState:age>=65?(raw.employmentState==='working'?'working':'retired'):'working',
@@ -1818,6 +1825,9 @@ function ensureSiblingChildEconomy(relative,child,year){
   annualIncome:siblingSafeMoney(raw.annualIncome),annualExpenses:siblingSafeMoney(raw.annualExpenses),
   savings:siblingSafeMoney(raw.savings),debt:siblingSafeMoney(raw.debt),netWorth:0,
   ownedProperties,propertyExpensesAnnual:siblingSafeMoney(raw.propertyExpensesAnnual),
+  propertySalesTotal:siblingSafeMoney(raw.propertySalesTotal),propertySaleCostsTotal:siblingSafeMoney(raw.propertySaleCostsTotal),
+  mortgageDebtPaidBySalesTotal:siblingSafeMoney(raw.mortgageDebtPaidBySalesTotal),rentalArrearsWrittenOffTotal:siblingSafeMoney(raw.rentalArrearsWrittenOffTotal),
+  propertyTransactions,
   annualRentIncome:siblingSafeMoney(raw.annualRentIncome),cumulativeRentIncome:siblingSafeMoney(raw.cumulativeRentIncome),
   mortgagePaymentAnnual:siblingSafeMoney(raw.mortgagePaymentAnnual),mortgageInterestAnnual:siblingSafeMoney(raw.mortgageInterestAnnual),
   mortgagePrincipalAnnual:siblingSafeMoney(raw.mortgagePrincipalAnnual),mortgageDebtBalance:0,mortgageArrearsBalance:0,
@@ -2265,7 +2275,9 @@ function siblingNormalizeChildOwnedProperties(raw,year){
    monthlyRent:siblingSafeMoney(leaseRaw.monthlyRent),startYear:clamp(leaseRaw.startYear??numericYear,0,9999),
    endYear:clamp(leaseRaw.endYear??numericYear-1,0,9999),termYears:clamp(leaseRaw.termYears??0,0,3),
    renewals:clamp(leaseRaw.renewals??0,0,99),lastProcessedYear:Number.isSafeInteger(Number(leaseRaw.lastProcessedYear))?Math.max(0,Number(leaseRaw.lastProcessedYear)):numericYear,
-   ownerManaged:leaseRaw.ownerManaged===true,history:(Array.isArray(leaseRaw.history)?leaseRaw.history:[]).slice(-6)
+   ownerManaged:leaseRaw.ownerManaged===true,
+   lastOwnerActionYear:leaseRaw.lastOwnerActionYear===undefined||leaseRaw.lastOwnerActionYear===null||leaseRaw.lastOwnerActionYear===''?-1:(Number.isSafeInteger(Number(leaseRaw.lastOwnerActionYear))?Math.max(0,Number(leaseRaw.lastOwnerActionYear)):-1),
+   history:(Array.isArray(leaseRaw.history)?leaseRaw.history:[]).slice(-6)
   }:null;
   return {id,inheritanceTransferId:transferId||null,sourceEstateId:String(asset.sourceEstateId||'').slice(0,120),
    sourceAssetId:String(asset.sourceAssetId||'').slice(0,80),kind:asset.kind==='rental'?'rental':'residence',
@@ -2409,6 +2421,43 @@ function siblingChildInheritedPropertyAnnualEffects(relative,child,economy,year)
   asset.lastPropertyYear=numericYear;
  });
  return {propertyExpenses,rentalIncome,rentLoss,rentArrearsCollected,mortgageDueTotal,mortgageDues,leaseEvents,propertyCount:properties.length};
+}
+
+function siblingChildPropertySaleQuote(economy,assetId){
+ if(!economy||typeof economy!=='object'||Array.isArray(economy))return {ok:false,reason:'economy_missing'};
+ const assets=Array.isArray(economy.ownedProperties)?economy.ownedProperties:[];
+ const asset=assets.find(item=>item&&String(item.id||'')===String(assetId||''));
+ if(!asset)return {ok:false,reason:'asset_not_found'};
+ const gross=siblingSafeMoney(asset.marketValue),transactionCost=Math.min(gross,Math.round(gross*.05));
+ const netProceeds=siblingSafeMoney(gross-transactionCost),mortgagePayoff=siblingMortgageLiability(asset);
+ if(gross<=0||netProceeds<=0)return {ok:false,reason:'no_market_value',assetId:String(asset.id||''),gross,transactionCost,netProceeds};
+ if(netProceeds<mortgagePayoff)return {ok:false,reason:'negative_equity',assetId:String(asset.id||''),gross,transactionCost,netProceeds,mortgagePayoff};
+ const mortgagePaid=mortgagePayoff,debtPaid=Math.min(siblingSafeMoney(economy.debt),Math.max(0,netProceeds-mortgagePaid));
+ const cashRetained=siblingSafeMoney(netProceeds-mortgagePaid-debtPaid);
+ return {ok:true,assetId:String(asset.id||''),gross,transactionCost,netProceeds,mortgagePayoff,mortgagePaid,debtPaid,cashRetained,arrearsWrittenOff:siblingSafeMoney(asset.rentArrears)};
+}
+function siblingChildSellInheritedProperty(relative,child,assetId,year){
+ const numericYear=Number(year);
+ if(!child||child.deceased===true||!child.independent||Math.max(0,Number(child.age)||0)<18||!Number.isSafeInteger(numericYear)||numericYear<0)return {ok:false,reason:'child_unavailable'};
+ const economy=ensureSiblingChildEconomy(relative,child,numericYear);
+ if(!economy)return {ok:false,reason:'economy_unavailable'};
+ const quote=siblingChildPropertySaleQuote(economy,assetId);if(!quote.ok)return quote;
+ const assetIndex=economy.ownedProperties.findIndex(asset=>asset&&String(asset.id||'')===quote.assetId);
+ if(assetIndex<0)return {ok:false,reason:'asset_not_found'};
+ economy.ownedProperties.splice(assetIndex,1);
+ economy.debt=siblingSafeMoney(economy.debt-quote.debtPaid);economy.savings=siblingSafeMoney(economy.savings+quote.cashRetained);
+ economy.propertySalesTotal=siblingSafeMoney(economy.propertySalesTotal+quote.gross);
+ economy.propertySaleCostsTotal=siblingSafeMoney(economy.propertySaleCostsTotal+quote.transactionCost);
+ economy.mortgageDebtPaidBySalesTotal=siblingSafeMoney(economy.mortgageDebtPaidBySalesTotal+quote.mortgagePaid);
+ economy.rentalArrearsWrittenOffTotal=siblingSafeMoney(economy.rentalArrearsWrittenOffTotal+quote.arrearsWrittenOff);
+ economy.mortgageDebtBalance=siblingProfileMortgageLiability(economy);
+ economy.mortgageArrearsBalance=siblingSafeMoney(economy.ownedProperties.reduce((sum,asset)=>sum+siblingSafeMoney(asset&&asset.mortgage&&asset.mortgage.arrears),0));
+ const rentReceivable=economy.ownedProperties.reduce((sum,asset)=>sum+siblingSafeMoney(asset&&asset.rentArrears),0);
+ economy.netWorth=siblingSafeSigned(economy.savings-economy.debt+siblingOwnedPropertyValue(economy)-economy.mortgageDebtBalance+rentReceivable);
+ const transaction={type:'inherited_property_sale',year:numericYear,assetId:quote.assetId,gross:quote.gross,transactionCost:quote.transactionCost,
+  netProceeds:quote.netProceeds,mortgagePayoff:quote.mortgagePayoff,mortgagePaid:quote.mortgagePaid,debtPaid:quote.debtPaid,cashRetained:quote.cashRetained,arrearsWrittenOff:quote.arrearsWrittenOff};
+ economy.propertyTransactions.push(transaction);if(economy.propertyTransactions.length>12)economy.propertyTransactions.shift();
+ return {ok:true,...transaction,debtRemaining:economy.debt,savingsAfterSale:economy.savings,netWorth:economy.netWorth};
 }
 function siblingSpouseEstateAnnualEffects(relative,spouse,year){
  const numericYear=Number(year);
@@ -4385,6 +4434,126 @@ function siblingSpouseSellPropertyConfirm(relative,assetId){
   }),
   choice('↩️','إلغاء','',()=>siblingSpousePropertyMenu(relative,assetId))
  ]);
+}
+
+function siblingChildPropertyContext(relative,childId){
+ const profile=relative&&relative.economicProfile;if(!profile||typeof profile!=='object')return null;
+ const year=Number.isSafeInteger(Number(state&&state.yearCount))?Math.max(0,Number(state.yearCount)):Math.max(0,Number(relative.age)||0);
+ const household=ensureSiblingHousehold(relative,profile,year),children=household&&Array.isArray(household.children)?household.children:[];
+ const child=children.find(item=>item&&String(item.id||item.name||'')===String(childId||''));
+ if(!child||child.deceased===true||!child.independent||Math.max(0,Number(child.age)||0)<18)return null;
+ const economy=ensureSiblingChildEconomy(relative,child,year);if(!economy)return null;
+ const proxy={id:String(child.id||child.name||'adult-child'),name:String(child.name||'ابن/ابنة'),age:child.age,deceased:false,economicProfile:economy};
+ return {profile,household,child,economy,proxy,year};
+}
+function siblingChildPropertyPortfolioMenu(relative,childId){
+ const context=siblingChildPropertyContext(relative,childId);
+ if(!context){info('🔒','محفظة الابن غير متاحة','تظهر إدارة العقارات بعد استقلال الابن أو الابنة وبلوغ 18 سنة.');return;}
+ const child=context.child,economy=context.economy,properties=economy.ownedProperties||[];
+ const currency=String(state&&state.place&&state.place.unit||'ج.م'),value=siblingOwnedPropertyValue(economy),securedDebt=siblingProfileMortgageLiability(economy);
+ const options=properties.map(asset=>{
+  const lease=asset.lease&&typeof asset.lease==='object'?asset.lease:null;
+  const detail='قيمة سوقية '+cash(asset.marketValue||0)+' '+currency+' · تمويل '+cash(siblingMortgageLiability(asset))+
+   (asset.kind==='rental'?' · إيجار شهري '+cash(lease&&lease.monthlyRent||asset.monthlyRent||0)+' · متأخرات '+cash(asset.rentArrears||0):' · مسكن موروث')+
+   (lease&&lease.status==='active'?' · مستأجر '+String(lease.tenantName||'مسجل'):'');
+  return choice(asset.kind==='rental'?'🏢':'🏠',String(asset.label||'عقار موروث'),detail,()=>siblingChildPropertyMenu(relative,childId,asset.id),cash(asset.marketValue||0));
+ });
+ if(!properties.length)options.push(choice('🏠','لا توجد عقارات موروثة','لا توجد حصص عقارية مسجلة لهذا الفرع حتى الآن.',()=>info('🏠','المحفظة فارغة','ستظهر هنا أي حصة عقارية تنتقل للابن بعد بلوغه سن الاستقلال.')));
+ options.push(choice('↩️','العودة للوضع المالي','',()=>siblingEconomicDetails(relative)));
+ const transactions=(Array.isArray(economy.propertyTransactions)?economy.propertyTransactions:[]).slice(-4).reverse();
+ const transactionText=transactions.length?transactions.map(item=>'سنة '+fmt(item.year)+' · بيع '+cash(item.gross)+' · رسوم '+cash(item.transactionCost)+' · تمويل '+cash(item.mortgagePaid)+' · ديون '+cash(item.debtPaid)+' · صافي نقدي '+cash(item.cashRetained)).join('؛ '):'لا توجد عمليات بيع مسجلة';
+ const extra='<div class="relationship-progress"><div class="pillrow"><span class="pill">💰 مدخرات '+esc(cash(economy.savings||0))+' '+esc(currency)+'</span><span class="pill">🧾 ديون '+esc(cash(economy.debt||0))+' '+esc(currency)+'</span><span class="pill">🏠 قيمة الأصول '+esc(cash(value))+' '+esc(currency)+'</span></div><p><strong>صافي الثروة المحاكى</strong><br>'+esc(cash(economy.netWorth||0))+' '+esc(currency)+' · تمويل عقاري '+esc(cash(securedDebt))+' '+esc(currency)+'</p><p><strong>سجل البيع</strong><br>'+esc(transactionText)+'</p></div>';
+ const note='محفظة مستقلة باسم '+String(child.name||'الابن/الابنة')+'. إدارة العقد أو البيع تخص أصوله وحده ولا تغيّر حساب الوالد أو بقية الورثة.';
+ modal('🏘️','محفظة عقارات '+String(child.name||'الابن/الابنة'),note,options,true,extra);
+}
+function siblingChildPropertyMenu(relative,childId,assetId){
+ const context=siblingChildPropertyContext(relative,childId);
+ if(!context){info('🔒','العقار غير متاح','يلزم أن يكون صاحب المحفظة بالغًا ومستقلًا وعلى قيد الحياة.');return;}
+ const economy=context.economy,asset=(economy.ownedProperties||[]).find(item=>item&&String(item.id||'')===String(assetId||''));
+ if(!asset){siblingChildPropertyPortfolioMenu(relative,childId);return;}
+ const currency=String(state&&state.place&&state.place.unit||'ج.م'),lease=asset.lease&&typeof asset.lease==='object'?asset.lease:null;
+ const quote=siblingChildPropertySaleQuote(economy,asset.id);
+ const details='القيمة السوقية '+cash(asset.marketValue||0)+' '+currency+' · الصيانة السنوية '+cash(siblingPropertyAnnualUpkeep(asset))+' '+currency+
+  ' · التمويل والمتأخرات '+cash(siblingMortgageLiability(asset))+' '+currency+
+  (asset.kind==='rental'?' · الإيجار الشهري '+cash(lease&&lease.monthlyRent||asset.monthlyRent||0)+' '+currency+
+   (lease&&lease.status==='active'?' · مستأجر '+String(lease.tenantName||'مسجل'):' · لا يوجد عقد نشط'):' · مسكن موروث');
+ const saleDetail=quote.ok?'صافي متوقع '+cash(quote.cashRetained)+' '+currency+' بعد تكلفة البيع وسداد التمويل والديون.':
+  quote.reason==='negative_equity'?'قيمة البيع بعد التكلفة لا تكفي لسداد التمويل المرتبط بالعقار.':'لا توجد قيمة سوقية صالحة للبيع.';
+ const options=[];
+ if(asset.kind==='rental')options.push(choice('📄','إدارة عقد الإيجار','توقيع أو تجديد أو إنهاء العقد من السنة القادمة.',()=>siblingChildManualRentalLeaseMenu(relative,childId,asset.id)));
+ options.push(choice('💰','مراجعة بيع العقار',saleDetail,()=>siblingChildSellPropertyConfirm(relative,childId,asset.id),cash(asset.marketValue||0)));
+ options.push(choice('↩️','رجوع للمحفظة','',()=>siblingChildPropertyPortfolioMenu(relative,childId)));
+ modal(asset.kind==='rental'?'🏢':'🏠',String(asset.label||'عقار موروث'),details,options,true,
+  '<div class="relationship-progress"><p><strong>ملكية مستقلة</strong><br>الأصل مسجل ضمن اقتصاد الابن، ولا يدخل في حساب الوالد.</p><p>'+esc(saleDetail)+'</p></div>');
+}
+function siblingChildSellPropertyConfirm(relative,childId,assetId){
+ const context=siblingChildPropertyContext(relative,childId);
+ if(!context){info('🔒','تعذر البيع','لا يمكن بيع أصل من محفظة ابن غير مستقل أو غير متاح.');return;}
+ const asset=context.economy.ownedProperties.find(item=>item&&String(item.id||'')===String(assetId||'')),quote=siblingChildPropertySaleQuote(context.economy,assetId);
+ if(!quote.ok){info('⚠️','تعذر بيع العقار',quote.reason==='negative_equity'?'صافي البيع لا يغطي التمويل المرتبط بالعقار؛ لم تتغير الملكية.':'لم يتم العثور على قيمة سوقية صالحة للبيع.');return;}
+ const currency=String(state&&state.place&&state.place.unit||'ج.م');
+ info('💰','تأكيد بيع العقار','القيمة '+cash(quote.gross)+' '+currency+' · تكلفة البيع '+cash(quote.transactionCost)+' · سداد التمويل '+cash(quote.mortgagePaid)+' · سداد ديون '+cash(quote.debtPaid)+' · صافي يضاف للمدخرات '+cash(quote.cashRetained)+' '+currency+'.'+
+  (quote.arrearsWrittenOff>0?' تُسقط متأخرات الإيجار غير المحصلة '+cash(quote.arrearsWrittenOff)+'.':''),[
+  choice('✓','تأكيد البيع','إزالة الأصل من محفظة الابن وتسجيل العملية في دفتره المالي.',()=>{
+   const result=siblingChildSellInheritedProperty(relative,context.child,assetId,context.year);
+   if(!result||result.ok!==true){info('⚠️','لم يتم البيع','تعذر إتمام العملية؛ لم يتم تأكيد نقل السيولة أو حذف الأصل.');return;}
+   log('💰','بيع عقار موروث','باع '+String(context.child.name||'أحد أبناء العائلة')+' '+String(asset&&asset.label||'عقارًا موروثًا')+' بصافي نقدي '+cash(result.cashRetained)+' '+currency+'.','good');
+   const saved=save();render();
+   if(saved)siblingChildPropertyPortfolioMenu(relative,childId);
+   else info('⚠️','تعذر تأكيد الحفظ','تم تحديث الجلسة الحالية، لكن المتصفح لم يؤكد حفظ العملية محليًا. صدّر نسخة احتياطية قبل إغلاق الصفحة.');
+  }),
+  choice('↩️','إلغاء','الاحتفاظ بالعقار دون تغيير.',()=>siblingChildPropertyMenu(relative,childId,assetId))
+ ]);
+}
+function siblingChildManualRentalLeaseConfirm(relative,childId,assetId,action,termYears,rentFactorBps){
+ const context=siblingChildPropertyContext(relative,childId);
+ if(!context){info('🔒','إدارة العقد غير متاحة','يلزم أن يكون الابن بالغًا ومستقلًا.');return;}
+ const quote=siblingManualRentalLeaseQuote(context.proxy,assetId,action,termYears,rentFactorBps,context.year);
+ if(!quote){info('⚠️','تعذر تجهيز قرار العقد','قد يكون العقد تغير بالفعل، أو تم تنفيذ قرار آخر في السنة نفسها.');return;}
+ const labels={sign:'توقيع عقد جديد',renew:'تجديد أو تعديل العقد',terminate:'إنهاء العقد من السنة القادمة',manage:'تولي إدارة العقد يدويًا'},label=labels[action]||'إدارة العقد';
+ const description=action==='manage'?'سيحتفظ '+String(context.child.name||'الابن')+' بالمستأجر '+quote.tenantName+' والإيجار '+cash(quote.monthlyRent)+' وموعد الانتهاء '+fmt(quote.endYear)+'. بعد القرار لن يجدد المحرك العقد تلقائيًا.':
+  action==='terminate'?'المستأجر الحالي '+quote.oldTenantName+' · يصبح العقار شاغرًا من السنة '+fmt(quote.startYear)+'. لن تُنشأ إيرادات رجعية.':
+  (action==='sign'?'المستأجر المقترح '+quote.tenantName+' · ':'المستأجر الحالي '+quote.tenantName+' · ')+
+   'الإيجار الشهري '+cash(quote.monthlyRent)+' بدلًا من '+cash(quote.oldMonthlyRent)+' · مدة '+fmt(quote.termYears)+' سنة من '+fmt(quote.startYear)+' إلى '+fmt(quote.endYear)+'.';
+ info('📄','مراجعة '+label,description,[
+  choice('✓','تأكيد '+label,'حفظ القرار في محفظة الابن فقط.',()=>{
+   const result=siblingManualRentalLeaseAction(context.proxy,assetId,action,termYears,rentFactorBps,context.year);
+   if(!result){info('⚠️','لم يتم تحديث العقد','تغيرت بيانات العقار أو استُخدم قرار العقد في السنة نفسها.');return;}
+   const title=action==='sign'?'توقيع عقد عقاري':action==='renew'?'تجديد عقد عقاري':action==='manage'?'تفعيل إدارة المالك للعقد':'إنهاء عقد إيجار';
+   log('📄',title,'تم تحديث عقد '+String(context.child.name||'الابن')+' دون تعديل دخل السنوات السابقة أو إنشاء إيرادات رجعية.',action==='terminate'?'special':'good');
+   const saved=save();render();
+   if(saved)siblingChildPropertyMenu(relative,childId,assetId);
+   else info('⚠️','تعذر تأكيد الحفظ','تم تحديث الجلسة الحالية، لكن المتصفح لم يؤكد حفظ القرار محليًا.');
+  }),
+  choice('↩️','إلغاء','الاحتفاظ بالعقد الحالي.',()=>siblingChildManualRentalLeaseMenu(relative,childId,assetId))
+ ]);
+}
+function siblingChildManualRentalLeaseMenu(relative,childId,assetId){
+ const context=siblingChildPropertyContext(relative,childId);
+ if(!context){info('🔒','إدارة العقد غير متاحة','إدارة العقارات متاحة للابن البالغ المستقل فقط.');return;}
+ const asset=context.economy.ownedProperties.find(item=>item&&item.kind==='rental'&&String(item.id||'')===String(assetId||''));
+ if(!asset){info('⚠️','العقار غير موجود','لم يتم العثور على العقار الاستثماري في محفظة الابن.');return;}
+ const year=context.year,lease=asset.lease&&typeof asset.lease==='object'?asset.lease:null;
+ const active=!!(lease&&lease.status==='active'&&String(lease.tenantName||'').trim()&&Number(lease.endYear)>=year);
+ const currentRent=siblingSafeMoney(lease&&lease.monthlyRent||asset.monthlyRent),options=[];
+ const actionAlreadyUsed=!!(lease&&Number.isSafeInteger(Number(lease.lastOwnerActionYear))&&Number(lease.lastOwnerActionYear)>=year);
+ if(actionAlreadyUsed)options.push(choice('🕒','تم تسجيل قرار لهذا العام','يمكن اتخاذ قرار جديد مع بداية السنة التالية.',()=>info('📄','قرار العقد محفوظ','لا يمكن تنفيذ أكثر من قرار يدوي للعقار نفسه في سنة اللعبة الواحدة.')));
+ else if(active){
+  if(lease.ownerManaged===true){
+   if(Number(lease.endYear)<=year){
+    options.push(choice('🔄','تجديد سنة دون زيادة','إيجار شهري '+cash(currentRent)+' يبدأ من السنة القادمة.',()=>siblingChildManualRentalLeaseConfirm(relative,childId,assetId,'renew',1,10000)));
+    options.push(choice('📈','تجديد سنتين بزيادة 5%','إيجار شهري '+cash(Math.round(currentRent*1.05))+' من السنة القادمة.',()=>siblingChildManualRentalLeaseConfirm(relative,childId,assetId,'renew',2,10500)));
+    options.push(choice('📈','تجديد ثلاث سنوات بزيادة 8%','إيجار شهري '+cash(Math.round(currentRent*1.08))+' من السنة القادمة.',()=>siblingChildManualRentalLeaseConfirm(relative,childId,assetId,'renew',3,10800)));
+   }else options.push(choice('⏳','العقد مستمر حتى السنة '+fmt(lease.endYear),'يمكن مراجعته عند الانتهاء.',()=>info('📄','العقد ما زال ساريًا','لا يتم تقصير مدة العقد الحالي.')));
+  }else options.push(choice('🧭','تولي إدارة العقد يدويًا','الاحتفاظ بالمستأجر الحالي وإيقاف التجديد التلقائي.',()=>siblingChildManualRentalLeaseConfirm(relative,childId,assetId,'manage',0,10000)));
+  options.push(choice('🛑','إنهاء العقد من السنة القادمة','إنهاء العقد دون شطب متأخرات الإيجار القائمة.',()=>siblingChildManualRentalLeaseConfirm(relative,childId,assetId,'terminate',0,10000)));
+ }else{
+  options.push(choice('📝','عقد سنة بإيجار 95% من الحالي','عرض أقل لجذب مستأجر بسرعة.',()=>siblingChildManualRentalLeaseConfirm(relative,childId,assetId,'sign',1,9500)));
+  options.push(choice('📝','عقد سنتين بالإيجار الحالي','عقد متوسط المدة دون تغيير الإيجار المرجعي.',()=>siblingChildManualRentalLeaseConfirm(relative,childId,assetId,'sign',2,10000)));
+  options.push(choice('📝','عقد ثلاث سنوات بزيادة 5%','إيجار أعلى مقابل التزام أطول.',()=>siblingChildManualRentalLeaseConfirm(relative,childId,assetId,'sign',3,10500)));
+ }
+ options.push(choice('↩️','العودة للعقار','',()=>siblingChildPropertyMenu(relative,childId,assetId)));
+ modal('📄','إدارة عقد '+String(asset.label||'العقار الاستثماري'),active?'المستأجر '+lease.tenantName+' · ينتهي في السنة '+fmt(lease.endYear)+'. اختر قرارًا للمالك.':'العقار شاغر أو بلا عقد نشط. القرارات الجديدة تسري من السنة التالية دون دخل رجعي.',options);
 }
 function siblingEstateSummaryMenu(relative){
  const profile=relative&&relative.economicProfile,estate=profile&&profile.estate;
@@ -6815,10 +6984,16 @@ function siblingEconomicDetails(n){
   });
   const rentalSaleChoices=properties.filter(asset=>asset&&asset.kind==='rental').map(asset=>choice('🏘️','مراجعة بيع '+String(asset.label||'العقار الاستثماري'),'القيمة السوقية '+cash(asset.marketValue||0)+' · متأخرات إيجار '+cash(asset.rentArrears||0)+' · البيع اختياري ويتطلب تأكيدًا.',()=>siblingManualRentalSaleConfirm(n,asset.id),cash(asset.marketValue||0)));
  const mortgageChoices=properties.filter(asset=>asset&&asset.kind==='rental'&&asset.mortgage&&siblingMortgageLiability(asset)>0).map(asset=>choice('💳','مراجعة السداد المبكر','تمويل قائم '+cash(siblingMortgageLiability(asset))+' · مدخرات '+cash(profile.savings||0),()=>siblingMortgagePrepaymentConfirm(n,asset.id),cash(siblingMortgageLiability(asset))));
+ const childPortfolioChoices=adultChildren.map(child=>{
+  const childEconomy=ensureSiblingChildEconomy(n,child,Number.isSafeInteger(Number(state&&state.yearCount))?Math.max(0,Number(state.yearCount)):0);
+  const childProperties=childEconomy&&Array.isArray(childEconomy.ownedProperties)?childEconomy.ownedProperties:[];
+  const childValue=siblingOwnedPropertyValue(childEconomy);
+  return choice('🏘️','محفظة '+String(child.name||'الابن/الابنة'),childProperties.length?'عقارات '+fmt(childProperties.length)+' · قيمة '+cash(childValue):'لا توجد عقارات موروثة مسجلة بعد.',()=>siblingChildPropertyPortfolioMenu(n,child.id||child.name),childValue);
+ });
  const history=(Array.isArray(profile.history)?profile.history:[]).slice(-5).reverse();
  const historyText=history.length?history.map(item=>'سنة '+fmt(item.year)+' · '+siblingEmploymentStateLabel(item.employmentState)+(siblingEmploymentEventLabel(item.employmentEvent)?' ('+siblingEmploymentEventLabel(item.employmentEvent)+')':'')+' · دخل '+cash(item.income)+' · إيجار '+cash(item.rentIncome||0)+' · فاقد إيجار '+cash(item.rentLoss||0)+' · متأخرات محصلة '+cash(item.rentArrearsCollected||0)+' · رصيد متأخرات '+cash(item.rentArrearsBalance||0)+(item.rentArrearsWrittenOff?' · شطب متأخرات '+cash(item.rentArrearsWrittenOff):'')+' · قسط تمويل '+cash(item.mortgagePayment||0)+' · أصل مسدد '+cash(item.mortgagePrincipal||0)+' · رصيد تمويل '+cash(item.mortgageBalance||0)+(item.mortgageDefault?' · تعثر تمويلي':'')+' · مصروف '+cash(item.expenses)+' · مدخرات '+cash(item.savings)+' · محفظة '+cash(item.investmentBalance||0)+' · قيمة العقار '+cash(item.propertyValue||0)+' · صيانة '+cash(item.propertyExpenses||0)+(item.propertyPurchase?' · شراء مسكن':'')+(item.rentalPurchase?' · شراء عقار استثماري':'')+(Array.isArray(item.rentLeaseEvents)&&item.rentLeaseEvents.length?' · عقود إيجار '+item.rentLeaseEvents.map(event=>(event.event==='signed'?'توقيع ':event.event==='renewed'?'تجديد ':'انتهاء ')+String(event.tenantName||'')).join('، '):'')+(item.propertySale?' · بيع عقار '+cash(item.propertySaleGross||0)+' وصافي '+cash(item.propertySaleNet||0):'')).join('؛ '):'لا توجد سنوات مالية مسجلة بعد.';
  const description='الأسرة المستقلة: '+householdSummary+childCareerSummary+' · دخل الشريك السنوي '+cash(profile.householdIncomeAnnual||0)+' · مصروفات الأسرة '+cash(profile.householdExpensesAnnual||0)+'. المهنة: '+String(profile.job||n.job||'غير محدد')+' · حالة العمل: '+siblingEmploymentStateLabel(profile.employmentState)+' · المستوى المهني '+fmt(profile.rank||1)+' · الخبرة '+fmt(profile.yearsWorked||0)+' سنة. الدخل السنوي '+cash(profile.annualIncome||0)+' '+String(profile.currency||'')+'، منه دخل إيجار '+cash(profile.annualRentIncome||0)+' وإجمالي إيجارات محصلة '+cash(profile.rentalIncomeTotal||0)+' وفاقد إيجاري '+cash(profile.rentalLossTotal||0)+'، ومتأخرات إيجار قائمة '+cash(profile.rentalArrearsBalance||0)+' ومحصلة '+cash(profile.rentalArrearsCollectedTotal||0)+' ومضافة '+cash(profile.rentalArrearsAddedTotal||0)+' ومشطوبة '+cash(profile.rentalArrearsWrittenOffTotal||0)+'. التمويل العقاري القائم '+cash(profile.mortgageDebtBalance||0)+'، ومتأخرات الأقساط '+cash(profile.mortgageArrearsBalance||0)+'، والمدفوع سنويًا '+cash(profile.mortgagePaymentAnnual||0)+'، والسداد المبكر التراكمي '+cash(profile.mortgagePrepaymentsTotal||0)+' ورسومه '+cash(profile.mortgageFeesTotal||0)+'. المصروفات '+cash(profile.annualExpenses||0)+' منها صيانة عقارية '+cash(profile.propertyExpensesAnnual||0)+'. المدخرات '+cash(profile.savings||0)+'، والمحفظة الاستثمارية '+cash(profile.investmentBalance||0)+' بمخاطرة '+siblingInvestmentRiskLabel(profile.investmentRisk)+'، والعائد التراكمي '+cash(profile.investmentReturnsTotal||0)+'، والديون الإجمالية '+cash(profile.debt||0)+'. العقارات المستقلة: '+properties.length+' · '+propertyText+' · إجمالي قيمتها '+cash(propertyValue)+' · إجمالي مبيعات العقارات '+cash(profile.propertySalesTotal||0)+' · صافي الثروة '+(netWorth<0?'سالب ':'')+cash(Math.abs(netWorth))+'. المتأخرات غير المحصلة لا تدخل في صافي الثروة إلا بعد تحصيلها. سجل المعاملات: '+transactionText+'. الحالة المالية: '+String(profile.employmentStatus||'مستقر')+'. آخر السنوات: '+historyText;
- info('📊','الاستقلال المالي · '+String(n.name||'أحد الإخوة'),description,[...rentalLeaseChoices,...rentalSaleChoices,...mortgageChoices,choice('↩️','العودة لملف الشخصية','',()=>personModal(n))]);
+ info('📊','الاستقلال المالي · '+String(n.name||'أحد الإخوة'),description,[...rentalLeaseChoices,...rentalSaleChoices,...mortgageChoices,...childPortfolioChoices,choice('↩️','العودة لملف الشخصية','',()=>personModal(n))]);
 }
 function relationshipHistory(n){
  const history=Array.isArray(n.interactions)?n.interactions.slice().reverse():[];
