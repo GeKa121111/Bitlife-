@@ -3076,11 +3076,11 @@ function advanceSiblingEconomies(){
    }
    const descendants=siblingDeceasedHouseholdAnnualEffects(relative,deceasedProfile,year);
    if(!descendants.duplicate){
-    const titles={child_independent:'استمرار حياة أحد أبناء العائلة',child_started_study:'مسار تعليمي بعد وفاة الوالد',child_started_work:'بداية مهنية بعد وفاة الوالد',child_graduated:'تخرج أحد أبناء العائلة',child_retired:'تقاعد أحد أبناء العائلة',child_inherited_property:'انتقال ملكية عقار موروث'};
-    const icons={child_independent:'🌱',child_started_study:'🎓',child_started_work:'💼',child_graduated:'🎓',child_retired:'🌅',child_inherited_property:'🏠'};
+    const titles={child_independent:'استمرار حياة أحد أبناء العائلة',child_started_study:'مسار تعليمي بعد وفاة الوالد',child_started_work:'بداية مهنية بعد وفاة الوالد',child_graduated:'تخرج أحد أبناء العائلة',child_retired:'تقاعد أحد أبناء العائلة',child_inherited_property:'انتقال ملكية عقار موروث',spouse_inherited_property:'انتقال حصص عقارية إلى الشريك'};
+    const icons={child_independent:'🌱',child_started_study:'🎓',child_started_work:'💼',child_graduated:'🎓',child_retired:'🌅',child_inherited_property:'🏠',spouse_inherited_property:'🏘️'};
     descendants.events.forEach(event=>{
-     const childName=String(event.name||'أحد الأبناء'),parentName=String(relative.name||'الوالد/الوالدة');
-     const detail=event.type==='child_inherited_property'?childName+' استلم ملكية '+fmt(event.properties||0)+' حصة عقارية من تركة '+parentName+'.':childName+' يواصل مساره بعد وفاة '+parentName+' · السنة '+fmt(event.year??year)+'.';
+     const childName=String(event.name||'أحد أفراد الأسرة'),parentName=String(relative.name||'الوالد/الوالدة');
+     const detail=event.type==='child_inherited_property'||event.type==='spouse_inherited_property'?childName+' استلم ملكية '+fmt(event.properties||0)+' حصة عقارية من تركة '+parentName+'.':childName+' يواصل مساره بعد وفاة '+parentName+' · السنة '+fmt(event.year??year)+'.';
      log(icons[event.type]||'🌱',titles[event.type]||'تطور في فرع العائلة',detail,'special');
     });
     processed++;
@@ -4365,7 +4365,7 @@ function siblingSpousePropertyMenu(relative,assetId){
   (lease&&lease.status==='active'?' · عقد نشط مع '+String(lease.tenantName||'مستأجر مسجل'):' · لا يوجد عقد نشط');
  const saleDetail=quote.ok?'صافي متوقع '+cash(quote.proceeds)+' '+currency+' بعد تكلفة البيع وسداد التمويل.':
   quote.reason==='negative_equity'?'قيمة البيع لا تكفي لتغطية تكلفة البيع والتمويل الحالي.':'لا توجد قيمة سوقية صالحة للبيع.';
- const opts=[choice('💰','بيع الحصة العقارية',saleDetail,()=>siblingSpouseSellPropertyConfirm(relative,asset.id),quote.ok?'متاح':'غير متاح')];
+ const opts=[choice('💰','بيع الحصة العقارية',saleDetail,()=>siblingSpouseSellPropertyConfirm(relative,asset.id))];
  opts.push(choice('↩️','رجوع للمحفظة','',()=>siblingSpousePortfolioMenu(relative)));
  modal(asset.kind==='rental'?'🏢':'🏠',String(asset.label||'عقار موروث'),details,opts,true,
   '<div class="relationship-progress"><p><strong>حالة الملكية</strong><br>حصة موروثة مسجلة في محفظة الشريك.</p><p>'+esc(saleDetail)+'</p></div>');
