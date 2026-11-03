@@ -217,6 +217,30 @@ async function run() {
       return rect.top >= 0 && rect.bottom <= window.innerHeight;
     });
     assert.equal(skipLinkVisible, true, 'the skip link should become visible when focused');
+    const skipLinkFocusProbe = await page.locator('.skip-link').evaluate(element => {
+      const measure = () => {
+        const style = getComputedStyle(element);
+        return { outlineColor: style.outlineColor, outlineWidth: style.outlineWidth,
+          outlineOffset: style.outlineOffset, borderColor: style.borderTopColor };
+      };
+      const light = measure();
+      document.body.classList.add('theme-dark');
+      const dark = measure();
+      document.body.classList.remove('theme-dark');
+      document.body.classList.add('theme-gold');
+      const gold = measure();
+      document.body.classList.remove('theme-gold');
+      return { light, dark, gold };
+    });
+    assert.equal(skipLinkFocusProbe.light.outlineWidth, '3px',
+      'the skip link should retain a clearly visible focus outline');
+    assert.equal(skipLinkFocusProbe.light.outlineOffset, '3px');
+    assert.notEqual(skipLinkFocusProbe.light.outlineColor, skipLinkFocusProbe.dark.outlineColor,
+      'the skip-link focus outline should adapt to dark mode');
+    assert.notEqual(skipLinkFocusProbe.light.outlineColor, skipLinkFocusProbe.gold.outlineColor,
+      'the skip-link focus outline should adapt to the gold theme');
+    assert.notEqual(skipLinkFocusProbe.light.borderColor, skipLinkFocusProbe.dark.borderColor,
+      'the skip-link border should use the same theme-aware focus token');
     await page.keyboard.press('Enter');
     await page.waitForFunction(() => document.activeElement?.id === 'lifeFeed');
     assert.equal(await page.evaluate(() => location.hash), '#lifeFeed',
