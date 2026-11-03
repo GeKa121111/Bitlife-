@@ -609,13 +609,13 @@ function combatDifficultyLabel(rating){
 function createCombatCareer(){
  return {rank:0,leaguePoints:0,streetCred:0,streetWins:0,leagueWins:0,wins:0,losses:0,knockouts:0,draws:0,
   technique:32+Math.floor(Math.random()*8),power:28+Math.floor(Math.random()*8),speed:31+Math.floor(Math.random()*8),defense:28+Math.floor(Math.random()*8),stamina:34+Math.floor(Math.random()*8),energy:100,
-  injury:0,injuryYears:0,restUsedYear:-1,coach:null,movesKnown:['quick-jab','high-guard'],moveMastery:{},selectedMove:'quick-jab',champion:false,bouts:[],pendingBout:null,community:normalizeCombatCommunity([]),startedAge:state?state.age:18};
+  injury:0,injuryYears:0,restUsedYear:-1,lastMovePracticeYear:-1,coach:null,movesKnown:['quick-jab','high-guard'],moveMastery:{},selectedMove:'quick-jab',champion:false,bouts:[],pendingBout:null,community:normalizeCombatCommunity([]),startedAge:state?state.age:18};
 }
 function ensureCombatCareer(){
  if(!state)return null;
  let c=state.combatCareer;
  if(!c||typeof c!=='object')c=state.combatCareer=createCombatCareer();
- const defaults={rank:0,leaguePoints:0,streetCred:0,streetWins:0,leagueWins:0,wins:0,losses:0,knockouts:0,draws:0,technique:25,power:25,speed:25,defense:25,stamina:30,energy:100,injury:0,injuryYears:0,restUsedYear:-1,coach:null,movesKnown:['quick-jab','high-guard'],moveMastery:{},selectedMove:'quick-jab',champion:false,bouts:[],pendingBout:null,community:[]};
+ const defaults={rank:0,leaguePoints:0,streetCred:0,streetWins:0,leagueWins:0,wins:0,losses:0,knockouts:0,draws:0,technique:25,power:25,speed:25,defense:25,stamina:30,energy:100,injury:0,injuryYears:0,restUsedYear:-1,lastMovePracticeYear:-1,coach:null,movesKnown:['quick-jab','high-guard'],moveMastery:{},selectedMove:'quick-jab',champion:false,bouts:[],pendingBout:null,community:[]};
  Object.keys(defaults).forEach(k=>{if(c[k]===undefined||c[k]===null)c[k]=defaults[k];});
  if(!Array.isArray(c.movesKnown))c.movesKnown=['quick-jab','high-guard'];
  if(!c.movesKnown.length)c.movesKnown=['quick-jab','high-guard'];
@@ -624,7 +624,7 @@ function ensureCombatCareer(){
  c.community=normalizeCombatCommunity(c.community);
  c.pendingBout=normalizePendingCombatBout(c.pendingBout);
  c.rank=clamp(c.rank,0,4);c.streetCred=Math.max(0,Number(c.streetCred)||0);c.leaguePoints=Math.max(0,Number(c.leaguePoints)||0);
- c.energy=clamp(c.energy);c.injury=clamp(c.injury);c.injuryYears=normalizeCombatInjuryYears(c.injuryYears);if(c.injury===0)c.injuryYears=0;
+ c.energy=clamp(c.energy);c.injury=clamp(c.injury);c.injuryYears=normalizeCombatInjuryYears(c.injuryYears);if(c.injury===0)c.injuryYears=0;const practiceYear=Number(c.lastMovePracticeYear),currentYear=Math.max(0,Math.floor(Number(state.yearCount)||0));c.lastMovePracticeYear=Number.isFinite(practiceYear)?Math.max(-1,Math.min(currentYear,Math.floor(practiceYear))):-1;
  return c;
 }
 function combatRankName(c){
@@ -7661,9 +7661,10 @@ function combatTrainingMenu(){
   choice('⚡','السرعة · '+c.speed+'%','تحسين السرعة يساعدك أمام أساليب معينة.',()=>trainCombatAttribute('speed','السرعة'),'1,500 '+state.place.unit,c.speed),
   choice('🛡️','الدفاع · '+c.defense+'%','قلّل فرص الخسارة الكبيرة وتعلم الانضباط.',()=>trainCombatAttribute('defense','الدفاع'),'1,500 '+state.place.unit,c.defense),
   choice('🫁','اللياقة · '+c.stamina+'%','لياقة أفضل تعني الحفاظ على الطاقة أثناء النزال.',()=>trainCombatAttribute('stamina','اللياقة'),'1,500 '+state.place.unit,c.stamina),
+  choice('🥋','تدريب حركة محددة','جلسة مركزة ترفع إتقان حركة تعلمتها؛ جلسة واحدة في كل سنة من اللعبة.',practiceCombatMoveMenu),
   choice('↩️','رجوع لمسيرة القتال','',combatCareerMenu)
  ];
- modal('🏋️','تدريب المقاتل','كل جلسة تكلف 1,500 '+state.place.unit+'. '+(coachBonus?'مدربك يضيف مكافأة تدريب بمقدار '+coachBonus+' نقاط.':'تعيين مدرب يحسّن أثر التدريب.'),opts);
+ modal('🏋️','تدريب المقاتل','جلسات تطوير القدرات تكلف 1,500 '+state.place.unit+'. جلسة تدريب الحركة المحددة تكلف 1,200 '+state.place.unit+'. '+(coachBonus?'مدربك يضيف مكافأة تدريب بمقدار '+coachBonus+' نقاط.':'تعيين مدرب يحسّن أثر التدريب.'),opts);
 }
 function trainCombatAttribute(key,label){
  if(!validState()||!state.specialCareer||state.specialCareer.id!=='fighter')return;
@@ -7677,11 +7678,54 @@ function trainCombatAttribute(key,label){
  if((state.stats.health||0)<45&&chance(.12)){c.injury=clamp(c.injury+12);c.injuryYears=Math.max(c.injuryYears,1);result+=' الإجهاد سبب إصابة بسيطة داخل اللعبة؛ خُد وقتًا للتعافي.';}
  log('🏋️','تدريب المقاتل',result,'good');save();render();combatTrainingMenu();
 }
+function practiceCombatMoveMenu(){
+ if(!validState()||!state.specialCareer||state.specialCareer.id!=='fighter'){specialCareers();return;}
+ const c=ensureCombatCareer(),year=Math.max(0,Math.floor(Number(state.yearCount)||0));
+ const alreadyUsed=c.lastMovePracticeYear===year;
+ const coachLevel=c.coach?clamp(Number(c.coach.level)||1,1,3):0;
+ const gain=1+(coachLevel?Math.min(2,coachLevel-1):0);
+ const opts=c.movesKnown.map(id=>{
+  const move=combatMoveCatalog.find(item=>item.id===id);if(!move)return null;
+  const progress=Math.max(0,Math.min(25,Math.floor(Number(c.moveMastery[id])||0)));
+  if(progress>=25)return null;
+  const next=Math.min(25,progress+gain);
+  return choice('🥋',move.title,'تقدم الإتقان '+progress+'/25 · بعد الجلسة '+next+'/25 · المستوى '+combatMoveMasteryLabel(progress)+'. '+(alreadyUsed?'استخدمت جلسة السنة الحالية؛ التدريب التالي متاح مع السنة القادمة.':'تكلفة الجلسة 1,200 '+state.place.unit+' واستهلاك 3 طاقة.'),()=>practiceCombatMove(move.id),cash(1200),progress);
+ }).filter(Boolean);
+ if(!opts.length)opts.push(choice('🌟','كل الحركات متقنة','وصلت كل الحركات التي تعلمتها إلى مستوى الخبرة الأعلى. تعلّم حركة جديدة لبدء إتقانها.',()=>{closeModal();info('🌟','إتقان مكتمل','كل الحركات المعروفة وصلت إلى 25 نقطة إتقان.');}));
+ opts.push(choice('↩️','رجوع إلى تدريب القدرات','',combatTrainingMenu));
+ modal('🥋','تدريب الحركات','اختر حركة تعرفها لتدريبها بشكل مركز. '+(alreadyUsed?'استخدمت جلسة التدريب السنوية بالفعل.':'لديك جلسة واحدة هذا العام.')+(coachLevel?' المدرب الحالي يرفع تقدم الجلسة إلى '+gain+' نقاط.':' وجود مدرب يسرّع اكتساب الإتقان.'),opts);
+}
+function practiceCombatMove(id){
+ if(!validState()||!state.specialCareer||state.specialCareer.id!=='fighter')return;
+ const c=ensureCombatCareer(),move=combatMoveCatalog.find(item=>item.id===id&&c.movesKnown.includes(item.id));
+ if(!move){closeModal();info('🥋','الحركة غير متاحة','اختار حركة تعلمتها بالفعل قبل بدء التدريب.');return;}
+ if(c.pendingBout){closeModal();info('🥊','النزال مستمر','أكمل النزال الحالي قبل بدء جلسة تدريب جديدة.');return;}
+ const year=Math.max(0,Math.floor(Number(state.yearCount)||0));
+ if(c.lastMovePracticeYear===year){closeModal();info('📅','جلسة السنة مستخدمة','تقدر تعمل جلسة إتقان واحدة لكل سنة من عمر الشخصية.');return;}
+ if(c.injuryYears>0||c.injury>=65){closeModal();info('🩹','التعافي أولًا','لا تبدأ تدريبًا مركزًا قبل انتهاء فترة التعافي أو انخفاض الإصابة عن 65%.');return;}
+ if(c.energy<3){closeModal();info('🫁','الطاقة منخفضة','تحتاج 3 نقاط طاقة على الأقل لجلسة التدريب.');return;}
+ const cost=1200;
+ if(state.bank<cost){closeModal();info('💳','الرصيد مش كفاية','تحتاج '+cash(cost)+' لجلسة إتقان الحركة.');return;}
+ const current=Math.max(0,Math.min(25,Math.floor(Number(c.moveMastery[move.id])||0)));
+ if(current>=25){closeModal();info('🌟','الحركة متقنة','وصلت '+move.title+' إلى مستوى الخبرة الأعلى بالفعل.');return;}
+ const coachLevel=c.coach?clamp(Number(c.coach.level)||1,1,3):0;
+ const gain=Math.min(25-current,1+(coachLevel?Math.min(2,coachLevel-1):0));
+ const previousLevel=combatMoveMasteryLevel(current);
+ const next=current+gain;
+ closeModal();state.bank-=cost;c.energy=clamp(c.energy-3);
+ c.moveMastery[move.id]=next;c.lastMovePracticeYear=year;
+ log('🥋','جلسة تدريب مركزة','تدرّبت على '+move.title+' وزاد تقدم إتقانها من '+current+' إلى '+next+' نقطة. الطاقة المتبقية '+c.energy+'%.','good');
+ if(combatMoveMasteryLevel(next)>previousLevel){
+  log('🌟','تطور إتقان الحركة','وصلت '+move.title+' إلى مستوى '+combatMoveMasteryLabel(next)+'. أصبحت تضيف '+combatMoveMasteryBonus(next)+' نقاط إلى أدائك عند استخدامها.','good');
+  achievement('إتقان حركة قتالية: '+move.title+' · '+combatMoveMasteryLabel(next));
+ }
+ save();render();practiceCombatMoveMenu();
+}
 function learnCombatMove(){
  const c=ensureCombatCareer();
  const opts=combatMoveCatalog.map(m=>{
   const known=c.movesKnown.includes(m.id),locked=c.rank<m.rank,available=!known&&!locked;
-  const uses=Math.max(0,Number(c.moveMastery[m.id])||0),mastery=known?' · الإتقان: '+combatMoveMasteryLabel(uses)+' · '+Math.min(uses,25)+'/25 استخدام · مكافأة '+combatMoveMasteryBonus(uses)+' نقاط':'';
+  const uses=Math.max(0,Number(c.moveMastery[m.id])||0),mastery=known?' · الإتقان: '+combatMoveMasteryLabel(uses)+' · '+Math.min(uses,25)+'/25 نقطة إتقان · مكافأة '+combatMoveMasteryBonus(uses)+' نقاط':'';
   const desc=m.desc+' · الأسلوب: '+m.style+' · قوي أمام: '+m.strongAgainst+' · القوة '+m.power+'.'+mastery+(known?' تم تعلمها بالفعل.':locked?' تحتاج رتبة '+['مبتدئ','هاوٍ','محترف','منافس على اللقب','بطل الدوري'][m.rank]+'.':'');
   return choice(known?'✅':locked?'🔒':'🥋',m.title,desc,()=>buyCombatMove(m.id),m.cost?cash(m.cost):'مفتوحة',m.power);
  });
@@ -7700,7 +7744,7 @@ function selectCombatMove(){
  const c=ensureCombatCareer(),opts=c.movesKnown.map(id=>{
   const m=combatMoveCatalog.find(x=>x.id===id);if(!m)return null;
   const uses=Math.max(0,Number(c.moveMastery[m.id])||0);
-  return choice(m.id===c.selectedMove?'✅':'🥋',m.title,'الأسلوب '+m.style+' · قوية أمام '+m.strongAgainst+' · القوة '+m.power+' · الإتقان '+combatMoveMasteryLabel(uses)+' · '+Math.min(uses,25)+'/25 استخدام · مكافأة '+combatMoveMasteryBonus(uses)+'.',()=>{closeModal();c.selectedMove=m.id;log('🎯','تغيير خطة النزال','اخترت '+m.title+' كحركة رئيسية.');save();render();combatCareerMenu();},'',m.power+combatMoveMasteryBonus(uses));
+  return choice(m.id===c.selectedMove?'✅':'🥋',m.title,'الأسلوب '+m.style+' · قوية أمام '+m.strongAgainst+' · القوة '+m.power+' · الإتقان '+combatMoveMasteryLabel(uses)+' · '+Math.min(uses,25)+'/25 نقطة إتقان · مكافأة '+combatMoveMasteryBonus(uses)+'.',()=>{closeModal();c.selectedMove=m.id;log('🎯','تغيير خطة النزال','اخترت '+m.title+' كحركة رئيسية.');save();render();combatCareerMenu();},'',m.power+combatMoveMasteryBonus(uses));
  }).filter(Boolean);
  modal('🎯','الحركة الرئيسية','اختار حركة تناسب أسلوب منافسك القادم.',opts);
 }
