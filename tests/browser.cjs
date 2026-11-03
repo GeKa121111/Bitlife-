@@ -227,6 +227,39 @@ async function run() {
 
     const shownName = (await page.locator('#characterName').innerText()).trim();
     assert.ok(shownName.includes(seedSave.name), 'the legacy v1 save should render the seeded player');
+
+    const textScaleProbe = await page.evaluate(() => {
+      const diary = document.querySelector('#lifeFeed .logtext');
+      const fixture = document.createElement('div');
+      fixture.innerHTML = '<div class="choice"><span class="ctitle">عنوان قرار</span><span class="cdesc">وصف القرار</span></div>';
+      document.body.appendChild(fixture);
+      const measure = () => ({
+        diary: diary ? getComputedStyle(diary).fontSize : '0px',
+        title: getComputedStyle(fixture.querySelector('.ctitle')).fontSize,
+        description: getComputedStyle(fixture.querySelector('.cdesc')).fontSize
+      });
+      const normal = measure();
+      document.body.classList.add('text-large');
+      const large = measure();
+      document.body.classList.remove('text-large');
+      fixture.remove();
+      return { normal, large };
+    });
+    for (const key of ['diary', 'title', 'description']) {
+      assert.ok(parseFloat(textScaleProbe.large[key]) > parseFloat(textScaleProbe.normal[key]),
+        'the larger-text preference should increase ' + key + ' text');
+    }
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    const reducedMotionStyle = await page.locator('#lifeFeed .logcard').first().evaluate(element => {
+      const style = getComputedStyle(element);
+      return { animation: style.animationName, transition: style.transitionDuration };
+    });
+    assert.equal(reducedMotionStyle.animation, 'none',
+      'reduced-motion preference should disable diary entrance animations');
+    assert.equal(reducedMotionStyle.transition, '0s',
+      'reduced-motion preference should remove interface transitions');
+    await page.emulateMedia({ reducedMotion: 'no-preference' });
+
     assert.equal((await page.locator('#lifeAnnouncement').textContent()).trim(), '',
       'loading a saved life must not announce its existing diary history');
 
