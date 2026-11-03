@@ -235,7 +235,7 @@ quality = replaceOnce(
 );
 {
   const testStart=quality.indexOf("test('الاختيارات المهنية والعمل المستقل والمشروع العائلي والتعليم الأسري تترك نتائج مؤجلة'");
-  const testEnd=quality.indexOf("\\ntest('تحميل طابور التبعات ينظف السجلات التالفة",testStart);
+  const testEnd=quality.indexOf("\ntest('تحميل طابور التبعات ينظف السجلات التالفة",testStart);
   if(testStart<0||testEnd<0)throw new Error('follow-up regression test boundaries not found for helper wiring');
   const block=replaceOnce(
     quality.slice(testStart,testEnd),
