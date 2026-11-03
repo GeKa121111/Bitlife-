@@ -2943,7 +2943,7 @@ test('تطور مجتمع المقاتلين سنويًا يعكس النشاط 
       return Number.isFinite(number) ? Math.max(min, Math.min(max, Math.round(number))) : min;
     }
   };
-  vm.runInNewContext(helpers + '\\n' + formSource + '\\n' + advanceSource + `
+  vm.runInNewContext(helpers + '\n' + formSource + '\n' + advanceSource + `
     globalThis.community = normalizeCombatCommunity([
       { id: 'adam-mansour', momentum: 0, respect: 70, tension: 20, lastBoutAge: 29, lastInteractionAge: 28, lastProgressYear: 9 },
       { id: 'malek-sherif', momentum: 0, respect: 40, tension: 80, lastBoutAge: 20, lastInteractionAge: 20, lastProgressYear: 9 },
@@ -2985,15 +2985,15 @@ test('تطور مجتمع المقاتلين سنويًا يعكس النشاط 
   const annual = functionSource('advanceAge', 'ageUp');
   assert.ok(annual.indexOf('state.yearCount++') < annual.indexOf('advanceCombatCommunity(cc)'),
     'rival progression must happen after the player advances the game year');
-  assert.match(annual, /advanceCombatCommunity\\(cc\\)/);
+  assert.match(annual, /advanceCombatCommunity\(cc\)/);
   assert.match(functionSource('startCombatBout', 'combatBoutRoundMenu'),
-    /communityFighter\\.rating\\+\\(Number\\(communityFighter\\.momentum\\)\\|\\|0\\)/);
+    /communityFighter\.rating\+\(Number\(communityFighter\.momentum\)\|\|0\)/);
   assert.match(functionSource('resolveCombatBout', 'recoverCombatInjury'),
-    /communityFighter\\.momentum=clamp\\(\\(Number\\(communityFighter\\.momentum\\)\\|\\|0\\)\\+\\(won\\?1:2\\),-5,5\\)/);
+    /communityFighter\.momentum=clamp\(\(Number\(communityFighter\.momentum\)\|\|0\)\+\(won\?1:2\),-5,5\)/);
   assert.match(functionSource('combatCommunityFighterMenu', 'interactCombatFighter'),
-    /combatCommunityFormLabel\\(fighter\\)/);
+    /combatCommunityFormLabel\(fighter\)/);
   assert.match(functionSource('ensureCombatCareer', 'combatRankName'),
-    /normalizeCombatCommunity\\(c\\.community,Math\\.max\\(0,Math\\.floor\\(Number\\(state\\.yearCount\\)\\|\\|0\\)\\)\\)/);
+    /normalizeCombatCommunity\(c\.community,Math\.max\(0,Math\.floor\(Number\(state\.yearCount\)\|\|0\)\)\)/);
   assert.ok(app.includes('community:normalizeCombatCommunity([],state?state.yearCount:0)'));
   assert.ok(app.includes("const KEY = 'hekayat_hayah_save_v1';"));
   assert.ok(app.includes('return {version:1,lifeId:'));
