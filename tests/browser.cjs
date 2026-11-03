@@ -450,8 +450,9 @@ async function run() {
       'the compact diary must remain above the bottom dock');
 
     await page.locator('[data-panel="activities"]').click();
-    await page.getByText('اختيارات سريعة').waitFor();
-    await page.getByText('إدارة الشخصية').waitFor();
+    await page.getByText('الحياة اليومية').waitFor();
+    await page.getByText('أنشطة سريعة').waitFor();
+    await page.getByText('تجارب ومسارات خاصة').waitFor();
     const compactDrawerAlignment = await page.evaluate(() => ({
       overlayTop: document.querySelector('#modalRoot .drawer-overlay').getBoundingClientRect().top,
       headingBottom: document.querySelector('.story-heading').getBoundingClientRect().bottom
