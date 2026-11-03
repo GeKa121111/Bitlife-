@@ -203,12 +203,18 @@ quality = replaceOnce(
   ].join('\n'),
   'assert child-school-age event gate and outcome payloads'
 );
-quality = replaceOnce(
-  quality,
-  "const normalizeSource = functionSource('normalizePendingLifeConsequences', 'queueLifeConsequence');",
-  "const normalizeSource = functionSource('normalizePendingLifeConsequences', 'selectChildForEducationOutcome');",
-  'separate queue helper source in queue test'
-);
+{
+  const testStart=quality.indexOf("test('الاختيارات المهنية والعمل المستقل والمشروع العائلي والتعليم الأسري تترك نتائج مؤجلة'");
+  const testEnd=quality.indexOf("\ntest('تحميل طابور التبعات ينظف السجلات التالفة",testStart);
+  if(testStart<0||testEnd<0)throw new Error('follow-up regression test boundaries not found');
+  const block=replaceOnce(
+    quality.slice(testStart,testEnd),
+    "const normalizeSource = functionSource('normalizePendingLifeConsequences', 'queueLifeConsequence');",
+    "const normalizeSource = functionSource('normalizePendingLifeConsequences', 'selectChildForEducationOutcome');",
+    'separate queue helper source in follow-up test'
+  );
+  quality=quality.slice(0,testStart)+block+quality.slice(testEnd);
+}
 quality = replaceOnce(
   quality,
   "const state = { lifeId: 125, age: 30, pendingLifeConsequences: [] };",
