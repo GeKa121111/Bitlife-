@@ -396,7 +396,7 @@ const combatOpponentTypes=[
  {id:'guard',title:'المدافع الصلب',style:'دفاع',weakTo:'قوة',emoji:'🛡️'},
  {id:'technique',title:'الفني المتمرس',style:'تقنية',weakTo:'دفاع',emoji:'🧠'}
 ];
-const combatOpponentNames=['آدم منصور','مالك شريف','ياسين حمدي','عمر لطفي','كريم فوزي','سيف كمال','علي ناصر','زياد حسن','حمزة فريد','نوح عادل'];
+const combatOpponentNames=['آدم منصور','مالك شريف','ياسين حمدي','عمر لطفي','كريم فوزي','سيف كمال','علي ناصر','زياد حسن','حمزة فريد','نوح عادل','باسل رأفت','مروان عادل','حازم سامي','نديم فؤاد','رامي نجيب'];
 const combatCommunityProfiles=[
  {id:'adam-mansour',name:'آدم منصور',style:'قوة',weakTo:'سرعة',emoji:'💪',rating:46,respect:54,tension:18},
  {id:'malek-sherif',name:'مالك شريف',style:'سرعة',weakTo:'تقنية',emoji:'⚡',rating:52,respect:48,tension:25},
@@ -404,13 +404,28 @@ const combatCommunityProfiles=[
  {id:'omar-lotfy',name:'عمر لطفي',style:'تقنية',weakTo:'دفاع',emoji:'🧠',rating:56,respect:50,tension:31},
  {id:'karim-fawzy',name:'كريم فوزي',style:'قوة',weakTo:'سرعة',emoji:'🥊',rating:61,respect:45,tension:38}
 ];
+const combatCommunityNewcomerProfiles=[
+ {id:'seif-kamal',name:'سيف كمال',style:'سرعة',weakTo:'تقنية',emoji:'⚡',rating:54,respect:42,tension:18},
+ {id:'ali-nasser',name:'علي ناصر',style:'قوة',weakTo:'دفاع',emoji:'🥊',rating:58,respect:40,tension:25},
+ {id:'ziad-hassan',name:'زياد حسن',style:'تقنية',weakTo:'سرعة',emoji:'🧠',rating:51,respect:50,tension:14},
+ {id:'hamza-farid',name:'حمزة فريد',style:'دفاع',weakTo:'قوة',emoji:'🛡️',rating:57,respect:44,tension:20},
+ {id:'noah-adel',name:'نوح عادل',style:'سرعة',weakTo:'قوة',emoji:'🏃',rating:63,respect:35,tension:30},
+ {id:'basel-raafat',name:'باسل رأفت',style:'قوة',weakTo:'سرعة',emoji:'💪',rating:59,respect:47,tension:22},
+ {id:'marwan-adel',name:'مروان عادل',style:'تقنية',weakTo:'دفاع',emoji:'🧠',rating:55,respect:52,tension:16},
+ {id:'hazem-samy',name:'حازم سامي',style:'دفاع',weakTo:'تقنية',emoji:'🛡️',rating:60,respect:43,tension:27},
+ {id:'nadeem-fouad',name:'نديم فؤاد',style:'سرعة',weakTo:'قوة',emoji:'⚡',rating:62,respect:38,tension:32},
+ {id:'ramy-naguib',name:'رامي نجيب',style:'قوة',weakTo:'تقنية',emoji:'🥊',rating:66,respect:41,tension:35}
+];
 function normalizeCombatCommunity(raw,currentYear=0){
  const saved=Array.isArray(raw)?raw:[];
  const bounded=(value,fallback,min,max)=>{
   const number=Number(value);
   return Math.max(min,Math.min(max,Number.isFinite(number)?Math.round(number):fallback));
  };
- return combatCommunityProfiles.map(profile=>{
+ const newcomerProfiles=combatCommunityNewcomerProfiles.filter(profile=>
+  saved.some(entry=>entry&&typeof entry==='object'&&!Array.isArray(entry)&&entry.id===profile.id)
+ );
+ return [...combatCommunityProfiles,...newcomerProfiles].map(profile=>{
   const item=saved.find(entry=>entry&&typeof entry==='object'&&!Array.isArray(entry)&&entry.id===profile.id)||{};
   return {
    ...profile,
@@ -636,10 +651,29 @@ function advanceCombatCommunity(career){
  });
  return advanced;
 }
+function advanceCombatCommunityRoster(career){
+ if(!state||!career||!Array.isArray(career.community))return null;
+ const age=clamp(Number(state.age)||0,0,150);
+ const startedAge=clamp(Number(career.startedAge)||age,0,150);
+ const hasNewcomers=career.community.some(fighter=>
+  fighter&&combatCommunityNewcomerProfiles.some(profile=>profile.id===fighter.id)
+ );
+ const storedNextAge=Number(career.nextRecruitmentAge);
+ if(!Number.isFinite(storedNextAge)||storedNextAge<startedAge+5||storedNextAge>150){
+  career.nextRecruitmentAge=hasNewcomers?Math.min(150,age+5):Math.min(150,startedAge+5);
+ }
+ if(age<career.nextRecruitmentAge)return null;
+ const existingIds=new Set(career.community.map(fighter=>fighter&&fighter.id).filter(Boolean));
+ const newcomer=combatCommunityNewcomerProfiles.find(profile=>!existingIds.has(profile.id));
+ if(!newcomer){career.nextRecruitmentAge=150;return null;}
+ career.community=normalizeCombatCommunity([...career.community,newcomer],state.yearCount);
+ career.nextRecruitmentAge=Math.min(150,age+5);
+ return career.community.find(fighter=>fighter.id===newcomer.id)||null;
+}
 function createCombatCareer(){
  return {rank:0,leaguePoints:0,streetCred:0,streetWins:0,leagueWins:0,wins:0,losses:0,knockouts:0,draws:0,
   technique:32+Math.floor(Math.random()*8),power:28+Math.floor(Math.random()*8),speed:31+Math.floor(Math.random()*8),defense:28+Math.floor(Math.random()*8),stamina:34+Math.floor(Math.random()*8),energy:100,
-  injury:0,injuryYears:0,restUsedYear:-1,lastMovePracticeYear:-1,coach:null,movesKnown:['quick-jab','high-guard'],moveMastery:{},selectedMove:'quick-jab',champion:false,bouts:[],pendingBout:null,community:normalizeCombatCommunity([],state?state.yearCount:0),startedAge:state?state.age:18};
+  injury:0,injuryYears:0,restUsedYear:-1,lastMovePracticeYear:-1,coach:null,movesKnown:['quick-jab','high-guard'],moveMastery:{},selectedMove:'quick-jab',champion:false,bouts:[],pendingBout:null,community:normalizeCombatCommunity([],state?state.yearCount:0),startedAge:state?state.age:18,nextRecruitmentAge:(state?state.age:18)+5};
 }
 function ensureCombatCareer(){
  if(!state)return null;
@@ -652,6 +686,12 @@ function ensureCombatCareer(){
  c.moveMastery=normalizeCombatMoveMastery(c.moveMastery,c.movesKnown);
  if(!Array.isArray(c.bouts))c.bouts=[];
  c.community=normalizeCombatCommunity(c.community,Math.max(0,Math.floor(Number(state.yearCount)||0)));
+ const startedAge=clamp(Number(c.startedAge)||Number(state.age)||18,0,150);
+ const hasNewcomers=c.community.some(fighter=>combatCommunityNewcomerProfiles.some(profile=>profile.id===fighter.id));
+ const nextRecruitmentAge=Number(c.nextRecruitmentAge);
+ c.nextRecruitmentAge=Number.isFinite(nextRecruitmentAge)&&nextRecruitmentAge>=startedAge+5&&nextRecruitmentAge<=150
+  ?Math.floor(nextRecruitmentAge)
+  :Math.min(150,hasNewcomers?Math.max(startedAge,Number(state.age)||startedAge)+5:startedAge+5);
  c.pendingBout=normalizePendingCombatBout(c.pendingBout);
  c.rank=clamp(c.rank,0,4);c.streetCred=Math.max(0,Number(c.streetCred)||0);c.leaguePoints=Math.max(0,Number(c.leaguePoints)||0);
  c.energy=clamp(c.energy);c.injury=clamp(c.injury);c.injuryYears=normalizeCombatInjuryYears(c.injuryYears);if(c.injury===0)c.injuryYears=0;const practiceYear=Number(c.lastMovePracticeYear),currentYear=Math.max(0,Math.floor(Number(state.yearCount)||0));c.lastMovePracticeYear=Number.isFinite(practiceYear)?Math.max(-1,Math.min(currentYear,Math.floor(practiceYear))):-1;
@@ -5295,7 +5335,7 @@ function advanceAge(){
  if(!validState())return;
  state.age++;state.yearCount++;if(perkEnabled('hollywoodStar')&&(state.job||state.specialCareer))state.fame=100;
  if(state.combatCareer&&advanceCombatRecovery(state.combatCareer))log('🩹','التعافي من الإصابة','تعافيت من إصابة القتال وعدت جاهزًا للتدريب.','good');
- if(state.specialCareer&&state.specialCareer.id==='fighter'&&state.combatCareer){const cc=ensureCombatCareer();cc.energy=100;advanceCombatCommunity(cc);if(cc.coach&&cc.coach.yearsLeft>0){const annualCost=cc.coach.annualCost||0;if(state.bank<annualCost){log('💳','تعذر دفع مصاريف المدرب','الرصيد لا يكفي مصاريف المدرب السنوية؛ انتهى التعاقد دون خصم المصروف.','bad');cc.coach=null;}else{state.bank-=annualCost;cc.coach.yearsLeft--;if(cc.coach.yearsLeft<=0){log('🧑‍🏫','انتهاء عقد المدرب','انتهى عقد المدرب. يمكنك تجديده من مسيرة القتال.');cc.coach=null;}}}}
+ if(state.specialCareer&&state.specialCareer.id==='fighter'&&state.combatCareer){const cc=ensureCombatCareer();cc.energy=100;const newcomer=advanceCombatCommunityRoster(cc);if(newcomer)log('🥊','منافس جديد في المجتمع','انضم '+newcomer.name+' إلى مجتمع المقاتلين بأسلوب '+newcomer.style+' وتقييم أولي '+newcomer.rating+'/100.','special');advanceCombatCommunity(cc);if(cc.coach&&cc.coach.yearsLeft>0){const annualCost=cc.coach.annualCost||0;if(state.bank<annualCost){log('💳','تعذر دفع مصاريف المدرب','الرصيد لا يكفي مصاريف المدرب السنوية؛ انتهى التعاقد دون خصم المصروف.','bad');cc.coach=null;}else{state.bank-=annualCost;cc.coach.yearsLeft--;if(cc.coach.yearsLeft<=0){log('🧑‍🏫','انتهاء عقد المدرب','انتهى عقد المدرب. يمكنك تجديده من مسيرة القتال.');cc.coach=null;}}}}
  advanceChildren();
  (state.family||[]).forEach(relative=>{if(relative.deceased)return;relative.age=(relative.age||0)+1;const oldest=relative.age>=100;const parent=/(الأب|الأم|والد|والدة)/.test(relative.relation||'');const risk=relative.age>75?Math.min(.45,.012+(relative.age-75)*.012):0;if(oldest||(risk&&chance(risk))){relative.deceased=true;const close=(relative.relationshipLevel||50)>=70;state.stats.happiness=clamp(state.stats.happiness-(close?12:5));log('🕯️','وفاة أحد أفراد العائلة','توفي '+relative.name+' بعد رحلة من العمر. الخبر أثر عليك وعلى علاقتك بالعائلة.','bad');achievement('وداع '+relative.name);}});
  advanceSiblingEconomies();
@@ -7605,7 +7645,7 @@ function combatCommunityMenu(){
   'التقييم '+clamp(fighter.rating+(Number(fighter.momentum)||0),20,95)+'/100 · '+combatDifficultyLabel(clamp(fighter.rating+(Number(fighter.momentum)||0),20,95))+' · '+combatCommunityFormLabel(fighter)+' · '+combatCommunityRelationLabel(fighter)+' · الاحترام '+fighter.respect+'% · التوتر '+fighter.tension+'%',
   ()=>combatCommunityFighterMenu(fighter.id),'',fighter.respect));
  opts.push(choice('↩️','رجوع لمسيرة القتال','',combatCareerMenu));
- modal('🤝','مجتمع المقاتلين','خمسة مقاتلين داخل مجتمعك المحلي · '+allies+' حلفاء · '+rivals+' خصومات مشتعلة. العلاقات تؤثر على النزالات ولا تحتاج اتصالًا بالإنترنت.',opts);
+ modal('🤝','مجتمع المقاتلين',c.community.length+' منافسًا داخل مجتمعك المحلي · '+allies+' حلفاء · '+rivals+' خصومات مشتعلة. العلاقات تتغير مع السنوات ولا تحتاج اتصالًا بالإنترنت.',opts);
 }
 function combatCommunityFighterMenu(fighterId){
  const c=ensureCombatCareer(),fighter=c.community.find(item=>item.id===fighterId);
