@@ -973,10 +973,10 @@ events.push(
   C('أحافظ على الحجم الحالي','الاستقرار له قيمة',{smart:2,happiness:2},'حافظت على جودة الخدمة وراقبت السوق قبل أي توسع.')
  ],'business'),
  E([30,70],'🎒','قرار تعليمي للأسرة','أحد أبنائك بيفكر في نشاط أو مسار تعليمي جديد، وعايز يسمع رأيك قبل ما يقرر.',[
-  C('أساعده يقارن الاختيارات','خليه يفهم المميزات والالتزامات',{happiness:4,smart:3},'ساعدته يوازن بين اهتمامه والوقت والتكلفة.',{followUp:{delay:2,icon:'🎓',title:'أثر التوجيه التعليمي',text:'بعد سنتين، استقر ابنك على مسار يناسب اهتمامه وبدأ يحقق تقدمًا واضحًا.',effects:{happiness:3,smart:1}}}),
-  C('أوفر له دعمًا مناسبًا','سانده من غير ضغط',{happiness:5,smart:1},'حس إنك بتدعمه، واتفقتم على ميزانية واضحة.',{cost:1800,followUp:{delay:2,icon:'🏅',title:'أثر الدعم التعليمي',text:'بعد سنتين، أكمل ابنك مرحلة تدريبية وحصل على فرصة دعم جزئي خففت جزءًا من مصروفات الأسرة.',effects:{bank:1200,happiness:4}}}),
-  C('أسيبه يجرّب بنفسه','التجربة جزء من التعلم',{happiness:2,smart:2},'احترمت اختياره وفضلت موجود لو احتاج نصيحة.',{followUp:{delay:2,icon:'🌱',title:'نتيجة التجربة التعليمية',text:'بعد سنتين، ساعدته التجربة يحدد المجال الأقرب لاهتمامه ويختار خطوة عملية تالية.',effects:{smart:2,happiness:2}}})
- ],'children'),
+  C('أساعده يقارن الاختيارات','خليه يفهم المميزات والالتزامات',{happiness:4,smart:3},'ساعدته يوازن بين اهتمامه والوقت والتكلفة.',{followUp:{delay:2,icon:'🎓',title:'أثر التوجيه التعليمي',text:'بعد سنتين، استقر ابنك على مسار يناسب اهتمامه وبدأ يحقق تقدمًا واضحًا.',effects:{happiness:3,smart:1},childEducation:{kind:'guided',metrics:{schoolSupport:6,schoolPerformance:3,careerPotential:2,smart:1}}}}),
+  C('أوفر له دعمًا مناسبًا','سانده من غير ضغط',{happiness:5,smart:1},'حس إنك بتدعمه، واتفقتم على ميزانية واضحة.',{cost:1800,followUp:{delay:2,icon:'🏅',title:'أثر الدعم التعليمي',text:'بعد سنتين، أكمل ابنك مرحلة تدريبية وحصل على فرصة دعم جزئي خففت جزءًا من مصروفات الأسرة.',effects:{bank:1200,happiness:4},childEducation:{kind:'supported',metrics:{schoolSupport:10,schoolPerformance:4,careerPotential:2,smart:1}}}}),
+  C('أسيبه يجرّب بنفسه','التجربة جزء من التعلم',{happiness:2,smart:2},'احترمت اختياره وفضلت موجود لو احتاج نصيحة.',{followUp:{delay:2,icon:'🌱',title:'نتيجة التجربة التعليمية',text:'بعد سنتين، ساعدته التجربة يحدد المجال الأقرب لاهتمامه ويختار خطوة عملية تالية.',effects:{smart:2,happiness:2},childEducation:{kind:'explored',metrics:{schoolSupport:3,schoolPerformance:1,careerPotential:4,smart:2}}}})
+ ],'schoolChild'),
  E([35,80],'🤝','صديق يطلب رأيك','صديق قديم محتار بين قرارين مهمين، وطلب منك تسمعه قبل ما يحسم اختياره.',[
   C('أسمع التفاصيل الأول','ما تستعجلش الحكم',{happiness:4,smart:2},'فهمت ظروفه وساعدته يشوف جوانب ماكنش واخد باله منها.'),
   C('أعرض تجربتي','شارك من غير فرض رأي',{smart:3,happiness:2},'حكيت له تجربة مفيدة وسبت القرار النهائي له.'),
@@ -1661,7 +1661,7 @@ function modal(icon,title,desc,choices,closable=true,extra=''){
 function info(icon,title,desc,choices=[choice('✓','تمام','',closeModal)]){modal(icon,title,desc,choices);}
 function validState(){return state&&state.status==='حي'&&!dead;}
 function availableEvents(){
- const eligible=events.filter(e=>{if(state.age<e.range[0]||state.age>e.range[1])return false;const r=e.requires;if(!r)return true;if(r==='partner')return !!state.partner;if(r==='children')return (state.children||[]).length>0;if(r==='job')return !!state.job;if(r==='pet')return (state.pets||[]).length>0;if(r==='investments')return (state.investments||[]).length>0;if(r==='business')return !!state.business;if(r==='fame')return (state.fame||0)>=25;if(r==='single')return !state.partner;if(r==='noLicense')return !state.driversLicense;return true;});
+ const eligible=events.filter(e=>{if(state.age<e.range[0]||state.age>e.range[1])return false;const r=e.requires;if(!r)return true;if(r==='partner')return !!state.partner;if(r==='children')return (state.children||[]).length>0;if(r==='schoolChild')return (state.children||[]).some(c=>c&&Number(c.age)>=6&&Number(c.age)<=15);if(r==='job')return !!state.job;if(r==='pet')return (state.pets||[]).length>0;if(r==='investments')return (state.investments||[]).length>0;if(r==='business')return !!state.business;if(r==='fame')return (state.fame||0)>=25;if(r==='single')return !state.partner;if(r==='noLicense')return !state.driversLicense;return true;});
  const recent=new Set((Array.isArray(state.recentEventTitles)?state.recentEventTitles:[]).map(title=>String(title)));
  const fresh=eligible.filter(event=>!recent.has(String(event.title||'')));
  return fresh.length?fresh:eligible;
@@ -1711,6 +1711,17 @@ function sanitizeLifeConsequenceEffects(raw){
  });
  return safeEffects;
 }
+function sanitizeChildEducationOutcome(raw){
+ if(!raw||typeof raw!=='object'||Array.isArray(raw))return null;
+ const kind=String(raw.kind||'');
+ if(!['guided','supported','explored'].includes(kind))return null;
+ const source=raw.metrics&&typeof raw.metrics==='object'&&!Array.isArray(raw.metrics)?raw.metrics:{};
+ const limits={schoolSupport:20,schoolPerformance:10,careerPotential:10,smart:10};
+ const metrics={};
+ Object.keys(limits).forEach(key=>{const value=Number(source[key]);if(Number.isFinite(value)&&value>0)metrics[key]=Math.min(limits[key],Math.max(1,Math.round(value)));});
+ if(!Object.keys(metrics).length)return null;
+ return {kind,metrics};
+}
 function normalizePendingLifeConsequences(items,currentAge){
  if(!Array.isArray(items))return [];
  const ageValue=Number(currentAge);
@@ -1730,15 +1741,26 @@ function normalizePendingLifeConsequences(items,currentAge){
   if(!id||!title||!text||seen.has(id))return;
   const safeEffects=sanitizeLifeConsequenceEffects(item.effects);
   if(!Object.keys(safeEffects).length)return;
+  const hasChildEducation=Object.prototype.hasOwnProperty.call(item,'childEducation');
+  const childEducation=hasChildEducation?sanitizeChildEducationOutcome(item.childEducation):null;
+  const targetChildId=String(item.targetChildId||'').trim().slice(0,180);
+  if(hasChildEducation&&(!childEducation||!targetChildId))return;
   seen.add(id);
   normalized.push({
    id,scheduledAtAge,dueAge,
    icon:String(item.icon||'📌').slice(0,8),
    title,text,effects:safeEffects,
-   tone:item.tone==='good'?'good':'special'
+   tone:item.tone==='good'?'good':'special',
+   ...(hasChildEducation?{targetChildId,childEducation}:{})
   });
  });
  return normalized.slice(-20);
+}
+function selectChildForEducationOutcome(){
+ if(!state||!Array.isArray(state.children))return null;
+ const eligible=state.children.filter(child=>child&&typeof child==='object').map(child=>ensureChildGrowthProfile(child)).filter(child=>child&&String(child.id||'').trim()&&Number(child.age)>=6&&Number(child.age)<=15);
+ eligible.sort((a,b)=>Number(a.schoolPerformance)-Number(b.schoolPerformance)||Number(b.age)-Number(a.age)||String(a.id).localeCompare(String(b.id)));
+ return eligible[0]||null;
 }
 function queueLifeConsequence(followUp){
  if(!state||!followUp||typeof followUp!=='object')return false;
@@ -1746,7 +1768,12 @@ function queueLifeConsequence(followUp){
  const title=String(followUp.title||'أثر قرار سابق').trim().slice(0,100);
  const text=String(followUp.text||'ظهر أثر قرار سابق في حياتك.').trim().slice(0,260);
  const safeEffects=sanitizeLifeConsequenceEffects(followUp.effects);
+ const hasChildEducation=Object.prototype.hasOwnProperty.call(followUp,'childEducation');
+ const childEducation=hasChildEducation?sanitizeChildEducationOutcome(followUp.childEducation):null;
+ const targetChild=hasChildEducation?selectChildForEducationOutcome():null;
+ const targetChildId=String(targetChild&&targetChild.id||'').trim().slice(0,180);
  if(!title||!text||!Object.keys(safeEffects).length)return false;
+ if(hasChildEducation&&(!childEducation||!targetChildId))return false;
  state.pendingLifeConsequences=normalizePendingLifeConsequences(state.pendingLifeConsequences,state.age);
  const scheduledAtAge=Math.max(0,Math.floor(Number(state.age)||0));
  const id=String(state.lifeId||'life')+':'+scheduledAtAge+':'+title;
@@ -1754,7 +1781,8 @@ function queueLifeConsequence(followUp){
  state.pendingLifeConsequences.push({
   id,scheduledAtAge,dueAge:scheduledAtAge+delay,
   icon:String(followUp.icon||'📌').slice(0,8),title,text,effects:safeEffects,
-  tone:followUp.tone==='good'?'good':'special'
+  tone:followUp.tone==='good'?'good':'special',
+  ...(hasChildEducation?{targetChildId,childEducation}:{})
  });
  if(state.pendingLifeConsequences.length>20)state.pendingLifeConsequences.splice(0,state.pendingLifeConsequences.length-20);
  return true;
@@ -1794,8 +1822,34 @@ function ensureChildGrowthProfile(c){
  if(!Number.isFinite(Number(c.schoolSupport)))c.schoolSupport=0;
  if(typeof c.educationStatus!=='string')c.educationStatus=age<6?'قبل الدراسة':age<18?'طالب في المدرسة':age<22?'لم يُحدد المسار بعد':'بالغ';
  if(typeof c.interest!=='string'||!c.interest)c.interest=pick(['العلوم والتقنية','الفنون والإبداع','الرياضة','الأعمال','المجتمع']);
- if(!Array.isArray(c.growthHistory))c.growthHistory=[];if(!Array.isArray(c.interactions))c.interactions=[];
+ if(!Array.isArray(c.growthHistory))c.growthHistory=[];if(!Array.isArray(c.interactions))c.interactions=[];if(!Array.isArray(c.educationHistory))c.educationHistory=[];c.educationHistory=c.educationHistory.filter(entry=>entry&&typeof entry==='object'&&String(entry.id||'').trim()&&String(entry.title||'').trim()).slice(-12);
  c.age=Math.min(100,Math.floor(age));c.schoolPerformance=clamp(c.schoolPerformance);c.careerPotential=clamp(c.careerPotential);c.independence=clamp(c.independence);c.schoolSupport=clamp(c.schoolSupport);return c;
+}
+function recordChildEducationHistory(child,entry){
+ const c=ensureChildGrowthProfile(child),source=entry&&typeof entry==='object'?entry:{};
+ if(!c)return false;
+ const id=String(source.id||'').trim().slice(0,180),title=String(source.title||'').trim().slice(0,100);
+ const kind=String(source.kind||'');
+ if(!id||!title||!['school','study','career','guided','supported','explored'].includes(kind))return false;
+ if(c.educationHistory.some(item=>item&&item.id===id))return false;
+ c.educationHistory.push({id,age:Math.max(0,Math.min(100,Math.floor(Number(c.age)||0))),familyAge:Math.max(0,Math.min(150,Math.floor(Number(source.familyAge??(state&&state.age))||0))),kind,title,track:String(source.track||c.interest||'مسار عام').slice(0,80),note:String(source.note||'').slice(0,240),stage:childDevelopmentStage(c.age),schoolPerformance:c.schoolPerformance,schoolSupport:c.schoolSupport,careerPotential:c.careerPotential,smart:c.smart});
+ if(c.educationHistory.length>12)c.educationHistory.splice(0,c.educationHistory.length-12);
+ return true;
+}
+function applyChildEducationOutcome(item){
+ if(!item||!item.childEducation||!item.targetChildId||!state||!Array.isArray(state.children))return false;
+ const child=state.children.find(candidate=>candidate&&String(candidate.id||'')===String(item.targetChildId));
+ const outcome=sanitizeChildEducationOutcome(item.childEducation);
+ if(!child||!outcome)return false;
+ ensureChildGrowthProfile(child);
+ if(child.educationHistory.some(entry=>entry&&entry.id===item.id))return false;
+ Object.keys(outcome.metrics).forEach(key=>{child[key]=clamp(Number(child[key]||0)+outcome.metrics[key]);});
+ return recordChildEducationHistory(child,{id:item.id,age:child.age,familyAge:state.age,kind:outcome.kind,title:item.title,note:item.text,track:child.interest});
+}
+function childEducationHistoryMarkup(child){
+ const entries=Array.isArray(child&&child.educationHistory)?child.educationHistory.slice(-3).reverse():[];
+ const rows=entries.map(entry=>'<div class="child-growth-metric"><div><span>'+esc(entry.title)+'</span><b>'+fmt(entry.age)+' سنة</b></div><small>'+esc(entry.track||'مسار عام')+' · تحصيل '+fmt(entry.schoolPerformance)+'%</small></div>').join('');
+ return '<div class="child-growth-panel"><div class="child-growth-heading">سجل التعليم والتوجيه</div>'+(rows||'<div class="pill">لم تُسجل محطات تعليمية بعد.</div>')+'</div>';
 }
 function childCareerFromInterest(interest){
  return ({'العلوم والتقنية':'متخصص تقنية مبتدئ','الفنون والإبداع':'مساعد في مجال إبداعي','الرياضة':'مدرب أو رياضي مبتدئ','الأعمال':'موظف أعمال مبتدئ','المجتمع':'مساعد مجتمعي'})[interest]||'موظف مبتدئ';
@@ -5198,6 +5252,7 @@ function resolveLifeConsequences(){
   if(index<0)return;
   queue.splice(index,1);
   state.pendingLifeConsequences=queue;
+  if(item.childEducation&&!applyChildEducationOutcome(item)){processed++;return;}
   const safeEffects=sanitizeLifeConsequenceEffects(item.effects);
   if(Object.keys(safeEffects).length)effects(safeEffects);
   log(String(item.icon||'📌').slice(0,8),String(item.title||'أثر قرار سابق').slice(0,100),String(item.text||'ظهر أثر قرار سابق في حياتك.').slice(0,260),item.tone==='good'?'good':'special');
@@ -6966,7 +7021,7 @@ function breakUp(){
 }
 function childMenu(i){
  const c=ensureChildGrowthProfile(state.children[i]);if(!c)return;const stage=childDevelopmentStage(c.age);
- const extra='<div class="child-growth-panel"><div class="child-growth-heading">تطور '+esc(c.name)+'</div><div class="pillrow"><span class="pill">🎂 '+fmt(c.age)+' سنة</span><span class="pill">📚 '+esc(c.schooling||stage)+'</span><span class="pill">🧭 '+esc(c.interest)+'</span></div><div class="child-growth-metric"><div><span>التحصيل الدراسي</span><b>'+c.schoolPerformance+'%</b></div><div class="progressline"><div style="width:'+c.schoolPerformance+'%"></div></div></div><div class="child-growth-metric"><div><span>الاستعداد المهني</span><b>'+c.careerPotential+'%</b></div><div class="progressline"><div style="width:'+c.careerPotential+'%"></div></div></div><div class="child-growth-metric"><div><span>الاستقلال</span><b>'+c.independence+'%</b></div><div class="progressline"><div style="width:'+c.independence+'%"></div></div></div></div>';
+ const extra='<div class="child-growth-panel"><div class="child-growth-heading">تطور '+esc(c.name)+'</div><div class="pillrow"><span class="pill">🎂 '+fmt(c.age)+' سنة</span><span class="pill">📚 '+esc(c.schooling||stage)+'</span><span class="pill">🧭 '+esc(c.interest)+'</span></div><div class="child-growth-metric"><div><span>التحصيل الدراسي</span><b>'+c.schoolPerformance+'%</b></div><div class="progressline"><div style="width:'+c.schoolPerformance+'%"></div></div></div><div class="child-growth-metric"><div><span>الاستعداد المهني</span><b>'+c.careerPotential+'%</b></div><div class="progressline"><div style="width:'+c.careerPotential+'%"></div></div></div><div class="child-growth-metric"><div><span>الاستقلال</span><b>'+c.independence+'%</b></div><div class="progressline"><div style="width:'+c.independence+'%"></div></div></div></div>'+childEducationHistoryMarkup(c);
  const opts=[choice('🧸','قضاء وقت معاه','تقوية الارتباط وتحسين المزاج.',()=>childAction(i,'time')),choice('💬','الاستماع لمشكلته','دعم عاطفي وتواصل.',()=>childAction(i,'talk')),choice('🎁','هدية','هدية بميزانية 500 '+state.place.unit+'.',()=>childAction(i,'gift'),'500 '+state.place.unit),choice('📚','دعم التعليم','مساهمة في التعلم من سن 4 سنوات.',()=>childAction(i,'school'),'1,000 '+state.place.unit)];
  if(c.age>=6&&c.age<18)opts.push(choice('🎓','دعم التفوق الدراسي','يرفع التحصيل الدراسي والذكاء وفرص المستقبل.',()=>childAction(i,'study'),'1,500 '+state.place.unit,c.schoolPerformance));
  if(c.age>=16)opts.push(choice('🧭','توجيه مهني','اربط اهتماماته بخيارات الدراسة والعمل.',()=>childAction(i,'career'),'مجانًا',c.careerPotential));
@@ -6992,6 +7047,10 @@ function childAction(i,action){
  }else if(action==='career'){c.careerPotential=clamp(c.careerPotential+10);c.independence=clamp(c.independence+3);c.careerGuidanceCount=(Number(c.careerGuidanceCount)||0)+1;text='ناقشت مع '+c.name+' اهتمامه بـ'+c.interest+' وخياراته المهنية. الاستعداد المهني '+c.careerPotential+'%.';
  }else if(action==='launch'){c.independence=clamp(c.independence+12);c.careerPotential=clamp(c.careerPotential+3);if(c.job==='باحث عن فرصة عمل'&&c.careerPotential>=55){c.job=childCareerFromInterest(c.interest);c.educationStatus='بدأ أول وظيفة بدعم الأسرة';}text='ساعدت '+c.name+' في خطوة الاستقلال. مستوى الاستقلال '+c.independence+'%.';
  }else if(action==='time'){stat('happiness',2);text='قضيت وقت مع '+c.name+' وبنيتوا ذكرى جديدة.';}else if(action==='talk'){text='سمعت '+c.name+' باهتمام وخلّيته يحكي اللي مضايقه.';}else{stat('happiness',2);text='قدمت هدية لـ'+c.name+' بتكلفة '+cash(cost)+'.';}
+ if(['school','study','career'].includes(action)){
+  const titles={school:'مساهمة تعليمية',study:'دعم التفوق الدراسي',career:'توجيه مهني'};
+  recordChildEducationHistory(c,{id:String(state.lifeId||'life')+':'+state.age+':'+String(c.id||i)+':'+action+':'+Math.random().toString(36).slice(2,8),familyAge:state.age,kind:action,title:titles[action],note:text,track:c.interest});
+ }
  if(!Array.isArray(c.interactions))c.interactions=[];c.interactions.push({age:state.age,action,delta,levelAfter:c.relationshipLevel,schoolPerformance:c.schoolPerformance,careerPotential:c.careerPotential,independence:c.independence});if(c.interactions.length>12)c.interactions.shift();
  const icon=action==='study'||action==='school'?'🎓':action==='career'?'🧭':action==='launch'?'🚀':'👪';
  log(icon,action==='study'?'استثمار في التعليم':action==='school'?'دعم تعليم الأبناء':action==='career'?'توجيه مهني':action==='launch'?'دعم استقلال الابن':'وقت مع الأسرة',text,'good');
