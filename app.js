@@ -404,7 +404,7 @@ const combatCommunityProfiles=[
  {id:'omar-lotfy',name:'عمر لطفي',style:'تقنية',weakTo:'دفاع',emoji:'🧠',rating:56,respect:50,tension:31},
  {id:'karim-fawzy',name:'كريم فوزي',style:'قوة',weakTo:'سرعة',emoji:'🥊',rating:61,respect:45,tension:38}
 ];
-function normalizeCombatCommunity(raw){
+function normalizeCombatCommunity(raw,currentYear=0){
  const saved=Array.isArray(raw)?raw:[];
  const bounded=(value,fallback,min,max)=>{
   const number=Number(value);
@@ -420,6 +420,8 @@ function normalizeCombatCommunity(raw){
    allied:item.allied===true,
    lastInteractionAge:bounded(item.lastInteractionAge,-1,-1,120),
    lastBoutAge:bounded(item.lastBoutAge,-1,-1,120),
+   momentum:bounded(item.momentum,0,-5,5),
+   lastProgressYear:bounded(item.lastProgressYear,Math.max(0,Math.floor(Number(currentYear)||0)),-1,Math.max(0,Math.floor(Number(currentYear)||0))),
    lastAction:['friendly','trash','alliance','break','spar'].includes(item.lastAction)?item.lastAction:''
   };
  });
@@ -606,10 +608,38 @@ function combatDifficultyLabel(rating){
  if(score<70)return 'صعب';
  return 'نخبة';
 }
+function combatCommunityFormLabel(fighter){
+ const momentum=clamp(Number(fighter&&fighter.momentum)||0,-5,5);
+ if(momentum>=3)return 'في قمة النشاط';
+ if(momentum>=1)return 'مستواه صاعد';
+ if(momentum<=-3)return 'بحاجة لاستعادة مستواه';
+ if(momentum<=-1)return 'مستواه متراجع';
+ return 'مستقر';
+}
+function advanceCombatCommunity(career){
+ if(!state||!career||!Array.isArray(career.community))return false;
+ const year=Math.max(0,Math.floor(Number(state.yearCount)||0));
+ const age=Math.max(0,Math.floor(Number(state.age)||0));
+ let advanced=false;
+ career.community.forEach(fighter=>{
+  if(!fighter||typeof fighter!=='object')return;
+  const lastYear=Number(fighter.lastProgressYear);
+  if(Number.isFinite(lastYear)&&Math.floor(lastYear)>=year)return;
+  const recentlyActive=Number(fighter.lastBoutAge)>=age-2;
+  const recentlyEngaged=Number(fighter.lastInteractionAge)>=age-2;
+  let change=recentlyActive||(recentlyEngaged&&Number(fighter.respect)>=65)?1:-1;
+  if(fighter.allied!==true&&Number(fighter.tension)>=65)change++;
+  const current=clamp(Number(fighter.momentum)||0,-5,5);
+  fighter.momentum=clamp(current+change,-5,5);
+  fighter.lastProgressYear=year;
+  advanced=true;
+ });
+ return advanced;
+}
 function createCombatCareer(){
  return {rank:0,leaguePoints:0,streetCred:0,streetWins:0,leagueWins:0,wins:0,losses:0,knockouts:0,draws:0,
   technique:32+Math.floor(Math.random()*8),power:28+Math.floor(Math.random()*8),speed:31+Math.floor(Math.random()*8),defense:28+Math.floor(Math.random()*8),stamina:34+Math.floor(Math.random()*8),energy:100,
-  injury:0,injuryYears:0,restUsedYear:-1,lastMovePracticeYear:-1,coach:null,movesKnown:['quick-jab','high-guard'],moveMastery:{},selectedMove:'quick-jab',champion:false,bouts:[],pendingBout:null,community:normalizeCombatCommunity([]),startedAge:state?state.age:18};
+  injury:0,injuryYears:0,restUsedYear:-1,lastMovePracticeYear:-1,coach:null,movesKnown:['quick-jab','high-guard'],moveMastery:{},selectedMove:'quick-jab',champion:false,bouts:[],pendingBout:null,community:normalizeCombatCommunity([],state?state.yearCount:0),startedAge:state?state.age:18};
 }
 function ensureCombatCareer(){
  if(!state)return null;
@@ -621,7 +651,7 @@ function ensureCombatCareer(){
  if(!c.movesKnown.length)c.movesKnown=['quick-jab','high-guard'];
  c.moveMastery=normalizeCombatMoveMastery(c.moveMastery,c.movesKnown);
  if(!Array.isArray(c.bouts))c.bouts=[];
- c.community=normalizeCombatCommunity(c.community);
+ c.community=normalizeCombatCommunity(c.community,Math.max(0,Math.floor(Number(state.yearCount)||0)));
  c.pendingBout=normalizePendingCombatBout(c.pendingBout);
  c.rank=clamp(c.rank,0,4);c.streetCred=Math.max(0,Number(c.streetCred)||0);c.leaguePoints=Math.max(0,Number(c.leaguePoints)||0);
  c.energy=clamp(c.energy);c.injury=clamp(c.injury);c.injuryYears=normalizeCombatInjuryYears(c.injuryYears);if(c.injury===0)c.injuryYears=0;const practiceYear=Number(c.lastMovePracticeYear),currentYear=Math.max(0,Math.floor(Number(state.yearCount)||0));c.lastMovePracticeYear=Number.isFinite(practiceYear)?Math.max(-1,Math.min(currentYear,Math.floor(practiceYear))):-1;
@@ -5265,7 +5295,7 @@ function advanceAge(){
  if(!validState())return;
  state.age++;state.yearCount++;if(perkEnabled('hollywoodStar')&&(state.job||state.specialCareer))state.fame=100;
  if(state.combatCareer&&advanceCombatRecovery(state.combatCareer))log('🩹','التعافي من الإصابة','تعافيت من إصابة القتال وعدت جاهزًا للتدريب.','good');
- if(state.specialCareer&&state.specialCareer.id==='fighter'&&state.combatCareer){const cc=ensureCombatCareer();cc.energy=100;if(cc.coach&&cc.coach.yearsLeft>0){const annualCost=cc.coach.annualCost||0;if(state.bank<annualCost){log('💳','تعذر دفع مصاريف المدرب','الرصيد لا يكفي مصاريف المدرب السنوية؛ انتهى التعاقد دون خصم المصروف.','bad');cc.coach=null;}else{state.bank-=annualCost;cc.coach.yearsLeft--;if(cc.coach.yearsLeft<=0){log('🧑‍🏫','انتهاء عقد المدرب','انتهى عقد المدرب. يمكنك تجديده من مسيرة القتال.');cc.coach=null;}}}}
+ if(state.specialCareer&&state.specialCareer.id==='fighter'&&state.combatCareer){const cc=ensureCombatCareer();cc.energy=100;advanceCombatCommunity(cc);if(cc.coach&&cc.coach.yearsLeft>0){const annualCost=cc.coach.annualCost||0;if(state.bank<annualCost){log('💳','تعذر دفع مصاريف المدرب','الرصيد لا يكفي مصاريف المدرب السنوية؛ انتهى التعاقد دون خصم المصروف.','bad');cc.coach=null;}else{state.bank-=annualCost;cc.coach.yearsLeft--;if(cc.coach.yearsLeft<=0){log('🧑‍🏫','انتهاء عقد المدرب','انتهى عقد المدرب. يمكنك تجديده من مسيرة القتال.');cc.coach=null;}}}}
  advanceChildren();
  (state.family||[]).forEach(relative=>{if(relative.deceased)return;relative.age=(relative.age||0)+1;const oldest=relative.age>=100;const parent=/(الأب|الأم|والد|والدة)/.test(relative.relation||'');const risk=relative.age>75?Math.min(.45,.012+(relative.age-75)*.012):0;if(oldest||(risk&&chance(risk))){relative.deceased=true;const close=(relative.relationshipLevel||50)>=70;state.stats.happiness=clamp(state.stats.happiness-(close?12:5));log('🕯️','وفاة أحد أفراد العائلة','توفي '+relative.name+' بعد رحلة من العمر. الخبر أثر عليك وعلى علاقتك بالعائلة.','bad');achievement('وداع '+relative.name);}});
  advanceSiblingEconomies();
@@ -7572,7 +7602,7 @@ function combatCommunityMenu(){
  const allies=c.community.filter(fighter=>fighter.allied).length;
  const rivals=c.community.filter(fighter=>fighter.tension>=65).length;
  const opts=c.community.map(fighter=>choice(fighter.emoji,fighter.name,
-  'الأسلوب '+fighter.style+' · '+combatCommunityRelationLabel(fighter)+' · الاحترام '+fighter.respect+'% · التوتر '+fighter.tension+'%',
+  'التقييم '+clamp(fighter.rating+(Number(fighter.momentum)||0),20,95)+'/100 · '+combatDifficultyLabel(clamp(fighter.rating+(Number(fighter.momentum)||0),20,95))+' · '+combatCommunityFormLabel(fighter)+' · '+combatCommunityRelationLabel(fighter)+' · الاحترام '+fighter.respect+'% · التوتر '+fighter.tension+'%',
   ()=>combatCommunityFighterMenu(fighter.id),'',fighter.respect));
  opts.push(choice('↩️','رجوع لمسيرة القتال','',combatCareerMenu));
  modal('🤝','مجتمع المقاتلين','خمسة مقاتلين داخل مجتمعك المحلي · '+allies+' حلفاء · '+rivals+' خصومات مشتعلة. العلاقات تؤثر على النزالات ولا تحتاج اتصالًا بالإنترنت.',opts);
@@ -7580,10 +7610,11 @@ function combatCommunityMenu(){
 function combatCommunityFighterMenu(fighterId){
  const c=ensureCombatCareer(),fighter=c.community.find(item=>item.id===fighterId);
  if(!fighter){combatCommunityMenu();return;}
+ const currentRating=clamp(fighter.rating+(Number(fighter.momentum)||0),20,95);
  const canInteract=fighter.lastInteractionAge!==state.age;
  const contactNote=canInteract?'تفاعل اجتماعي واحد مع هذا المقاتل كل سنة.':'استخدمت تفاعلك الاجتماعي معه في هذه السنة؛ تقدر تتواصل من جديد بعد التقدم بالعمر.';
  const opts=[
-  choice('🔎','قراءة المنافس','التقييم '+fighter.rating+'/100 · '+combatDifficultyLabel(fighter.rating)+' · أسلوبه '+fighter.style+' · نقطة ضعفه '+fighter.weakTo+'.',()=>{closeModal();info('📊','ملف '+fighter.name,'الاحترام '+fighter.respect+'% · التوتر '+fighter.tension+'% · الحالة '+combatCommunityRelationLabel(fighter)+'. آخر تواصل: '+(fighter.lastInteractionAge<0?'لم يحدث بعد':'عمر '+fighter.lastInteractionAge)+'.');}),
+  choice('🔎','قراءة المنافس','التقييم '+currentRating+'/100 · '+combatDifficultyLabel(currentRating)+' · الحالة التنافسية: '+combatCommunityFormLabel(fighter)+' · أسلوبه '+fighter.style+' · نقطة ضعفه '+fighter.weakTo+'.',()=>{closeModal();info('📊','ملف '+fighter.name,'التقييم الحالي '+currentRating+'/100 · '+combatCommunityFormLabel(fighter)+' · الاحترام '+fighter.respect+'% · التوتر '+fighter.tension+'% · الحالة '+combatCommunityRelationLabel(fighter)+'. آخر تواصل: '+(fighter.lastInteractionAge<0?'لم يحدث بعد':'عمر '+fighter.lastInteractionAge)+'.');}),
   choice('💬','حديث ودي',contactNote+' زوّد الاحترام وهدّي التوتر.',()=>interactCombatFighter(fighter.id,'friendly')),
   choice('📣','استفزاز إعلامي',contactNote+' قد يحوّل المنافس إلى خصم دائم ويرفع شهرتك قليلًا.',()=>interactCombatFighter(fighter.id,'trash')),
   choice(fighter.allied?'🔓':'🤝',fighter.allied?'إنهاء التحالف':'عرض تحالف',fighter.allied?'إنهاء التعاون وفتح باب المنافسة من جديد.':'يتطلب احترامًا 55% على الأقل وتوترًا لا يتجاوز 45%.',()=>interactCombatFighter(fighter.id,fighter.allied?'break':'alliance')),
@@ -7591,7 +7622,7 @@ function combatCommunityFighterMenu(fighterId){
   ...(fighter.allied?[choice('🥋','تدريب مشترك','تدريب مع حليفك مقابل 800 من عملة اللعبة؛ يحسن التقنية والدفاع قليلًا.',()=>interactCombatFighter(fighter.id,'spar'),'800 '+state.place.unit)]:[]),
   choice('↩️','رجوع للمجتمع','',combatCommunityMenu)
  ];
- modal('⚔️',fighter.name,'الاحترام '+fighter.respect+'% · التوتر '+fighter.tension+'% · '+combatCommunityRelationLabel(fighter)+'. '+contactNote,opts);
+ modal('⚔️',fighter.name,'التقييم '+currentRating+'/100 · '+combatCommunityFormLabel(fighter)+' · الاحترام '+fighter.respect+'% · التوتر '+fighter.tension+'% · '+combatCommunityRelationLabel(fighter)+'. '+contactNote,opts);
 }
 function interactCombatFighter(fighterId,action){
  const c=ensureCombatCareer(),fighter=c.community.find(item=>item.id===fighterId);
@@ -7775,7 +7806,7 @@ function startCombatBout(mode,communityFighterId=null){
  const type=communityFighter?null:pick(combatOpponentTypes);
  const opponent=communityFighter?
   {name:communityFighter.name,style:communityFighter.style,weakTo:communityFighter.weakTo,emoji:communityFighter.emoji,
-   rating:clamp(communityFighter.rating+(mode==='league'?c.rank*4:0),18,95),mode,fee:mode==='league'?1500:0}:
+   rating:clamp(communityFighter.rating+(Number(communityFighter.momentum)||0)+(mode==='league'?c.rank*4:0),18,95),mode,fee:mode==='league'?1500:0}:
   {name:pick(combatOpponentNames),style:type.style,weakTo:type.weakTo,emoji:type.emoji,
    rating:mode==='league'?34+c.rank*8+Math.floor(Math.random()*13):18+Math.floor(Math.random()*31),mode,fee:mode==='league'?1500:0};
  if(mode==='league')state.bank-=1500;
@@ -7942,6 +7973,7 @@ function resolveCombatBout(mode,opponent,moveId,probabilityOverride=null,session
   communityFighter.respect=clamp(communityFighter.respect+(won?10:3));
   communityFighter.tension=clamp(communityFighter.tension+(won?-12:14));
   communityFighter.lastBoutAge=state.age;
+  communityFighter.momentum=clamp((Number(communityFighter.momentum)||0)+(won?1:2),-5,5);
   if(communityFighter.allied&&!won&&communityFighter.tension>=75){
    communityFighter.allied=false;detail+=' التوتر بعد النزال أنهى التحالف بينكما.';
   }
