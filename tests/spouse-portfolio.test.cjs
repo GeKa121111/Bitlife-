@@ -103,11 +103,11 @@ test('عجز التشغيل يترك متأخرات التمويل في العق
 test('بيع الحصة يخصم تكلفة البيع والتمويل ويرفض حقوق الملكية السلبية',()=>{
  const context=makeContext(),spouse={id:'spouse-sale',name:'شريك بائع',deceased:false,inheritance:{records:[]},inheritanceCashBalance:500,inheritanceDebtBalance:0,
   portfolio:{lastProcessedYear:2028,history:[],ownedProperties:[
-   {id:'sale-flat',label:'شقة موروثة',kind:'residence',marketValue:10000,mortgage:{balance:2000,arrears:500}},
+   {id:'sale-flat',label:'شقة موروثة',kind:'rental',marketValue:10000,rentArrears:300,mortgage:{balance:2000,arrears:500}},
    {id:'negative-equity',label:'عقار مرهون',kind:'rental',marketValue:1000,mortgage:{balance:2000,arrears:0}}
   ]}};
  const relative={id:'relative-sale',deceased:true,economicProfile:{household:{spouse}}},quote=context.quoteSpousePropertySale(spouse.portfolio.ownedProperties[0]);
- assert.equal(quote.ok,true);assert.equal(quote.transactionCost,500);assert.equal(quote.securedDebt,2500);assert.equal(quote.proceeds,7000);
+ assert.equal(quote.ok,true);assert.equal(quote.transactionCost,500);assert.equal(quote.securedDebt,2500);assert.equal(quote.proceeds,7000);assert.equal(quote.rentArrearsWrittenOff,300);
  const sold=context.sellSpouseProperty(relative,spouse,'sale-flat',2029);
  assert.equal(sold.ok,true);assert.equal(sold.proceeds,7000);assert.equal(spouse.inheritanceCashBalance,7500);
  assert.equal(spouse.portfolio.ownedProperties.some(asset=>asset.id==='sale-flat'),false);
