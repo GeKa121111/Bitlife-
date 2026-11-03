@@ -2545,3 +2545,17 @@ test('وصية الأشقاء ودفتر التركة يظهران في الوا
   assert.match(app, /const KEY = 'hekayat_hayah_save_v1';/);
   assert.ok(app.includes('return {version:1,lifeId:'), 'the legacy save remains version 1');
 });
+
+
+test('تكبير النص يشمل الاختيارات والوصف وأدوات القوائم، وتقليل الحركة يوقف الانتقالات العامة', () => {
+  const accessibleUi = css.slice(css.lastIndexOf('/* v121: extend the readable-text preference'));
+  assert.match(accessibleUi, /body\.text-large \.choice \.ctitle\{font-size:14px!important/);
+  assert.match(accessibleUi, /body\.text-large \.choice \.cdesc/);
+  assert.match(accessibleUi, /body\.text-large \.sectiontitle/);
+  assert.match(accessibleUi, /body\.text-large \.navbtn/);
+  assert.match(accessibleUi, /@media\(prefers-reduced-motion:reduce\)/);
+  assert.match(accessibleUi, /animation:none!important/);
+  assert.match(accessibleUi, /transition:none!important/);
+  assert.match(read('sw.js'), /hayah-shell-v121/);
+});
+
