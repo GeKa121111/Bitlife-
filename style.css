@@ -2678,3 +2678,17 @@ body.theme-gold{--hayah-focus-ring:#76520f}
   position:relative;
   z-index:4;
 }
+
+
+/* v131: improve mobile reachability without changing the five-zone layout. */
+#app .menu-trigger,
+#app .top-actions .header-action,
+#app .member-btn,
+#app .identity-info,
+#modalRoot .closebtn,
+#modalRoot .smallbtn{
+  min-width:44px!important;
+  min-height:44px!important;
+  box-sizing:border-box;
+  flex-shrink:0;
+}
