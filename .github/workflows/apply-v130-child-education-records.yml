@@ -4,8 +4,6 @@ on:
   push:
     branches:
       - automation/v130-child-education-records-20261103
-    paths:
-      - scripts/apply-v130-child-education-records.cjs
 
 permissions:
   contents: write
