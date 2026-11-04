@@ -487,7 +487,20 @@ function combatStyleVarietyModifier(roundHistory,style){
  const repeats=recent.filter(item=>item&&item.style===style).length;
  return repeats===0?2:repeats===1?-3:-6;
 }
-function combatOpponentStyleForRound(opponent,round,lastPlayerStyle,roundHistory=[]){
+function combatOpponentArchetype(opponent,opponentId=''){
+ const profiles=[
+  {id:'pressure',title:'مبادر',description:'يضغط مبكرًا ويعاقب تكرار أسلوبك.',repeatThreshold:45,mixedLatestThreshold:72,mixedPreviousThreshold:58,repeatRead:'لاحظ تكرارك واندفع لمواجهته.',latestRead:'يركز على آخر حركة ويجهز ردًا مباشرًا.',previousRead:'يحاول استباق النمط الذي بدأ به النزال.',holdRead:'يتمسك بإيقاعه ولا يقرأ التنويع بسهولة.'},
+  {id:'watcher',title:'مراقب',description:'يجمع إشارات من الجولات قبل تغيير خطته.',repeatThreshold:60,mixedLatestThreshold:88,mixedPreviousThreshold:48,repeatRead:'التقط تكرار أسلوبك ويجهز ردًا محسوبًا.',latestRead:'قرأ آخر حركة ويستعد لمواجهتها.',previousRead:'يركز على النمط الذي بدأ به النزال.',holdRead:'يراقب تحركاتك دون كشف خطته مبكرًا.'},
+  {id:'stubborn',title:'عنيد',description:'يتمسك بخطته الأساسية ولا يغيرها بسهولة.',repeatThreshold:76,mixedLatestThreshold:92,mixedPreviousThreshold:85,repeatRead:'تكرارك الواضح أجبره أخيرًا على تغيير خطته.',latestRead:'مستوى خبرته العالي سمح له بقراءة آخر حركة.',previousRead:'بدأ يراجع خطته بعد ملاحظة النمط السابق.',holdRead:'يتمسك بخطته الأساسية رغم محاولتك تغيير الإيقاع.'},
+  {id:'balanced',title:'متزن',description:'يوازن بين خطته وقراءة تحركاتك.',repeatThreshold:50,mixedLatestThreshold:65,mixedPreviousThreshold:50,repeatRead:'لاحظ المنافس تكرار أسلوبك ويستعد لمواجهته.',latestRead:'المنافس يراقب آخر اختيار لك ويحاول توقع خطوتك التالية.',previousRead:'المنافس يحاول استغلال الأسلوب الذي استخدمته في بداية النزال.',holdRead:'لاحظ المنافس التكرار لكنه لا يستغله بكفاءة بعد.'}
+ ];
+ const identity=String(opponentId||opponent&&opponent.name||'').trim();
+ if(!identity)return profiles[3];
+ let hash=0;
+ for(let index=0;index<identity.length;index++)hash=(hash*31+identity.charCodeAt(index))%2147483647;
+ return profiles[hash%profiles.length];
+}
+function combatOpponentStyleForRound(opponent,round,lastPlayerStyle,roundHistory=[],opponentId=''){
  const baseStyles=['قوة','سرعة','دفاع','تقنية'];
  const base=opponent&&baseStyles.includes(opponent.style)?opponent.style:'قوة';
  const roundNumber=Math.max(1,Math.floor(Number(round)||1));
@@ -496,23 +509,20 @@ function combatOpponentStyleForRound(opponent,round,lastPlayerStyle,roundHistory
  const next=adaptive[lastPlayerStyle];
  if(!next)return base;
  if(roundNumber===2)return next;
- const recent=Array.isArray(roundHistory)
-  ?roundHistory.slice(-2).map(item=>item&&baseStyles.includes(item.style)?item.style:null).filter(Boolean)
-  :[];
- // Legacy pending bouts may not have a complete round history; retain their previous deterministic behavior.
+ const recent=Array.isArray(roundHistory)?roundHistory.slice(-2).map(item=>item&&baseStyles.includes(item.style)?item.style:null).filter(Boolean):[];
  if(recent.length<2)return baseStyles[(baseStyles.indexOf(next)+1)%baseStyles.length];
  const previous=recent[0],latest=recent[1];
  const ratingValue=Number(opponent&&opponent.rating);
  const awareness=Number.isFinite(ratingValue)?Math.max(0,Math.min(100,ratingValue)):0;
- // Stronger opponents exploit a repeated style; less experienced rivals can notice it without using it well.
- if(previous===latest)return awareness>=50?(adaptive[latest]||base):base;
- // Elite opponents react to the most recent choice; experienced opponents anticipate the earlier pattern.
- if(awareness>=65)return adaptive[latest]||base;
- if(awareness>=50)return adaptive[previous]||base;
+ const archetype=combatOpponentArchetype(opponent,opponentId);
+ if(previous===latest)return awareness>=archetype.repeatThreshold?(adaptive[latest]||base):base;
+ if(awareness>=archetype.mixedLatestThreshold)return adaptive[latest]||base;
+ if(awareness>=archetype.mixedPreviousThreshold)return adaptive[previous]||base;
  return baseStyles[(baseStyles.indexOf(next)+1)%baseStyles.length];
 }
-function combatOpponentIntent(opponent,round,lastPlayerStyle,roundHistory=[]){
- const style=combatOpponentStyleForRound(opponent,round,lastPlayerStyle,roundHistory);
+function combatOpponentIntent(opponent,round,lastPlayerStyle,roundHistory=[],opponentId=''){
+ const archetype=combatOpponentArchetype(opponent,opponentId);
+ const style=combatOpponentStyleForRound(opponent,round,lastPlayerStyle,roundHistory,opponentId);
  const intents={
   'قوة':{title:'ضربة ثقيلة',description:'المنافس يحمّل هجمة مباشرة تعتمد على القوة.'},
   'سرعة':{title:'هجوم خاطف',description:'المنافس يجهز سلسلة سريعة ويبحث عن فتحة.'},
@@ -520,22 +530,19 @@ function combatOpponentIntent(opponent,round,lastPlayerStyle,roundHistory=[]){
   'تقنية':{title:'محاولة سيطرة',description:'المنافس يغيّر المسافة ويحاول فرض اشتباك فني.'}
  };
  const roundNumber=Math.max(1,Math.floor(Number(round)||1));
- const recent=Array.isArray(roundHistory)
-  ?roundHistory.slice(-2).map(item=>item&&['قوة','سرعة','دفاع','تقنية'].includes(item.style)?item.style:null).filter(Boolean)
-  :[];
+ const recent=Array.isArray(roundHistory)?roundHistory.slice(-2).map(item=>item&&['قوة','سرعة','دفاع','تقنية'].includes(item.style)?item.style:null).filter(Boolean):[];
  const ratingValue=Number(opponent&&opponent.rating);
  const awareness=Number.isFinite(ratingValue)?Math.max(0,Math.min(100,ratingValue)):0;
  let read='يبدأ المنافس بأسلوبه الأساسي.';
  if(roundNumber===2)read='المنافس يحاول الرد على اختيارك السابق.';
  else if(roundNumber>=3){
   if(recent.length<2)read='سجل الجولات غير مكتمل؛ المنافس يستخدم استجابة احتياطية.';
-  else if(recent[0]===recent[1]){
-   read=awareness>=50?'لاحظ المنافس تكرار أسلوبك ويستعد لمواجهته.':'لاحظ المنافس التكرار لكنه لا يستغله بكفاءة بعد.';
-  }else if(awareness>=65)read='المنافس يراقب آخر اختيار لك ويحاول توقع خطوتك التالية.';
-  else if(awareness>=50)read='المنافس يحاول استغلال الأسلوب الذي استخدمته في بداية النزال.';
-  else read='لم يلتقط المنافس نمطًا واضحًا؛ يستخدم استجابة محدودة.';
+  else if(recent[0]===recent[1])read=awareness>=archetype.repeatThreshold?archetype.repeatRead:archetype.holdRead;
+  else if(awareness>=archetype.mixedLatestThreshold)read=archetype.latestRead;
+  else if(awareness>=archetype.mixedPreviousThreshold)read=archetype.previousRead;
+  else read=archetype.holdRead;
  }
- return {style,...intents[style],read};
+ return {style,...intents[style],read,archetypeId:archetype.id,archetypeTitle:archetype.title,archetypeDescription:archetype.description};
 }
 const combatReactionCatalog=[
  {id:'guard',title:'صد محكم',energyCost:1,description:'ثبّت الحراسة وامتص الهجمة المتوقعة.'},
@@ -7791,6 +7798,7 @@ function combatCommunityMenu(){
 function combatCommunityFighterMenu(fighterId){
  const c=ensureCombatCareer(),fighter=c.community.find(item=>item.id===fighterId);
  if(!fighter){combatCommunityMenu();return;}
+ const archetype=combatOpponentArchetype(fighter,fighter.id);
  if(c.retired||fighter.retired===true||fighter.deceased===true){
   const rating=clamp(fighter.rating+(Number(fighter.momentum)||0),20,95);
   const isDeceased=fighter.deceased===true;
@@ -7811,7 +7819,7 @@ function combatCommunityFighterMenu(fighterId){
  const canInteract=fighter.lastInteractionAge!==state.age;
  const contactNote=canInteract?'تفاعل اجتماعي واحد مع هذا المقاتل كل سنة.':'استخدمت تفاعلك الاجتماعي معه في هذه السنة؛ تقدر تتواصل من جديد بعد التقدم بالعمر.';
  const opts=[
-  choice('🔎','قراءة المنافس','التقييم '+currentRating+'/100 · '+combatDifficultyLabel(currentRating)+' · الحالة التنافسية: '+combatCommunityFormLabel(fighter)+' · أسلوبه '+fighter.style+' · نقطة ضعفه '+fighter.weakTo+'.',()=>{closeModal();info('📊','ملف '+fighter.name,'التقييم الحالي '+currentRating+'/100 · '+combatCommunityFormLabel(fighter)+' · الاحترام '+fighter.respect+'% · التوتر '+fighter.tension+'% · الحالة '+combatCommunityRelationLabel(fighter)+'. آخر تواصل: '+(fighter.lastInteractionAge<0?'لم يحدث بعد':'عمر '+fighter.lastInteractionAge)+'.');}),
+  choice('🔎','قراءة المنافس','التقييم '+currentRating+'/100 · '+combatDifficultyLabel(currentRating)+' · الحالة التنافسية: '+combatCommunityFormLabel(fighter)+' · طابع القتال '+archetype.title+' · أسلوبه '+fighter.style+' · نقطة ضعفه '+fighter.weakTo+'.',()=>{closeModal();info('📊','ملف '+fighter.name,'التقييم الحالي '+currentRating+'/100 · '+combatCommunityFormLabel(fighter)+' · الاحترام '+fighter.respect+'% · التوتر '+fighter.tension+'% · الحالة '+combatCommunityRelationLabel(fighter)+'. آخر تواصل: '+(fighter.lastInteractionAge<0?'لم يحدث بعد':'عمر '+fighter.lastInteractionAge)+'.');}),
   choice('💬','حديث ودي',contactNote+' زوّد الاحترام وهدّي التوتر.',()=>interactCombatFighter(fighter.id,'friendly')),
   choice('📣','استفزاز إعلامي',contactNote+' قد يحوّل المنافس إلى خصم دائم ويرفع شهرتك قليلًا.',()=>interactCombatFighter(fighter.id,'trash')),
   choice(fighter.allied?'🔓':'🤝',fighter.allied?'إنهاء التحالف':'عرض تحالف',fighter.allied?'إنهاء التعاون وفتح باب المنافسة من جديد.':'يتطلب احترامًا 55% على الأقل وتوترًا لا يتجاوز 45%.',()=>interactCombatFighter(fighter.id,fighter.allied?'break':'alliance')),
@@ -7819,7 +7827,7 @@ function combatCommunityFighterMenu(fighterId){
   ...(fighter.allied?[choice('🥋','تدريب مشترك','تدريب مع حليفك مقابل 800 من عملة اللعبة؛ يحسن التقنية والدفاع قليلًا.',()=>interactCombatFighter(fighter.id,'spar'),'800 '+state.place.unit)]:[]),
   choice('↩️','رجوع للمجتمع','',combatCommunityMenu)
  ];
- modal('⚔️',fighter.name,'التقييم '+currentRating+'/100 · '+combatCommunityFormLabel(fighter)+' · الاحترام '+fighter.respect+'% · التوتر '+fighter.tension+'% · '+combatCommunityRelationLabel(fighter)+'. '+contactNote,opts);
+ modal('⚔️',fighter.name,'التقييم '+currentRating+'/100 · طابع القتال '+archetype.title+' · '+archetype.description+' · '+combatCommunityFormLabel(fighter)+' · الاحترام '+fighter.respect+'% · التوتر '+fighter.tension+'% · '+combatCommunityRelationLabel(fighter)+'. '+contactNote,opts);
 }
 function interactCombatFighter(fighterId,action){
  const c=ensureCombatCareer();
@@ -8067,7 +8075,7 @@ function combatBoutRoundMenu(){
  const c=ensureCombatCareer(),session=c&&c.pendingBout;
  if(!session){combatCareerMenu();return;}
  const opponent=session.opponent,round=session.round;
- const intent=combatOpponentIntent(opponent,round,session.lastStyle,session.roundHistory);
+ const intent=combatOpponentIntent(opponent,round,session.lastStyle,session.roundHistory,session.communityFighterId);
  if(!session.reactionId){
   if(session.reactionTimingAssist!==true&&(!Number.isFinite(Number(session.reactionWindowStartedAt))||Number(session.reactionWindowStartedAt)<=0)){
    session.reactionTimingAssist=uiSettings.combatTimingAssist===true;
@@ -8084,7 +8092,7 @@ function combatBoutRoundMenu(){
    const qualityText=effect.quality==='ممتاز'?'أفضل رد متوقع':effect.quality==='مقبول'?'رد مقبول':'رد محفوف بالمخاطرة';
    return choice('🛡️',item.title,item.description+' · '+qualityText+' أمام '+intent.style+' · استهلاك '+item.energyCost+' طاقة.',()=>chooseCombatReaction(item.id));
   });
-  reactionOptions.unshift({icon:'⚠️',title:'إشارة المنافس: '+intent.title,desc:intent.description+' · '+intent.read+' · الأسلوب المتوقع '+intent.style+' · '+combatDifficultyLabel(opponent.rating)+' · طاقتك '+c.energy+'%.',progress:opponent.rating,disabled:true});
+  reactionOptions.unshift({icon:'⚠️',title:'إشارة المنافس: '+intent.title,desc:intent.description+' · طابع المنافس '+intent.archetypeTitle+': '+intent.archetypeDescription+' · '+intent.read+' · الأسلوب المتوقع '+intent.style+' · '+combatDifficultyLabel(opponent.rating)+' · طاقتك '+c.energy+'%.',progress:opponent.rating,disabled:true});
   modal(session.mode==='league'?'🏆':'🥊','الجولة '+round+' من 3 · اقرأ نية المنافس','قبل اختيار حركتك، حدّد رد فعلك على الهجمة التي يستعد لها المنافس. اختيارك يؤثر على نقاط الجولة واستهلاك الطاقة.',reactionOptions,true,timingMarkup);
   return;
  }
@@ -8108,7 +8116,7 @@ function combatBoutRoundMenu(){
   opts.push(choice('🎯',tactic.title,tactic.desc+' · الأسلوب '+tactic.style+' · القوة '+tactic.power+'.'+advantage+varietyHint+recoveryNote,()=>resolveCombatRound(tactic.id),'',tactic.power));
  });
  opts.unshift({icon:'🛡️',title:'رد فعلك: '+reaction.title+' · '+reaction.quality,desc:'إشارة المنافس: '+intent.title+' · مكافأة الجولة '+reaction.playerBonus+' · تكلفة الرد '+reaction.energyCost+' طاقة.',disabled:true});
- opts.unshift({icon:'📊',title:'الجولة '+round+' من 3',desc:'المنافس: '+opponent.name+' · الأسلوب المتوقع: '+intent.style+' · '+combatDifficultyLabel(opponent.rating)+' · الطاقة '+c.energy+'%.',progress:opponent.rating,disabled:true});
+ opts.unshift({icon:'📊',title:'الجولة '+round+' من 3',desc:'المنافس: '+opponent.name+' · طابعه: '+intent.archetypeTitle+' · الأسلوب المتوقع: '+intent.style+' · '+combatDifficultyLabel(opponent.rating)+' · الطاقة '+c.energy+'%.',progress:opponent.rating,disabled:true});
  modal(session.mode==='league'?'🏆':'🥊','نزال '+(session.mode==='league'?'الدوري':'الشوارع')+' · الجولة '+round,'اختر حركة أو تكتيك بعد رد الفعل. تنويع الأساليب عبر الجولات يمنح أفضلية صغيرة، بينما تكرار الأسلوب يسهّل قراءة خطتك. الطاقة والإتقان ورد الفعل ما زالت تؤثر على النتيجة.',opts);
 }
 function chooseCombatReaction(reactionId){
@@ -8137,7 +8145,7 @@ function resolveCombatRound(actionId){
   closeModal();info('🫁','استعادة الطاقة مستخدمة','تقدر تستخدم التقاط الأنفاس مرة واحدة فقط في النزال.');combatBoutRoundMenu();return;
  }
  const round=session.round,opponent=session.opponent;
- const intent=combatOpponentIntent(opponent,round,session.lastStyle,session.roundHistory),opponentStyle=intent.style;
+ const intent=combatOpponentIntent(opponent,round,session.lastStyle,session.roundHistory,session.communityFighterId),opponentStyle=intent.style;
  const reaction=combatReactionEffect(opponentStyle,session.reactionId);
  if(!reaction){session.reactionId='';session.reactionTimeMs=null;session.reactionWindowStartedAt=null;session.reactionTimingAssist=false;save();combatBoutRoundMenu();return;}
  const reactionTiming=combatReactionTiming(session.reactionTimeMs,session.reactionTimingAssist===true);
@@ -8174,7 +8182,7 @@ function resolveCombatRound(actionId){
   injuryBefore,injuryGain:appliedInjuryGain,injuryAfter:c.injury});
  session.lastStyle=move.style;session.lastMoveId=move.id;
  const styleVarietyNote=styleVarietyModifier>0?' · تنويع الأسلوب +'+styleVarietyModifier+' نقاط':styleVarietyModifier<0?' · تكرار الأسلوب -'+Math.abs(styleVarietyModifier)+' نقاط':'';
- log('🥊','انتهت الجولة '+round,move.title+' · إشارة المنافس '+intent.title+' · '+intent.read+' · ردك '+reaction.title+' ('+reaction.quality+') · توقيت الاستجابة '+reactionTiming.label+(reactionTiming.bonus?' +'+reactionTiming.bonus+' نقاط':'')+styleVarietyNote+' · نقاط الجولة '+Math.round(playerScore)+' مقابل '+Math.round(opponentScore)+' · الطاقة المتبقية '+c.energy+'% · الصحة -'+appliedHealthDamage+'%'+(appliedInjuryGain?' · إصابة +'+appliedInjuryGain+'%':'')+'.'+(energyResult.energyRecovery?' · استعدت '+energyResult.energyRecovery+' طاقة.':''),'');
+ log('🥊','انتهت الجولة '+round,move.title+' · إشارة المنافس '+intent.title+' · طابع المنافس '+intent.archetypeTitle+' · '+intent.read+' · ردك '+reaction.title+' ('+reaction.quality+') · توقيت الاستجابة '+reactionTiming.label+(reactionTiming.bonus?' +'+reactionTiming.bonus+' نقاط':'')+styleVarietyNote+' · نقاط الجولة '+Math.round(playerScore)+' مقابل '+Math.round(opponentScore)+' · الطاقة المتبقية '+c.energy+'% · الصحة -'+appliedHealthDamage+'%'+(appliedInjuryGain?' · إصابة +'+appliedInjuryGain+'%':'')+'.'+(energyResult.energyRecovery?' · استعدت '+energyResult.energyRecovery+' طاقة.':''),'');
  if(learnedMove&&combatMoveMasteryLevel(nextMasteryUses)>masteryLevel){
   log('🥋','تطور إتقان الحركة','وصلت إلى مستوى '+combatMoveMasteryLabel(nextMasteryUses)+' في '+move.title+'. أصبحت تضيف '+combatMoveMasteryBonus(nextMasteryUses)+' نقاط إلى أدائك عند استخدامها.','good');
   achievement('إتقان حركة قتالية: '+move.title+' · '+combatMoveMasteryLabel(nextMasteryUses));
