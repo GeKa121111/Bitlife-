@@ -8,7 +8,7 @@ const vm = require('node:vm');
 const workerSource = fs.readFileSync('sw.js', 'utf8');
 const scope = 'https://example.test/Bitlife-/';
 
-function makeHarness(fetchImpl = async () => { throw new Error('offline'); }, cachePutImpl = null, cacheOpenImpl = null) {
+function makeHarness(fetchImpl = async () => { throw new Error('offline'); }, cachePutImpl = null, cacheOpenImpl = null, cacheMatchImpl = null) {
   const listeners = new Map();
   const cacheStore = new Map([
     ['hayah-shell-v60', new Map()],
@@ -102,6 +102,7 @@ function makeHarness(fetchImpl = async () => { throw new Error('offline'); }, ca
       cacheStore.get(name).set(keyOf(key), response.clone());
     },
     async match(key) {
+      if (cacheMatchImpl) await cacheMatchImpl(name, key);
       const response = cacheStore.get(name).get(keyOf(key));
       return response ? response.clone() : undefined;
     }
@@ -363,6 +364,54 @@ test('cache lookup failures do not reject offline or transient-error fetch handl
   const offline = await offlinePromise;
   assert.equal(offline.status, 503,
     'an unavailable cache must produce the explicit offline response instead of a rejected promise');
+  assert.match(await offline.text(), /غير متصل بالإنترنت/);
+});
+
+test('cache.match failures are handled like other Cache Storage read failures', async () => {
+  let cacheUnavailable = false;
+  const rejectCacheMatch = async () => {
+    if (cacheUnavailable) throw new Error('Cache match unavailable');
+  };
+
+  const transientHarness = makeHarness(
+    async () => new Response('temporary server failure', { status: 503 }),
+    null,
+    null,
+    rejectCacheMatch
+  );
+  await transientHarness.dispatchLifecycle('install');
+  cacheUnavailable = true;
+
+  let transientPromise;
+  transientHarness.listeners.get('fetch')({
+    request: { method: 'GET', url: scope + 'style.css', mode: 'same-origin' },
+    respondWith(promise) { transientPromise = promise; }
+  });
+  const transient = await transientPromise;
+  assert.equal(transient.status, 503,
+    'a cache.match failure must preserve the original transient HTTP response');
+  assert.equal(await transient.text(), 'temporary server failure');
+
+  let offlineUnavailable = false;
+  const offlineHarness = makeHarness(
+    async () => { throw new Error('offline'); },
+    null,
+    null,
+    async () => {
+      if (offlineUnavailable) throw new Error('Cache match unavailable');
+    }
+  );
+  await offlineHarness.dispatchLifecycle('install');
+  offlineUnavailable = true;
+
+  let offlinePromise;
+  offlineHarness.listeners.get('fetch')({
+    request: { method: 'GET', url: scope + 'missing.json', mode: 'same-origin' },
+    respondWith(promise) { offlinePromise = promise; }
+  });
+  const offline = await offlinePromise;
+  assert.equal(offline.status, 503,
+    'an offline cache.match failure must return the explicit offline response');
   assert.match(await offline.text(), /غير متصل بالإنترنت/);
 });
 
