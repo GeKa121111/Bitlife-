@@ -489,10 +489,10 @@ function combatStyleVarietyModifier(roundHistory,style){
 }
 function combatOpponentArchetype(opponent,opponentId=''){
  const profiles=[
-  {id:'pressure',title:'مبادر',description:'يضغط مبكرًا ويعاقب تكرار أسلوبك.',repeatThreshold:45,mixedLatestThreshold:72,mixedPreviousThreshold:58,repeatRead:'لاحظ تكرارك واندفع لمواجهته.',latestRead:'يركز على آخر حركة ويجهز ردًا مباشرًا.',previousRead:'يحاول استباق النمط الذي بدأ به النزال.',holdRead:'يتمسك بإيقاعه ولا يقرأ التنويع بسهولة.'},
-  {id:'watcher',title:'مراقب',description:'يجمع إشارات من الجولات قبل تغيير خطته.',repeatThreshold:60,mixedLatestThreshold:88,mixedPreviousThreshold:48,repeatRead:'التقط تكرار أسلوبك ويجهز ردًا محسوبًا.',latestRead:'قرأ آخر حركة ويستعد لمواجهتها.',previousRead:'يركز على النمط الذي بدأ به النزال.',holdRead:'يراقب تحركاتك دون كشف خطته مبكرًا.'},
-  {id:'stubborn',title:'عنيد',description:'يتمسك بخطته الأساسية ولا يغيرها بسهولة.',repeatThreshold:76,mixedLatestThreshold:92,mixedPreviousThreshold:85,repeatRead:'تكرارك الواضح أجبره أخيرًا على تغيير خطته.',latestRead:'مستوى خبرته العالي سمح له بقراءة آخر حركة.',previousRead:'بدأ يراجع خطته بعد ملاحظة النمط السابق.',holdRead:'يتمسك بخطته الأساسية رغم محاولتك تغيير الإيقاع.'},
-  {id:'balanced',title:'متزن',description:'يوازن بين خطته وقراءة تحركاتك.',repeatThreshold:50,mixedLatestThreshold:65,mixedPreviousThreshold:50,repeatRead:'لاحظ المنافس تكرار أسلوبك ويستعد لمواجهته.',latestRead:'المنافس يراقب آخر اختيار لك ويحاول توقع خطوتك التالية.',previousRead:'المنافس يحاول استغلال الأسلوب الذي استخدمته في بداية النزال.',holdRead:'لاحظ المنافس التكرار لكنه لا يستغله بكفاءة بعد.'}
+  {id:'pressure',title:'مبادر',description:'يضغط مبكرًا ويعاقب تكرار أسلوبك.',repeatThreshold:45,mixedLatestThreshold:72,mixedPreviousThreshold:58,repeatRead:'لاحظ تكرارك واندفع لمواجهته.',latestRead:'يركز على آخر حركة ويجهز ردًا مباشرًا.',previousRead:'يحاول استباق النمط الذي بدأ به النزال.',repeatHoldRead:'لم يلتقط التكرار بعد.',mixedHoldRead:'يتمسك بإيقاعه ولا يقرأ التنويع بسهولة.'},
+  {id:'watcher',title:'مراقب',description:'يجمع إشارات من الجولات قبل تغيير خطته.',repeatThreshold:60,mixedLatestThreshold:88,mixedPreviousThreshold:48,repeatRead:'التقط تكرار أسلوبك ويجهز ردًا محسوبًا.',latestRead:'قرأ آخر حركة ويستعد لمواجهتها.',previousRead:'يركز على النمط الذي بدأ به النزال.',repeatHoldRead:'يراقب تحركاتك دون كشف خطته مبكرًا.',mixedHoldRead:'يجمع إشارات إضافية قبل اختيار الرد.'},
+  {id:'stubborn',title:'عنيد',description:'يتمسك بخطته الأساسية ولا يغيرها بسهولة.',repeatThreshold:76,mixedLatestThreshold:92,mixedPreviousThreshold:85,repeatRead:'تكرارك الواضح أجبره أخيرًا على تغيير خطته.',latestRead:'مستوى خبرته العالي سمح له بقراءة آخر حركة.',previousRead:'بدأ يراجع خطته بعد ملاحظة النمط السابق.',repeatHoldRead:'يتمسك بخطته الأساسية رغم تكرارك.',mixedHoldRead:'يتمسك بخطته الأساسية رغم محاولتك تغيير الإيقاع.'},
+  {id:'balanced',title:'متزن',description:'يوازن بين خطته وقراءة تحركاتك.',repeatThreshold:50,mixedLatestThreshold:65,mixedPreviousThreshold:50,repeatRead:'لاحظ المنافس تكرار أسلوبك ويستعد لمواجهته.',latestRead:'المنافس يراقب آخر اختيار لك ويحاول توقع خطوتك التالية.',previousRead:'المنافس يحاول استغلال الأسلوب الذي استخدمته في بداية النزال.',repeatHoldRead:'لاحظ المنافس التكرار لكنه لا يستغله بكفاءة بعد.',mixedHoldRead:'لم يلتقط المنافس نمطًا واضحًا؛ يستخدم استجابة محدودة.'}
  ];
  const identity=String(opponentId||opponent&&opponent.name||'').trim();
  if(!identity)return profiles[3];
@@ -537,10 +537,10 @@ function combatOpponentIntent(opponent,round,lastPlayerStyle,roundHistory=[],opp
  if(roundNumber===2)read='المنافس يحاول الرد على اختيارك السابق.';
  else if(roundNumber>=3){
   if(recent.length<2)read='سجل الجولات غير مكتمل؛ المنافس يستخدم استجابة احتياطية.';
-  else if(recent[0]===recent[1])read=awareness>=archetype.repeatThreshold?archetype.repeatRead:archetype.holdRead;
+  else if(recent[0]===recent[1])read=awareness>=archetype.repeatThreshold?archetype.repeatRead:archetype.repeatHoldRead;
   else if(awareness>=archetype.mixedLatestThreshold)read=archetype.latestRead;
   else if(awareness>=archetype.mixedPreviousThreshold)read=archetype.previousRead;
-  else read=archetype.holdRead;
+  else read=archetype.mixedHoldRead;
  }
  return {style,...intents[style],read,archetypeId:archetype.id,archetypeTitle:archetype.title,archetypeDescription:archetype.description};
 }
