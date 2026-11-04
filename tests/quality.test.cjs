@@ -3142,7 +3142,6 @@ test('اعتزال مسيرة القتال يحتفظ بالسجل ويوقف ا
   assert.ok(logs.some(entry => entry[1] === 'اعتزال مسيرة القتال'));
   assert.ok(achievements.includes('اعتزال مسيرة القتال'));
 
-  const gateSource = functionSource('requireActiveCombatCareer', 'retireCombatCareer');
   const startSource = functionSource('startCombatBout', 'combatBoutRoundMenu');
   const practiceSource = functionSource('practiceCombatMove', 'learnCombatMove');
   const guardDialogs = [];
@@ -3155,7 +3154,7 @@ test('اعتزال مسيرة القتال يحتفظ بالسجل ويوقف ا
     combatBoutRoundMenu() { throw new Error('retired career must not resume a pending bout'); }
   };
   vm.runInNewContext(
-    gateSource + '\n' + startSource + '\n' + practiceSource +
+    startSource + '\n' + practiceSource +
     '\nglobalThis.start=startCombatBout;globalThis.practice=practiceCombatMove;',
     guardContext
   );
@@ -3176,7 +3175,7 @@ test('اعتزال مسيرة القتال يحتفظ بالسجل ويوقف ا
   assert.match(menuSource, /if\(c\.retired\)/, 'retired careers should use a read-only menu');
   assert.match(menuSource, /سجل النزالات/);
   assert.match(communitySource, /أرشيف المنافسين/, 'retired players should be able to review, not challenge, rivals');
-  assert.match(annualSource, /state\.combatCareer\.retired!==true/, 'retirement should stop annual community and coach progression');
+  assert.match(annualSource, /cc\.retired!==true/, 'retirement should stop annual community and coach progression');
   assert.ok(app.includes('retiredAge:null'));
   assert.ok(app.includes('retiredYear:null'));
   assert.match(read('sw.js'), /hayah-shell-v136/);
