@@ -184,7 +184,7 @@ assert.match(finalUi, /\.fill\s*\{[^}]*position:absolute[^}]*right:0/s, 'status 
 assert.match(finalUi, /\.statvalue\s*\{[^}]*position:absolute[^}]*z-index:1/s, 'status values should overlay the progress bars');
 assert.match(finalUi, /\.nav\{direction:ltr\}/, 'tab positions should follow the original left-to-right order');
 assert.match(finalUi, /\.fill\{left:0;right:auto\}/, 'progress fills should grow from the left edge like the reference');
-assert.match(serviceWorker, /hayah-shell-v136/, 'the app shell cache should refresh the new styles');
+assert.match(serviceWorker, /hayah-shell-v137/, 'the app shell cache should refresh the new styles');
 assert.match(app, /function siblingEmploymentDecision\(relative,profile,year,age\)/, 'sibling job events should be simulated deterministically');
 assert.match(app, /function schoolHub\(\)/);
 assert.match(app, /function maintainAsset\(index\)/);
@@ -564,7 +564,7 @@ assert.ok(app.includes('boostUsedAge:null'), 'new lives should initialize the op
 assert.ok(app.includes('uiSettings.boosts'), 'recovery opportunities should be optional in settings');
 assert.ok(app.includes('uiSettings.sound'));
 assert.ok(app.includes('uiSettings.haptics'));
-assert.match(serviceWorker, /hayah-shell-v136/);
+assert.match(serviceWorker, /hayah-shell-v137/);
 assert.ok(app.includes('function formatStorageBytes(bytes)'));
 assert.ok(app.includes('function inspectStorageCapacity()'));
 assert.match(app, /فحص مساحة التخزين/);
@@ -586,13 +586,13 @@ assert.ok(app.includes("function advanceBusinessRivals(raw,business,industry,yea
 assert.ok(app.includes("function summarizeBusinessRivals(rivals,baselineCompetition,profile)"));
 assert.match(app, /marketRivalPlans/);
 assert.match(app, /الشركات المنافسة داخل المحاكاة/);
-assert.match(serviceWorker, /hayah-shell-v136/);
+assert.match(serviceWorker, /hayah-shell-v137/);
 
 assert.match(app, /function normalizeSocialFeed\(raw\)/, 'social audience feedback should be normalized for legacy saves');
 assert.match(app, /function socialAudienceFeedMenu\(platformId\)/, 'players should be able to review audience feedback');
 assert.match(app, /function offerSoundCloudTrackToLabel\(platformId='soundcloud'\)/, 'SoundCloud tracks should have a label-offer path');
 assert.match(app, /const KEY = 'hekayat_hayah_save_v1';/);
-assert.match(serviceWorker, /hayah-shell-v136/);
+assert.match(serviceWorker, /hayah-shell-v137/);
 
 assert.match(app, /function combatRoundEnergy\(currentEnergy,move,mode='street',reactionCost=0\)/);
 assert.ok(app.includes('function combatRoundImpact(opponentRating,defense,reactionQuality,timingBonus=0)'));
@@ -673,7 +673,7 @@ assert.match(app, /function siblingPropertySaleDecision\(/);
 assert.match(app, /propertySaleDebtPaid/);
 assert.match(app, /function siblingPropertyAnnualUpkeep\(/);
 assert.match(app, /propertyExpensesAnnual/);
-assert.match(serviceWorker, /hayah-shell-v136/);
+assert.match(serviceWorker, /hayah-shell-v137/);
 
 assert.match(app, /function siblingRentalPurchaseDecision\(/, 'siblings should be able to acquire an independent rental property');
 assert.match(app, /function siblingRentalAnnualIncome\(/, 'rental income should model occupancy and collection rates deterministically');
@@ -714,7 +714,7 @@ assert.match(app, /function siblingEstateSettlement\(relative,profile,year\)/, '
 assert.match(app, /function siblingReleaseChildInheritance\(relative,child,year\)/, 'minor inheritance should be released when the child becomes an adult');
 assert.match(app, /assetTransferStatus/, 'property title transfer must remain explicit and auditable');
 assert.match(app, /function siblingEstatePlanMenu\(relative\)/, 'adult siblings should be able to record an estate plan');
-assert.match(serviceWorker, /hayah-shell-v136/, 'the PWA cache must be versioned with the estate update');
+assert.match(serviceWorker, /hayah-shell-v137/, 'the PWA cache must be versioned with the estate update');
 
 assert.match(app, /beneficiaryType:share\.kind/, 'surviving spouses should be recorded as estate beneficiaries');
 assert.match(app, /inheritanceCashBalance/, 'surviving spouse inheritance balances should be preserved');
@@ -722,3 +722,9 @@ assert.match(app, /inheritanceCashBalance/, 'surviving spouse inheritance balanc
 assert.match(app, /title:'أثر التوجيه التعليمي'/, 'family guidance should produce a delayed education outcome');
 assert.match(app, /title:'أثر الدعم التعليمي'/, 'funded education should produce a delayed family outcome');
 assert.match(app, /title:'نتيجة التجربة التعليمية'/, 'independent exploration should produce a delayed learning outcome');
+
+
+assert.ok(app.includes('age:28,retirementAge:45'), 'original rivals should have persistent ages and retirement thresholds');
+assert.ok(app.includes('fighter.retired===true'), 'retired rivals must be excluded from challenges and social actions');
+assert.ok(app.includes('function advanceCombatCommunity(career)'), 'the fighter community should advance NPC ages annually');
+assert.ok(app.includes("log('🏁','اعتزال منافس'"), 'new rival retirements should be recorded in the life diary');
