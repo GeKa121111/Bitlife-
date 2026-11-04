@@ -3589,7 +3589,12 @@ test('واجهة التعليم والأنشطة المدرسية عربية م�
   const faculty = functionSource('schoolFacultyMenu', 'skipSchool');
   const absences = functionSource('skipSchool', 'dropOutConfirm');
   const dropOut = functionSource('dropOutConfirm', 'jobRequirements');
+  const modalSource = functionSource('modal', 'info');
   const worker = read('sw.js');
+
+  for (const title of ['التعليم','الجامعة','الأنشطة المدرسية','الفصل الدراسي','المجموعات المدرسية','هيئة التدريس']) {
+    assert.ok(modalSource.includes("'" + title + "'"), 'Arabic education screen should keep drawer behavior: ' + title);
+  }
 
   for (const [source, fragment] of [
     [school, 'المرحلة الابتدائية'],
