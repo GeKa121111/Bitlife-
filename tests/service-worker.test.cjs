@@ -304,6 +304,20 @@ test('offline cached assets remain available; uncached assets return a clear 503
   const missing = await missingPromise;
   assert.equal(missing.status, 503);
   assert.match(await missing.text(), /غير متصل بالإنترنت/);
+
+  harness.cacheStore.get('unrelated-cache').set(
+    scope + 'foreign.css',
+    new Response('copy from unrelated cache')
+  );
+  let unrelatedPromise;
+  harness.listeners.get('fetch')({
+    request: { method: 'GET', url: scope + 'foreign.css', mode: 'same-origin' },
+    respondWith(promise) { unrelatedPromise = promise; }
+  });
+  const unrelated = await unrelatedPromise;
+  assert.equal(unrelated.status, 503,
+    'the worker must not borrow a same-URL response from an unrelated origin cache');
+  assert.match(await unrelated.text(), /غير متصل بالإنترنت/);
 });
 
 test('non-GET requests and requests outside the app scope are left untouched', () => {
