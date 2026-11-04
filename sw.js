@@ -12,10 +12,22 @@ const APP_SHELL = [
   './icon.svg'
 ].map(path => new URL(path, self.registration.scope).href);
 
+// Keep the essential game usable if a non-critical shell asset is temporarily unavailable.
+const CORE_SHELL = ['./index.html', './style.css', './app.js']
+  .map(path => new URL(path, self.registration.scope).href);
+
 self.addEventListener('install', event => {
   event.waitUntil(
     caches.open(CACHE_NAME)
-      .then(cache => cache.addAll(APP_SHELL))
+      .then(async cache => {
+        try {
+          await cache.addAll(APP_SHELL);
+        } catch {
+          // Retry with the minimum files required to render and run the game.
+          // Optional accessibility/PWA decoration assets can be fetched later.
+          await cache.addAll(CORE_SHELL);
+        }
+      })
       .then(() => self.skipWaiting())
   );
 });
