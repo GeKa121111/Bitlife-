@@ -1724,7 +1724,7 @@ function modal(icon,title,desc,choices,closable=true,extra=''){
  const activeElement=document.activeElement;
  if(activeElement&&!root.contains(activeElement)&&activeElement!==document.body&&activeElement!==document.documentElement)modalReturnFocus=activeElement;
  if(activeDialogKeyHandler){document.removeEventListener('keydown',activeDialogKeyHandler);activeDialogKeyHandler=null;}
- const isDrawer=['القائمة الرئيسية','الدراسة والشغل','فرص عمل جديدة','School','University','Class','Cliques','Faculty','Activities','الأصول','الأصول والمشتريات','العلاقات','العلاقات والأسرة','الأنشطة والحياة اليومية','السوشيال ميديا','مجتمع المقاتلين','التسوق'].includes(title)||SOCIAL_PLATFORM_CATALOG.some(p=>p.title===title);
+ const isDrawer=['القائمة الرئيسية','الدراسة والشغل','فرص عمل جديدة','School','University','Class','Cliques','Faculty','Activities','التعليم','الجامعة','الأنشطة المدرسية','الفصل الدراسي','المجموعات المدرسية','هيئة التدريس','الأصول','الأصول والمشتريات','العلاقات','العلاقات والأسرة','الأنشطة والحياة اليومية','السوشيال ميديا','مجتمع المقاتلين','التسوق'].includes(title)||SOCIAL_PLATFORM_CATALOG.some(p=>p.title===title);
  const context=String(title||'')+' '+String(desc||'')+' '+String(extra||'');
  const symptom=/(عرض|أعراض|صداع|غثيان|حمى|حُمّى|زكام|سعال|ألم|وجع|دوخة|symptom|headache|nausea|flu|diagnosis)/i.test(context);
  const crime=/(جريمة|سرقة|سجن|مخدر|عصابة|شرطة|اختلاس|سطو|crime|robbery|prison)/i.test(context);
