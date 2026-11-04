@@ -3583,7 +3583,7 @@ test('تفضيل التباين الإضافي يحسن وضوح واجهة حي
 test('واجهة التعليم والأنشطة المدرسية عربية مع الحفاظ على معرّفات الحفظ القديمة', () => {
   const school = functionSource('schoolHub', 'universityStatusMenu');
   const university = functionSource('universityStatusMenu', 'university');
-  const clubs = functionSource('schoolClubs', 'schoolClassMenu');
+  const clubs = functionSource('schoolClubs', 'dropOutConfirm');
   const classroom = functionSource('schoolClassMenu', 'schoolCliqueMenu');
   const cliques = functionSource('schoolCliqueMenu', 'schoolFacultyMenu');
   const faculty = functionSource('schoolFacultyMenu', 'skipSchool');
