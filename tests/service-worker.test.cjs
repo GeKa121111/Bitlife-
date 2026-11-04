@@ -230,6 +230,59 @@ test('offline navigation falls back to the cached Arabic app shell', async () =>
   assert.equal(await response.text(), 'cached:' + scope + 'index.html');
 });
 
+test('temporary HTTP failures use the last cached screen and assets without hiding uncached 404s', async () => {
+  const harness = makeHarness(async request => {
+    const url = typeof request === 'string' ? request : request.url;
+    if (url === scope + 'style.css' || url === scope + 'a-life-route') {
+      return new Response('temporary server failure', { status: 503 });
+    }
+    return new Response('missing resource', { status: 404 });
+  });
+  await harness.dispatchLifecycle('install');
+
+  let assetPromise;
+  harness.listeners.get('fetch')({
+    request: { method: 'GET', url: scope + 'style.css', mode: 'same-origin' },
+    respondWith(promise) { assetPromise = promise; }
+  });
+  const asset = await assetPromise;
+  assert.equal(asset.status, 200);
+  assert.equal(await asset.text(), 'cached:' + scope + 'style.css',
+    'a cached asset should survive a temporary HTTP 503');
+
+  let navigationPromise;
+  harness.listeners.get('fetch')({
+    request: { method: 'GET', url: scope + 'a-life-route', mode: 'navigate' },
+    respondWith(promise) { navigationPromise = promise; }
+  });
+  const navigation = await navigationPromise;
+  assert.equal(navigation.status, 200);
+  assert.equal(await navigation.text(), 'cached:' + scope + 'index.html',
+    'a cached Arabic app shell should survive a temporary navigation 503');
+
+  let missingPromise;
+  harness.listeners.get('fetch')({
+    request: { method: 'GET', url: scope + 'missing.json', mode: 'same-origin' },
+    respondWith(promise) { missingPromise = promise; }
+  });
+  const missing = await missingPromise;
+  assert.equal(missing.status, 404);
+  assert.equal(await missing.text(), 'missing resource',
+    'a genuine uncached 404 should not be disguised as a cached success');
+
+  const removedHarness = makeHarness(async () => new Response('resource removed', { status: 404 }));
+  await removedHarness.dispatchLifecycle('install');
+  let removedPromise;
+  removedHarness.listeners.get('fetch')({
+    request: { method: 'GET', url: scope + 'style.css', mode: 'same-origin' },
+    respondWith(promise) { removedPromise = promise; }
+  });
+  const removed = await removedPromise;
+  assert.equal(removed.status, 404,
+    'a deliberate 404 must remain visible even when an older cached copy exists');
+  assert.equal(await removed.text(), 'resource removed');
+});
+
 test('offline cached assets remain available; uncached assets return a clear 503 response', async () => {
   const harness = makeHarness();
   await harness.dispatchLifecycle('install');
@@ -251,6 +304,20 @@ test('offline cached assets remain available; uncached assets return a clear 503
   const missing = await missingPromise;
   assert.equal(missing.status, 503);
   assert.match(await missing.text(), /غير متصل بالإنترنت/);
+
+  harness.cacheStore.get('unrelated-cache').set(
+    scope + 'foreign.css',
+    new Response('copy from unrelated cache')
+  );
+  let unrelatedPromise;
+  harness.listeners.get('fetch')({
+    request: { method: 'GET', url: scope + 'foreign.css', mode: 'same-origin' },
+    respondWith(promise) { unrelatedPromise = promise; }
+  });
+  const unrelated = await unrelatedPromise;
+  assert.equal(unrelated.status, 503,
+    'the worker must not borrow a same-URL response from an unrelated origin cache');
+  assert.match(await unrelated.text(), /غير متصل بالإنترنت/);
 });
 
 test('non-GET requests and requests outside the app scope are left untouched', () => {
