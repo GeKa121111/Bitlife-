@@ -3200,7 +3200,7 @@ test('منافسو القتال يتقدمون في العمر ويعتزلون 
     globalThis.career = { community: normalizeCombatCommunity([
       { id: 'adam-mansour', age: 44, retirementAge: 45, retired: false, allied: true, lastProgressYear: 8, momentum: 2 }
     ], 8) };
-    globalThis.before = career.community[0];
+    globalThis.before = { ...career.community[0] };
     globalThis.first = advanceCombatCommunity(career);
     globalThis.after = career.community[0];
     globalThis.secondSameYear = advanceCombatCommunity(career);
