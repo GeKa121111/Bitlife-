@@ -723,7 +723,8 @@ assert.match(app, /title:'أثر التوجيه التعليمي'/, 'family guid
 assert.match(app, /title:'أثر الدعم التعليمي'/, 'funded education should produce a delayed family outcome');
 assert.match(app, /title:'نتيجة التجربة التعليمية'/, 'independent exploration should produce a delayed learning outcome');
 
-assert.match(app, /age:28,retirementAge:45/, 'original rivals should have persistent ages and retirement thresholds');
-assert.match(app, /fighter\\.retired===true/, 'retired rivals must be excluded from challenges and social actions');
-assert.match(app, /function advanceCombatCommunity\\(career\\)/, 'the fighter community should advance NPC ages annually');
-assert.match(app, /اعتزال منافس/, 'new rival retirements should be recorded in the life diary');
+
+assert.ok(app.includes('age:28,retirementAge:45'), 'original rivals should have persistent ages and retirement thresholds');
+assert.ok(app.includes('fighter.retired===true'), 'retired rivals must be excluded from challenges and social actions');
+assert.ok(app.includes('function advanceCombatCommunity(career)'), 'the fighter community should advance NPC ages annually');
+assert.ok(app.includes("log('🏁','اعتزال منافس'"), 'new rival retirements should be recorded in the life diary');
