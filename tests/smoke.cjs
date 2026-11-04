@@ -7,10 +7,14 @@ const css = fs.readFileSync('style.css', 'utf8');
 const app = fs.readFileSync('app.js', 'utf8');
 assert.match(index, /lang="ar" dir="rtl"/);
 assert.match(index, /href="style.css"/);
+assert.match(index, /href="pwa-update.css"/);
+assert.ok(index.indexOf('pwa-update.js') < index.indexOf('app.js'), 'the update listener must load before the app registers its service worker');
 assert.match(index, /src="app.js"/);
 assert.match(index, /rel="manifest" href="manifest\.webmanifest"/);
 const pwaManifest = JSON.parse(fs.readFileSync('manifest.webmanifest', 'utf8'));
 const serviceWorker = fs.readFileSync('sw.js', 'utf8');
+const pwaUpdate = fs.readFileSync('pwa-update.js', 'utf8');
+const pwaUpdateCss = fs.readFileSync('pwa-update.css', 'utf8');
 assert.equal(pwaManifest.lang, 'ar');
 assert.equal(pwaManifest.dir, 'rtl');
 assert.equal(pwaManifest.display, 'standalone');
@@ -728,3 +732,59 @@ assert.ok(app.includes('age:28,retirementAge:45'), 'original rivals should have 
 assert.ok(app.includes('fighter.retired===true'), 'retired rivals must be excluded from challenges and social actions');
 assert.ok(app.includes('function advanceCombatCommunity(career)'), 'the fighter community should advance NPC ages annually');
 assert.ok(app.includes("log('🏁','اعتزال منافس'"), 'new rival retirements should be recorded in the life diary');
+
+
+// PWA update notice: first installs stay silent; an update to an already-controlled
+// page offers an explicit, accessible reload instead of interrupting the current life.
+assert.match(pwaUpdate, /controllerchange/);
+assert.match(pwaUpdateCss, /prefers-reduced-motion/);
+assert.match(pwaUpdateCss, /forced-colors/);
+assert.doesNotMatch(pwaUpdate, /innerHTML/);
+
+const pwaListeners = {};
+const pwaNotices = [];
+let pwaReloads = 0;
+const createPwaElement = tag => ({
+  tag, children: [], attributes: {}, listeners: {},
+  setAttribute(name, value) { this.attributes[name] = value; },
+  append(...nodes) { this.children.push(...nodes); },
+  addEventListener(type, callback) { this.listeners[type] = callback; }
+});
+const pwaContext = {
+  navigator: { serviceWorker: {
+    controller: {},
+    addEventListener(type, callback) { pwaListeners[type] = callback; }
+  } },
+  document: {
+    createElement: createPwaElement,
+    body: { appendChild(node) { pwaNotices.push(node); } }
+  },
+  window: { location: { reload() { pwaReloads += 1; } } }
+};
+vm.runInNewContext(pwaUpdate, pwaContext, { filename: 'pwa-update.js' });
+assert.equal(typeof pwaListeners.controllerchange, 'function');
+pwaListeners.controllerchange();
+assert.equal(pwaNotices.length, 1, 'an updated controller should show one notice');
+assert.equal(pwaNotices[0].attributes.role, 'status');
+assert.equal(pwaNotices[0].attributes['aria-live'], 'polite');
+assert.equal(pwaNotices[0].children[1].textContent, 'تحديث الآن');
+pwaNotices[0].children[1].listeners.click();
+assert.equal(pwaReloads, 1, 'the page reload should happen only after the player chooses it');
+pwaListeners.controllerchange();
+assert.equal(pwaNotices.length, 1, 'repeated controller changes must not duplicate the notice');
+
+const firstInstallListeners = {};
+let firstInstallNotices = 0;
+vm.runInNewContext(pwaUpdate, {
+  navigator: { serviceWorker: {
+    controller: null,
+    addEventListener(type, callback) { firstInstallListeners[type] = callback; }
+  } },
+  document: {
+    createElement: createPwaElement,
+    body: { appendChild() { firstInstallNotices += 1; } }
+  },
+  window: { location: { reload() {} } }
+}, { filename: 'pwa-update-first-install.test.js' });
+assert.equal(Object.keys(firstInstallListeners).length, 0, 'first-time installation must not show an update notice');
+assert.equal(firstInstallNotices, 0);
