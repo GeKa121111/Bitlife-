@@ -8,7 +8,7 @@ const vm = require('node:vm');
 const workerSource = fs.readFileSync('sw.js', 'utf8');
 const scope = 'https://example.test/Bitlife-/';
 
-function makeHarness(fetchImpl = async () => { throw new Error('offline'); }, cachePutImpl = null) {
+function makeHarness(fetchImpl = async () => { throw new Error('offline'); }, cachePutImpl = null, cacheOpenImpl = null) {
   const listeners = new Map();
   const cacheStore = new Map([
     ['hayah-shell-v60', new Map()],
@@ -109,6 +109,7 @@ function makeHarness(fetchImpl = async () => { throw new Error('offline'); }, ca
 
   const caches = {
     async open(name) {
+      if (cacheOpenImpl) await cacheOpenImpl(name);
       if (!cacheStore.has(name)) cacheStore.set(name, new Map());
       return makeCache(name);
     },
@@ -318,6 +319,51 @@ test('successful network responses survive Cache Storage write failures', async 
     'a cache quota failure must not turn a successful network response into an offline error');
   assert.equal(await response.text(), networkBody,
     'the original network body must be returned when caching is unavailable');
+});
+
+test('cache lookup failures do not reject offline or transient-error fetch handling', async () => {
+  let cacheUnavailable = false;
+  const rejectCacheOpen = async () => {
+    if (cacheUnavailable) throw new Error('Cache Storage unavailable');
+  };
+  const transientHarness = makeHarness(
+    async () => new Response('temporary server failure', { status: 503 }),
+    null,
+    rejectCacheOpen
+  );
+  await transientHarness.dispatchLifecycle('install');
+  cacheUnavailable = true;
+
+  let transientPromise;
+  transientHarness.listeners.get('fetch')({
+    request: { method: 'GET', url: scope + 'style.css', mode: 'same-origin' },
+    respondWith(promise) { transientPromise = promise; }
+  });
+  const transient = await transientPromise;
+  assert.equal(transient.status, 503,
+    'a cache lookup failure must not replace the original transient HTTP response');
+  assert.equal(await transient.text(), 'temporary server failure');
+
+  let offlineUnavailable = false;
+  const offlineHarness = makeHarness(
+    async () => { throw new Error('offline'); },
+    null,
+    async () => {
+      if (offlineUnavailable) throw new Error('Cache Storage unavailable');
+    }
+  );
+  await offlineHarness.dispatchLifecycle('install');
+  offlineUnavailable = true;
+
+  let offlinePromise;
+  offlineHarness.listeners.get('fetch')({
+    request: { method: 'GET', url: scope + 'missing.json', mode: 'same-origin' },
+    respondWith(promise) { offlinePromise = promise; }
+  });
+  const offline = await offlinePromise;
+  assert.equal(offline.status, 503,
+    'an unavailable cache must produce the explicit offline response instead of a rejected promise');
+  assert.match(await offline.text(), /غير متصل بالإنترنت/);
 });
 
 test('offline cached assets remain available; uncached assets return a clear 503 response', async () => {

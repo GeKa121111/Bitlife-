@@ -23,7 +23,7 @@ assert.match(app, /navigator\.serviceWorker\.register\('\.\/sw\.js'\)/);
 assert.match(serviceWorker, /accessibility\.css/);
 assert.match(serviceWorker, /request\.mode === 'navigate'/);
 assert.match(serviceWorker, /const cacheKey = request\.mode === 'navigate' \? APP_SHELL\[0\] : request;/);
-assert.match(serviceWorker, /const matchCached = \(\) => caches\.open\(CACHE_NAME\)\.then\(cache => cache\.match\(cacheKey\)\)/);
+assert.match(serviceWorker, /const matchCached = async \(\) =>/);
 assert.match(app, /netSale=ownershipSale\.netProceeds/, 'shared-property sales should credit only net proceeds after settling owner arrears');
 assert.match(app, /sale_proceeds_below_arrears/, 'a sale should stop when proceeds cannot cover the seller arrears');
 assert.match(index, /id="ageUpBtn"/);

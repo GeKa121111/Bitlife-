@@ -39,7 +39,15 @@ self.addEventListener('fetch', event => {
   if (requestUrl.origin !== self.location.origin || !requestUrl.pathname.startsWith(scopeUrl.pathname)) return;
 
   const cacheKey = request.mode === 'navigate' ? APP_SHELL[0] : request;
-  const matchCached = () => caches.open(CACHE_NAME).then(cache => cache.match(cacheKey));
+  const matchCached = async () => {
+    try {
+      const cache = await caches.open(CACHE_NAME);
+      return await cache.match(cacheKey);
+    } catch {
+      // Cache lookup is best-effort too; storage failures must not reject fetch handling.
+      return undefined;
+    }
+  };
   event.respondWith(
     fetch(request).then(async response => {
       // A transient HTTP error should not replace a working cached screen or asset.
