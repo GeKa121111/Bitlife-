@@ -3203,7 +3203,7 @@ test('منافسو القتال يتقدمون في العمر ويعتزلون 
     ], 8) };
     globalThis.before = { ...career.community[0] };
     globalThis.first = advanceCombatCommunity(career);
-    globalThis.after = career.community[0];
+    globalThis.after = { ...career.community[0] };
     globalThis.secondSameYear = advanceCombatCommunity(career);
     state.yearCount = 10; state.age = 32;
     globalThis.nextYear = advanceCombatCommunity(career);
