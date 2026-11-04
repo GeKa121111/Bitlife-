@@ -706,17 +706,19 @@ function advanceCombatCommunity(career){
 function advanceCombatCommunityRoster(career){
  if(!state||!career||!Array.isArray(career.community))return null;
  const age=clamp(Number(state.age)||0,0,150);
+ if(age>=150)return null;
  const startedAge=clamp(Number(career.startedAge)||age,0,150);
+ const existingIds=new Set(career.community.map(fighter=>fighter&&fighter.id).filter(Boolean));
+ const newcomer=combatCommunityNewcomerProfiles.find(profile=>!existingIds.has(profile.id));
+ const hasUnrecruited=!!newcomer;
  const hasNewcomers=career.community.some(fighter=>
   fighter&&combatCommunityNewcomerProfiles.some(profile=>profile.id===fighter.id)
  );
  const storedNextAge=Number(career.nextRecruitmentAge);
- if(!Number.isFinite(storedNextAge)||storedNextAge<startedAge+5||storedNextAge>150){
+ if(!Number.isFinite(storedNextAge)||storedNextAge<startedAge+5||storedNextAge>150||(storedNextAge>=150&&hasUnrecruited)){
   career.nextRecruitmentAge=hasNewcomers?Math.min(150,age+5):Math.min(150,startedAge+5);
  }
  if(age<career.nextRecruitmentAge)return null;
- const existingIds=new Set(career.community.map(fighter=>fighter&&fighter.id).filter(Boolean));
- const newcomer=combatCommunityNewcomerProfiles.find(profile=>!existingIds.has(profile.id));
  if(!newcomer){career.nextRecruitmentAge=150;return null;}
  career.community=normalizeCombatCommunity([...career.community,newcomer],state.yearCount);
  career.nextRecruitmentAge=Math.min(150,age+5);
