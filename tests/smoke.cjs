@@ -142,7 +142,7 @@ assert.match(app, /Losing a street fight does not remove street credibility/, 's
 assert.ok(app.includes('probabilityOverride!==null&&probabilityOverride!==undefined'), 'completed round scores should override the legacy one-shot probability');
 assert.ok(app.includes('clamp(50+(playerScore-opponentScore)*1.65+counterBonus,12,88)'), 'the legacy fallback should remain bounded for older direct calls');
 assert.ok(app.includes('clamp(50+((completed.playerScore-completed.opponentScore)/3)*1.65,12,88)'), 'three-round outcomes should use the average score margin');
-assert.match(app, /if\(cc\.coach&&cc\.coach\.yearsLeft>0\)/, 'coach contracts should be accounted for over time');
+assert.match(app, /if\(playerCareerActive&&cc\.coach&&cc\.coach\.yearsLeft>0\)/, 'coach contracts should be accounted for only while the fighter career is active');
 assert.match(app, /combatProfile:state\.specialCareer\.id==='fighter'\?JSON\.parse\(JSON\.stringify\(state\.combatCareer\|\|null\)\):null/, 'switching career paths should archive the fighter profile');
 const combatMoveBlock = app.match(/const combatMoveCatalog=\[([\s\S]*?)\n\];/);
 assert.ok(combatMoveBlock && (combatMoveBlock[1].match(/\{id:'/g) || []).length >= 30, 'combat move catalog should contain at least 30 moves');
