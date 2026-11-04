@@ -88,6 +88,7 @@ function makeHarness(fetchImpl = async () => { throw new Error('offline'); }, ca
     ['hayah-shell-v141', new Map()],
     ['hayah-shell-v142', new Map()],
     ['hayah-shell-v143', new Map()],
+    ['hayah-shell-v144', new Map()],
     ['unrelated-cache', new Map()]
   ]);
   const cacheCalls = { added: [], deleted: [], skipped: 0, claimed: 0 };
@@ -159,7 +160,7 @@ function makeHarness(fetchImpl = async () => { throw new Error('offline'); }, ca
 }
 
 test('service worker installs a fresh shell cache and removes only obsolete Hayah caches', async () => {
-  assert.match(workerSource, /const CACHE_NAME = 'hayah-shell-v144'/);
+  assert.match(workerSource, /const CACHE_NAME = 'hayah-shell-v145'/);
   const harness = makeHarness();
   await harness.dispatchLifecycle('install');
 
@@ -176,7 +177,7 @@ test('service worker installs a fresh shell cache and removes only obsolete Haya
   ]);
 
   await harness.dispatchLifecycle('activate');
-  assert.deepEqual(harness.cacheCalls.deleted, ['hayah-shell-v60', 'hayah-shell-v61', 'hayah-shell-v62', 'hayah-shell-v63', 'hayah-shell-v64', 'hayah-shell-v65', 'hayah-shell-v66', 'hayah-shell-v67', 'hayah-shell-v68', 'hayah-shell-v69', 'hayah-shell-v70', 'hayah-shell-v71', 'hayah-shell-v72', 'hayah-shell-v75', 'hayah-shell-v77', 'hayah-shell-v78', 'hayah-shell-v79', 'hayah-shell-v80', 'hayah-shell-v81', 'hayah-shell-v82', 'hayah-shell-v83', 'hayah-shell-v84', 'hayah-shell-v85', 'hayah-shell-v86', 'hayah-shell-v87', 'hayah-shell-v88', 'hayah-shell-v89', 'hayah-shell-v90', 'hayah-shell-v91', 'hayah-shell-v92', 'hayah-shell-v93', 'hayah-shell-v94', 'hayah-shell-v95', 'hayah-shell-v96', 'hayah-shell-v97', 'hayah-shell-v98', 'hayah-shell-v99', 'hayah-shell-v100', 'hayah-shell-v101', 'hayah-shell-v102', 'hayah-shell-v103', 'hayah-shell-v104', 'hayah-shell-v105', 'hayah-shell-v106', 'hayah-shell-v107', 'hayah-shell-v108', 'hayah-shell-v109', 'hayah-shell-v110', 'hayah-shell-v111', 'hayah-shell-v112', 'hayah-shell-v113', 'hayah-shell-v114', 'hayah-shell-v115', 'hayah-shell-v116', 'hayah-shell-v117', 'hayah-shell-v118', 'hayah-shell-v119', 'hayah-shell-v120', 'hayah-shell-v121', 'hayah-shell-v122', 'hayah-shell-v123', 'hayah-shell-v124', 'hayah-shell-v125', 'hayah-shell-v130', 'hayah-shell-v131', 'hayah-shell-v132', 'hayah-shell-v133', 'hayah-shell-v134', 'hayah-shell-v135', 'hayah-shell-v136', 'hayah-shell-v137', 'hayah-shell-v138', 'hayah-shell-v139', 'hayah-shell-v140', 'hayah-shell-v141', 'hayah-shell-v142', 'hayah-shell-v143']);
+  assert.deepEqual(harness.cacheCalls.deleted, ['hayah-shell-v60', 'hayah-shell-v61', 'hayah-shell-v62', 'hayah-shell-v63', 'hayah-shell-v64', 'hayah-shell-v65', 'hayah-shell-v66', 'hayah-shell-v67', 'hayah-shell-v68', 'hayah-shell-v69', 'hayah-shell-v70', 'hayah-shell-v71', 'hayah-shell-v72', 'hayah-shell-v75', 'hayah-shell-v77', 'hayah-shell-v78', 'hayah-shell-v79', 'hayah-shell-v80', 'hayah-shell-v81', 'hayah-shell-v82', 'hayah-shell-v83', 'hayah-shell-v84', 'hayah-shell-v85', 'hayah-shell-v86', 'hayah-shell-v87', 'hayah-shell-v88', 'hayah-shell-v89', 'hayah-shell-v90', 'hayah-shell-v91', 'hayah-shell-v92', 'hayah-shell-v93', 'hayah-shell-v94', 'hayah-shell-v95', 'hayah-shell-v96', 'hayah-shell-v97', 'hayah-shell-v98', 'hayah-shell-v99', 'hayah-shell-v100', 'hayah-shell-v101', 'hayah-shell-v102', 'hayah-shell-v103', 'hayah-shell-v104', 'hayah-shell-v105', 'hayah-shell-v106', 'hayah-shell-v107', 'hayah-shell-v108', 'hayah-shell-v109', 'hayah-shell-v110', 'hayah-shell-v111', 'hayah-shell-v112', 'hayah-shell-v113', 'hayah-shell-v114', 'hayah-shell-v115', 'hayah-shell-v116', 'hayah-shell-v117', 'hayah-shell-v118', 'hayah-shell-v119', 'hayah-shell-v120', 'hayah-shell-v121', 'hayah-shell-v122', 'hayah-shell-v123', 'hayah-shell-v124', 'hayah-shell-v125', 'hayah-shell-v130', 'hayah-shell-v131', 'hayah-shell-v132', 'hayah-shell-v133', 'hayah-shell-v134', 'hayah-shell-v135', 'hayah-shell-v136', 'hayah-shell-v137', 'hayah-shell-v138', 'hayah-shell-v139', 'hayah-shell-v140', 'hayah-shell-v141', 'hayah-shell-v142', 'hayah-shell-v143', 'hayah-shell-v144']);
   assert.equal(harness.cacheCalls.claimed, 1);
   assert.equal(harness.cacheStore.has('hayah-shell-v113'), false);
   assert.equal(harness.cacheStore.has('hayah-shell-v114'), false);
@@ -203,7 +204,8 @@ test('service worker installs a fresh shell cache and removes only obsolete Haya
   assert.equal(harness.cacheStore.has('hayah-shell-v141'), false, 'the previous shell cache should be removed');
   assert.equal(harness.cacheStore.has('hayah-shell-v142'), false, 'the previous shell cache should be removed');
   assert.equal(harness.cacheStore.has('hayah-shell-v143'), false, 'the previous shell cache should be removed');
-  assert.ok(harness.cacheStore.has('hayah-shell-v144'), 'the current shell cache should be retained');
+  assert.equal(harness.cacheStore.has('hayah-shell-v144'), false, 'the previous shell cache should be removed');
+  assert.ok(harness.cacheStore.has('hayah-shell-v145'), 'the current shell cache should be retained');
   assert.equal(harness.cacheStore.has('hayah-shell-v110'), false);
   assert.equal(harness.cacheStore.has('hayah-shell-v111'), false);
   assert.equal(harness.cacheStore.has('hayah-shell-v112'), false);
