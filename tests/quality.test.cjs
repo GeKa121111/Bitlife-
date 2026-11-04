@@ -3048,6 +3048,17 @@ test('مجتمع المقاتلين يستقبل منافسين جددًا كل 
     globalThis.invalidCareer = { startedAge: 18, nextRecruitmentAge: 999, community: normalizeCombatCommunity([], state.yearCount) };
     globalThis.invalidBefore = advanceCombatCommunityRoster(invalidCareer);
     globalThis.invalidNextAge = invalidCareer.nextRecruitmentAge;
+    state.age = 40; state.yearCount = 22;
+    globalThis.expandedLegacyCareer = {
+      startedAge: 18,
+      community: normalizeCombatCommunity([...combatCommunityProfiles, ...combatCommunityNewcomerProfiles.slice(0, 10)], state.yearCount),
+      nextRecruitmentAge: 150
+    };
+    globalThis.expandedLegacyBefore = advanceCombatCommunityRoster(expandedLegacyCareer);
+    globalThis.expandedLegacyNextAge = expandedLegacyCareer.nextRecruitmentAge;
+    state.age = 45; state.yearCount = 27;
+    globalThis.expandedLegacyFirst = advanceCombatCommunityRoster(expandedLegacyCareer);
+    globalThis.expandedLegacyFirstName = expandedLegacyFirst && expandedLegacyFirst.name;
     while (career.community.length < 20 && state.age < 150) {
       state.age = career.nextRecruitmentAge;
       state.yearCount++;
@@ -3075,6 +3086,9 @@ test('مجتمع المقاتلين يستقبل منافسين جددًا كل 
   assert.equal(context.legacyFirst.name, 'سيف كمال');
   assert.equal(context.invalidBefore, null, 'invalid future dates must be normalized instead of triggering a burst of recruits');
   assert.equal(context.invalidNextAge, 23);
+  assert.equal(context.expandedLegacyBefore, null, 'an exhausted v1 roster should resume its reserve schedule without an immediate burst');
+  assert.equal(context.expandedLegacyNextAge, 45, 'old saves at the former 15-rival limit should receive a new five-year recruitment date');
+  assert.equal(context.expandedLegacyFirstName, 'رائد توفيق', 'legacy careers should be able to recruit the newly added reserve fighters');
   assert.equal(context.finalCount, 20, 'the expanded original and reserve roster should contain twenty unique fighters');
   assert.equal(context.uniqueIds, 20, 'fighter IDs must remain unique');
   assert.equal(context.exhausted, null, 'the roster must stop cleanly after all newcomers have joined');
