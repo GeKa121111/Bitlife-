@@ -3232,7 +3232,7 @@ test('منافسو القتال يتقدمون في العمر ويعتزلون 
   assert.equal(context.invalid.retiredYear, 10, 'future retirement years must be clamped');
 
   const startSource = functionSource('startCombatBout', 'combatBoutRoundMenu');
-  const rival = { id: 'adam-mansour', name: 'آدم منصور', retired: true, style: 'قوة', weakTo: 'سرعة', emoji: '💪', rating: 46, momentum: 0 };
+  const rival = { id: 'adam-mansour', name: 'آدم منصور', retired: true, style: 'قوة', weakTo: 'سرعة', emoji: '💪', rating: 46, momentum: 0, respect: 50, tension: 10 };
   const career = {
     retired: false, pendingBout: null, injuryYears: 0, injury: 0, energy: 100,
     streetWins: 2, streetCred: 20, rank: 1, community: [rival]
@@ -3249,7 +3249,7 @@ test('منافسو القتال يتقدمون في العمر ويعتزلون 
     combatCommunityFighterMenu() {},
     clamp(value, min = 0, max = 100) {
       const number = Number(value);
-      return Number.isFinite(number) ? Math.max(min, Math.min(max, Math.round(number)) : min;
+      return Number.isFinite(number) ? Math.max(min, Math.min(max, Math.round(number))) : min;
     }
   };
   vm.runInNewContext(startSource + '\\nglobalThis.start=startCombatBout;', guardContext);
@@ -3277,9 +3277,9 @@ test('منافسو القتال يتقدمون في العمر ويعتزلون 
   };
   vm.runInNewContext(interactionSource + '\\nglobalThis.interact=interactCombatFighter;', interactionContext);
   interactionContext.interact(rival.id, 'friendly');
-  assert.equal(rival.respect, undefined, 'a retired rival must not receive relationship mutations');
+  assert.equal(rival.respect, 50, 'a retired rival must not receive relationship mutations');
   assert.equal(saves, 0, 'blocked interactions must not save a changed relationship');
-  assert.match(functionSource('combatCommunityMenu', 'combatCommunityFighterMenu'), /retiredCount|const retired=/);
+  assert.match(functionSource('combatCommunityMenu', 'combatCommunityFighterMenu'), /const retired=/);
   assert.match(functionSource('combatCommunityFighterMenu', 'interactCombatFighter'), /fighter\\.retired===true/);
   assert.match(functionSource('advanceAge', 'ageUp'), /اعتزال منافس/);
 });
