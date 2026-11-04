@@ -5756,7 +5756,8 @@ function skipSchool(){
  if(education.absences>=3&&chance(.35)){education.popularity=clamp((education.popularity===undefined?18:education.popularity)+4);log('🤫','غياب عن الحصة','تغيبت عن حصة أخرى. تراجعت درجاتك لكن أصبح لديك وقت أكثر لنفسك.');}
  else log('🤫','غياب عن الحصة','تغيبت عن حصة، وأصبحت درجاتك '+education.studyScore+'%.');
  save();render();info('🤫','تم تسجيل الغياب','عدد مرات الغياب: '+education.absences+' · الدرجات: '+education.studyScore+'%. تكرار الغياب قد يؤثر على مسارك التعليمي.');
-}function schoolClubs(){
+}
+function schoolClubs(){
  closeModal();if(state.education&&state.education.droppedOut){info('🚪','المدرسة متوقفة','ارجع إلى الدراسة قبل الانضمام إلى الأنشطة.');return;}
  const catalog=[
   {id:'sports',name:'Sports Club',label:'النادي الرياضي',icon:'⚽',effect:'health and teamwork',effectLabel:'الصحة والعمل الجماعي'},
