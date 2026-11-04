@@ -329,6 +329,45 @@ async function run() {
       'reduced-motion preference should remove interface transitions');
     await page.emulateMedia({ reducedMotion: 'no-preference' });
 
+    // Exercise the actual system high-contrast media mode, not only the CSS source text.
+    await page.emulateMedia({ forcedColors: 'active' });
+    const forcedColorsProbe = await page.evaluate(() => {
+      const shell = document.querySelector('#app > .topbar');
+      const nav = document.querySelector('#app .navbtn');
+      const ageButton = document.querySelector('#ageUpBtn');
+      const wasActive = nav.classList.contains('active');
+      nav.classList.add('active');
+      const shellStyle = getComputedStyle(shell);
+      const navStyle = getComputedStyle(nav);
+      const ageStyle = getComputedStyle(ageButton);
+      const result = {
+        mediaActive: matchMedia('(forced-colors: active)').matches,
+        shellBackground: shellStyle.backgroundColor,
+        shellColor: shellStyle.color,
+        activeNavBackground: navStyle.backgroundColor,
+        activeNavColor: navStyle.color,
+        ageButtonBackground: ageStyle.backgroundColor,
+        ageButtonColor: ageStyle.color,
+        ageButtonBorderWidth: ageStyle.borderTopWidth,
+        ageButtonShadow: ageStyle.boxShadow
+      };
+      if (!wasActive) nav.classList.remove('active');
+      return result;
+    });
+    assert.equal(forcedColorsProbe.mediaActive, true,
+      'Chromium should emulate the operating-system forced-colors preference');
+    assert.notEqual(forcedColorsProbe.activeNavBackground, forcedColorsProbe.shellBackground,
+      'the active navigation item should remain distinguishable from the application shell');
+    assert.notEqual(forcedColorsProbe.ageButtonBackground, forcedColorsProbe.shellBackground,
+      'the year-advance action should remain distinguishable in high-contrast mode');
+    assert.notEqual(forcedColorsProbe.ageButtonColor, forcedColorsProbe.shellColor,
+      'the year-advance action should use a contrasting system text color');
+    assert.equal(forcedColorsProbe.ageButtonBorderWidth, '2px',
+      'the primary year-advance action should retain a clear system-color border');
+    assert.equal(forcedColorsProbe.ageButtonShadow, 'none',
+      'high-contrast mode should avoid decorative shadows');
+    await page.emulateMedia({ forcedColors: 'none' });
+
     assert.equal((await page.locator('#lifeAnnouncement').textContent()).trim(), '',
       'loading a saved life must not announce its existing diary history');
 
