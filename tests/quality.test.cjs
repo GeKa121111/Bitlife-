@@ -3188,6 +3188,7 @@ test('منافسو القتال يتقدمون في العمر ويعتزلون 
   assert.ok(profilesStart >= 0 && helpersEnd > profilesStart);
   const catalog = app.slice(profilesStart, helpersEnd);
   const advanceSource = functionSource('advanceCombatCommunity', 'advanceCombatCommunityRoster');
+  const newline = String.fromCharCode(10);
   const context = {
     state: { age: 31, yearCount: 9 },
     clamp(value, min = 0, max = 100) {
@@ -3195,7 +3196,7 @@ test('منافسو القتال يتقدمون في العمر ويعتزلون 
       return Number.isFinite(number) ? Math.max(min, Math.min(max, Math.round(number))) : min;
     }
   };
-  vm.runInNewContext(catalog + '\\n' + advanceSource + `
+  vm.runInNewContext(catalog + newline + advanceSource + `
     globalThis.career = { community: normalizeCombatCommunity([
       { id: 'adam-mansour', age: 44, retirementAge: 45, retired: false, allied: true, lastProgressYear: 8, momentum: 2 }
     ], 8) };
@@ -3252,7 +3253,7 @@ test('منافسو القتال يتقدمون في العمر ويعتزلون 
       return Number.isFinite(number) ? Math.max(min, Math.min(max, Math.round(number))) : min;
     }
   };
-  vm.runInNewContext(startSource + '\\nglobalThis.start=startCombatBout;', guardContext);
+  vm.runInNewContext(startSource + newline + 'globalThis.start=startCombatBout;', guardContext);
   guardContext.start('league', rival.id);
   assert.equal(state.bank, 5000, 'a retired rival must be rejected before league fees are charged');
   assert.equal(career.pendingBout, null);
@@ -3275,11 +3276,11 @@ test('منافسو القتال يتقدمون في العمر ويعتزلون 
     log() {},
     cash(value) { return String(value); }
   };
-  vm.runInNewContext(interactionSource + '\\nglobalThis.interact=interactCombatFighter;', interactionContext);
+  vm.runInNewContext(interactionSource + newline + 'globalThis.interact=interactCombatFighter;', interactionContext);
   interactionContext.interact(rival.id, 'friendly');
   assert.equal(rival.respect, 50, 'a retired rival must not receive relationship mutations');
   assert.equal(saves, 0, 'blocked interactions must not save a changed relationship');
-  assert.match(functionSource('combatCommunityMenu', 'combatCommunityFighterMenu'), /const retired=/);
-  assert.match(functionSource('combatCommunityFighterMenu', 'interactCombatFighter'), /fighter\\.retired===true/);
+  assert.ok(functionSource('combatCommunityMenu', 'combatCommunityFighterMenu').includes('const retired='));
+  assert.ok(functionSource('combatCommunityFighterMenu', 'interactCombatFighter').includes('fighter.retired===true'));
   assert.match(functionSource('advanceAge', 'ageUp'), /اعتزال منافس/);
 });
