@@ -527,12 +527,13 @@ function combatOpponentIntent(opponent,round,lastPlayerStyle,roundHistory=[]){
  const awareness=Number.isFinite(ratingValue)?Math.max(0,Math.min(100,ratingValue)):0;
  let read='يبدأ المنافس بأسلوبه الأساسي.';
  if(roundNumber===2)read='المنافس يحاول الرد على اختيارك السابق.';
- else if(roundNumber>=3&&recent.length>=2){
-  if(recent[0]===recent[1]){
+ else if(roundNumber>=3){
+  if(recent.length<2)read='سجل الجولات غير مكتمل؛ المنافس يستخدم استجابة احتياطية.';
+  else if(recent[0]===recent[1]){
    read=awareness>=50?'لاحظ المنافس تكرار أسلوبك ويستعد لمواجهته.':'لاحظ المنافس التكرار لكنه لا يستغله بكفاءة بعد.';
   }else if(awareness>=65)read='المنافس يراقب آخر اختيار لك ويحاول توقع خطوتك التالية.';
   else if(awareness>=50)read='المنافس يحاول استغلال الأسلوب الذي استخدمته في بداية النزال.';
-  else read='المنافس يعتمد على خطته المعتادة بدل قراءة تنوع تحركاتك.';
+  else read='لم يلتقط المنافس نمطًا واضحًا؛ يستخدم استجابة محدودة.';
  }
  return {style,...intents[style],read};
 }
