@@ -603,7 +603,7 @@ assert.match(serviceWorker, /hayah-shell-v147/);
 
 assert.match(app, /function combatRoundEnergy\(currentEnergy,move,mode='street',reactionCost=0\)/);
 assert.match(app, /function combatStyleVarietyModifier\(roundHistory,style\)/);
-assert.match(app, /function combatOpponentStyleForRound\(opponent,round,lastPlayerStyle,roundHistory=\[\]\)/);
+assert.match(app, /function combatOpponentStyleForRound\(opponent,round,lastPlayerStyle,roundHistory=\[\],opponentId=''\)/);
 assert.match(app, /intent\.read/);
 assert.match(app, /سجل الجولات غير مكتمل؛ المنافس يستخدم استجابة احتياطية/);
 assert.match(app, /تنويع الأساليب عبر الجولات/);
