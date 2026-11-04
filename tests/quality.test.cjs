@@ -3359,13 +3359,14 @@ test('عالم مجتمع المقاتلين يستمر بعد اعتزال ال
   assert.ok(annualBlock.indexOf('advanceCombatCommunityWorld(cc)') < annualBlock.indexOf('if(playerCareerActive&&cc.coach'));
 
   let worldCalls = 0;
+  const retiredPlayerState = {
+    combatCareer: { retired: true, energy: 23, coach: { annualCost: 100, yearsLeft: 3 } },
+    specialCareer: { id: 'actor' },
+    bank: 1000
+  };
   const retiredPlayerContext = {
-    state: {
-      combatCareer: { retired: true, energy: 23, coach: { annualCost: 100, yearsLeft: 3 } },
-      specialCareer: { id: 'actor' },
-      bank: 1000
-    },
-    ensureCombatCareer() { return this.state.combatCareer; },
+    state: retiredPlayerState,
+    ensureCombatCareer() { return retiredPlayerState.combatCareer; },
     advanceCombatCommunityWorld() { worldCalls++; },
     log() {}
   };
@@ -3375,13 +3376,14 @@ test('عالم مجتمع المقاتلين يستمر بعد اعتزال ال
   assert.equal(retiredPlayerContext.state.combatCareer.energy, 23, 'retirement must not restore fighter energy');
 
   let activeWorldCalls = 0;
+  const activePlayerState = {
+    combatCareer: { retired: false, energy: 23, coach: { annualCost: 100, yearsLeft: 1 } },
+    specialCareer: { id: 'fighter' },
+    bank: 1000
+  };
   const activePlayerContext = {
-    state: {
-      combatCareer: { retired: false, energy: 23, coach: { annualCost: 100, yearsLeft: 1 } },
-      specialCareer: { id: 'fighter' },
-      bank: 1000
-    },
-    ensureCombatCareer() { return this.state.combatCareer; },
+    state: activePlayerState,
+    ensureCombatCareer() { return activePlayerState.combatCareer; },
     advanceCombatCommunityWorld() { activeWorldCalls++; },
     log() {}
   };
