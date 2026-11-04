@@ -1,10 +1,12 @@
 'use strict';
 
-const CACHE_NAME = 'hayah-shell-v137';
+const CACHE_NAME = 'hayah-shell-v138';
 const APP_SHELL = [
   './index.html',
   './style.css',
+  './pwa-update.css',
   './app.js',
+  './pwa-update.js',
   './manifest.webmanifest',
   './icon.svg'
 ].map(path => new URL(path, self.registration.scope).href);
