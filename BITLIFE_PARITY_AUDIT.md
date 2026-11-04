@@ -228,3 +228,5 @@
 - [BitLife Patch Notes](https://bitlifeapp.com/whats-new/patch-notes/) — تحديث يوليو 2026 وتحديث 14 أكتوبر 2026.
 - [Ultimate Fighter Mode](https://bitlifeapp.com/whats-new/ultimate-fighter-mode/) — 11 يونيو 2026.
 - [BitLife Help Center](https://bitlifeapp.com/help/) — الحفظ والإعدادات والإنجازات والمقتنيات والأعمال.
+
+- أضيف ترحيل آمن لمسيرات v1 التي كانت قد استنفدت كتالوج الـ15 السابق وسجلت موعد التجنيد 150؛ عند وجود وافدين جدد غير مسجلين يُعاد ضبط الموعد إلى خمس سنوات لاحقة بدل تجميد التجنيد.
