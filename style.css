@@ -2698,3 +2698,87 @@ body.theme-gold{--hayah-focus-ring:#76520f}
 #app > .topbar{
   grid-template-columns:44px minmax(0,1fr) auto!important;
 }
+
+
+/* v141: honor operating-system high-contrast colors across the five-zone life screen. */
+@media (forced-colors: active) {
+  #app > .topbar,
+  #app > .hero,
+  #app > .story-heading,
+  #app > .feed,
+  #app > .bottom-dock,
+  #app > .bottom-dock > .nav,
+  #app > .bottom-dock > .stats,
+  #modalRoot .overlay,
+  #modalRoot .modal,
+  #modalRoot .modalhead {
+    background: Canvas !important;
+    color: CanvasText !important;
+    border-color: CanvasText !important;
+    box-shadow: none !important;
+    backdrop-filter: none !important;
+  }
+
+  #app .brandlogo,
+  #app .name,
+  #app .story-heading h1,
+  #app .wealthlabel,
+  #app .wealthnum,
+  #app .logtitle,
+  #app .logtext,
+  #app .statlabel,
+  #app .statvalue,
+  #app .navbtn,
+  #modalRoot .modaltitle,
+  #modalRoot .desc,
+  #modalRoot .muted {
+    color: CanvasText !important;
+  }
+
+  #app .navbtn.active {
+    background: Highlight !important;
+    color: HighlightText !important;
+    outline: 1px solid HighlightText;
+    outline-offset: -2px;
+  }
+
+  #app .agebtn,
+  #modalRoot .primarybtn {
+    background: Highlight !important;
+    color: HighlightText !important;
+    border: 2px solid ButtonText !important;
+    box-shadow: none !important;
+  }
+
+  #app .logcard,
+  #modalRoot .choice,
+  #modalRoot input,
+  #modalRoot select,
+  #modalRoot textarea,
+  #modalRoot .smallbtn,
+  #modalRoot .closebtn {
+    border: 1px solid ButtonText !important;
+    background: ButtonFace !important;
+    color: ButtonText !important;
+  }
+
+  #app .fill {
+    background: Highlight !important;
+  }
+
+  #app .track {
+    border: 1px solid CanvasText;
+  }
+
+  #app button:focus-visible,
+  #app a[href]:focus-visible,
+  #app [role="button"]:focus-visible,
+  #modalRoot button:focus-visible,
+  #modalRoot input:focus-visible,
+  #modalRoot select:focus-visible,
+  #modalRoot textarea:focus-visible,
+  #modalRoot a[href]:focus-visible {
+    outline: 3px solid Highlight !important;
+    outline-offset: 3px !important;
+  }
+}
