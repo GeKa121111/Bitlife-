@@ -136,6 +136,7 @@ function log() {}
 function effects() {}
 function achievement() {}
 function ensureCombatCareer() { return state.combatCareer; }
+function advanceCombatCommunityWorld() {}
 function archiveCurrentJob() {}
 function ensureJobProgress(job) { return job; }
 function careerIncomeMultiplier() { return 1; }
