@@ -3559,7 +3559,7 @@ test('تفضيل التباين الإضافي يحسن وضوح واجهة حي
   assert.ok(html.includes('href="accessibility.css"'));
   assert.ok(worker.includes('hayah-shell-v142'));
   assert.ok(worker.includes('./accessibility.css'));
-  assert.ok(accessibility.includes('@media (prefers-contrast: more)'));
+  assert.ok(accessibility.includes('@media (prefers-contrast: more) and (forced-colors: none)'));
   for (const fragment of [
     '--hayah-contrast-text',
     '--hayah-contrast-muted',
@@ -3568,6 +3568,7 @@ test('تفضيل التباين الإضافي يحسن وضوح واجهة حي
     'body.theme-gold',
     '.logcard',
     '.navbtn.active',
+    'var(--hayah-contrast-muted)',
     '.agebtn',
     ':focus-visible',
     'outline: 3px solid'
