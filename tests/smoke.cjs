@@ -603,7 +603,7 @@ assert.match(serviceWorker, /hayah-shell-v144/);
 
 assert.match(app, /function combatRoundEnergy\(currentEnergy,move,mode='street',reactionCost=0\)/);
 assert.match(app, /function combatStyleVarietyModifier\(roundHistory,style\)/);
-assert.match(app, /تنويع الأسلوب عبر الجولات/);
+assert.match(app, /تنويع الأساليب عبر الجولات/);
 assert.ok(app.includes('function combatRoundImpact(opponentRating,defense,reactionQuality,timingBonus=0)'));
 assert.ok(app.includes('function normalizeCombatInjuryYears(value)'));
 assert.ok(app.includes('c.injuryYears=normalizeCombatInjuryYears(c.injuryYears)'));
