@@ -15,6 +15,7 @@ const APP_SHELL = [
 // Keep the essential game usable if a non-critical shell asset is temporarily unavailable.
 const CORE_SHELL = ['./index.html', './style.css', './app.js']
   .map(path => new URL(path, self.registration.scope).href);
+const OPTIONAL_SHELL = APP_SHELL.filter(url => !CORE_SHELL.includes(url));
 
 self.addEventListener('install', event => {
   event.waitUntil(
@@ -24,8 +25,37 @@ self.addEventListener('install', event => {
           await cache.addAll(APP_SHELL);
         } catch {
           // Retry with the minimum files required to render and run the game.
-          // Optional accessibility/PWA decoration assets can be fetched later.
           await cache.addAll(CORE_SHELL);
+
+          // Preserve optional files already available in an older Hayah shell
+          // before activate() removes that cache. Never copy unrelated caches.
+          let previousShellNames = [];
+          try {
+            previousShellNames = (await caches.keys())
+              .filter(name => name.startsWith('hayah-shell-') && name !== CACHE_NAME);
+          } catch {
+            // Carry-forward is best-effort; the essential game shell is already safe.
+          }
+
+          await Promise.all(OPTIONAL_SHELL.map(async url => {
+            try {
+              if (await cache.match(url)) return;
+            } catch {
+              // Continue to older shells if the new cache cannot be inspected.
+            }
+
+            for (const name of previousShellNames) {
+              try {
+                const previousCache = await caches.open(name);
+                const previousResponse = await previousCache.match(url);
+                if (!previousResponse) continue;
+                await cache.put(url, previousResponse.clone());
+                break;
+              } catch {
+                // Optional assets must never block installation of the game.
+              }
+            }
+          }));
         }
       })
       .then(() => self.skipWaiting())
