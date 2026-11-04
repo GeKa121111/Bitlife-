@@ -38,26 +38,27 @@ self.addEventListener('fetch', event => {
   if (requestUrl.origin !== self.location.origin || !requestUrl.pathname.startsWith(scopeUrl.pathname)) return;
 
   const cacheKey = request.mode === 'navigate' ? APP_SHELL[0] : request;
+  const matchCached = () => caches.open(CACHE_NAME).then(cache => cache.match(cacheKey));
   event.respondWith(
     fetch(request).then(async response => {
       // A transient HTTP error should not replace a working cached screen or asset.
       // Keep genuine uncached 404s visible instead of masking missing files.
       if (!response) {
-        const cached = await caches.match(cacheKey);
+        const cached = await matchCached();
         return cached || new Response('أنت غير متصل بالإنترنت.', {
           status: 503,
           headers: { 'Content-Type': 'text/plain; charset=utf-8' }
         });
       }
       if (response.status === 429 || response.status >= 500) {
-        const cached = await caches.match(cacheKey);
+        const cached = await matchCached();
         return cached || response;
       }
       if (!response.ok) return response;
       return caches.open(CACHE_NAME)
         .then(cache => cache.put(cacheKey, response.clone()).then(() => response));
     }).catch(async () => {
-      const cached = await caches.match(cacheKey);
+      const cached = await matchCached();
       if (cached) return cached;
       return new Response('أنت غير متصل بالإنترنت.', {
         status: 503,
