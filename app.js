@@ -5667,115 +5667,106 @@ function schoolHub(){
  if(!Array.isArray(education.clubs))education.clubs=[];
  if(!Array.isArray(education.cliques))education.cliques=[];
  const isUniversity=(education.yearsLeft||0)>0&&!education.droppedOut;
- const name=isUniversity?'University':state.age>=15?'High School':state.age>=12?'Middle School':'Primary School';
+ const name=isUniversity?'الجامعة':state.age>=15?'المرحلة الثانوية':state.age>=12?'المرحلة الإعدادية':'المرحلة الابتدائية';
  const grades=clamp(education.studyScore===undefined?50:education.studyScore);
  const popularity=clamp(education.popularity===undefined?18:education.popularity);
  const options=[];
- const universityRow=choice('🏛️',name,'Grades',()=>{closeModal();isUniversity?universityStatusMenu():university(false);},'',grades);
+ const universityRow=choice('🏛️',name,'المستوى الدراسي',()=>{closeModal();isUniversity?universityStatusMenu():university(false);},'',grades);
  universityRow.menuDots=true;options.push(universityRow);
- const diploma=choice('📜','Golden Diploma','Become an overnight expert in the field of your dreams!',()=>{closeModal();perkOwned('goldenDiploma')?goldenDiplomaMenu():showJobPackOffer('goldenDiploma');});
+ const diploma=choice('📜','الشهادة الذهبية','احصل على خبرة متقدمة فورًا في المجال الذي تختاره.',()=>{closeModal();perkOwned('goldenDiploma')?goldenDiplomaMenu():showJobPackOffer('goldenDiploma');});
  diploma.menuDots=true;options.push(diploma);
- options.push(section('Activities'));
- options.push(choice('⚽','Activities','Join an extracurricular activity',schoolClubs));
- options.push(choice('✏️','Class','Popularity',schoolClassMenu,'',popularity));
- options.push(choice('🤓','Cliques','Join a school clique',schoolCliqueMenu));
- const leave=choice('👋',education.droppedOut?'Return to School':isUniversity?'Drop Out of university':'Drop Out of School',education.droppedOut?'Return to your education path':isUniversity?'Drop out of university':'Drop out of school',education.droppedOut?()=>{
+ options.push(section('الأنشطة المدرسية'));
+ options.push(choice('⚽','الأنشطة اللامنهجية','انضم إلى نشاط خارج الحصص الدراسية.',schoolClubs));
+ options.push(choice('✏️','الفصل الدراسي','الشعبية',schoolClassMenu,'',popularity));
+ options.push(choice('🤓','المجموعات المدرسية','انضم إلى مجموعة تناسب اهتماماتك.',schoolCliqueMenu));
+ const leave=choice('👋',education.droppedOut?'العودة إلى الدراسة':isUniversity?'الانسحاب من الجامعة':'ترك المدرسة',education.droppedOut?'استأنف مسارك التعليمي.':isUniversity?'اترك برنامجك الجامعي الحالي.':'اترك المدرسة قبل إكمال الدراسة.',education.droppedOut?()=>{
   closeModal();education.droppedOut=false;education.school=state.age<12?'Primary School':state.age<15?'Middle School':state.age<18?'High School':'University';
-  log('🎓','Back to school','You decided to return to your education.','good');save();render();schoolHub();
+  log('🎓','العودة إلى الدراسة','قررت استكمال تعليمك من جديد.','good');save();render();schoolHub();
  }:dropOutConfirm);
  leave.menuDots=true;options.push(leave);
- options.push(choice('👩‍🏫','Faculty','Interact with your teachers',schoolFacultyMenu));
- const skip=choice('🤫','Skip School','Skip class and do something else',skipSchool);skip.menuDots=true;options.push(skip);
- const study=choice('📚','Study Harder','Put in some extra effort',()=>{
-  closeModal();if(education.droppedOut){info('🚪','You left school','Return to school before studying.');return;}
+ options.push(choice('👩‍🏫','هيئة التدريس','تواصل مع المدرسين واطلب المساعدة عند الحاجة.',schoolFacultyMenu));
+ const skip=choice('🤫','التغيّب عن الدراسة','اترك الحصة واختر نشاطًا آخر.',skipSchool);skip.menuDots=true;options.push(skip);
+ const study=choice('📚','المذاكرة بجدية','ابذل مجهودًا إضافيًا لتحسين درجاتك.',()=>{
+  closeModal();if(education.droppedOut){info('🚪','تركت الدراسة','ارجع إلى المدرسة قبل بدء المذاكرة.');return;}
   education.studyScore=clamp((education.studyScore===undefined?50:education.studyScore)+12);education.popularity=clamp((education.popularity===undefined?18:education.popularity)-1);
-  stat('smart',4);stat('happiness',-1);log('📚','Study session','You studied hard. Your grade is now '+education.studyScore+'%.','good');save();render();info('📚','Study pays off','Your smarts improved and your grades are now '+education.studyScore+'%.');
+  stat('smart',4);stat('happiness',-1);log('📚','جلسة مذاكرة','ذاكرت بجدية. درجتك الحالية '+education.studyScore+'%.','good');save();render();info('📚','المذاكرة بتجيب نتيجة','تحسن ذكاؤك ووصلت درجاتك إلى '+education.studyScore+'%.');
  });
  study.menuDots=true;options.push(study);
- if(isUniversity)options.push(choice('🎓','Major',(education.major||'Undeclared')+' · '+education.yearsLeft+' years remaining',()=>universityStatusMenu()));
- options.push(choice('↩️','Back','Return to your current life.',()=>{closeModal();showCareer();}));
- modal('🎓','School',isUniversity?'University · '+(education.major||'Undeclared')+' · '+education.yearsLeft+' years remaining':'Your education and school activities.',options);
-}
-function universityStatusMenu(){
+ if(isUniversity)options.push(choice('🎓','التخصص',(education.major||'غير محدد')+' · '+education.yearsLeft+' سنوات متبقية',()=>universityStatusMenu()));
+ options.push(choice('↩️','رجوع','العودة إلى حياتك الحالية.',()=>{closeModal();showCareer();}));
+ modal('🎓','التعليم',isUniversity?'الجامعة · '+(education.major||'غير محدد')+' · '+education.yearsLeft+' سنوات متبقية':'مسارك التعليمي والأنشطة المدرسية.',options);
+}function universityStatusMenu(){
  const education=state.education||(state.education={}),grade=clamp(education.studyScore===undefined?50:education.studyScore);
- modal('🏛️','University','Major: '+(education.major||'Undeclared')+' · '+(education.yearsLeft||0)+' years remaining · annual tuition '+cash(education.tuition||0)+'.',[
-  choice('📚','Study Harder','Improve grades and smarts.',()=>{closeModal();education.studyScore=clamp(grade+12);stat('smart',4);stat('happiness',-1);log('📚','University study','You studied for your major and improved your grades.','good');save();render();schoolHub();}),
-  choice('⚽','Extracurricular Activities','Join a campus activity.',schoolClubs),
-  choice('👩‍🏫','Faculty','Ask a teacher for advice.',schoolFacultyMenu),
-  choice('👋','Drop Out of university','Leave your current program.',dropOutConfirm),
-  choice('↩️','Back to School','',()=>{closeModal();schoolHub();})
+ modal('🏛️','الجامعة','التخصص: '+(education.major||'غير محدد')+' · المتبقي '+(education.yearsLeft||0)+' سنوات · الرسوم السنوية '+cash(education.tuition||0)+'.',[
+  choice('📚','المذاكرة بجدية','حسّن درجاتك وطور مستوى ذكائك.',()=>{closeModal();education.studyScore=clamp(grade+12);stat('smart',4);stat('happiness',-1);log('📚','مذاكرة جامعية','ذاكرت لتخصصك وتحسنت درجاتك.','good');save();render();schoolHub();}),
+  choice('⚽','الأنشطة الجامعية','انضم إلى نشاط داخل الجامعة.',schoolClubs),
+  choice('👩‍🏫','هيئة التدريس','اطلب نصيحة أحد المدرسين.',schoolFacultyMenu),
+  choice('👋','الانسحاب من الجامعة','اترك برنامجك الدراسي الحالي.',dropOutConfirm),
+  choice('↩️','العودة إلى التعليم','',()=>{closeModal();schoolHub();})
  ]);
-}
-function schoolClassMenu(){
+}function schoolClassMenu(){
  const education=state.education||(state.education={});
- if(education.droppedOut){info('🚪','School is inactive','Return to school before interacting with your class.');return;}
+ if(education.droppedOut){info('🚪','المدرسة متوقفة','ارجع إلى الدراسة قبل التعامل مع زملاء الفصل.');return;}
  const popularity=clamp(education.popularity===undefined?18:education.popularity);
- modal('✏️','Class','Popularity · '+popularity+'%',[
-  choice('👋','Talk to classmates','Build friendships and school popularity.',()=>{
+ modal('✏️','الفصل الدراسي','الشعبية · '+popularity+'%',[
+  choice('👋','التحدث مع الزملاء','كوّن صداقات وحسّن مكانتك في المدرسة.',()=>{
    closeModal();education.popularity=clamp(popularity+5);
-   if(state.friends.length){const friend=pick(state.friends);friend.relationshipLevel=clamp((friend.relationshipLevel||50)+5);stat('happiness',2);log('🧑‍🤝‍🧑','Class time','You spent time talking with '+friend.name+'.','good');}
-   else{const friend=makePerson(pick(['male','female']),'Classmate','🧑',state.age,45+Math.floor(Math.random()*45));state.friends.push(friend);log('🧑‍🤝‍🧑','New classmate','You made friends with '+friend.name+'.','good');}
+   if(state.friends.length){const friend=pick(state.friends);friend.relationshipLevel=clamp((friend.relationshipLevel||50)+5);stat('happiness',2);log('🧑‍🤝‍🧑','وقت الفصل','قضيت وقتًا في الحديث مع '+friend.name+'.','good');}
+   else{const friend=makePerson(pick(['male','female']),'Classmate','🧑',state.age,45+Math.floor(Math.random()*45));state.friends.push(friend);log('🧑‍🤝‍🧑','زميل جديد','أصبحت صديقًا لـ '+friend.name+'.','good');}
    save();render();schoolHub();
   }),
-  choice('🎭','Join a school event','Take part in class life.',()=>{closeModal();education.popularity=clamp(popularity+8);stat('happiness',3);if(chance(.25))stat('smart',1);log('🎭','School event','You joined a school event and became a little more popular.','good');save();render();schoolHub();}),
-  choice('📖','Focus on class','Small grade boost.',()=>{closeModal();education.studyScore=clamp((education.studyScore===undefined?50:education.studyScore)+4);stat('smart',2);log('📖','Focused in class','You paid attention and improved your grades.','good');save();render();schoolHub();}),
-  choice('↩️','Back to School','',()=>{closeModal();schoolHub();})
+  choice('🎭','المشاركة في فعالية مدرسية','شارك في أنشطة الفصل.',()=>{closeModal();education.popularity=clamp(popularity+8);stat('happiness',3);if(chance(.25))stat('smart',1);log('🎭','فعالية مدرسية','شاركت في فعالية مدرسية وأصبحت أكثر شعبية قليلًا.','good');save();render();schoolHub();}),
+  choice('📖','التركيز في الحصة','زيادة بسيطة في درجاتك.',()=>{closeModal();education.studyScore=clamp((education.studyScore===undefined?50:education.studyScore)+4);stat('smart',2);log('📖','التركيز في الدراسة','انتبهت للشرح وتحسنت درجاتك.','good');save();render();schoolHub();}),
+  choice('↩️','العودة للمدرسة','',()=>{closeModal();schoolHub();})
  ]);
-}
-function schoolCliqueMenu(){
+}function schoolCliqueMenu(){
  const education=state.education||(state.education={});if(!Array.isArray(education.cliques))education.cliques=[];
- if(education.droppedOut){info('🚪','School is inactive','Return to school before joining a clique.');return;}
+ if(education.droppedOut){info('🚪','المدرسة متوقفة','ارجع إلى الدراسة قبل الانضمام إلى مجموعة.');return;}
  const catalog=[
-  {id:'sports',title:'Sports Clique',emoji:'⚽',desc:'Athletes and school competitions.'},
-  {id:'nerds',title:'Nerds',emoji:'🤓',desc:'Study groups and science.'},
-  {id:'popular',title:'Popular Kids',emoji:'😎',desc:'Social events and a wider school circle.'},
-  {id:'artists',title:'Arts Clique',emoji:'🎭',desc:'Music, drama and creative projects.'}
+  {id:'sports',title:'Sports Clique',label:'مجموعة الرياضيين',emoji:'⚽',desc:'طلاب مهتمون بالرياضة والمسابقات المدرسية.'},
+  {id:'nerds',title:'Nerds',label:'مجموعة محبي المعرفة',emoji:'🤓',desc:'طلاب يجمعهم حب الدراسة والعلوم.'},
+  {id:'popular',title:'Popular Kids',label:'المجموعة الاجتماعية',emoji:'😎',desc:'أنشطة اجتماعية ودائرة معارف أوسع.'},
+  {id:'artists',title:'Arts Clique',label:'مجموعة الفنون',emoji:'🎭',desc:'الموسيقى والتمثيل والمشروعات الإبداعية.'}
  ];
- const opts=catalog.map(item=>{const joined=education.cliques.includes(item.id);return choice(item.emoji,(joined?'Spend time with ':'Join ')+item.title,item.desc+(joined?' · Already joined.':''),()=>{
+ const opts=catalog.map(item=>{const joined=education.cliques.includes(item.id);return choice(item.emoji,(joined?'اقضِ وقتًا مع ':'انضم إلى ')+item.label,item.desc+(joined?' · أنت عضو بالفعل.':''),()=>{
   closeModal();if(!education.cliques.includes(item.id)){education.cliques.push(item.id);education.popularity=clamp((education.popularity===undefined?18:education.popularity)+5);achievement('Joined the '+item.title+' clique');}
   if(item.id==='sports'){stat('health',2);stat('happiness',2);}if(item.id==='nerds')stat('smart',3);if(item.id==='popular')stat('happiness',4);if(item.id==='artists')stat('looks',1);
-  log(item.emoji,'School Clique',(joined?'You spent time with the ':'You joined the ')+item.title+'.','good');save();render();info(item.emoji,joined?'Clique time':'Joined the clique',item.title+' · School popularity '+clamp(education.popularity===undefined?18:education.popularity)+'%.');
+  log(item.emoji,'مجموعة مدرسية',(joined?'قضيت وقتًا مع ':'انضممت إلى ')+item.label+'.','good');save();render();info(item.emoji,joined?'وقت مع المجموعة':'تم الانضمام للمجموعة',item.label+' · شعبية المدرسة '+clamp(education.popularity===undefined?18:education.popularity)+'%.');
  },'',null,joined);});
- opts.push(choice('↩️','Back to School','',()=>{closeModal();schoolHub();}));
- modal('🤓','Cliques','Choose a group that matches your interests.',opts);
-}
-function schoolFacultyMenu(){
+ opts.push(choice('↩️','العودة للمدرسة','',()=>{closeModal();schoolHub();}));
+ modal('🤓','المجموعات المدرسية','اختار مجموعة تناسب اهتماماتك.',opts);
+}function schoolFacultyMenu(){
  const education=state.education||(state.education={}),relation=clamp(education.teacherRelationship===undefined?35:education.teacherRelationship);
- modal('👩‍🏫','Faculty','Teacher relationship · '+relation+'%',[
-  choice('💬','Ask for advice','Get feedback on your grades and study habits.',()=>{closeModal();education.teacherRelationship=clamp(relation+5);education.studyScore=clamp((education.studyScore===undefined?50:education.studyScore)+4);stat('smart',2);log('👩‍🏫','Teacher advice','A teacher gave you some useful guidance.','good');save();render();schoolHub();}),
-  choice('👏','Compliment a teacher','A respectful compliment may improve your rapport.',()=>{closeModal();education.teacherRelationship=clamp(relation+(chance(.8)?6:-2));stat('happiness',1);log('👏','Faculty interaction','You spoke with one of your teachers.','good');save();render();info('👩‍🏫','Faculty','Teacher relationship is now '+education.teacherRelationship+'%.');}),
-  choice('📝','Ask to review a grade','A respectful review may raise a recent grade.',()=>{closeModal();if(chance(.52)){education.studyScore=clamp((education.studyScore===undefined?50:education.studyScore)+5);log('📝','Grade reviewed','Your teacher reviewed your work and adjusted your grade.','good');}else{education.teacherRelationship=clamp(relation-1);log('📝','Grade review','Your teacher kept the original grade.');}save();render();schoolHub();}),
-  choice('↩️','Back to School','',()=>{closeModal();schoolHub();})
+ modal('👩‍🏫','هيئة التدريس','علاقتك بالمدرسين · '+relation+'%',[
+  choice('💬','طلب نصيحة','احصل على ملاحظات تساعدك في تحسين درجاتك وطريقة مذاكرتك.',()=>{closeModal();education.teacherRelationship=clamp(relation+5);education.studyScore=clamp((education.studyScore===undefined?50:education.studyScore)+4);stat('smart',2);log('👩‍🏫','نصيحة مدرس','قدم لك أحد المدرسين إرشادات مفيدة.','good');save();render();schoolHub();}),
+  choice('👏','مجاملة أحد المدرسين','مجاملة محترمة قد تحسن علاقتك به.',()=>{closeModal();education.teacherRelationship=clamp(relation+(chance(.8)?6:-2));stat('happiness',1);log('👏','تواصل مع المدرسين','تحدثت مع أحد مدرسيك.','good');save();render();info('👩‍🏫','هيئة التدريس','علاقتك بالمدرسين الآن '+education.teacherRelationship+'%.');}),
+  choice('📝','طلب مراجعة درجة','مراجعة محترمة قد ترفع إحدى درجاتك الأخيرة.',()=>{closeModal();if(chance(.52)){education.studyScore=clamp((education.studyScore===undefined?50:education.studyScore)+5);log('📝','مراجعة الدرجة','راجع المدرس عملك وعدّل الدرجة.','good');}else{education.teacherRelationship=clamp(relation-1);log('📝','مراجعة الدرجة','أبقى المدرس على الدرجة كما هي.');}save();render();schoolHub();}),
+  choice('↩️','العودة للمدرسة','',()=>{closeModal();schoolHub();})
  ]);
-}
-function skipSchool(){
+}function skipSchool(){
  const education=state.education||(state.education={});closeModal();
- if(education.droppedOut){info('🚪','School is inactive','Return to your education path before skipping classes.');return;}
+ if(education.droppedOut){info('🚪','المدرسة متوقفة','ارجع إلى مسارك التعليمي قبل التغيب عن الحصص.');return;}
  education.absences=clamp((education.absences||0)+1,0,1000);education.studyScore=clamp((education.studyScore===undefined?50:education.studyScore)-5);
  stat('happiness',chance(.5)?2:-1);
- if(education.absences>=3&&chance(.35)){education.popularity=clamp((education.popularity===undefined?18:education.popularity)+4);log('🤫','Skipped class','You skipped another class. Your grades slipped, but you had more time for yourself.');}
- else log('🤫','Skipped class','You skipped a class. Your grades fell to '+education.studyScore+'%.');
- save();render();info('🤫','Class skipped','Missed classes: '+education.absences+' · Grades: '+education.studyScore+'%. Repeated absences could affect your education.');
-}
-
-function schoolClubs(){
- closeModal();if(state.education&&state.education.droppedOut){info('🚪','School is inactive','Return to your education path before joining clubs.');return;}
+ if(education.absences>=3&&chance(.35)){education.popularity=clamp((education.popularity===undefined?18:education.popularity)+4);log('🤫','غياب عن الحصة','تغيبت عن حصة أخرى. تراجعت درجاتك لكن أصبح لديك وقت أكثر لنفسك.');}
+ else log('🤫','غياب عن الحصة','تغيبت عن حصة، وأصبحت درجاتك '+education.studyScore+'%.');
+ save();render();info('🤫','تم تسجيل الغياب','عدد مرات الغياب: '+education.absences+' · الدرجات: '+education.studyScore+'%. تكرار الغياب قد يؤثر على مسارك التعليمي.');
+}function schoolClubs(){
+ closeModal();if(state.education&&state.education.droppedOut){info('🚪','المدرسة متوقفة','ارجع إلى الدراسة قبل الانضمام إلى الأنشطة.');return;}
  const catalog=[
-  {id:'sports',name:'Sports Club',icon:'⚽',effect:'health and teamwork'},
-  {id:'science',name:'Science Club',icon:'🔬',effect:'learning and curiosity'},
-  {id:'arts',name:'Arts & Drama Club',icon:'🎭',effect:'creativity and happiness'},
-  {id:'leadership',name:'Student Council',icon:'🏫',effect:'leadership and relationships'}
+  {id:'sports',name:'Sports Club',label:'النادي الرياضي',icon:'⚽',effect:'health and teamwork',effectLabel:'الصحة والعمل الجماعي'},
+  {id:'science',name:'Science Club',label:'نادي العلوم',icon:'🔬',effect:'learning and curiosity',effectLabel:'التعلم والفضول'},
+  {id:'arts',name:'Arts & Drama Club',label:'نادي الفنون والتمثيل',icon:'🎭',effect:'creativity and happiness',effectLabel:'الإبداع والسعادة'},
+  {id:'leadership',name:'Student Council',label:'اتحاد الطلاب',icon:'🏫',effect:'leadership and relationships',effectLabel:'القيادة والعلاقات'}
  ];
- const choices=catalog.map(c=>{const joined=(state.education.clubs||[]).includes(c.id);return choice(c.icon,joined?'Participate in '+c.name:'Join '+c.name,'Build '+c.effect+'.'+(joined?' You are already a member.':''),()=>{
+ const choices=catalog.map(c=>{const joined=(state.education.clubs||[]).includes(c.id);return choice(c.icon,joined?'شارك في '+c.label:'انضم إلى '+c.label,'طوّر '+c.effectLabel+'.'+(joined?' أنت عضو بالفعل.':''),()=>{
   closeModal();if(!state.education.clubs)state.education.clubs=[];if(!state.education.clubs.includes(c.id)){state.education.clubs.push(c.id);achievement('Joined '+c.name);}
   if(c.id==='sports'){stat('health',4);stat('happiness',2);}if(c.id==='science'){stat('smart',4);stat('happiness',1);}if(c.id==='arts'){stat('happiness',4);stat('looks',1);}if(c.id==='leadership'){stat('happiness',3);if(state.friends.length)state.friends[0].relationshipLevel=clamp((state.friends[0].relationshipLevel||50)+5);}
-  log(c.icon,c.name,joined?'You participated in '+c.name+' and improved your skills.':'You joined '+c.name+' and started building skills outside class.','good');save();render();info(c.icon,joined?'Activity complete':'You joined',c.name+' · '+c.effect+'.');
+  log(c.icon,c.label,joined?'شاركت في '+c.label+' وطورت مهاراتك.':'انضممت إلى '+c.label+' وبدأت تكتسب مهارات خارج الحصص.','good');save();render();info(c.icon,joined?'اكتمل النشاط':'تم الانضمام',c.label+' · '+c.effectLabel+'.');
  },'',null,joined);});
- choices.push(choice('↩️','Back to School','',()=>{closeModal();schoolHub();}));
- modal('🏫','Activities','Choose an extracurricular activity that fits your interests.',choices);
-}
-
-function dropOutConfirm(){
+ choices.push(choice('↩️','العودة للمدرسة','',()=>{closeModal();schoolHub();}));
+ modal('🏫','الأنشطة المدرسية','اختار نشاطًا خارج الحصص يناسب اهتماماتك.',choices);
+}function dropOutConfirm(){
  closeModal();
  modal('🚪','تأكيد ترك الدراسة','الانسحاب هيوقف التقدم التعليمي الحالي، وممكن يصعّب التأهل لبعض الوظائف.',[
   choice('🚪','أترك الدراسة','تأكيد الانسحاب من '+(state.education.school||'التعليم')+'.',()=>{
