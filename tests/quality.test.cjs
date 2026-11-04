@@ -1723,7 +1723,7 @@ test('التعافي يستمر بعد إيقاف مسيرة القتال ولا
   assert.ok(ageStart >= 0 && ageEnd > ageStart, 'annual progression should be available for inspection');
   const ageSource = app.slice(ageStart, ageEnd);
   const recoveryIndex = ageSource.indexOf('advanceCombatRecovery(state.combatCareer)');
-  const activeFighterIndex = ageSource.indexOf("if(state.specialCareer&&state.specialCareer.id==='fighter'&&state.combatCareer)");
+  const activeFighterIndex = ageSource.indexOf("const playerCareerActive=!!(");
   assert.ok(recoveryIndex >= 0 && activeFighterIndex > recoveryIndex,
     'injury recovery must run before and outside the active-fighter-only energy and coach block');
 });
@@ -2984,9 +2984,9 @@ test('تطور مجتمع المقاتلين سنويًا يعكس النشاط 
   assert.deepEqual(Array.from(context.labels), ['في قمة النشاط', 'مستواه صاعد', 'مستقر', 'مستواه متراجع', 'بحاجة لاستعادة مستواه']);
 
   const annual = functionSource('advanceAge', 'ageUp');
-  assert.ok(annual.indexOf('state.yearCount++') < annual.indexOf('advanceCombatCommunity(cc)'),
+  assert.ok(annual.indexOf('state.yearCount++') < annual.indexOf('advanceCombatCommunityWorld(cc)'),
     'rival progression must happen after the player advances the game year');
-  assert.match(annual, /advanceCombatCommunity\(cc\)/);
+  assert.match(annual, /advanceCombatCommunityWorld\(cc\)/);
   assert.match(functionSource('startCombatBout', 'combatBoutRoundMenu'),
     /communityFighter\.rating\+\(Number\(communityFighter\.momentum\)\|\|0\)/);
   assert.match(functionSource('resolveCombatBout', 'recoverCombatInjury'),
@@ -3100,8 +3100,9 @@ test('مجتمع المقاتلين يستقبل منافسين جددًا كل 
   const menuSource = functionSource('combatCommunityMenu', 'combatCommunityFighterMenu');
   assert.match(createSource, /nextRecruitmentAge:/);
   assert.match(ensureSource, /c\.nextRecruitmentAge=/);
-  assert.match(annualSource, /advanceCombatCommunityRoster\(cc\)/);
-  assert.match(annualSource, /منافس جديد في المجتمع/);
+  const worldSource = functionSource('advanceCombatCommunityWorld', 'createCombatCareer');
+  assert.match(worldSource, /advanceCombatCommunityRoster\(career\)/);
+  assert.match(worldSource, /منافس جديد في المجتمع/);
   assert.match(menuSource, /c\.community\.length\+/);
   assert.ok(app.includes("const KEY = 'hekayat_hayah_save_v1';"));
   assert.ok(app.includes('return {version:1,lifeId:'));
@@ -3303,7 +3304,7 @@ test('منافسو القتال يتقدمون في العمر ويعتزلون 
   assert.equal(saves, 0, 'blocked interactions must not save a changed relationship');
   assert.ok(functionSource('combatCommunityMenu', 'combatCommunityFighterMenu').includes('const retired='));
   assert.ok(functionSource('combatCommunityFighterMenu', 'interactCombatFighter').includes('fighter.retired===true'));
-  assert.match(functionSource('advanceAge', 'ageUp'), /اعتزال منافس/);
+  assert.match(functionSource('advanceCombatCommunityWorld', 'createCombatCareer'), /اعتزال منافس/);
 });
 
 
@@ -3316,6 +3317,7 @@ test('عالم مجتمع المقاتلين يستمر بعد اعتزال ال
   let rosterCalls = 0;
   const context = {
     state: { age: 50, yearCount: 20, specialCareer: { id: 'actor' } },
+    logs,
     clamp(value, min = 0, max = 100) {
       const number = Number(value);
       return Number.isFinite(number) ? Math.max(min, Math.min(max, Math.round(number))) : min;
@@ -3485,5 +3487,5 @@ test('منافسو القتال يتوفون بعد الاعتزال ويُمن�
   assert.ok(dialogs.some(dialog => dialog.title === 'المنافس متوفى'));
   assert.match(functionSource('combatCommunityMenu', 'combatCommunityFighterMenu'), /fighter.deceased===true/);
   assert.match(functionSource('combatCommunityFighterMenu', 'interactCombatFighter'), /fighter.deceased===true/);
-  assert.match(functionSource('advanceAge', 'ageUp'), /وفاة منافس/);
+  assert.match(functionSource('advanceCombatCommunityWorld', 'createCombatCareer'), /وفاة منافس/);
 });
