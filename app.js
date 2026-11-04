@@ -414,9 +414,20 @@ const combatCommunityNewcomerProfiles=[
  {id:'marwan-adel',name:'مروان عادل',style:'تقنية',weakTo:'دفاع',emoji:'🧠',rating:55,respect:52,tension:16,age:23,retirementAge:45},
  {id:'hazem-samy',name:'حازم سامي',style:'دفاع',weakTo:'تقنية',emoji:'🛡️',rating:60,respect:43,tension:27,age:26,retirementAge:47},
  {id:'nadeem-fouad',name:'نديم فؤاد',style:'سرعة',weakTo:'قوة',emoji:'⚡',rating:62,respect:38,tension:32,age:28,retirementAge:44},
- {id:'ramy-naguib',name:'رامي نجيب',style:'قوة',weakTo:'تقنية',emoji:'🥊',rating:66,respect:41,tension:35,age:25,retirementAge:46}
+ {id:'ramy-naguib',name:'رامي نجيب',style:'قوة',weakTo:'تقنية',emoji:'🥊',rating:66,respect:41,tension:35,age:25,retirementAge:46},
+ {id:'raed-tawfiq',name:'رائد توفيق',style:'قوة',weakTo:'سرعة',emoji:'💪',rating:57,respect:46,tension:21,age:24,retirementAge:46},
+ {id:'fares-younes',name:'فارس يونس',style:'تقنية',weakTo:'دفاع',emoji:'🧠',rating:60,respect:51,tension:19,age:27,retirementAge:47},
+ {id:'adham-sabry',name:'أدهم صبري',style:'سرعة',weakTo:'قوة',emoji:'⚡',rating:55,respect:43,tension:26,age:22,retirementAge:45},
+ {id:'shady-mansour',name:'شادي منصور',style:'دفاع',weakTo:'تقنية',emoji:'🛡️',rating:62,respect:49,tension:17,age:30,retirementAge:48},
+ {id:'louay-hamdan',name:'لؤي حمدان',style:'قوة',weakTo:'دفاع',emoji:'🥊',rating:64,respect:40,tension:33,age:26,retirementAge:46}
 ];
 
+function combatRivalDeathAge(profile){
+ const id=String(profile&&profile.id||'rival');
+ let hash=0;
+ for(let index=0;index<id.length;index++)hash=(hash*31+id.charCodeAt(index))%2147483647;
+ return 72+(hash%19);
+}
 function normalizeCombatCommunity(raw,currentYear=0){
  const saved=Array.isArray(raw)?raw:[];
  const safeYear=Math.max(0,Math.floor(Number(currentYear)||0));
@@ -431,18 +442,24 @@ function normalizeCombatCommunity(raw,currentYear=0){
   const item=saved.find(entry=>entry&&typeof entry==='object'&&!Array.isArray(entry)&&entry.id===profile.id)||{};
   const age=bounded(item.age,profile.age,18,100);
   const retirementAge=bounded(item.retirementAge,profile.retirementAge,38,60);
-  const retired=item.retired===true||age>=retirementAge;
+  const deathAge=bounded(item.deathAge,combatRivalDeathAge(profile),72,95);
+  const deceased=item.deceased===true||age>=deathAge;
+  const retired=item.retired===true||age>=retirementAge||deceased;
   return {
    ...profile,
    age,
    retirementAge,
+   deathAge,
    retired,
-   retiredAge:retired?bounded(item.retiredAge,age,age,100):null,
+   retiredAge:retired?bounded(item.retiredAge,Math.min(age,retirementAge),18,100):null,
    retiredYear:retired?bounded(item.retiredYear,safeYear,0,safeYear):null,
+   deceased,
+   deceasedAge:deceased?bounded(item.deceasedAge,age,deathAge,100):null,
+   deceasedYear:deceased?bounded(item.deceasedYear,safeYear,0,safeYear):null,
    rating:bounded(item.rating,profile.rating,20,95),
    respect:bounded(item.respect,profile.respect,0,100),
    tension:bounded(item.tension,profile.tension,0,100),
-   allied:!retired&&item.allied===true,
+   allied:!retired&&!deceased&&item.allied===true,
    lastInteractionAge:bounded(item.lastInteractionAge,-1,-1,120),
    lastBoutAge:bounded(item.lastBoutAge,-1,-1,120),
    momentum:bounded(item.momentum,0,-5,5),
@@ -648,12 +665,24 @@ function advanceCombatCommunity(career){
  const age=Math.max(0,Math.floor(Number(state.age)||0));
  let advanced=false;
  career.community.forEach(fighter=>{
-  if(!fighter||typeof fighter!=='object')return;
+  if(!fighter||typeof fighter!=='object'||fighter.deceased===true)return;
   const lastYear=Number(fighter.lastProgressYear);
   if(Number.isFinite(lastYear)&&Math.floor(lastYear)>=year)return;
   fighter.lastProgressYear=year;
-  if(fighter.retired===true)return;
   fighter.age=clamp((Number(fighter.age)||18)+1,18,100);
+  if(fighter.retired===true){
+   const deathAge=clamp(Number(fighter.deathAge)||80,72,95);
+   fighter.deathAge=deathAge;
+   if(fighter.age>=deathAge){
+    fighter.deceased=true;
+    fighter.deceasedAge=fighter.age;
+    fighter.deceasedYear=year;
+    fighter.allied=false;
+    fighter.lastAction='';
+   }
+   advanced=true;
+   return;
+  }
   const retirementAge=clamp(Number(fighter.retirementAge)||45,38,60);
   if(fighter.age>=retirementAge){
    fighter.retired=true;
@@ -677,17 +706,19 @@ function advanceCombatCommunity(career){
 function advanceCombatCommunityRoster(career){
  if(!state||!career||!Array.isArray(career.community))return null;
  const age=clamp(Number(state.age)||0,0,150);
+ if(age>=150)return null;
  const startedAge=clamp(Number(career.startedAge)||age,0,150);
+ const existingIds=new Set(career.community.map(fighter=>fighter&&fighter.id).filter(Boolean));
+ const newcomer=combatCommunityNewcomerProfiles.find(profile=>!existingIds.has(profile.id));
+ const hasUnrecruited=!!newcomer;
  const hasNewcomers=career.community.some(fighter=>
   fighter&&combatCommunityNewcomerProfiles.some(profile=>profile.id===fighter.id)
  );
  const storedNextAge=Number(career.nextRecruitmentAge);
- if(!Number.isFinite(storedNextAge)||storedNextAge<startedAge+5||storedNextAge>150){
+ if(!Number.isFinite(storedNextAge)||storedNextAge<startedAge+5||storedNextAge>150||(storedNextAge>=150&&hasUnrecruited)){
   career.nextRecruitmentAge=hasNewcomers?Math.min(150,age+5):Math.min(150,startedAge+5);
  }
  if(age<career.nextRecruitmentAge)return null;
- const existingIds=new Set(career.community.map(fighter=>fighter&&fighter.id).filter(Boolean));
- const newcomer=combatCommunityNewcomerProfiles.find(profile=>!existingIds.has(profile.id));
  if(!newcomer){career.nextRecruitmentAge=150;return null;}
  career.community=normalizeCombatCommunity([...career.community,newcomer],state.yearCount);
  career.nextRecruitmentAge=Math.min(150,age+5);
@@ -5364,7 +5395,7 @@ function advanceAge(){
  if(!validState())return;
  state.age++;state.yearCount++;if(perkEnabled('hollywoodStar')&&(state.job||state.specialCareer))state.fame=100;
  if(state.combatCareer&&state.combatCareer.retired!==true&&advanceCombatRecovery(state.combatCareer))log('🩹','التعافي من الإصابة','تعافيت من إصابة القتال وعدت جاهزًا للتدريب.','good');
- if(state.specialCareer&&state.specialCareer.id==='fighter'&&state.combatCareer){const cc=ensureCombatCareer();if(cc.retired!==true){cc.energy=100;const newcomer=advanceCombatCommunityRoster(cc);if(newcomer)log('🥊','منافس جديد في المجتمع','انضم '+newcomer.name+' إلى مجتمع المقاتلين بأسلوب '+newcomer.style+' وتقييم أولي '+newcomer.rating+'/100.','special');const communityBefore=Array.isArray(cc.community)?cc.community:[];const retiredBefore=new Set();communityBefore.forEach(fighter=>{if(fighter&&fighter.retired===true)retiredBefore.add(fighter.id);});advanceCombatCommunity(cc);const communityAfter=Array.isArray(cc.community)?cc.community:[];communityAfter.forEach(fighter=>{if(fighter&&fighter.retired===true&&!retiredBefore.has(fighter.id))log('🏁','اعتزال منافس',fighter.name+' أنهى مسيرته القتالية في عمر '+fighter.retiredAge+' سنة. سيظل ملفه محفوظًا دون نزالات أو تفاعلات جديدة.','special');});if(cc.coach&&cc.coach.yearsLeft>0){const annualCost=cc.coach.annualCost||0;if(state.bank<annualCost){log('💳','تعذر دفع مصاريف المدرب','الرصيد لا يكفي مصاريف المدرب السنوية؛ انتهى التعاقد دون خصم المصروف.','bad');cc.coach=null;}else{state.bank-=annualCost;cc.coach.yearsLeft--;if(cc.coach.yearsLeft<=0){log('🧑‍🏫','انتهاء عقد المدرب','انتهى عقد المدرب. يمكنك تجديده من مسيرة القتال.');cc.coach=null;}}}}}
+ if(state.specialCareer&&state.specialCareer.id==='fighter'&&state.combatCareer){const cc=ensureCombatCareer();if(cc.retired!==true){cc.energy=100;const newcomer=advanceCombatCommunityRoster(cc);if(newcomer)log('🥊','منافس جديد في المجتمع','انضم '+newcomer.name+' إلى مجتمع المقاتلين بأسلوب '+newcomer.style+' وتقييم أولي '+newcomer.rating+'/100.','special');const communityBefore=Array.isArray(cc.community)?cc.community:[];const retiredBefore=new Set(),deceasedBefore=new Set();communityBefore.forEach(fighter=>{if(!fighter)return;if(fighter.retired===true)retiredBefore.add(fighter.id);if(fighter.deceased===true)deceasedBefore.add(fighter.id);});advanceCombatCommunity(cc);const communityAfter=Array.isArray(cc.community)?cc.community:[];communityAfter.forEach(fighter=>{if(!fighter)return;if(fighter.deceased===true&&!deceasedBefore.has(fighter.id)){log('🕯️','وفاة منافس',fighter.name+' توفي في عمر '+fighter.deceasedAge+' سنة بعد اعتزاله. سيظل ملفه وسجل المواجهات محفوظين للقراءة فقط.','special');return;}if(fighter.retired===true&&!retiredBefore.has(fighter.id))log('🏁','اعتزال منافس',fighter.name+' أنهى مسيرته القتالية في عمر '+fighter.retiredAge+' سنة. سيظل ملفه محفوظًا دون نزالات أو تفاعلات جديدة.','special');});if(cc.coach&&cc.coach.yearsLeft>0){const annualCost=cc.coach.annualCost||0;if(state.bank<annualCost){log('💳','تعذر دفع مصاريف المدرب','الرصيد لا يكفي مصاريف المدرب السنوية؛ انتهى التعاقد دون خصم المصروف.','bad');cc.coach=null;}else{state.bank-=annualCost;cc.coach.yearsLeft--;if(cc.coach.yearsLeft<=0){log('🧑‍🏫','انتهاء عقد المدرب','انتهى عقد المدرب. يمكنك تجديده من مسيرة القتال.');cc.coach=null;}}}}}
  advanceChildren();
  (state.family||[]).forEach(relative=>{if(relative.deceased)return;relative.age=(relative.age||0)+1;const oldest=relative.age>=100;const parent=/(الأب|الأم|والد|والدة)/.test(relative.relation||'');const risk=relative.age>75?Math.min(.45,.012+(relative.age-75)*.012):0;if(oldest||(risk&&chance(risk))){relative.deceased=true;const close=(relative.relationshipLevel||50)>=70;state.stats.happiness=clamp(state.stats.happiness-(close?12:5));log('🕯️','وفاة أحد أفراد العائلة','توفي '+relative.name+' بعد رحلة من العمر. الخبر أثر عليك وعلى علاقتك بالعائلة.','bad');achievement('وداع '+relative.name);}});
  advanceSiblingEconomies();
@@ -7669,35 +7700,40 @@ function combatCommunityMenu(){
   info('🤝','مجتمع المقاتلين','ابدأ مسيرة القتال أولًا لفتح شبكة المقاتلين.');return;
  }
  const c=ensureCombatCareer();
- const active=c.community.filter(fighter=>fighter.retired!==true);
- const retired=c.community.length-active.length;
+ const active=c.community.filter(fighter=>fighter.retired!==true&&fighter.deceased!==true);
+ const deceased=c.community.filter(fighter=>fighter.deceased===true).length;
+ const retired=c.community.length-active.length-deceased;
  const allies=active.filter(fighter=>fighter.allied).length;
  const rivals=active.filter(fighter=>fighter.tension>=65).length;
  const opts=c.community.map(fighter=>{
   const rating=clamp(fighter.rating+(Number(fighter.momentum)||0),20,95);
+  const isDeceased=fighter.deceased===true;
   const isRetired=fighter.retired===true;
-  const status=isRetired?'اعتزل في عمر '+fighter.retiredAge+' سنة · ملف محفوظ للقراءة فقط':'نشط · '+combatCommunityFormLabel(fighter);
-  return choice(isRetired?'🏁':fighter.emoji,fighter.name,
+  const status=isDeceased?'توفي في عمر '+fighter.deceasedAge+' سنة · ملف محفوظ للقراءة فقط':isRetired?'اعتزل في عمر '+fighter.retiredAge+' سنة · ملف محفوظ للقراءة فقط':'نشط · '+combatCommunityFormLabel(fighter);
+  return choice(isDeceased?'🕯️':isRetired?'🏁':fighter.emoji,fighter.name,
    'التقييم '+rating+'/100 · '+combatDifficultyLabel(rating)+' · '+status+' · '+combatCommunityRelationLabel(fighter)+' · الاحترام '+fighter.respect+'% · التوتر '+fighter.tension+'%',
    ()=>combatCommunityFighterMenu(fighter.id),'',fighter.respect);
  });
  opts.push(choice('↩️','رجوع لمسيرة القتال','',combatCareerMenu));
- modal('🤝','مجتمع المقاتلين',c.community.length+' مقاتلًا في السجل · '+active.length+' نشط · '+retired+' معتزل · '+allies+' حلفاء · '+rivals+' خصومات نشطة. تتغير المسيرة مع مرور السنوات.',opts);
+ modal('🤝','مجتمع المقاتلين',c.community.length+' مقاتلًا في السجل · '+active.length+' نشط · '+retired+' معتزل · '+deceased+' متوفى · '+allies+' حلفاء · '+rivals+' خصومات نشطة. تتغير المسيرة مع مرور السنوات.',opts);
 }
-
 function combatCommunityFighterMenu(fighterId){
  const c=ensureCombatCareer(),fighter=c.community.find(item=>item.id===fighterId);
  if(!fighter){combatCommunityMenu();return;}
- if(c.retired||fighter.retired===true){
+ if(c.retired||fighter.retired===true||fighter.deceased===true){
   const rating=clamp(fighter.rating+(Number(fighter.momentum)||0),20,95);
-  const reason=fighter.retired===true
-   ?'اعتزل '+fighter.name+' في عمر '+fighter.retiredAge+' سنة.'
-   :'اعتزلت مسيرتك القتالية؛ هذا الملف متاح للمراجعة فقط.';
+  const isDeceased=fighter.deceased===true;
+  const reason=isDeceased
+   ?'توفي '+fighter.name+' في عمر '+fighter.deceasedAge+' سنة.'
+   :fighter.retired===true
+    ?'اعتزل '+fighter.name+' في عمر '+fighter.retiredAge+' سنة.'
+    :'اعتزلت مسيرتك القتالية؛ هذا الملف متاح للمراجعة فقط.';
+  const status=isDeceased?'متوفى':fighter.retired===true?'معتزل':'محفوظة في الأرشيف';
   const archivedOptions=[
-   choice('📊','ملف المنافس','آخر تقييم '+rating+'/100 · '+combatCommunityFormLabel(fighter)+' · '+combatCommunityRelationLabel(fighter)+'.',()=>{closeModal();info('📊','ملف '+fighter.name,'آخر تقييم مسجل '+rating+'/100 · الاحترام '+fighter.respect+'% · التوتر '+fighter.tension+'%. '+(fighter.retired?'حالة المنافس: معتزل.':'حالة المنافس: محفوظة في الأرشيف.'));}),
+   choice('📊','ملف المنافس','آخر تقييم '+rating+'/100 · '+combatCommunityFormLabel(fighter)+' · '+combatCommunityRelationLabel(fighter)+'.',()=>{closeModal();info('📊','ملف '+fighter.name,'آخر تقييم مسجل '+rating+'/100 · الاحترام '+fighter.respect+'% · التوتر '+fighter.tension+'%. حالة المنافس: '+status+'.');}),
    choice('↩️','رجوع للمجتمع','',combatCommunityMenu)
   ];
-  modal('📚','أرشيف المنافسين',reason+' لا يمكن بدء تحدٍ أو تفاعل جديد مع منافس معتزل، ويظل سجله محفوظًا.',archivedOptions);
+  modal('📚','أرشيف المنافسين',reason+' لا يمكن بدء تحدٍ أو تفاعل جديد مع منافس معتزل أو متوفى، ويظل سجله محفوظًا.',archivedOptions);
   return;
  }
  const currentRating=clamp(fighter.rating+(Number(fighter.momentum)||0),20,95);
@@ -7714,12 +7750,12 @@ function combatCommunityFighterMenu(fighterId){
  ];
  modal('⚔️',fighter.name,'التقييم '+currentRating+'/100 · '+combatCommunityFormLabel(fighter)+' · الاحترام '+fighter.respect+'% · التوتر '+fighter.tension+'% · '+combatCommunityRelationLabel(fighter)+'. '+contactNote,opts);
 }
-
 function interactCombatFighter(fighterId,action){
  const c=ensureCombatCareer();
  if(c.retired){closeModal();info('🏁','المسيرة معتزلة','أنهيت مسيرتك القتالية بالفعل. لا يمكن تنفيذ هذا الإجراء بعد الاعتزال؛ سجل المسيرة ما زال متاحًا للمراجعة.');return;}
  const fighter=c.community.find(item=>item.id===fighterId);
  if(!fighter){combatCommunityMenu();return;}
+ if(fighter.deceased===true){closeModal();info('🕯️','المنافس متوفى','توفي '+fighter.name+'؛ لا يمكن بدء تحدٍ أو تفاعل جديد معه، لكن ملفه وسجل مواجهاته محفوظان.');return;}
  if(fighter.retired===true){closeModal();info('🏁','المنافس معتزل','أنهى '+fighter.name+' مسيرته القتالية. ملفه محفوظ، لكن لا يمكن بدء تحدٍ أو تفاعل جديد معه.');return;}
  if(fighter.lastInteractionAge===state.age){
   closeModal();info('⏳','خد الأمور بهدوء','تقدر تعمل تفاعل اجتماعي واحد مع نفس المقاتل في كل سنة من عمر الشخصية.');return;
@@ -7943,6 +7979,7 @@ function startCombatBout(mode,communityFighterId=null){
  if(mode==='league'&&state.bank<1500){closeModal();info('💳','رسوم الدوري','المشاركة في نزال الدوري تحتاج '+cash(1500)+'.');return;}
  const communityFighter=communityFighterId?c.community.find(fighter=>fighter.id===communityFighterId):null;
  if(communityFighterId&&!communityFighter){closeModal();info('🥊','المنافس غير متاح','لم نتمكن من العثور على المقاتل المطلوب في مجتمعك.');combatCommunityMenu();return;}
+ if(communityFighterId&&communityFighter.deceased===true){closeModal();info('🕯️','المنافس متوفى','توفي هذا المقاتل؛ ملفه وسجل مواجهاته محفوظان، لكن لا يمكن تحديه.');combatCommunityFighterMenu(communityFighterId);return;}
  if(communityFighterId&&communityFighter.retired===true){closeModal();info('🏁','المنافس معتزل','أنهى هذا المقاتل مسيرته؛ يمكنك مراجعة ملفه من الأرشيف دون تحديه.');combatCommunityFighterMenu(communityFighterId);return;}
  const type=communityFighter?null:pick(combatOpponentTypes);
  const opponent=communityFighter?
