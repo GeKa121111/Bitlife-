@@ -3617,7 +3617,9 @@ test('واجهة التعليم والأنشطة المدرسية عربية م�
   assert.doesNotMatch(cliques, /modal\('🤓','Cliques'/);
   assert.doesNotMatch(faculty, /modal\('👩‍🏫','Faculty'/);
 
-  assert.match(dropOut, /schoolLabels\\[state\\.education&&state\\.education\\.school\\]/);\n\n  for (const id of ["sports", "science", "arts", "leadership"]) {
+  assert.ok(dropOut.includes('schoolLabels[state.education&&state.education.school]'));
+
+  for (const id of ["sports", "science", "arts", "leadership"]) {
     assert.ok(clubs.includes("id:'" + id + "'"), 'club save id must remain stable: ' + id);
   }
   for (const id of ["sports", "nerds", "popular", "artists"]) {
