@@ -269,6 +269,18 @@ test('temporary HTTP failures use the last cached screen and assets without hidi
   assert.equal(missing.status, 404);
   assert.equal(await missing.text(), 'missing resource',
     'a genuine uncached 404 should not be disguised as a cached success');
+
+  const removedHarness = makeHarness(async () => new Response('resource removed', { status: 404 }));
+  await removedHarness.dispatchLifecycle('install');
+  let removedPromise;
+  removedHarness.listeners.get('fetch')({
+    request: { method: 'GET', url: scope + 'style.css', mode: 'same-origin' },
+    respondWith(promise) { removedPromise = promise; }
+  });
+  const removed = await removedPromise;
+  assert.equal(removed.status, 404,
+    'a deliberate 404 must remain visible even when an older cached copy exists');
+  assert.equal(await removed.text(), 'resource removed');
 });
 
 test('offline cached assets remain available; uncached assets return a clear 503 response', async () => {
