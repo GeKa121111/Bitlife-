@@ -258,3 +258,5 @@
 - [BitLife Patch Notes](https://bitlifeapp.com/whats-new/patch-notes/) — تحديث يوليو 2026 وتحديث 14 أكتوبر 2026.
 - [Ultimate Fighter Mode](https://bitlifeapp.com/whats-new/ultimate-fighter-mode/) — 11 يونيو 2026.
 - [BitLife Help Center](https://bitlifeapp.com/help/) — الحفظ والإعدادات والإنجازات والمقتنيات والأعمال.
+
+- بعد الاعتزال، لا يستمر دخل المهنة القتالية أو تعزيز الشهرة التلقائي المرتبط بها؛ لا يؤثر ذلك في دخل مهنة خاصة أخرى نشطة يختارها اللاعب.
