@@ -3392,6 +3392,45 @@ test('عالم مجتمع المقاتلين يستمر بعد اعتزال ال
   assert.equal(activePlayerContext.state.combatCareer.energy, 100);
   assert.equal(activePlayerContext.state.bank, 900);
   assert.equal(activePlayerContext.state.combatCareer.coach, null, 'active careers should retain the existing annual coach settlement');
+
+  const careerFlagStart = annualSource.indexOf('const activeSpecialCareer=');
+  const careerFlagEnd = annualSource.indexOf(';', careerFlagStart) + 1;
+  assert.ok(careerFlagStart >= 0 && careerFlagEnd > careerFlagStart);
+  const careerFlagSource = annualSource.slice(careerFlagStart, careerFlagEnd);
+  const isCareerActive = stateValue => {
+    const flagContext = { state: stateValue };
+    vm.runInNewContext(careerFlagSource + ' globalThis.activeFlag=activeSpecialCareer;', flagContext);
+    return flagContext.activeFlag;
+  };
+  assert.equal(isCareerActive({ specialCareer: { id: 'fighter' }, combatCareer: { retired: true } }), false,
+    'a retired fighter career must no longer count as an active special career');
+  assert.equal(isCareerActive({ specialCareer: { id: 'fighter' }, combatCareer: { retired: false } }), true);
+  assert.equal(isCareerActive({ specialCareer: { id: 'actor' }, combatCareer: { retired: true } }), true,
+    'retiring from fighting must not disable a different active career');
+  assert.match(annualSource, /perkEnabled\('hollywoodStar'\)&&\(state\.job\|\|activeSpecialCareer\)/,
+    'a retired fighter must not receive an automatic fame boost from the old career');
+
+  const incomeStart = annualSource.indexOf('if(activeSpecialCareer){');
+  const incomeEnd = annualSource.indexOf("if(state.specialCareer&&state.specialCareer.id==='esports'", incomeStart);
+  assert.ok(incomeStart >= 0 && incomeEnd > incomeStart);
+  const incomeBlock = annualSource.slice(incomeStart, incomeEnd);
+  const incomeContext = activeSpecialCareer => ({
+    activeSpecialCareer,
+    state: { specialCareer: { id: activeSpecialCareer ? 'actor' : 'fighter', title: 'مسار تجريبي', income: 500 }, bank: 1000, fame: 50 },
+    specialCareerIncomeMultiplier() { return 1; },
+    cash(value) { return String(value); },
+    log() {},
+    chance() { return true; },
+    clamp(value, min = 0, max = 100) { return Math.max(min, Math.min(max, Math.round(Number(value) || 0))); }
+  });
+  const retiredIncomeContext = incomeContext(false);
+  vm.runInNewContext(incomeBlock, retiredIncomeContext);
+  assert.equal(retiredIncomeContext.state.bank, 1000, 'a retired fighter must not keep receiving fighter-career income');
+  assert.equal(retiredIncomeContext.state.fame, 50, 'a retired fighter must not keep accumulating fame from the old career');
+  const activeIncomeContext = incomeContext(true);
+  vm.runInNewContext(incomeBlock, activeIncomeContext);
+  assert.ok(activeIncomeContext.state.bank > 1000, 'a different active special career should keep earning its income');
+  assert.equal(activeIncomeContext.state.fame, 52);
 });
 
 test('تحديث PWA يعلن عن النسخة الجديدة دون فرض إعادة التحميل', () => {
