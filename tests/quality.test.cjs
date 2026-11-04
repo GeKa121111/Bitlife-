@@ -3206,6 +3206,7 @@ test('منافسو القتال يتقدمون في العمر ويعتزلون 
     globalThis.secondSameYear = advanceCombatCommunity(career);
     state.yearCount = 10; state.age = 32;
     globalThis.nextYear = advanceCombatCommunity(career);
+    globalThis.afterNextYear = { age: career.community[0].age, momentum: career.community[0].momentum, retired: career.community[0].retired, lastProgressYear: career.community[0].lastProgressYear };
     globalThis.savedAgain = normalizeCombatCommunity(career.community, state.yearCount)[0];
     globalThis.legacy = normalizeCombatCommunity([], state.yearCount);
     globalThis.invalid = normalizeCombatCommunity([
@@ -3221,7 +3222,11 @@ test('منافسو القتال يتقدمون في العمر ويعتزلون 
   assert.equal(context.after.retiredYear, 9);
   assert.equal(context.after.allied, false, 'retirement must close active alliances');
   assert.equal(context.secondSameYear, false, 'the same rival cannot age twice in one game year');
-  assert.equal(context.nextYear, false, 'retired rivals must stop progressing');
+  assert.equal(context.nextYear, true, 'other active rivals may continue progressing');
+  assert.equal(context.afterNextYear.age, 45, 'a retired rival must not age again');
+  assert.equal(context.afterNextYear.momentum, 2, 'a retired rival must keep its final competitive form');
+  assert.equal(context.afterNextYear.retired, true);
+  assert.equal(context.afterNextYear.lastProgressYear, 10, 'the archive still records the latest simulated year');
   assert.equal(context.savedAgain.retired, true);
   assert.equal(context.savedAgain.retiredAge, 45);
   assert.equal(context.savedAgain.retiredYear, 9);
