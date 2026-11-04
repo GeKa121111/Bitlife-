@@ -8,7 +8,7 @@ const vm = require('node:vm');
 const workerSource = fs.readFileSync('sw.js', 'utf8');
 const scope = 'https://example.test/Bitlife-/';
 
-function makeHarness(fetchImpl = async () => { throw new Error('offline'); }) {
+function makeHarness(fetchImpl = async () => { throw new Error('offline'); }, cachePutImpl = null) {
   const listeners = new Map();
   const cacheStore = new Map([
     ['hayah-shell-v60', new Map()],
@@ -98,6 +98,7 @@ function makeHarness(fetchImpl = async () => { throw new Error('offline'); }) {
       for (const url of urls) cacheStore.get(name).set(url, new Response('cached:' + url));
     },
     async put(key, response) {
+      if (cachePutImpl) await cachePutImpl(name, key, response);
       cacheStore.get(name).set(keyOf(key), response.clone());
     },
     async match(key) {
@@ -292,6 +293,31 @@ test('temporary HTTP failures use the last cached screen and assets without hidi
   assert.equal(removed.status, 404,
     'a deliberate 404 must remain visible even when an older cached copy exists');
   assert.equal(await removed.text(), 'resource removed');
+});
+
+test('successful network responses survive Cache Storage write failures', async () => {
+  const networkBody = 'fresh response despite cache write failure';
+  const harness = makeHarness(
+    async () => new Response(networkBody, { status: 200 }),
+    async () => {
+      const error = new Error('storage quota exceeded');
+      error.name = 'QuotaExceededError';
+      throw error;
+    }
+  );
+  await harness.dispatchLifecycle('install');
+
+  let responsePromise;
+  harness.listeners.get('fetch')({
+    request: { method: 'GET', url: scope + 'fresh-data.json', mode: 'same-origin' },
+    respondWith(promise) { responsePromise = promise; }
+  });
+
+  const response = await responsePromise;
+  assert.equal(response.status, 200,
+    'a cache quota failure must not turn a successful network response into an offline error');
+  assert.equal(await response.text(), networkBody,
+    'the original network body must be returned when caching is unavailable');
 });
 
 test('offline cached assets remain available; uncached assets return a clear 503 response', async () => {

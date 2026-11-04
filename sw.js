@@ -56,8 +56,12 @@ self.addEventListener('fetch', event => {
         return cached || response;
       }
       if (!response.ok) return response;
+      // Cache Storage is best-effort: quota or storage failures must not
+      // discard a successful network response.
       return caches.open(CACHE_NAME)
-        .then(cache => cache.put(cacheKey, response.clone()).then(() => response));
+        .then(cache => cache.put(cacheKey, response.clone()))
+        .then(() => response)
+        .catch(() => response);
     }).catch(async () => {
       const cached = await matchCached();
       if (cached) return cached;
