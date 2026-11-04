@@ -17,6 +17,12 @@ const CORE_SHELL = ['./index.html', './style.css', './app.js']
   .map(path => new URL(path, self.registration.scope).href);
 const OPTIONAL_SHELL = APP_SHELL.filter(url => !CORE_SHELL.includes(url));
 
+// Prefer the newest known Hayah shell when carrying optional assets forward.
+const shellCacheVersion = name => {
+  const match = /^hayah-shell-v(\d+)$/.exec(name);
+  return match ? Number(match[1]) : -1;
+};
+
 self.addEventListener('install', event => {
   event.waitUntil(
     caches.open(CACHE_NAME)
@@ -32,7 +38,8 @@ self.addEventListener('install', event => {
           let previousShellNames = [];
           try {
             previousShellNames = (await caches.keys())
-              .filter(name => name.startsWith('hayah-shell-') && name !== CACHE_NAME);
+              .filter(name => name.startsWith('hayah-shell-') && name !== CACHE_NAME)
+              .sort((a, b) => shellCacheVersion(b) - shellCacheVersion(a));
           } catch {
             // Carry-forward is best-effort; the essential game shell is already safe.
           }
