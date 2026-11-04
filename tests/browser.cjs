@@ -399,6 +399,21 @@ async function run() {
       'diary text should use the stronger contrast token');
     await page.emulateMedia({ contrast: 'no-preference' });
 
+    await page.emulateMedia({ contrast: 'more', forcedColors: 'active' });
+    const combinedContrastProbe = await page.evaluate(() => {
+      const card = document.querySelector('#lifeFeed .logcard');
+      return {
+        forcedColorsActive: matchMedia('(forced-colors: active)').matches,
+        preferredContrastActive: matchMedia('(prefers-contrast: more)').matches,
+        cardBorderWidth: getComputedStyle(card).borderTopWidth
+      };
+    });
+    assert.equal(combinedContrastProbe.forcedColorsActive, true);
+    assert.equal(combinedContrastProbe.preferredContrastActive, true);
+    assert.equal(combinedContrastProbe.cardBorderWidth, '1px',
+      'forced system colors must take precedence over the softer increased-contrast layer');
+    await page.emulateMedia({ contrast: 'no-preference', forcedColors: 'none' });
+
     assert.equal((await page.locator('#lifeAnnouncement').textContent()).trim(), '',
       'loading a saved life must not announce its existing diary history');
 
