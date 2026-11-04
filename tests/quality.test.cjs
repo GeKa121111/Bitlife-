@@ -1727,6 +1727,9 @@ test('سنوات التعافي تُطبّع بأمان ولا تظل إصابا
   const helperEnd = app.indexOf('const combatMoveMasteryThresholds=', helperStart);
   assert.ok(helperStart >= 0 && helperEnd > helperStart, 'injury recovery normalizer should exist');
   const helperSource = app.slice(helperStart, helperEnd);
+  const championshipStart = app.indexOf('function normalizeCombatChampionshipHistory(');
+  const championshipEnd = app.indexOf('function createCombatCareer(', championshipStart);
+  const championshipSource = app.slice(championshipStart, championshipEnd);
   const ensureSource = functionSource('ensureCombatCareer', 'combatRankName');
   const context = {
     state: { combatCareer: null },
@@ -1738,7 +1741,7 @@ test('سنوات التعافي تُطبّع بأمان ولا تظل إصابا
       return Math.max(min, Math.min(max, Math.round(Number(value) || 0)));
     }
   };
-  vm.runInNewContext(helperSource + ensureSource +
+  vm.runInNewContext(helperSource + championshipSource + ensureSource +
     '\nglobalThis.normalizeYears = raw => { state.combatCareer = raw; return ensureCombatCareer().injuryYears; };', context);
 
   assert.equal(context.normalizeYears({ injury: 30, injuryYears: 1.9 }), 2,
@@ -2041,6 +2044,9 @@ test('إتقان الحركات يتدرج بالاستخدام ويُطبع ب�
   const injuryYearsEnd = app.indexOf('const combatMoveMasteryThresholds=', injuryYearsStart);
   const injuryYearsSource = app.slice(injuryYearsStart, injuryYearsEnd);
   const careerSource = functionSource('ensureCombatCareer', 'combatRankName');
+  const championshipStart = app.indexOf('function normalizeCombatChampionshipHistory(');
+  const championshipEnd = app.indexOf('function createCombatCareer(', championshipStart);
+  const championshipSource = app.slice(championshipStart, championshipEnd);
   const context = {
     state: { yearCount: 10, combatCareer: { movesKnown: ['quick-jab', 'high-guard'],
       moveMastery: { 'quick-jab': 8, 'high-guard': -3, 'removed-move': 99 } } },
@@ -2048,7 +2054,7 @@ test('إتقان الحركات يتدرج بالاستخدام ويُطبع ب�
     normalizeCombatCommunity: () => [],
     normalizePendingCombatBout: value => value
   };
-  vm.runInNewContext(injuryYearsSource + String.fromCharCode(10) + 'const combatMoveCatalog=[' + catalogSource + '];' + String.fromCharCode(10) + helperSource + String.fromCharCode(10) +
+  vm.runInNewContext(injuryYearsSource + String.fromCharCode(10) + 'const combatMoveCatalog=[' + catalogSource + '];' + String.fromCharCode(10) + helperSource + String.fromCharCode(10) + championshipSource + String.fromCharCode(10) +
     careerSource + String.fromCharCode(10) + 'globalThis.career=ensureCombatCareer();' +
     'globalThis.levels=[0,2,3,7,8,14,15,24,25,100].map(combatMoveMasteryLevel);' +
     'globalThis.bonuses=[0,3,8,15,25,100].map(combatMoveMasteryBonus);', context);
