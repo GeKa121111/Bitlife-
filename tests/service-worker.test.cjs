@@ -8,7 +8,7 @@ const vm = require('node:vm');
 const workerSource = fs.readFileSync('sw.js', 'utf8');
 const scope = 'https://example.test/Bitlife-/';
 
-function makeHarness(fetchImpl = async () => { throw new Error('offline'); }, cachePutImpl = null, cacheOpenImpl = null, cacheMatchImpl = null) {
+function makeHarness(fetchImpl = async () => { throw new Error('offline'); }, cachePutImpl = null, cacheOpenImpl = null, cacheMatchImpl = null, cacheAddAllImpl = null) {
   const listeners = new Map();
   const cacheStore = new Map([
     ['hayah-shell-v60', new Map()],
@@ -92,12 +92,14 @@ function makeHarness(fetchImpl = async () => { throw new Error('offline'); }, ca
     ['hayah-shell-v145', new Map()],
     ['unrelated-cache', new Map()]
   ]);
-  const cacheCalls = { added: [], deleted: [], skipped: 0, claimed: 0 };
+  const cacheCalls = { added: [], addAllAttempts: [], deleted: [], skipped: 0, claimed: 0 };
 
   const keyOf = key => typeof key === 'string' ? key : key.url;
   const makeCache = name => ({
     async addAll(urls) {
       cacheCalls.added = [...urls];
+      cacheCalls.addAllAttempts.push([...urls]);
+      if (cacheAddAllImpl) await cacheAddAllImpl(name, urls);
       for (const url of urls) cacheStore.get(name).set(url, new Response('cached:' + url));
     },
     async put(key, response) {
@@ -232,6 +234,59 @@ test('service worker installs a fresh shell cache and removes only obsolete Haya
   assert.equal(harness.cacheStore.has('hayah-shell-v97'), false);
   assert.equal(harness.cacheStore.has('hayah-shell-v98'), false);
   assert.ok(harness.cacheStore.has('unrelated-cache'));
+});
+
+test('optional shell asset failures fall back to the essential playable shell', async () => {
+  const fullShell = [
+    scope + 'index.html',
+    scope + 'style.css',
+    scope + 'accessibility.css',
+    scope + 'pwa-update.css',
+    scope + 'app.js',
+    scope + 'pwa-update.js',
+    scope + 'manifest.webmanifest',
+    scope + 'icon.svg'
+  ];
+  const coreShell = [scope + 'index.html', scope + 'style.css', scope + 'app.js'];
+  const harness = makeHarness(
+    undefined,
+    null,
+    null,
+    null,
+    async (name, urls) => {
+      if (urls.includes(scope + 'accessibility.css')) {
+        throw new Error('optional accessibility asset unavailable');
+      }
+    }
+  );
+
+  await harness.dispatchLifecycle('install');
+
+  assert.deepEqual(harness.cacheCalls.addAllAttempts, [fullShell, coreShell],
+    'the worker should retry only the essential app shell after an optional asset fails');
+  assert.deepEqual(harness.cacheCalls.added, coreShell);
+  assert.equal(harness.cacheCalls.skipped, 1,
+    'the worker should activate after the essential game files are cached');
+  const cache = harness.cacheStore.get('hayah-shell-v148');
+  for (const url of coreShell) assert.ok(cache.has(url), 'essential shell asset should be cached: ' + url);
+  assert.equal(cache.has(scope + 'accessibility.css'), false,
+    'the failed optional asset should not block the playable shell');
+});
+
+test('the service worker does not install when an essential game asset remains unavailable', async () => {
+  const harness = makeHarness(
+    undefined,
+    null,
+    null,
+    null,
+    async (name, urls) => {
+      if (urls.includes(scope + 'app.js')) throw new Error('essential app script unavailable');
+    }
+  );
+
+  await assert.rejects(harness.dispatchLifecycle('install'), /essential app script unavailable/);
+  assert.equal(harness.cacheCalls.skipped, 0,
+    'the worker must not activate with an incomplete essential game shell');
 });
 
 test('offline navigation falls back to the cached Arabic app shell', async () => {
