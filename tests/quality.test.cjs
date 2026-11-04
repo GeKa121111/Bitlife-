@@ -3296,13 +3296,13 @@ test('تحديث PWA يعلن عن النسخة الجديدة دون فرض إ�
   const worker = read('sw.js');
   const update = read('pwa-update.js');
   const updateCss = read('pwa-update.css');
-  assert.match(index, /href="pwa-update\\.css"/);
+  assert.match(index, /href="pwa-update\.css"/);
   assert.ok(index.indexOf('pwa-update.js') < index.indexOf('app.js'));
   assert.match(worker, /hayah-shell-v138/);
-  assert.match(worker, /pwa-update\\.css/);
-  assert.match(worker, /pwa-update\\.js/);
+  assert.match(worker, /pwa-update\.css/);
+  assert.match(worker, /pwa-update\.js/);
   assert.match(update, /controllerchange/);
-  assert.match(update, /window\\.location\\.reload\\(\\)/);
+  assert.match(update, /window\.location\.reload\(\)/);
   assert.match(updateCss, /prefers-reduced-motion/);
   assert.match(updateCss, /forced-colors/);
 });
