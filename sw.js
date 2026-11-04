@@ -42,13 +42,18 @@ self.addEventListener('fetch', event => {
     fetch(request).then(async response => {
       // A transient HTTP error should not replace a working cached screen or asset.
       // Keep genuine uncached 404s visible instead of masking missing files.
-      if (!response || !response.ok) {
+      if (!response) {
         const cached = await caches.match(cacheKey);
-        return cached || response || new Response('أنت غير متصل بالإنترنت.', {
+        return cached || new Response('أنت غير متصل بالإنترنت.', {
           status: 503,
           headers: { 'Content-Type': 'text/plain; charset=utf-8' }
         });
       }
+      if (response.status === 429 || response.status >= 500) {
+        const cached = await caches.match(cacheKey);
+        return cached || response;
+      }
+      if (!response.ok) return response;
       return caches.open(CACHE_NAME)
         .then(cache => cache.put(cacheKey, response.clone()).then(() => response));
     }).catch(async () => {
