@@ -1,5 +1,5 @@
 /* Hayah accessibility layer: stronger contrast when the operating system requests it. */
-@media (prefers-contrast: more) {
+@media (prefers-contrast: more) and (forced-colors: none) {
   :root {
     --hayah-contrast-text: #203640;
     --hayah-contrast-muted: #344e5b;
@@ -24,19 +24,23 @@
   #app .name,
   #app .story-heading h1,
   #app .logtitle,
+  #app .statvalue,
+  #app .navbtn.active,
+  #modalRoot .choice .ctitle {
+    color: var(--hayah-contrast-text) !important;
+  }
+
   #app .logtext,
   #app .statlabel,
-  #app .statvalue,
   #app .identity-meta,
   #app .wealthlabel,
   #app .wealthsmall,
   #app .story-eyebrow,
-  #app .navbtn,
+  #app .navbtn:not(.active),
   #modalRoot .desc,
   #modalRoot .muted,
-  #modalRoot .choice .ctitle,
   #modalRoot .choice .cdesc {
-    color: var(--hayah-contrast-text) !important;
+    color: var(--hayah-contrast-muted) !important;
   }
 
   #app .logcard,
