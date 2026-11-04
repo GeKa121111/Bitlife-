@@ -148,7 +148,7 @@ function makeHarness(fetchImpl = async () => { throw new Error('offline'); }) {
 }
 
 test('service worker installs a fresh shell cache and removes only obsolete Hayah caches', async () => {
-  assert.match(workerSource, /const CACHE_NAME = 'hayah-shell-v136'/);
+  assert.match(workerSource, /const CACHE_NAME = 'hayah-shell-v137'/);
   const harness = makeHarness();
   await harness.dispatchLifecycle('install');
 
@@ -182,7 +182,7 @@ test('service worker installs a fresh shell cache and removes only obsolete Haya
   assert.equal(harness.cacheStore.has('hayah-shell-v133'), false, 'the previous v133 shell cache should be removed');
   assert.equal(harness.cacheStore.has('hayah-shell-v134'), false, 'the previous v134 cache should be removed');
   assert.equal(harness.cacheStore.has('hayah-shell-v135'), false, 'the previous v135 roster cache should be removed');
-  assert.ok(harness.cacheStore.has('hayah-shell-v136'), 'the v136 retirement cache should be retained');
+  assert.ok(harness.cacheStore.has('hayah-shell-v137'), 'the v136 retirement cache should be retained');
   assert.equal(harness.cacheStore.has('hayah-shell-v110'), false);
   assert.equal(harness.cacheStore.has('hayah-shell-v111'), false);
   assert.equal(harness.cacheStore.has('hayah-shell-v112'), false);
