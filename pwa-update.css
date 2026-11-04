@@ -1,0 +1,46 @@
+.pwa-update-notice{
+  position:fixed;
+  z-index:90;
+  inset-inline:12px;
+  bottom:calc(150px + env(safe-area-inset-bottom));
+  width:min(476px,calc(100vw - 24px));
+  margin-inline:auto;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  padding:10px 12px;
+  border:1px solid #d6e6df;
+  border-radius:16px;
+  background:#123e3a;
+  color:#fff;
+  box-shadow:0 12px 30px #102d2a35;
+  font-size:12px;
+  line-height:1.7;
+}
+.pwa-update-notice span{flex:1;min-width:0}
+.pwa-update-action{
+  flex:0 0 auto;
+  min-height:44px;
+  padding:8px 12px;
+  border:1px solid #f1bd4b;
+  border-radius:11px;
+  background:#f1bd4b;
+  color:#19394d;
+  font-weight:900;
+}
+.pwa-update-action:focus-visible{outline:3px solid #fff;outline-offset:3px}
+@media(max-width:360px){
+  .pwa-update-notice{align-items:stretch;flex-direction:column}
+  .pwa-update-action{width:100%}
+}
+@media(prefers-reduced-motion:reduce){
+  .pwa-update-notice,.pwa-update-action{animation:none!important;transition:none!important}
+}
+@media(prefers-contrast:more){
+  .pwa-update-notice,.pwa-update-action{border-width:2px}
+}
+@media(forced-colors:active){
+  .pwa-update-notice{border:2px solid CanvasText;background:Canvas;color:CanvasText;box-shadow:none}
+  .pwa-update-action{border:1px solid ButtonText;background:ButtonFace;color:ButtonText}
+}
