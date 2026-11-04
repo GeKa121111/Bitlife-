@@ -573,3 +573,30 @@ test('optional shell fallback preserves older cached Hayah assets before cleanup
     'the copied optional asset should survive cleanup of the previous shell'
   );
 });
+
+test('optional shell fallback prefers the newest available Hayah asset', async () => {
+  const harness = makeHarness(
+    undefined,
+    null,
+    null,
+    null,
+    async (name, urls) => {
+      if (urls.includes(scope + 'accessibility.css')) {
+        throw new Error('optional accessibility asset unavailable');
+      }
+    }
+  );
+  const olderShell = harness.cacheStore.get('hayah-shell-v145');
+  const newerShell = harness.cacheStore.get('hayah-shell-v147');
+  olderShell.set(scope + 'accessibility.css', new Response('older accessibility stylesheet'));
+  newerShell.set(scope + 'accessibility.css', new Response('newer accessibility stylesheet'));
+
+  await harness.dispatchLifecycle('install');
+
+  const currentShell = harness.cacheStore.get('hayah-shell-v148');
+  assert.equal(
+    await (await currentShell.get(scope + 'accessibility.css').clone()).text(),
+    'newer accessibility stylesheet',
+    'the newest previous Hayah shell must win when multiple caches contain the same optional asset'
+  );
+});
