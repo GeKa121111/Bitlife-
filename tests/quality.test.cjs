@@ -3588,6 +3588,7 @@ test('واجهة التعليم والأنشطة المدرسية عربية م�
   const cliques = functionSource('schoolCliqueMenu', 'schoolFacultyMenu');
   const faculty = functionSource('schoolFacultyMenu', 'skipSchool');
   const absences = functionSource('skipSchool', 'dropOutConfirm');
+  const dropOut = functionSource('dropOutConfirm', 'jobRequirements');
   const worker = read('sw.js');
 
   for (const [source, fragment] of [
@@ -3605,7 +3606,8 @@ test('واجهة التعليم والأنشطة المدرسية عربية م�
     [cliques, 'مجموعة محبي المعرفة'],
     [faculty, 'هيئة التدريس'],
     [faculty, 'طلب مراجعة درجة'],
-    [absences, 'تم تسجيل الغياب']
+    [absences, 'تم تسجيل الغياب'],
+    [dropOut, 'تأكيد ترك الدراسة']
   ]) assert.ok(source.includes(fragment), 'missing Arabic education UI text: ' + fragment);
 
   assert.doesNotMatch(school, /choice\([^,]+,'(?:Golden Diploma|Activities|Class|Cliques|Faculty|Skip School|Study Harder|Major|Back)'/);
@@ -3615,7 +3617,7 @@ test('واجهة التعليم والأنشطة المدرسية عربية م�
   assert.doesNotMatch(cliques, /modal\('🤓','Cliques'/);
   assert.doesNotMatch(faculty, /modal\('👩‍🏫','Faculty'/);
 
-  for (const id of ["sports", "science", "arts", "leadership"]) {
+  assert.match(dropOut, /schoolLabels\\[state\\.education&&state\\.education\\.school\\]/);\n\n  for (const id of ["sports", "science", "arts", "leadership"]) {
     assert.ok(clubs.includes("id:'" + id + "'"), 'club save id must remain stable: ' + id);
   }
   for (const id of ["sports", "nerds", "popular", "artists"]) {
