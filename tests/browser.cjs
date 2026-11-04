@@ -11,6 +11,7 @@ const routes = new Map([
   ['/', 'index.html'],
   ['/index.html', 'index.html'],
   ['/style.css', 'style.css'],
+  ['/accessibility.css', 'accessibility.css'],
   ['/app.js', 'app.js'],
   ['/sw.js', 'sw.js'],
   ['/manifest.webmanifest', 'manifest.webmanifest'],
@@ -367,6 +368,51 @@ async function run() {
     assert.equal(forcedColorsProbe.ageButtonShadow, 'none',
       'high-contrast mode should avoid decorative shadows');
     await page.emulateMedia({ forcedColors: 'none' });
+
+    await page.emulateMedia({ contrast: 'more' });
+    const preferredContrastProbe = await page.evaluate(() => {
+      const card = document.querySelector('#lifeFeed .logcard');
+      const nav = document.querySelector('#app .navbtn');
+      const wasActive = nav.classList.contains('active');
+      nav.classList.add('active');
+      const cardStyle = getComputedStyle(card);
+      const navStyle = getComputedStyle(nav);
+      const textStyle = getComputedStyle(document.querySelector('#lifeFeed .logtext'));
+      const result = {
+        mediaActive: matchMedia('(prefers-contrast: more)').matches,
+        cardBorderWidth: cardStyle.borderTopWidth,
+        activeNavBorderWidth: navStyle.borderTopWidth,
+        activeNavBorderStyle: navStyle.borderTopStyle,
+        diaryTextColor: textStyle.color
+      };
+      if (!wasActive) nav.classList.remove('active');
+      return result;
+    });
+    assert.equal(preferredContrastProbe.mediaActive, true,
+      'Chromium should emulate the operating-system prefers-contrast: more preference');
+    assert.equal(preferredContrastProbe.cardBorderWidth, '2px',
+      'diary cards should gain a stronger border under the increased-contrast preference');
+    assert.equal(preferredContrastProbe.activeNavBorderWidth, '2px',
+      'the active navigation item should have a distinct high-contrast border');
+    assert.equal(preferredContrastProbe.activeNavBorderStyle, 'solid');
+    assert.notEqual(preferredContrastProbe.diaryTextColor, 'rgb(94, 110, 119)',
+      'diary text should use the stronger contrast token');
+    await page.emulateMedia({ contrast: 'no-preference' });
+
+    await page.emulateMedia({ contrast: 'more', forcedColors: 'active' });
+    const combinedContrastProbe = await page.evaluate(() => {
+      const card = document.querySelector('#lifeFeed .logcard');
+      return {
+        forcedColorsActive: matchMedia('(forced-colors: active)').matches,
+        preferredContrastActive: matchMedia('(prefers-contrast: more)').matches,
+        cardBorderWidth: getComputedStyle(card).borderTopWidth
+      };
+    });
+    assert.equal(combinedContrastProbe.forcedColorsActive, true);
+    assert.equal(combinedContrastProbe.preferredContrastActive, true);
+    assert.equal(combinedContrastProbe.cardBorderWidth, '1px',
+      'forced system colors must take precedence over the softer increased-contrast layer');
+    await page.emulateMedia({ contrast: 'no-preference', forcedColors: 'none' });
 
     assert.equal((await page.locator('#lifeAnnouncement').textContent()).trim(), '',
       'loading a saved life must not announce its existing diary history');

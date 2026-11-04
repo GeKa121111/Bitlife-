@@ -1,0 +1,84 @@
+/* Hayah accessibility layer: stronger contrast when the operating system requests it. */
+@media (prefers-contrast: more) and (forced-colors: none) {
+  :root {
+    --hayah-contrast-text: #203640;
+    --hayah-contrast-muted: #344e5b;
+    --hayah-contrast-border: #667d88;
+    --hayah-contrast-focus: #075e59;
+  }
+
+  body.theme-dark {
+    --hayah-contrast-text: #f2f7f9;
+    --hayah-contrast-muted: #d5e2e7;
+    --hayah-contrast-border: #9bb0ba;
+    --hayah-contrast-focus: #ffffff;
+  }
+
+  body.theme-gold {
+    --hayah-contrast-text: #3d2e10;
+    --hayah-contrast-muted: #59461d;
+    --hayah-contrast-border: #8a703b;
+    --hayah-contrast-focus: #4d370b;
+  }
+
+  #app .name,
+  #app .story-heading h1,
+  #app .logtitle,
+  #app .statvalue,
+  #app .navbtn.active,
+  #modalRoot .choice .ctitle {
+    color: var(--hayah-contrast-text) !important;
+  }
+
+  #app .logtext,
+  #app .statlabel,
+  #app .identity-meta,
+  #app .wealthlabel,
+  #app .wealthsmall,
+  #app .story-eyebrow,
+  #app .navbtn:not(.active),
+  #modalRoot .desc,
+  #modalRoot .muted,
+  #modalRoot .choice .cdesc {
+    color: var(--hayah-contrast-muted) !important;
+  }
+
+  #app .logcard,
+  #app .wealth,
+  #modalRoot .choice,
+  #modalRoot .listitem,
+  #modalRoot .summarycell,
+  #modalRoot input,
+  #modalRoot select,
+  #modalRoot textarea {
+    border: 2px solid var(--hayah-contrast-border) !important;
+  }
+
+  #app .navbtn.active {
+    border: 2px solid var(--hayah-contrast-focus) !important;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+
+  #app .agebtn,
+  #modalRoot .primarybtn {
+    border: 2px solid var(--hayah-contrast-focus) !important;
+    font-weight: 1000;
+  }
+
+  #app .track {
+    border: 1px solid var(--hayah-contrast-border);
+  }
+
+  #app button:focus-visible,
+  #app a[href]:focus-visible,
+  #app [role="button"]:focus-visible,
+  #modalRoot button:focus-visible,
+  #modalRoot input:focus-visible,
+  #modalRoot select:focus-visible,
+  #modalRoot textarea:focus-visible,
+  #modalRoot a[href]:focus-visible {
+    outline: 3px solid var(--hayah-contrast-focus) !important;
+    outline-offset: 3px !important;
+  }
+}
