@@ -19,7 +19,7 @@ const OPTIONAL_SHELL = APP_SHELL.filter(url => !CORE_SHELL.includes(url));
 
 // Prefer the newest known Hayah shell when carrying optional assets forward.
 const shellCacheVersion = name => {
-  const match = /^hayah-shell-v(\\d+)$/.exec(name);
+  const match = /^hayah-shell-v(\d+)$/.exec(name);
   return match ? Number(match[1]) : -1;
 };
 
