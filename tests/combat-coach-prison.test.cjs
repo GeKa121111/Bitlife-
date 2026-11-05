@@ -30,7 +30,6 @@ const context = vm.createContext({
     annualCost: 500,
     price: 1000
   }],
-  ensureCombatCareer() { return this.career; },
   closeModal() { counters.closed += 1; },
   info(...args) { counters.notices.push(args); },
   cash(value) { return String(value); },
@@ -42,6 +41,7 @@ const context = vm.createContext({
   render() { counters.renders += 1; },
   combatCareerMenu() { counters.careerMenus += 1; }
 });
+context.ensureCombatCareer = () => context.career;
 
 vm.runInContext([
   functionSource('combatCoachPrisonGuard'),
