@@ -204,6 +204,27 @@ async function run() {
     const origin = 'http://127.0.0.1:' + address.port;
     await page.goto(origin + '/', { waitUntil: 'domcontentloaded' });
     await page.locator('#characterName').waitFor();
+    const touchTargetProbe = await page.evaluate(() => {
+      const coarsePointer = matchMedia('(pointer: coarse)').matches
+        || matchMedia('(any-pointer: coarse)').matches;
+      const ids = ['menuBtn', 'profileBtn', 'marketBtn', 'characterInfoBtn'];
+      return {
+        coarsePointer,
+        targets: ids.map(id => {
+          const element = document.getElementById(id);
+          const rect = element.getBoundingClientRect();
+          return { id, width: rect.width, height: rect.height };
+        })
+      };
+    });
+    assert.equal(touchTargetProbe.coarsePointer, true,
+      'the mobile browser context should expose a coarse pointer');
+    for (const target of touchTargetProbe.targets) {
+      assert.ok(target.width >= 44,
+        target.id + ' should be at least 44 CSS pixels wide on touch devices');
+      assert.ok(target.height >= 44,
+        target.id + ' should be at least 44 CSS pixels high on touch devices');
+    }
     await page.keyboard.press('Tab');
     assert.equal(await page.evaluate(() => document.activeElement?.classList.contains('skip-link')), true,
       'the first keyboard stop should expose the Arabic skip link');
