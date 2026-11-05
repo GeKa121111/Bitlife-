@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#123e3a">
+  <meta name="description" content="أداة محلية لفحص البنية الأساسية لملفات حفظ حياة قبل الاستيراد.">
+  <title>فحص ملف الحفظ | حياة</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --page: #f1f5f4;
+      --surface: #ffffff;
+      --ink: #173d3a;
+      --muted: #5d7270;
+      --line: #d8e4e1;
+      --brand: #176b62;
+      --brand-strong: #0f514b;
+      --good: #17613f;
+      --bad: #9b3434;
+      --warn: #805b17;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--page);
+      color: var(--ink);
+      font: 16px/1.7 system-ui, -apple-system, "Segoe UI", sans-serif;
+    }
+    main { width: min(100% - 28px, 760px); margin: 0 auto; padding: 30px 0 44px; }
+    .topline { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 22px; }
+    .brand { font-weight: 900; letter-spacing: .02em; }
+    a { color: var(--brand-strong); text-underline-offset: 3px; }
+    .back-link { font-size: 14px; font-weight: 700; }
+    h1 { margin: 0 0 8px; font-size: clamp(25px, 5vw, 34px); line-height: 1.25; }
+    .intro { color: var(--muted); margin: 0 0 24px; }
+    .panel, .report-card {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 20px;
+      box-shadow: 0 10px 30px rgba(17, 59, 54, .06);
+    }
+    .drop-zone {
+      border: 2px dashed #8aa9a3;
+      border-radius: 14px;
+      padding: 24px 16px;
+      text-align: center;
+      transition: border-color .15s ease, background .15s ease;
+    }
+    .drop-zone.is-dragging { border-color: var(--brand); background: #eef8f5; }
+    .drop-title { font-weight: 800; margin: 0 0 6px; }
+    .muted { color: var(--muted); margin: 0; font-size: 14px; }
+    .actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-top: 16px; }
+    .button {
+      display: inline-flex;
+      min-height: 46px;
+      align-items: center;
+      justify-content: center;
+      padding: 10px 18px;
+      border: 1px solid var(--brand);
+      border-radius: 12px;
+      background: var(--brand);
+      color: #fff;
+      font: inherit;
+      font-weight: 800;
+      text-decoration: none;
+      cursor: pointer;
+    }
+    .button.secondary { background: transparent; color: var(--brand-strong); }
+    .button:disabled { opacity: .45; cursor: not-allowed; }
+    .file-input {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
+    .file-input:focus-visible + .button { outline: 3px solid var(--brand); outline-offset: 3px; }
+    .privacy-note { margin: 16px 0 0; color: var(--muted); font-size: 13px; text-align: center; }
+    #backupResult { margin-top: 18px; }
+    .report-card { padding: 18px; }
+    .report-valid { border-color: #8fc5a3; }
+    .report-invalid { border-color: #e0a09b; }
+    .report-note { border-color: var(--line); }
+    .report-status { margin: 0 0 14px; font-size: 18px; font-weight: 900; }
+    .report-valid .report-status { color: var(--good); }
+    .report-invalid .report-status { color: var(--bad); }
+    .report-facts { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr); gap: 8px 14px; margin: 0; }
+    .report-facts dt { color: var(--muted); }
+    .report-facts dd { margin: 0; overflow-wrap: anywhere; font-weight: 700; }
+    .report-errors-title, .report-warnings-title { margin: 18px 0 6px; font-size: 15px; }
+    .report-errors-title { color: var(--bad); }
+    .report-warnings-title { color: var(--warn); }
+    .report-errors, .report-warnings { margin: 0; padding-inline-start: 22px; }
+    .report-errors { color: var(--bad); }
+    .report-warnings { color: var(--warn); }
+    .report-disclaimer { margin: 18px 0 0; padding-top: 12px; border-top: 1px solid var(--line); color: var(--muted); font-size: 13px; }
+    footer { margin-top: 22px; text-align: center; color: var(--muted); font-size: 13px; }
+    :focus-visible { outline: 3px solid var(--brand); outline-offset: 3px; }
+    @media (max-width: 480px) {
+      main { padding-top: 20px; }
+      .panel { padding: 14px; }
+      .report-card { padding: 14px; }
+      .report-facts { grid-template-columns: 1fr; gap: 2px; }
+      .report-facts dd { margin-bottom: 8px; }
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        color-scheme: dark;
+        --page: #101d1c;
+        --surface: #172927;
+        --ink: #e7f0ed;
+        --muted: #b4c5c0;
+        --line: #38504b;
+        --brand: #3b9b8d;
+        --brand-strong: #9be0d2;
+        --good: #9bdbad;
+        --bad: #ffaaa2;
+        --warn: #f0cb7d;
+      }
+      .drop-zone.is-dragging { background: #193b35; }
+      .button { color: #071d1a; }
+      .button.secondary { color: var(--brand-strong); }
+      .report-valid { border-color: #477d59; }
+      .report-invalid { border-color: #8e4e4a; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { transition: none !important; scroll-behavior: auto !important; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <div class="topline">
+      <span class="brand">حياة</span>
+      <a class="back-link" href="./index.html">العودة إلى اللعبة</a>
+    </div>
+    <h1>فحص ملف الحفظ</h1>
+    <p class="intro">افحص البنية الأساسية لنسخة الحفظ قبل نقلها أو استيرادها. الأداة تقرأ الملف محليًا ولا ترفع محتواه إلى أي خادم.</p>
+
+    <section class="panel" aria-labelledby="dropTitle">
+      <div class="drop-zone" id="backupDropZone" role="group" aria-label="منطقة اختيار ملف الحفظ">
+        <p class="drop-title" id="dropTitle">اختر ملف JSON أو اسحبه إلى هنا</p>
+        <p class="muted">يدعم حزمة النسخ الاحتياطي الكاملة وملفات الحياة القديمة بإصدار v1.</p>
+        <div class="actions">
+          <input class="file-input" id="backupFile" type="file" accept=".json,application/json" aria-describedby="privacyNote">
+          <label class="button" for="backupFile">اختيار ملف</label>
+          <button class="button secondary" id="clearBackupCheck" type="button" disabled>مسح الفحص</button>
+        </div>
+      </div>
+      <p class="privacy-note" id="privacyNote">لا يتم تعديل الملف أو حفظه في اللعبة. الحد الأقصى لحجم الملف 15 ميجابايت.</p>
+      <div id="backupResult" role="status" aria-live="polite" aria-atomic="true">
+        <p class="muted">لم يتم اختيار ملف بعد.</p>
+      </div>
+    </section>
+
+    <footer>
+      <p>الفحص لا يضمن قبول الملف داخل اللعبة ولا يستبدل نسخة احتياطية خارجية سليمة.</p>
+    </footer>
+    <noscript><p class="report-card report-invalid">يلزم تفعيل JavaScript لفحص الملف محليًا.</p></noscript>
+  </main>
+  <script src="./backup-check.js"></script>
+</body>
+</html>
