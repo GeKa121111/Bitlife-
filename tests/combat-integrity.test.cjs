@@ -195,7 +195,8 @@ test('المخالفة تفرض إيقافًا وتخصم نقاطًا وتنه�
   assert.equal(career.rank, 2);
   assert.equal(career.sponsorship, null);
   assert.equal(career.fanbase, 8500);
-  assert.equal(career.champion, true);
+  assert.equal(career.champion, false);
+  assert.equal(result.titleStripped, true);
   assert.equal(career.championshipHistory.length, 1);
   assert.equal(result.pointsLost, 20);
 });
