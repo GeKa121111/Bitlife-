@@ -88,4 +88,5 @@ test('سيارات السباق تحصل على حالة وصيانة وتكال
   assert.match(app, /a\.kind!=='property'&&a\.kind!=='car'&&a\.kind!=='racecar'/);
   assert.match(app, /else if\(a\.kind==='racecar'\)/);
   assert.match(app, /بطولات حلبة حياة/);
+  assert.match(app, /id:'local'.*minValue:500000/);
 });
