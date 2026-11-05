@@ -78,7 +78,7 @@ test('خطط الركن تغيّر النقاط والطاقة وتظل متوا
   assert.ok(planStart >= 0 && planEnd > planStart, 'combat game plans should be declared before coach data');
   const planSource = app.slice(planStart, planEnd);
   const context = {};
-  vm.runInNewContext(planSource + '\\n' + pendingSource + '\\n' +
+  vm.runInNewContext(planSource + '\n' + pendingSource + '\n' +
     'globalThis.api={normalize:normalizeCombatGamePlan,effect:combatGamePlanEffect,normalizeBout:normalizePendingCombatBout};', context);
   const api = context.api;
   const asPlain = value => JSON.parse(JSON.stringify(value));
@@ -101,8 +101,10 @@ test('خطط الركن تغيّر النقاط والطاقة وتظل متوا
 
   const legacy = api.normalizeBout({mode:'street',opponent:{name:'منافس قديم',style:'قوة'},roundHistory:[]});
   assert.equal(legacy.gamePlan, 'balanced', 'old pending bouts should resume with a neutral plan');
-  const saved = api.normalizeBout({mode:'street',gamePlan:'counter',opponent:{name:'منافس محفوظ',style:'سرعة'},roundHistory:[]});
+  const saved = api.normalizeBout({mode:'street',gamePlan:'counter',opponent:{name:'منافس محفوظ',style:'سرعة'},roundHistory:[{style:'سرعة',actionId:'quick-jab',gamePlan:'pressure',gamePlanBonus:99}]});
   assert.equal(saved.gamePlan, 'counter');
+  assert.equal(saved.roundHistory[0].gamePlan, 'pressure');
+  assert.equal(saved.roundHistory[0].gamePlanBonus, 5, 'saved plan bonuses must be clamped to the supported range');
   const invalid = api.normalizeBout({mode:'street',gamePlan:'invalid',opponent:{name:'منافس',style:'دفاع'},roundHistory:[]});
   assert.equal(invalid.gamePlan, 'balanced');
 });
