@@ -3100,3 +3100,13 @@ html,body{background:#f2f4f6}
     box-shadow:none!important;
   }
 }
+
+@media (forced-colors: active){
+  #app .agebtn{
+    forced-color-adjust:none!important;
+    background:#075b9b!important;
+    color:#fff!important;
+    border:2px solid #fff!important;
+    box-shadow:none!important;
+  }
+}
