@@ -2940,7 +2940,7 @@ async function run() {
       mimeType: 'application/json',
       buffer: Buffer.from(JSON.stringify(checkerBundle))
     });
-    await page.getByText('اجتاز شروط الاستيراد الأساسية', { exact: true }).waitFor();
+    await page.getByText('متوافق مبدئيًا مع شروط الاستيراد — مع ملاحظات', { exact: true }).waitFor();
     const checkerReportText = await page.locator('#backupResult').innerText();
     assert.ok(checkerReportText.includes('اختبار فحص الحفظ'));
     assert.ok(checkerReportText.includes('حزمة حفظ حياة كاملة'));
