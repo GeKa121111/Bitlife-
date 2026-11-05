@@ -70,3 +70,57 @@ test('اختيار الحركة يعرض المسافة ويحدّثها ويح�
   assert.match(sourceOf('resolveCombatBout','recoverCombatInjury'), /distanceBefore:\['close','mid','long'\]\.includes\(item\.distanceBefore\)\?item\.distanceBefore:null/);
   assert.match(sourceOf('combatBoutHistory','combatChampionshipHistory'), /المسافة بين الجولات/);
 });
+
+
+test('خطط الركن تغيّر النقاط والطاقة وتظل متوافقة مع النزالات المحفوظة', () => {
+  const planStart = app.indexOf('const combatGamePlanCatalog=');
+  const planEnd = app.indexOf('const combatCoachCatalog=', planStart);
+  assert.ok(planStart >= 0 && planEnd > planStart, 'combat game plans should be declared before coach data');
+  const planSource = app.slice(planStart, planEnd);
+  const context = {};
+  vm.runInNewContext(planSource + '\\n' + pendingSource + '\\n' +
+    'globalThis.api={normalize:normalizeCombatGamePlan,effect:combatGamePlanEffect,normalizeBout:normalizePendingCombatBout};', context);
+  const api = context.api;
+  const asPlain = value => JSON.parse(JSON.stringify(value));
+
+  assert.equal(api.normalize('unknown-plan'), 'balanced');
+  assert.deepEqual(asPlain(api.effect('balanced', {style:'قوة'}, 'دفاع', 'سرعة')),
+    {scoreBonus:0,energyCostBonus:0,energyRecoveryBonus:0});
+  assert.deepEqual(asPlain(api.effect('pressure', {style:'قوة'}, 'دفاع', 'سرعة')),
+    {scoreBonus:4,energyCostBonus:2,energyRecoveryBonus:0});
+  assert.deepEqual(asPlain(api.effect('pressure', {style:'تقنية'}, 'دفاع', 'سرعة')),
+    {scoreBonus:1,energyCostBonus:2,energyRecoveryBonus:0});
+  assert.deepEqual(asPlain(api.effect('counter', {style:'سرعة',strongAgainst:'قوة'}, 'قوة', 'دفاع')),
+    {scoreBonus:5,energyCostBonus:0,energyRecoveryBonus:0});
+  assert.deepEqual(asPlain(api.effect('counter', {style:'دفاع'}, 'قوة', 'دفاع')),
+    {scoreBonus:5,energyCostBonus:0,energyRecoveryBonus:0});
+  assert.deepEqual(asPlain(api.effect('counter', {style:'تقنية'}, 'قوة', 'سرعة')),
+    {scoreBonus:-2,energyCostBonus:0,energyRecoveryBonus:0});
+  assert.deepEqual(asPlain(api.effect('conserve', {style:'سرعة'}, 'قوة', 'دفاع')),
+    {scoreBonus:-2,energyCostBonus:0,energyRecoveryBonus:5});
+
+  const legacy = api.normalizeBout({mode:'street',opponent:{name:'منافس قديم',style:'قوة'},roundHistory:[]});
+  assert.equal(legacy.gamePlan, 'balanced', 'old pending bouts should resume with a neutral plan');
+  const saved = api.normalizeBout({mode:'street',gamePlan:'counter',opponent:{name:'منافس محفوظ',style:'سرعة'},roundHistory:[]});
+  assert.equal(saved.gamePlan, 'counter');
+  const invalid = api.normalizeBout({mode:'street',gamePlan:'invalid',opponent:{name:'منافس',style:'دفاع'},roundHistory:[]});
+  assert.equal(invalid.gamePlan, 'balanced');
+});
+
+test('خطة الركن تُثبت عند بدء النزال وتؤثر في الجولة وتظهر في الواجهة والسجل', () => {
+  assert.match(sourceOf('createCombatCareer','ensureCombatCareer'), /gamePlan:'balanced'/);
+  assert.match(sourceOf('ensureCombatCareer','combatRankName'), /c\.gamePlan=normalizeCombatGamePlan\(c\.gamePlan\)/);
+  assert.match(sourceOf('startCombatBout','combatBoutRoundMenu'), /gamePlan:c\.gamePlan/);
+  const menu = sourceOf('combatGamePlanMenu','combatCareerMenu');
+  assert.match(menu, /combatGamePlanCatalog\.map/);
+  assert.match(menu, /تُثبت الخطة عند بدء المواجهة/);
+  const roundMenu = sourceOf('combatBoutRoundMenu','chooseCombatReaction');
+  assert.match(roundMenu, /خطة الركن/);
+  const round = sourceOf('resolveCombatRound','resolveCombatBout');
+  assert.match(round, /combatGamePlanEffect\(planId,move,intent\.style,opponent\.weakTo\)/);
+  assert.match(round, /combatRoundEnergy\(c\.energy,effectiveMove,session\.mode,reaction\.energyCost\)/);
+  assert.match(round, /planEffect\.scoreBonus/);
+  const result = sourceOf('resolveCombatBout','recoverCombatInjury');
+  assert.match(result, /gamePlan:session\?normalizeCombatGamePlan\(session\.gamePlan\)/);
+  assert.match(sourceOf('combatBoutHistory','combatChampionshipHistory'), /خطة الركن/);
+});
