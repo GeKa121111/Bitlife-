@@ -1,6 +1,6 @@
 'use strict';
 
-const CACHE_NAME = 'hayah-shell-v153';
+const CACHE_NAME = 'hayah-shell-v154';
 const APP_SHELL = [
   './index.html',
   './style.css',
@@ -9,7 +9,9 @@ const APP_SHELL = [
   './app.js',
   './pwa-update.js',
   './manifest.webmanifest',
-  './icon.svg'
+  './icon.svg',
+  './backup-check.html',
+  './backup-check.js'
 ].map(path => new URL(path, self.registration.scope).href);
 
 // Keep the essential game usable if a non-critical shell asset is temporarily unavailable.
@@ -87,7 +89,10 @@ self.addEventListener('fetch', event => {
   const scopeUrl = new URL(self.registration.scope);
   if (requestUrl.origin !== self.location.origin || !requestUrl.pathname.startsWith(scopeUrl.pathname)) return;
 
-  const cacheKey = request.mode === 'navigate' ? APP_SHELL[0] : request;
+  const cachedNavigationPage = request.mode === 'navigate'
+    ? APP_SHELL.find(url => new URL(url).pathname === requestUrl.pathname) || APP_SHELL[0]
+    : null;
+  const cacheKey = request.mode === 'navigate' ? cachedNavigationPage : request;
   const matchCached = async () => {
     try {
       const cache = await caches.open(CACHE_NAME);
