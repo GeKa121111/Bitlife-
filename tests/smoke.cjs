@@ -603,7 +603,7 @@ assert.match(serviceWorker, /hayah-shell-v150/);
 
 assert.match(app, /function combatRoundEnergy\(currentEnergy,move,mode='street',reactionCost=0\)/);
 assert.match(app, /function combatStyleVarietyModifier\(roundHistory,style\)/);
-assert.match(app, /function combatOpponentStyleForRound\(opponent,round,lastPlayerStyle,roundHistory=\[\],opponentId=''\)/);
+assert.match(app, /function combatOpponentStyleForRound\(opponent,round,lastPlayerStyle,roundHistory=\[\],opponentId='',longTermHistory=\[\]\)/);
 assert.match(app, /intent\.read/);
 assert.match(app, /سجل الجولات غير مكتمل؛ المنافس يستخدم استجابة احتياطية/);
 assert.match(app, /تنويع الأساليب عبر الجولات/);
@@ -798,7 +798,7 @@ assert.equal(Object.keys(firstInstallListeners).length, 0, 'first-time installat
 assert.equal(firstInstallNotices, 0);
 
 assert.ok(app.includes("function combatOpponentArchetype(opponent,opponentId=''"));
-assert.ok(app.includes("combatOpponentIntent(opponent,round,session.lastStyle,session.roundHistory,session.communityFighterId)"));
+assert.ok(app.includes("combatOpponentIntent(opponent,round,session.lastStyle,session.roundHistory,session.communityFighterId,rememberedRival?rememberedRival.styleMemory:[])"));
 assert.ok(app.includes('طابع القتال'));
 
 assert.match(app, /function normalizeCombatChampionshipHistory\(/, 'legacy fighter saves should normalize an optional championship history');
