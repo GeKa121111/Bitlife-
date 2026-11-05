@@ -49,6 +49,10 @@ jobs:
         run: node --check tests/combat-balance.test.cjs
       - name: Run deterministic combat strategy balance matrix
         run: node --test tests/combat-balance.test.cjs
+      - name: Check combat community regression test syntax
+        run: node --check tests/combat-community.test.cjs
+      - name: Run combat community lifecycle and social interaction tests
+        run: node --test tests/combat-community.test.cjs
       - name: Run game smoke tests
         run: node tests/smoke.cjs
       - name: Run regression checks
