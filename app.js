@@ -5661,9 +5661,9 @@ function advanceAge(){
    const familyRecord=familyPropertyOwnershipRecords(state.legacy).find(item=>String(item.id||item.familyAssetId)===String(a.familyAssetId||''));
    if(familyRecord){sharedPropertyUpkeepEntries.push({asset:a,record:familyRecord});return sum;}
   }
-  return sum+(freeVehicleCare&&a.kind==='car'?0:(a.upkeep||0));
+  return sum+(freeVehicleCare&&(a.kind==='car'||a.kind==='racecar')?0:(a.upkeep||0));
  },0);
- state.assets.forEach(a=>{const before=a.value||0;if(a.kind==='property'){a.condition=clamp((a.condition??100)-2);a.value=Math.round(before*(a.condition<25?1.005:1.025));syncFamilyPropertyMarketValue(a,null,0);}else if(a.kind==='car'){if(freeVehicleCare){a.condition=100;a.value=Math.round(before*.97);}else{a.condition=clamp((a.condition??100)-4);a.value=Math.round(before*.91);}}else if(a.kind==='business')a.value=Math.round(before*1.03);});
+ state.assets.forEach(a=>{const before=a.value||0;if(a.kind==='property'){a.condition=clamp((a.condition??100)-2);a.value=Math.round(before*(a.condition<25?1.005:1.025));syncFamilyPropertyMarketValue(a,null,0);}else if(a.kind==='car'){if(freeVehicleCare){a.condition=100;a.value=Math.round(before*.97);}else{a.condition=clamp((a.condition??100)-4);a.value=Math.round(before*.91);}}else if(a.kind==='racecar'){if(freeVehicleCare){a.condition=100;a.value=Math.round(before*.97);}else{a.condition=clamp((a.condition??100)-6);a.value=Math.round(before*.89);}}else if(a.kind==='business')a.value=Math.round(before*1.03);});
  if(state.job&&!state.retired){
    const job=ensureJobProgress(state.job,state.age);
    const salary=Math.round(job.salary*state.performance/100*careerIncomeMultiplier());state.bank+=salary;flash('+'+cash(salary));
@@ -6242,6 +6242,7 @@ function assets(){
   choice('🦁','حديقة الحيوانات','امتلك حديقة حيوان واعتنِ بالحيوانات.',()=>routePack('zooExpansionPack',zooMenu),'',null,!perkOwned('zooExpansionPack')),
   ...((state.assets||[]).some(a=>a.kind==='property')?[section('العقارات المملوكة'),...(state.assets||[]).filter(a=>a.kind==='property').map(a=>choice(a.emoji||'🏠',a.title,'القيمة '+cash(a.value)+' · '+(a.tenant?'مؤجر':'غير مؤجر'),manageAssets,cash(a.value)))]:[]),
   ...((state.assets||[]).some(a=>['car','bike','racecar','aircraft','helicopter','boat'].includes(a.kind))?[section('المركبات المملوكة'),...(state.assets||[]).filter(a=>['car','bike','racecar','aircraft','helicopter','boat'].includes(a.kind)).map(a=>choice(a.emoji||'🚘',a.title,(Number.isFinite(Number(a.condition))?'الحالة '+clamp(a.condition)+'% · ':'')+'القيمة '+cash(a.value||0),manageAssets,cash(a.value||0),Number.isFinite(Number(a.condition))?clamp(a.condition):null))]:[section('المركبات'),choice('🚘','لا توجد مركبات بعد','تصفّح معارض السيارات والمركبات.',shoppingMenu)]),
+  ...((state.assets||[]).some(a=>a.kind==='racecar')?[section('رياضة السيارات'),choice('🏁','بطولات حلبة حياة','شارك بسيارات السباق في بطولة سنوية، وطوّر مهارتك وراجع سجل النتائج.',autoRacingMenu)]:[]),
   section('الممتلكات والمشروعات'),
   choice('🎒','ممتلكاتي','إدارة الممتلكات والأصول التي تملكها بالفعل.',manageAssets),
   ...(state.business?[choice('🏪','إدارة مشروعي','قيمة المشروع '+cash(state.business.value)+' · المستوى '+(state.business.level||1)+'.',openPrimaryBusinessMenu)]:[]),
@@ -7014,7 +7015,7 @@ function buyAsset(a){
  if(a.kind==='business'&&(state.business||(state.assets||[]).some(x=>x.kind==='business'))){if(perkOwned('businessPack')){companyPortfolioMenu();return;}info('🏪','عندك مشروع بالفعل','النسخة الحالية بتدعم إدارة مشروع واحد؛ افتح باقة الملياردير لامتلاك شركات إضافية.');return;}
  if(state.bank<a.value){info('💳','الرصيد مش كفاية','معاك '+cash(state.bank)+'، وسعر الأصل '+cash(a.value)+'.');return;}
  const assetId=Date.now()+Math.random();state.bank-=a.value;flash('-'+cash(a.value),true);
- const condition=(a.kind==='car'||a.kind==='property')?100:undefined;
+ const condition=(a.kind==='car'||a.kind==='racecar'||a.kind==='property')?100:undefined;
  const propertyOwnership=a.kind==='property'?{familyAssetId:'family-property-'+encodeURIComponent(String(state.lifeId||state.name||'life'))+'-'+encodeURIComponent(String(assetId)),familyAssetOriginalValue:Math.round(a.value),ownershipShare:1,ownerBeneficiaryId:String(state.lifeId||state.name||'life')}:{};
  state.assets.push({id:assetId,title:a.title,emoji:a.emoji,kind:a.kind,value:a.value,upkeep:a.upkeep,bought:state.age,...(condition===undefined?{}:{condition}),...propertyOwnership});
  if(a.kind==='business')state.business={assetId,title:a.title,value:a.value,level:1,treasuryMode:'separate',cashBalance:0,pendingOwnerContributions:0,pendingOwnerWithdrawals:0};
@@ -7047,9 +7048,186 @@ function changeTenantRent(index,multiplier){
  property.tenant.rent=Math.max(500,Math.round(property.tenant.rent*multiplier));property.tenant.satisfaction=clamp(property.tenant.satisfaction+(multiplier<1?10:-12));
  log('📑','تعديل عقد الإيجار','أصبح الإيجار السنوي '+cash(property.tenant.rent)+'، ورضا المستأجر '+property.tenant.satisfaction+'%.',multiplier<1?'good':'');save();render();landlordTenantMenu(index);
 }
+
+const AUTO_RACING_EVENT_CATALOG=[
+ {id:'local',title:'كأس الحلبة المحلية',emoji:'🏁',fee:8000,minValue:500000,difficulty:30,prizes:[80000,42000,24000,15000,10000,6000,2000,0],description:'سباق افتتاحي لاختبار سيارتك وبناء اسمك على الحلبة.'},
+ {id:'pro',title:'بطولة السرعة المفتوحة',emoji:'🏆',fee:30000,minValue:4000000,difficulty:55,prizes:[350000,180000,95000,50000,30000,15000,5000,0],description:'منافسة أقوى للسيارات الأعلى أداءً والسائقين أصحاب الخبرة.'}
+];
+function calculateAutoRaceResult(input={}){
+ const bound=(value,min,max)=>Math.max(min,Math.min(max,Number.isFinite(Number(value))?Number(value):0));
+ const style=['balanced','aggressive','careful'].includes(input.style)?input.style:'balanced';
+ const seedSource=[input.lifeId,input.year,input.assetId,input.raceCount,input.eventId].map(value=>String(value??'')).join('|');
+ let hash=2166136261;
+ for(let i=0;i<seedSource.length;i++)hash=Math.imul(hash^seedSource.charCodeAt(i),16777619)>>>0;
+ const next=()=>{hash=(Math.imul(hash,1664525)+1013904223)>>>0;return hash/4294967296;};
+ const variation=next()*10;
+ const crashRoll=next();
+ const value=Math.max(1,Number(input.carValue)||1);
+ const carPower=bound(30+Math.log10(Math.max(.01,value/1200000))*38,0,100);
+ const skill=bound(input.skill,0,100);
+ const condition=bound(input.condition,0,100);
+ const difficulty=input.eventId==='pro'?62:36;
+ const strategyBonus=style==='aggressive'?7:style==='balanced'?4:1;
+ const score=bound(skill*.4+carPower*.3+condition*.15+variation*.2+strategyBonus-difficulty*.18,0,100);
+ const position=score>=75?1:score>=65?2:score>=55?3:score>=45?4:score>=35?5:score>=25?6:score>=15?7:8;
+ const crashChance=style==='aggressive'?.075:style==='balanced'?.04:.015;
+ const crash=crashRoll<crashChance;
+ const damage=(style==='aggressive'?10:style==='balanced'?6:3)+(crash?5:0);
+ return {score:Math.round(score*10)/10,position,damage:bound(damage,0,25),healthLoss:crash?(style==='aggressive'?4:1):0,crash,variation:Math.round(variation*10)/10};
+}
+function ensureAutoRacingProfile(){
+ const raw=state.autoRacing&&typeof state.autoRacing==='object'&&!Array.isArray(state.autoRacing)?state.autoRacing:{};
+ const number=(value,fallback=0)=>Number.isFinite(Number(value))?Number(value):fallback;
+ state.autoRacing={
+  ...raw,
+  version:1,
+  skill:clamp(number(raw.skill,25),0,100),
+  reputation:clamp(number(raw.reputation,0),0,100),
+  races:clamp(Math.floor(number(raw.races,0)),0,1000000),
+  wins:clamp(Math.floor(number(raw.wins,0)),0,1000000),
+  podiums:clamp(Math.floor(number(raw.podiums,0)),0,1000000),
+  earnings:clamp(Math.round(number(raw.earnings,0)),-1000000000000,1000000000000),
+  lastRaceYear:raw.lastRaceYear!==null&&raw.lastRaceYear!==undefined&&Number.isFinite(Number(raw.lastRaceYear))?Number(raw.lastRaceYear):null,
+  lastTrainingYear:raw.lastTrainingYear!==null&&raw.lastTrainingYear!==undefined&&Number.isFinite(Number(raw.lastTrainingYear))?Number(raw.lastTrainingYear):null,
+  history:Array.isArray(raw.history)?raw.history.filter(item=>item&&typeof item==='object'&&!Array.isArray(item)).slice(-12).map(item=>({
+   year:clamp(Math.floor(number(item.year,0)),0,1000000),
+   eventId:item.eventId==='pro'?'pro':'local',
+   eventTitle:String(item.eventTitle||'سباق حلبة').slice(0,80),
+   carTitle:String(item.carTitle||'سيارة سباق').slice(0,80),
+   position:clamp(Math.floor(number(item.position,8)),1,8),
+   score:clamp(number(item.score,0),0,100),
+   prize:clamp(Math.round(number(item.prize,0)),0,1000000000),
+   fee:clamp(Math.round(number(item.fee,0)),0,1000000000),
+   style:['balanced','aggressive','careful'].includes(item.style)?item.style:'balanced',
+   damage:clamp(Math.floor(number(item.damage,0)),0,25),
+   crash:item.crash===true
+  })):[]
+ };
+ return state.autoRacing;
+}
+function autoRacingEventsFor(car){
+ return AUTO_RACING_EVENT_CATALOG.filter(event=>Number(car&&car.value)>=event.minValue);
+}
+function autoRacingEventById(eventId){
+ return AUTO_RACING_EVENT_CATALOG.find(event=>event.id===eventId)||null;
+}
+function autoRacingMenu(){
+ if(!validState())return;
+ const cars=(state.assets||[]).filter(asset=>asset&&asset.kind==='racecar');
+ const profile=ensureAutoRacingProfile();
+ if(!cars.length){
+  modal('🏁','بطولات حلبة حياة','اشترِ سيارة سباق من معرض جيرجس موتور وورلد أولًا، وبعدها افتح باب المنافسة.',[
+   choice('🏎️','زيارة معرض السباق','سيارات سباق بمستويات وأسعار مختلفة.',()=>{closeModal();storeDealerMenu('racing');}),
+   choice('↩️','رجوع للأصول','',()=>{closeModal();assets();})
+  ]);
+  return;
+ }
+ const year=Number.isFinite(Number(state.yearCount))?Number(state.yearCount):Number(state.age)||0;
+ const raceStatus=profile.lastRaceYear===year?'أنهيت سباقك السنوي بالفعل.':'يمكنك خوض سباق واحد خلال السنة الحالية.';
+ const opts=[
+  section('ملف السائق'),
+  choice('🎖️','مهارة القيادة '+profile.skill+'%','السمعة '+profile.reputation+'% · المشاركات '+profile.races+' · الانتصارات '+profile.wins+' · منصات التتويج '+profile.podiums,()=>info('🏁','ملف السائق','تتحسن مهارتك بالمشاركة والتدريب. النتائج محفوظة داخل ملف الحياة الحالي.')),
+  section('سيارات السباق'),
+  ...cars.map(car=>{const index=state.assets.indexOf(car);return choice(car.emoji||'🏎️',car.title,'الحالة '+clamp(car.condition??100)+'% · القيمة '+cash(car.value||0)+' · اختر بطولة تناسب أداء السيارة.',()=>autoRacingCarMenu(index),cash(car.value||0),clamp(car.condition??100));}),
+  section('تطوير السائق'),
+  choice('🧑‍🏫','تدريب قيادة','جلسة تدريب سنوية تكلف '+cash(6000)+' وترفع مهارة القيادة 5 نقاط.',trainAutoRacing,cash(6000),null,profile.lastTrainingYear===year),
+  choice('📜','سجل السباقات','راجع آخر 12 مشاركة ونتائجها ومكافآتها.',autoRacingHistoryMenu),
+  choice('↩️','رجوع للأصول','',()=>{closeModal();assets();})
+ ];
+ modal('🏁','بطولات حلبة حياة',raceStatus+' اختر سيارتك، ووازن بين رسوم الدخول وحالة المركبة ومخاطر أسلوب القيادة.',opts);
+}
+function autoRacingCarMenu(index){
+ const car=(state.assets||[])[index];
+ if(!car||car.kind!=='racecar'){autoRacingMenu();return;}
+ const profile=ensureAutoRacingProfile();
+ const year=Number.isFinite(Number(state.yearCount))?Number(state.yearCount):Number(state.age)||0;
+ const condition=clamp(car.condition??100);
+ const opts=autoRacingEventsFor(car).map(event=>choice(event.emoji,event.title,event.description+' رسوم الدخول '+cash(event.fee)+' · صعوبة '+event.difficulty+'%.',()=>autoRacingStrategyMenu(index,event.id),cash(event.fee),condition,profile.lastRaceYear===year));
+ if(!opts.length)opts.push(choice('🔒','السيارة لا تستوفي فئة البطولة','تحتاج سيارة سباق بقيمة 4,000,000 على الأقل للبطولة المفتوحة.',()=>{closeModal();storeDealerMenu('racing');},'',null,true));
+ if(profile.lastRaceYear===year)opts.unshift(choice('⏳','اكتمل سباق السنة','ارجع بعد التقدم إلى سنة جديدة للمشاركة مرة أخرى.',()=>info('⏳','موعد المشاركة التالية','يمكنك خوض سباق جديد بعد التقدم إلى السنة التالية.'),'',null,true));
+ if(condition<100)opts.push(choice('🧰','صيانة السيارة','الحالة الحالية '+condition+'%؛ الصيانة ترفعها إلى 100%.',()=>maintainAsset(index)));
+ opts.push(choice('↩️','رجوع للبطولات','',autoRacingMenu));
+ modal('🏎️',car.title,'اختر مستوى المنافسة. السيارة المتضررة تقل فرصها وتحتاج صيانة قبل العودة للحلبة.',opts);
+}
+function autoRacingStrategyMenu(index,eventId){
+ const car=(state.assets||[])[index],event=autoRacingEventById(eventId),profile=ensureAutoRacingProfile();
+ if(!car||car.kind!=='racecar'||!event){autoRacingMenu();return;}
+ const year=Number.isFinite(Number(state.yearCount))?Number(state.yearCount):Number(state.age)||0;
+ if(profile.lastRaceYear===year){info('⏳','سباق السنة اكتمل','خضت سباقًا بالفعل في السنة الحالية. تقدر تتدرب أو تتقدم للسنة التالية.');return;}
+ modal('🎯','اختر أسلوب القيادة','الأسلوب الهجومي قد يحسن النتيجة لكنه يزيد الضرر واحتمال الإصابة. الأسلوب الحذر يقلل المخاطر، والمتزن حل وسط.',[
+  choice('⚖️','قيادة متزنة','مكسب متوسط ومخاطر متوسطة.',()=>runAutoRace(index,eventId,'balanced')),
+  choice('⚡','قيادة هجومية','أفضلية في الأداء مع احتمال تلف أكبر أو إصابة.',()=>runAutoRace(index,eventId,'aggressive')),
+  choice('🛡️','قيادة حذرة','مخاطر أقل، لكن مكافأة الأداء أقل.',()=>runAutoRace(index,eventId,'careful')),
+  choice('↩️','رجوع','',()=>autoRacingCarMenu(index))
+ ]);
+}
+function trainAutoRacing(){
+ if(!validState())return;
+ const profile=ensureAutoRacingProfile();
+ const year=Number.isFinite(Number(state.yearCount))?Number(state.yearCount):Number(state.age)||0;
+ if(state.age<18){info('🔒','التدريب متاح للبالغين','ابدأ التدريب بعد سن 18.');return;}
+ if(profile.lastTrainingYear===year){info('⏳','تدربت خلال السنة دي','جلسة تدريب واحدة تكفي في كل سنة لعب.');return;}
+ const fee=6000;
+ if(state.bank<fee){info('💳','الرصيد مش كفاية','جلسة التدريب تكلف '+cash(fee)+'.');return;}
+ state.bank-=fee;
+ const before=profile.skill;
+ profile.skill=clamp(profile.skill+5,0,100);
+ profile.lastTrainingYear=year;
+ log('🧑‍🏫','تدريب قيادة','دفعت '+cash(fee)+' وارتفعت مهارتك من '+before+'% إلى '+profile.skill+'%.','good');
+ save();render();autoRacingMenu();
+}
+function autoRacingHistoryMenu(){
+ const profile=ensureAutoRacingProfile();
+ const rows=profile.history.slice().reverse().map(item=>choice(item.position===1?'🏆':item.position<=3?'🥉':'🏁',item.eventTitle+' · المركز '+item.position,item.carTitle+' · السنة '+item.year+' · المكافأة '+cash(item.prize)+' · رسوم '+cash(item.fee)+' · '+(item.style==='aggressive'?'هجومي':item.style==='careful'?'حذر':'متزن'),()=>info('📜','تفاصيل المشاركة',item.eventTitle+' · '+item.carTitle+' · المركز '+item.position+' · تقييم '+item.score+'/100 · صافي الجائزة '+cash(item.prize-item.fee)+' · ضرر السيارة '+item.damage+'%'+(item.crash?' · حدث تصادم خلال السباق.':'.'))));
+ if(!rows.length)rows.push(choice('📭','لا توجد مشاركات بعد','ابدأ أول بطولة لتكوين سجل السائق.',autoRacingMenu));
+ rows.push(choice('↩️','رجوع للبطولات','',autoRacingMenu));
+ modal('📜','سجل السباقات','آخر 12 مشاركة فقط لتظل بيانات الحفظ خفيفة.',rows);
+}
+function runAutoRace(index,eventId,style){
+ if(!validState())return;
+ const car=(state.assets||[])[index],event=autoRacingEventById(eventId);
+ if(!car||car.kind!=='racecar'||!event){info('⚠️','تعذر بدء السباق','السيارة أو البطولة لم تعد متاحة.');return;}
+ if(state.age<18){info('🔒','السباق متاح للبالغين','تقدر تشارك بعد سن 18.');return;}
+ if(Number(car.value)<event.minValue){info('🔒','فئة السيارة غير مناسبة','السيارة لا تستوفي الحد الأدنى لقيمة هذه البطولة.');return;}
+ const profile=ensureAutoRacingProfile();
+ const year=Number.isFinite(Number(state.yearCount))?Number(state.yearCount):Number(state.age)||0;
+ if(profile.lastRaceYear===year){info('⏳','سباق السنة اكتمل','لا يمكن تسجيل أكثر من نتيجة سباق واحدة في السنة نفسها.');return;}
+ const condition=clamp(car.condition??100);
+ if(condition<35){info('🧰','السيارة تحتاج صيانة','حالة السيارة '+condition+'%. أصلحها حتى تصل إلى 35% على الأقل قبل المشاركة.',[choice('🧰','صيانة السيارة','',()=>maintainAsset(index)),choice('↩️','رجوع','',autoRacingMenu)]);return;}
+ if(state.bank<event.fee){info('💳','رسوم المشاركة غير متاحة','تحتاج '+cash(event.fee)+' لدخول البطولة.');return;}
+ const result=calculateAutoRaceResult({lifeId:state.lifeId,year,assetId:car.id||car.title,raceCount:profile.races,eventId,carValue:car.value,condition,skill:profile.skill,style});
+ state.bank-=event.fee;
+ const prize=event.prizes[result.position-1]||0;
+ state.bank+=prize;
+ car.condition=clamp(condition-result.damage);
+ if(result.healthLoss)state.stats.health=clamp((state.stats.health||0)-result.healthLoss);
+ if(result.position<=3){state.fame=clamp((state.fame||0)+(result.position===1?3:1));state.reputation=clamp((state.reputation||50)+2);}
+ const beforeSkill=profile.skill;
+ profile.skill=clamp(profile.skill+(result.position<=3?3:2),0,100);
+ profile.reputation=clamp(profile.reputation+(result.position<=3?3:1),0,100);
+ profile.races++;
+ if(result.position===1)profile.wins++;
+ if(result.position<=3)profile.podiums++;
+ profile.earnings+=prize-event.fee;
+ profile.lastRaceYear=year;
+ profile.history.push({year,eventId,eventTitle:event.title,carTitle:String(car.title||'سيارة سباق'),position:result.position,score:result.score,prize,fee:event.fee,style,damage:result.damage,crash:result.crash});
+ profile.history=profile.history.slice(-12);
+ if(result.position===1)achievement('تتويج في سباق سيارات');
+ if(profile.races===1)achievement('أول مشاركة في سباق سيارات');
+ const styleLabel=style==='aggressive'?'هجومي':style==='careful'?'حذر':'متزن';
+ const rankLabel=result.position===1?'المركز الأول':result.position===2?'المركز الثاني':result.position===3?'المركز الثالث':'المركز '+result.position;
+ const detail='أنهيت '+event.title+' في '+rankLabel+' بتقييم '+result.score+'/100. رسوم المشاركة '+cash(event.fee)+'، والجائزة '+cash(prize)+'. مهارة القيادة ارتفعت من '+beforeSkill+'% إلى '+profile.skill+'%. حالة السيارة الآن '+car.condition+'%.'+(result.crash?' حصل تصادم وأثر على حالة المركبة.':'')+(result.healthLoss?' تعرضت لإجهاد بسيط وخسرت '+result.healthLoss+' من الصحة.':'')+' أسلوبك كان '+styleLabel+'.';
+ log('🏁','نتيجة سباق السيارات',detail,result.position<=3?'good':'special');
+ save();render();
+ info('🏁','انتهى السباق',detail,[
+  choice('🏁','العودة للبطولات','',autoRacingMenu),
+  choice('🧰','إدارة المركبات','',()=>{closeModal();manageAssets();})
+ ]);
+}
+
 function manageAssets(){
  const opts=state.assets.map((a,i)=>{
-  const condition=(a.kind==='property'||a.kind==='car')?clamp(a.condition??100):null;
+  const condition=(a.kind==='property'||a.kind==='car'||a.kind==='racecar')?clamp(a.condition??100):null;
   const conditionText=condition===null?'':(' · الحالة '+condition+'%');
   const sale=Math.round(a.value*(condition===null?0.8:(.6+.004*condition)));
   const progress=condition===null?null:condition;
@@ -7057,7 +7235,7 @@ function manageAssets(){
    closeModal();
    if(a.companyPortfolio){const companyIndex=(state.companies||[]).findIndex(c=>c.id===a.id);if(companyIndex>=0){companyDetailMenu(companyIndex);return;}}
    const actions=[];
-   if(condition!==null)actions.push(choice('🧰','صيانة / تجديد','استعادة الحالة إلى 100% ورفع قيمة إعادة البيع.',()=>maintainAsset(i),cash(Math.max(500,Math.round(a.value*(a.kind==='car'?.018:.03)*((100-condition)/100))))));
+   if(condition!==null)actions.push(choice('🧰','صيانة / تجديد','استعادة الحالة إلى 100% ورفع قيمة إعادة البيع.',()=>maintainAsset(i),cash(Math.max(500,Math.round(a.value*(a.kind==='property'?.03:.018)*((100-condition)/100))))));
    actions.push(choice('💵','أبيع الأصل','القيمة المتوقعة حاليًا '+cash(sale),()=>sellAsset(i),cash(sale)));
    if(a.kind==='property')actions.push(choice('🔑',a.rented?'إيقاف التأجير':'عرض العقار للإيجار','دخل إيجار سنوي تقديري '+cash(Math.round(a.value*.045))+'.',()=>{closeModal();a.rented=!a.rented;log('🏠',a.rented?'تأجير عقار':'إيقاف تأجير العقار',a.rented?'عرضت '+a.title+' للإيجار وبدأ احتساب دخل سنوي.':'أوقفت التأجير للعقار '+a.title+'.',a.rented?'good':'');render();manageAssets();}));
    if(a.kind==='property'&&perkOwned('landlordPack'))actions.push(choice('🏘️','إدارة المستأجرين','عقود إيجار وتفاوض على السعر وتجديد العقد.',()=>landlordTenantMenu(i)));
@@ -7073,7 +7251,7 @@ function manageAssets(){
 
 function sellAsset(index){
  closeModal();const a=state.assets[index];if(!a)return;
- const condition=(a.kind==='property'||a.kind==='car')?clamp(a.condition??100):null;
+ const condition=(a.kind==='property'||a.kind==='car'||a.kind==='racecar')?clamp(a.condition??100):null;
  const sale=Math.round(a.value*(condition===null?0.8:(.6+.004*condition)));
  let netSale=sale,settledPropertyExpenses=0;
  if(a.kind==='property'){
@@ -7105,11 +7283,11 @@ function sellAsset(index){
 }
 function maintainAsset(index){
  closeModal();const a=state.assets[index];if(!a)return;
- if(a.kind!=='property'&&a.kind!=='car'){info('🧰','الصيانة غير متاحة','النوع ده ملوش نظام حالة في النسخة الحالية.');return;}
+ if(a.kind!=='property'&&a.kind!=='car'&&a.kind!=='racecar'){info('🧰','الصيانة غير متاحة','النوع ده ملوش نظام حالة في النسخة الحالية.');return;}
  const condition=clamp(a.condition??100),missing=100-condition;
  if(missing===0){info('✅','الأصل في أفضل حالة','مش محتاج صيانة دلوقتي.');return;}
  const before=condition;
- let cost=Math.max(500,Math.round(a.value*(a.kind==='car'?.018:.03)*(missing/100)));
+ let cost=Math.max(500,Math.round(a.value*(a.kind==='property'?.03:.018)*(missing/100)));
  let expenseResult=null,insuranceAssessment=null;
  if(a.kind==='property'&&state.legacy){
   const familyRecord=familyPropertyOwnershipRecords(state.legacy).find(item=>String(item.id||item.familyAssetId)===String(a.familyAssetId||''));
@@ -7144,7 +7322,7 @@ function maintainAsset(index){
  if(a.kind==='property')syncFamilyPropertyMarketValue(a,null,0);
  const insuranceDetail=insuranceAssessment&&insuranceAssessment.payout>0?' · تعويض التأمين '+cash(insuranceAssessment.payout):'';
  const detail=(expenseResult&&expenseResult.tracked?'دفعت حصتك '+cash(expenseResult.activeAmount)+'، وساهمت محافظ الأسرة بـ '+cash(expenseResult.familyWalletAmount)+'. المبالغ غير المسددة '+cash(expenseResult.unpaidAmount)+' اتسجلت كالتزامات على أصحابها. إجمالي الصيانة '+cash(expenseResult.grossCost)+'.':'دفعت '+cash(cost)+'، ورجّعت الحالة من '+before+'% إلى 100%. قيمة إعادة البيع المتوقعة اتحسنت.')+insuranceDetail;
- log(a.kind==='car'?'🔧':'🏠','صيانة / تجديد '+a.title,detail,'good');
+ log(a.kind==='racecar'?'🏁':a.kind==='car'?'🔧':'🏠','صيانة / تجديد '+a.title,detail,'good');
  render();info('🧰','الصيانة اكتملت',a.title+' بقى في حالة 100%. '+detail);
 }
 function person(gender,relation,emoji,age,level){return {id:relation+'-'+Math.random().toString(36).slice(2,8),name:pick(names[gender])+' '+pick(names.family),relation,emoji,age,job:pick(['طالب','محاسب','مصمم','مدرس','موظف','مطور']),generosity:25+Math.floor(Math.random()*76),craziness:Math.floor(Math.random()*101),money:Math.floor(Math.random()*101),petulance:Math.floor(Math.random()*101),loyalty:25+Math.floor(Math.random()*76),jealousy:Math.floor(Math.random()*101),reliability:25+Math.floor(Math.random()*76),interactions:[],relationshipLevel:level,personality:pick(['حنون','عملي','مرح','جاد','طموح','فضولي'])};}
