@@ -3242,6 +3242,7 @@ test('اعتزال مسيرة القتال يحتفظ بالسجل ويوقف ا
   assert.ok(achievements.includes('اعتزال مسيرة القتال'));
 
   const startSource = functionSource('startCombatBout', 'combatBoutRoundMenu');
+  const accessSource = functionSource('combatBoutAccessGuard', 'createCombatCareer');
   const practiceSource = functionSource('practiceCombatMove', 'learnCombatMove');
   const guardDialogs = [];
   const guardContext = {
@@ -3253,7 +3254,7 @@ test('اعتزال مسيرة القتال يحتفظ بالسجل ويوقف ا
     combatBoutRoundMenu() { throw new Error('retired career must not resume a pending bout'); }
   };
   vm.runInNewContext(
-    startSource + '\n' + practiceSource +
+    accessSource + '\n' + startSource + '\n' + practiceSource +
     '\nglobalThis.start=startCombatBout;globalThis.practice=practiceCombatMove;',
     guardContext
   );
@@ -3338,6 +3339,7 @@ test('منافسو القتال يتقدمون في العمر ويعتزلون 
   assert.equal(context.invalid.retiredYear, 10, 'future retirement years must be clamped');
 
   const startSource = functionSource('startCombatBout', 'combatBoutRoundMenu');
+  const accessSource = functionSource('combatBoutAccessGuard', 'createCombatCareer');
   const rival = { id: 'adam-mansour', name: 'آدم منصور', retired: true, style: 'قوة', weakTo: 'سرعة', emoji: '💪', rating: 46, momentum: 0, respect: 50, tension: 10 };
   const career = {
     retired: false, pendingBout: null, injuryYears: 0, injury: 0, energy: 100,
@@ -3358,7 +3360,7 @@ test('منافسو القتال يتقدمون في العمر ويعتزلون 
       return Number.isFinite(number) ? Math.max(min, Math.min(max, Math.round(number))) : min;
     }
   };
-  vm.runInNewContext(startSource + newline + 'globalThis.start=startCombatBout;', guardContext);
+  vm.runInNewContext(accessSource + newline + startSource + newline + 'globalThis.start=startCombatBout;', guardContext);
   guardContext.start('league', rival.id);
   assert.equal(state.bank, 5000, 'a retired rival must be rejected before league fees are charged');
   assert.equal(career.pendingBout, null);
@@ -3569,6 +3571,7 @@ test('منافسو القتال يتوفون بعد الاعتزال ويُمن�
   assert.equal(context.saved.deceasedYear, 10);
 
   const startSource = functionSource('startCombatBout', 'combatBoutRoundMenu');
+  const accessSource = functionSource('combatBoutAccessGuard', 'createCombatCareer');
   const interactionSource = functionSource('interactCombatFighter', 'retireCombatCareer');
   const deadRival = {
     id: 'adam-mansour', name: 'آدم منصور', style: 'قوة', weakTo: 'سرعة',
@@ -3599,7 +3602,7 @@ test('منافسو القتال يتوفون بعد الاعتزال ويُمن�
     log() {},
     cash(value) { return String(value); }
   };
-  vm.runInNewContext(startSource + newline + interactionSource + newline +
+  vm.runInNewContext(accessSource + newline + startSource + newline + interactionSource + newline +
     'globalThis.start=startCombatBout;globalThis.interact=interactCombatFighter;', guardContext);
   const previousBank = state.bank;
   guardContext.start('league', deadRival.id);
@@ -3859,7 +3862,9 @@ test('جمهور المقاتل والرعاية ينموان بنتائج ال�
   assert.match(app,/function negotiateCombatSponsorship\(sponsorId\)/);
   assert.match(app,/choice\('📣','الجمهور وعقود الرعاية'/);
   assert.match(app,/fanbaseGain:fanbaseResult\.gain,fanbaseAfter:fanbaseResult\.total/);
-  assert.match(functionSource('ensureCombatCareer','combatRankName'),/fanbase:0,sponsorship:null,lastSponsorNegotiationYear:-1/);
+  const combatDefaultsSource=functionSource('ensureCombatCareer','combatRankName');
+  assert.match(combatDefaultsSource,/fanbase:0,integrity:100/);
+  assert.match(combatDefaultsSource,/sponsorship:null,lastSponsorNegotiationYear:-1/);
   assert.match(app,/c\.sponsorship=c\.retired\?null:normalizeCombatSponsorship\(c\.sponsorship\)/);
   assert.match(app,/settleCombatSponsorshipYear\(cc,state\.bank\)/);
   assert.match(functionSource('retireCombatCareer','combatSponsorshipMenu'),/c\.sponsorship=null/);
