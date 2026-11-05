@@ -699,6 +699,7 @@ function normalizePendingCombatBout(raw){
   const parsed=Number(value);
   return Math.max(min,Math.min(max,Number.isFinite(parsed)?parsed:fallback));
  };
+ const safeDistance=value=>['close','mid','long'].includes(value)?value:'mid';
  const history=(Array.isArray(raw.roundHistory)?raw.roundHistory:[]).slice(0,2).map((item,index)=>{
   if(!item||typeof item!=='object'||Array.isArray(item))return null;
   return {
@@ -707,11 +708,11 @@ function normalizePendingCombatBout(raw){
    actionTitle:typeof item.actionTitle==='string'?item.actionTitle.slice(0,48):'حركة قتالية',
    style:styles.includes(item.style)?item.style:'تقنية',
    styleVarietyModifier:Math.round(finite(item.styleVarietyModifier,0,-6,2)),
-   distanceBefore:normalizeCombatDistance(item.distanceBefore),
-   moveRange:normalizeCombatDistance(item.moveRange),
+   distanceBefore:safeDistance(item.distanceBefore),
+   moveRange:safeDistance(item.moveRange),
    distancePlayerBonus:Math.round(finite(item.distancePlayerBonus,0,-3,4)),
    distanceOpponentBonus:Math.round(finite(item.distanceOpponentBonus,0,-2,2)),
-   distanceAfter:normalizeCombatDistance(item.distanceAfter),
+   distanceAfter:safeDistance(item.distanceAfter),
    opponentStyle:styles.includes(item.opponentStyle)?item.opponentStyle:source.style,
    playerScore:finite(item.playerScore,0,-200,200),
    opponentScore:finite(item.opponentScore,0,-200,200),
@@ -744,7 +745,7 @@ function normalizePendingCombatBout(raw){
  const last=history.length?history[history.length-1]:null;
  return {
   mode,
-  distance:normalizeCombatDistance(raw.distance),
+  distance:safeDistance(raw.distance),
   opponent:{
    name,
    style:source.style,
