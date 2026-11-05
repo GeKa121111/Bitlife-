@@ -15,7 +15,9 @@ const routes = new Map([
   ['/app.js', 'app.js'],
   ['/sw.js', 'sw.js'],
   ['/manifest.webmanifest', 'manifest.webmanifest'],
-  ['/icon.svg', 'icon.svg']
+  ['/icon.svg', 'icon.svg'],
+  ['/backup-check.html', 'backup-check.html'],
+  ['/backup-check.js', 'backup-check.js']
 ]);
 const mimeTypes = {
   '.html': 'text/html; charset=utf-8',
@@ -2922,6 +2924,38 @@ async function run() {
       'the accessible stat value should update immediately after a recovery choice');
     await page.evaluate(original => localStorage.setItem('hekayat_hayah_save_v1', original), originalBoostSave);
     await page.reload({ waitUntil: 'domcontentloaded' });
+
+    await page.goto(origin + '/backup-check.html', { waitUntil: 'domcontentloaded' });
+    const saveBeforeLocalInspection = await page.evaluate(() => localStorage.getItem('hekayat_hayah_save_v1'));
+    const checkerBundle = {
+      format: 'hayah-backup',
+      backupVersion: 1,
+      life: { version: 1, lifeId: 909, name: 'اختبار فحص الحفظ', age: 45, stats: {}, log: [], family: [], place: {} },
+      cemetery: [{ id: 'older-life' }],
+      settings: { textScale: 'normal' },
+      perks: { owned: {} }
+    };
+    await page.locator('#backupFile').setInputFiles({
+      name: 'hayah-backup-check.json',
+      mimeType: 'application/json',
+      buffer: Buffer.from(JSON.stringify(checkerBundle))
+    });
+    await page.getByText('البنية الأساسية سليمة', { exact: true }).waitFor();
+    const checkerReportText = await page.locator('#backupResult').innerText();
+    assert.ok(checkerReportText.includes('اختبار فحص الحفظ'));
+    assert.ok(checkerReportText.includes('حزمة حفظ حياة كاملة'));
+    assert.equal(await page.evaluate(() => localStorage.getItem('hekayat_hayah_save_v1')), saveBeforeLocalInspection,
+      'checking a portable bundle must not change the active game save');
+
+    await page.locator('#backupFile').setInputFiles({
+      name: 'hayah-invalid-cemetery.json',
+      mimeType: 'application/json',
+      buffer: Buffer.from(JSON.stringify({ ...checkerBundle, cemetery: [null] }))
+    });
+    await page.getByText('الملف غير صالح بنيويًا', { exact: true }).waitFor();
+    assert.ok((await page.locator('#backupResult').innerText()).includes('المقبرة'));
+    assert.equal(await page.evaluate(() => localStorage.getItem('hekayat_hayah_save_v1')), saveBeforeLocalInspection,
+      'a rejected bundle must leave the active game save untouched');
 
     assert.deepEqual(pageErrors, [], 'the browser run should complete without uncaught JavaScript errors');
 
