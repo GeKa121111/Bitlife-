@@ -25,22 +25,36 @@
     if (typeof life.name !== 'string' || !life.name.trim()) {
       errors.push('اسم الشخصية مفقود.');
     }
-    if (!Number.isInteger(life.age) || life.age < 0 || life.age > 150) {
-      errors.push('العمر مفقود أو خارج النطاق المتوقع من 0 إلى 150 سنة.');
+
+    // Match the game's isValidSaveData() checks before reporting a save as importable.
+    const ageText = life.age === null || life.age === undefined ? '' : String(life.age).trim();
+    const numericAge = Number(life.age);
+    const validAge = ageText !== '' && Number.isFinite(numericAge) && numericAge >= 0 && numericAge <= 150;
+    if (!validAge) errors.push('العمر مفقود أو خارج النطاق المقبول للاستيراد من 0 إلى 150 سنة.');
+
+    if (!isRecord(life.stats)) errors.push('قسم الإحصائيات مطلوب ويجب أن يكون كائنًا صالحًا.');
+    if (!Array.isArray(life.log)) errors.push('سجل الأحداث مطلوب ويجب أن يكون مصفوفة.');
+    if (!Array.isArray(life.family)) errors.push('بيانات الأسرة مطلوبة ويجب أن تكون مصفوفة.');
+    if (!isRecord(life.place)) errors.push('بيانات مكان الإقامة مطلوبة ويجب أن تكون كائنًا صالحًا.');
+
+    if (isRecord(life.stats)) {
+      const statKeys = ['happiness', 'health', 'smart', 'looks'];
+      if (statKeys.some(key => !Number.isFinite(Number(life.stats[key])))) {
+        warnings.push('بعض الإحصائيات ستُستكمل بقيم افتراضية عند الاستيراد.');
+      }
     }
 
-    if (!isRecord(life.stats)) warnings.push('قسم الإحصائيات غير موجود ككائن؛ قد يحتاج الملف إلى تطبيع عند الاستيراد.');
-    if (!Array.isArray(life.log)) warnings.push('سجل الأحداث غير موجود كمصفوفة.');
-    if (!Array.isArray(life.family)) warnings.push('بيانات الأسرة غير موجودة كمصفوفة.');
-    if (!isRecord(life.place)) warnings.push('بيانات مكان الإقامة غير موجودة ككائن.');
+    const normalizedAge = validAge ? Math.max(0, Math.min(120, Math.floor(numericAge))) : null;
+    if (validAge && normalizedAge !== numericAge) {
+      warnings.push('سيُطبّع العمر إلى ' + normalizedAge + ' سنة عند الاستيراد.');
+    }
 
     return {
       name: typeof life.name === 'string' && life.name.trim() ? life.name.trim() : null,
-      age: Number.isInteger(life.age) ? life.age : null,
+      age: normalizedAge,
       version: life.version
     };
   }
-
   function inspectBackup(data) {
     const errors = [];
     const warnings = [];
@@ -61,9 +75,12 @@
         errors.push('سجل المقبرة غير موجود كمصفوفة.');
       } else {
         cemeteryCount = data.cemetery.length;
-        const invalidEntry = data.cemetery.findIndex(entry => !isRecord(entry));
+        const invalidEntry = data.cemetery.findIndex(entry => !isRecord(entry) || typeof entry.name !== 'string' || !entry.name.trim());
         if (invalidEntry !== -1) {
-          errors.push('يوجد سجل غير صالح في المقبرة عند الموضع ' + (invalidEntry + 1) + '.');
+          errors.push('يوجد سجل مقبرة يفتقد اسمًا صالحًا عند الموضع ' + (invalidEntry + 1) + '.');
+        }
+        if (data.cemetery.length > 100) {
+          warnings.push('تحتوي المقبرة على أكثر من 100 سجل؛ سيحتفظ الاستيراد بأول 100 سجل فقط.');
         }
       }
 
@@ -146,15 +163,15 @@
       const panel = doc.createElement('article');
       panel.className = 'report-card ' + (report.valid ? 'report-valid' : 'report-invalid');
       appendText(panel, 'h2', 'report-status',
-        report.valid ? (report.warnings.length ? 'اكتمل الفحص مع ملاحظات' : 'البنية الأساسية سليمة')
-          : 'الملف غير صالح بنيويًا');
+        report.valid ? (report.warnings.length ? 'متوافق مبدئيًا مع شروط الاستيراد — مع ملاحظات' : 'اجتاز شروط الاستيراد الأساسية')
+          : 'لن يجتاز الملف شروط الاستيراد الأساسية');
 
       const facts = [
         ['اسم الملف', file.name],
         ['حجم الملف', formatBytes(file.size)],
         ['نوع الملف', report.format],
         ['الشخصية', report.name || 'غير متاحة'],
-        ['العمر', report.age === null ? 'غير متاح' : report.age + ' سنة'],
+        ['العمر بعد التطبيع', report.age === null ? 'غير متاح' : report.age + ' سنة'],
         ['إصدار بيانات الحياة', report.lifeVersion === null ? 'غير متاح' : report.lifeVersion],
         ['الحيوات السابقة', report.cemeteryCount === null ? 'غير مشمولة' : report.cemeteryCount],
         ['إعدادات العرض', report.hasSettings ? 'مرفقة' : 'غير مرفقة'],
@@ -183,7 +200,7 @@
         panel.appendChild(warnings);
       }
       appendText(panel, 'p', 'report-disclaimer',
-        'هذا فحص بنيوي أولي فقط، وليس ضمانًا لقبول الملف داخل اللعبة. احتفظ بالملف الأصلي ولا تستبدل حفظك الحالي اعتمادًا على هذه النتيجة وحدها.');
+        'هذا فحص أولي لشروط الاستيراد الأساسية التي يطبقها المحرك، وليس ضمانًا لسلامة كل تفاصيل الحياة. احتفظ بالملف الأصلي ولا تستبدل حفظك الحالي اعتمادًا على هذه النتيجة وحدها.');
       resultNode.replaceChildren(panel);
       clearButton.disabled = false;
     };
