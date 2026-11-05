@@ -103,6 +103,7 @@ const runtime = [
   'getInheritanceHistoryRecords',
   'buildInheritanceHistory',
   'familyTreeNode',
+  'changeSiblingInvestmentRisk',
   'startAsChild'
 ].map(findFunction);
 
@@ -2509,4 +2510,66 @@ test('قسط التأمين لا يُسجل مدفوعًا إذا تعذر تح�
   assert.equal(context.state.bank, beforeBank);
   assert.equal(JSON.stringify(record), beforeRecord);
   assert.equal(JSON.stringify(wallet), beforeWallet);
+});
+
+
+test('تغيير توجه استثمار الشقيق يلتزم بمهلة ثلاث سنوات ولا يمس أصل المحفظة', () => {
+  const context = makeContext();
+  const profile = {
+    investmentRisk: 'balanced',
+    investmentBalance: 150000,
+    savings: 12000,
+    lastInvestmentRiskChangeYear: -1
+  };
+
+  const first = context.changeSiblingInvestmentRisk(profile, 'growth', 30);
+  assert.equal(first.ok, true);
+  assert.equal(first.previousRisk, 'balanced');
+  assert.equal(profile.investmentRisk, 'growth');
+  assert.equal(profile.lastInvestmentRiskChangeYear, 30);
+  assert.equal(profile.investmentBalance, 150000);
+  assert.equal(profile.savings, 12000);
+
+  const tooSoon = context.changeSiblingInvestmentRisk(profile, 'conservative', 32);
+  assert.equal(tooSoon.ok, false);
+  assert.equal(tooSoon.reason, 'cooldown');
+  assert.equal(tooSoon.nextAllowedYear, 33);
+  assert.equal(profile.investmentRisk, 'growth');
+
+  const unchanged = context.changeSiblingInvestmentRisk(profile, 'growth', 32);
+  assert.equal(unchanged.reason, 'unchanged');
+
+  const invalid = context.changeSiblingInvestmentRisk(profile, 'speculative', 33);
+  assert.equal(invalid.reason, 'risk');
+  assert.equal(profile.investmentRisk, 'growth');
+
+  const afterCooldown = context.changeSiblingInvestmentRisk(profile, 'conservative', 33);
+  assert.equal(afterCooldown.ok, true);
+  assert.equal(profile.investmentRisk, 'conservative');
+  assert.equal(profile.lastInvestmentRiskChangeYear, 33);
+});
+
+test('ملفات الأشقاء القديمة تبدأ دون مهلة سابقة، والتاريخ المستقبلي لا يسمح بتجاوز المهلة', () => {
+  const context = makeContext();
+  const legacyProfile = { investmentRisk: 'balanced', investmentBalance: 25000 };
+  const legacyChange = context.changeSiblingInvestmentRisk(legacyProfile, 'conservative', 44);
+  assert.equal(legacyChange.ok, true);
+  assert.equal(legacyProfile.lastInvestmentRiskChangeYear, 44);
+
+  const malformedFuture = { investmentRisk: 'growth', lastInvestmentRiskChangeYear: 99 };
+  const safeResult = context.changeSiblingInvestmentRisk(malformedFuture, 'balanced', 50);
+  assert.equal(safeResult.ok, false);
+  assert.equal(safeResult.reason, 'cooldown');
+  assert.equal(safeResult.nextAllowedYear, 53);
+  assert.equal(malformedFuture.investmentRisk, 'growth');
+});
+
+test('ملف الاستقلال المالي يعرض إعداد توجه الاستثمار الأصلي', () => {
+  assert.ok(app.includes('function siblingInvestmentRiskMenu(n)'));
+  assert.ok(app.includes('function siblingSetInvestmentRisk(n,risk)'));
+  assert.ok(app.includes("choice('📈','تعديل توجه الاستثمار'"));
+  assert.ok(app.includes('التوجه الحالي: '));
+  assert.ok(app.includes('lastInvestmentRiskChangeYear'));
+  assert.ok(app.includes("const KEY = 'hekayat_hayah_save_v1';"));
+  assert.ok(app.includes('return {version:1,lifeId:'));
 });
