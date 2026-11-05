@@ -6474,7 +6474,7 @@ function companyDetailMenu(index){
   choice('📊','سجل التقارير','راجع الإيرادات والمصروفات وصافي النتيجة عبر السنوات.',()=>businessReportsMenu(company,company.title,()=>companyDetailMenu(index))),
   choice('📑','سجل الملكية','راجع حصتك وبقية المستفيدين المسجلين دون تغيير الحسابات.',()=>businessOwnershipMenu(company,()=>companyDetailMenu(index))),
   choice('📈','إعادة استثمار','ضخ رأس مال لرفع المستوى والنمو.',()=>reinvestCompany(index),'20,000 '+state.place.unit),
-  choice('💵',ownership.valid&&ownership.activeShareBps<10000?'بيع الحصة (مؤجل)':'بيع الشركة',ownership.valid&&ownership.activeShareBps<10000?'بيع الحصة المشتركة متوقف حتى تتوفر معاملات موحدة بين ملفات الورثة.':'تصفية الشركة مقابل 75% تقريبًا من قيمتها الحالية.',()=>sellCompany(index),cash(Math.round(company.value*.75))),
+  choice('💵',!ownership.valid?'البيع متوقف':ownership.activeShareBps<10000?'بيع الحصة (مؤجل)':'بيع الشركة',!ownership.valid?'دفتر الملكية يحتاج مراجعة؛ البيع متوقف.':ownership.activeShareBps<10000?'بيع الحصة المشتركة متوقف حتى تتوفر معاملات موحدة بين ملفات الورثة.':'تصفية الشركة مقابل 75% تقريبًا من قيمتها الحالية.',()=>sellCompany(index),cash(Math.round(company.value*.75))),
   choice('↩️','رجوع للمحفظة','',companyPortfolioMenu)
  ]);
 }
@@ -7255,6 +7255,14 @@ function manageAssets(){
 
 function sellAsset(index){
  closeModal();const a=state.assets[index];if(!a)return;
+ if(a.kind==='business'){
+  if(a.companyPortfolio){info('🏢','بيع الشركة من ملفها','افتح ملف الشركة من محفظة الشركات لتسوية الخزينة والتمويل وسجل الملكية قبل البيع.');return;}
+  if(state.business&&state.business.assetId===a.id){
+   const ownership=businessOwnershipSnapshot(state.business,state.legacy&&state.legacy.activeBeneficiaryId||state.lifeId||state.name,state.name);
+   if(!ownership.valid){info('⚠️','سجل الملكية غير متوازن','لم نبع النشاط لأن دفتر الحصص يحتاج مراجعة.');return;}
+   if(ownership.activeShareBps<10000){info('🔒','بيع الحصة المشتركة مؤجل','لا توجد مزامنة بين ملفات الورثة لتحديث حصص الجميع؛ أوقفنا البيع حتى لا تتعارض السجلات.');return;}
+  }
+ }
  const condition=(a.kind==='property'||a.kind==='car'||a.kind==='racecar')?clamp(a.condition??100):null;
  const sale=Math.round(a.value*(condition===null?0.8:(.6+.004*condition)));
  let netSale=sale,settledPropertyExpenses=0;
@@ -9399,7 +9407,7 @@ function prisonEvent(){
 function willMenu(){
  const describe=policy=>buildInheritancePreview({...state,willDistribution:policy}).beneficiarySummary;
  const businessSummary=businessInheritanceSnapshot(state);
- const sharedBusinessCount=businessSummary.entries.filter(entry=>entry.activeShareBps<10000).length;
+ const sharedBusinessCount=businessSummary.entries.filter(entry=>entry.ownershipStatus==='balanced'&&entry.activeShareBps<10000).length;
  const businessDescription=businessSummary.count
   ?'الأنشطة '+businessSummary.count+' · قيمة الحصص '+cash(businessSummary.value)+' · نقد الخزائن '+cash(businessSummary.treasuryCash)+' · الالتزامات '+cash(businessSummary.liabilities)+' · أنشطة بحصص مشتركة '+sharedBusinessCount+'.'
   :'لا توجد شركات مسجلة ضمن التركة.';
@@ -10048,7 +10056,7 @@ function normalizeBusinessOwnershipLedger(raw,fallbackBeneficiaryId,fallbackName
  }
  const seen=new Set(),shareholders=[];
  let invalid=false;
- raw.shareholders.slice(0,32).forEach(item=>{
+ raw.shareholders.slice(0,100).forEach(item=>{
   if(!item||typeof item!=='object'||Array.isArray(item)){invalid=true;return;}
   const beneficiaryId=String(item.beneficiaryId||'').trim().slice(0,120);
   const name=String(item.name||'').trim().slice(0,80);
@@ -10059,7 +10067,7 @@ function normalizeBusinessOwnershipLedger(raw,fallbackBeneficiaryId,fallbackName
  });
  const total=shareholders.reduce((sum,item)=>sum+item.shareBps,0);
  const active=shareholders.find(item=>item.beneficiaryId===activeId);
- if(raw.shareholders.length>32||invalid||shareholders.length!==raw.shareholders.length||total!==10000||!active){
+ if(raw.shareholders.length>100||invalid||shareholders.length!==raw.shareholders.length||total!==10000||!active){
   issues.push(invalid?'shareholder_entry_invalid':'ownership_total_or_active_owner_invalid');
   return {valid:false,legacyFallback:false,issues,ledger:{version:1,activeBeneficiaryId:activeId,shareholders,auditStatus:'needs_review',auditIssues:issues}};
  }
@@ -10106,7 +10114,7 @@ function buildInheritedBusinessOwnershipLedger(entity,beneficiaryAccounts,nextAc
   else merged.set(part.beneficiaryId,{beneficiaryId:part.beneficiaryId,name:part.name,kind:part.kind,shareBps:part.shareBps});
  });
  const shareholders=Array.from(merged.values()).filter(item=>item.shareBps>0),total=shareholders.reduce((sum,item)=>sum+item.shareBps,0);
- if(total!==10000||!shareholders.some(item=>item.beneficiaryId===nextId&&item.shareBps>0))return invalidLedger(['ownership_transfer_total_or_active_heir_invalid']);
+ if(shareholders.length>100||total!==10000||!shareholders.some(item=>item.beneficiaryId===nextId&&item.shareBps>0))return invalidLedger(['ownership_transfer_total_or_active_heir_invalid']);
  return {version:1,activeBeneficiaryId:nextId,shareholders,updatedAtAge:Math.max(0,Math.min(120,Math.floor(Number(age)||0))),auditStatus:'balanced'};
 }
 function applyInheritedBusinessOwnership(previous,inheritance,beneficiaryAccounts,nextActiveBeneficiaryId){
