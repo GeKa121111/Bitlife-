@@ -6360,7 +6360,7 @@ function companyPortfolioMenu(){
 function acquireCompany(title,sector,value,emoji){
  closeModal();if(state.age<18){info('🔒','الشراء غير متاح','تقدر تستحوذ على الشركات بعد سن 18.');return;}
  if(state.bank<value){info('💳','رأس المال غير كافٍ','شراء '+title+' يحتاج '+cash(value)+'.');return;}
- state.bank-=value;const id=Date.now()+Math.random(),company={id,assetId:id,title,sector,value,level:1,upkeep:Math.round(value*.025),bought:state.age,emoji,treasuryMode:'separate',cashBalance:0,pendingOwnerContributions:0,pendingOwnerWithdrawals:0};
+ state.bank-=value;const id=Date.now()+Math.random(),company={id,assetId:id,title,sector,value,level:1,upkeep:Math.round(value*.025),bought:state.age,emoji,treasuryMode:'separate',cashBalance:0,pendingOwnerContributions:0,pendingOwnerWithdrawals:0,ownershipLedger:createBusinessOwnershipLedger(state.legacy&&state.legacy.activeBeneficiaryId||state.lifeId||state.name,state.name,state.age)};
  state.companies.push(company);state.assets.push({id,title,emoji,kind:'business',value,upkeep:0,bought:state.age,companyPortfolio:true});
  log('🏢','استحواذ على شركة','اشتريت '+title+' في قطاع '+sector+'. تقدر تدير الموردين والموظفين والمنتجات والتقارير بشكل مستقل.','special');achievement('تنويع محفظة الشركات');save();render();companyPortfolioMenu();
 }
@@ -6466,25 +6466,28 @@ function companyDetailMenu(index){
  const supplierLabel=supplier?' · المورد '+supplier.title:' · دون مورد متعاقد';
  const creditBalance=businessCreditBalance(company);
  const creditLabel=creditBalance?' · تمويل مستحق '+cash(creditBalance):'';
- const detail='قيمة تقديرية '+cash(company.value)+' · القطاع '+company.sector+' · المستوى '+company.level+' · الفريق '+staffCount+'/5 · المنتجات '+productCount+supplierLabel+creditLabel+'. نتائج السنة القادمة غير مضمونة.';
+ const ownership=businessOwnershipSnapshot(company,state.legacy&&state.legacy.activeBeneficiaryId||state.lifeId||state.name,state.name);
+ const ownershipLabel=ownership.valid?' · ملكيتك '+formatBusinessOwnershipPercent(ownership.activeShareBps)+'% · الملاك '+ownership.shareholders.length:' · سجل الملكية يحتاج مراجعة';
+ const detail='قيمة تقديرية '+cash(company.value)+' · القطاع '+company.sector+' · المستوى '+company.level+' · الفريق '+staffCount+'/5 · المنتجات '+productCount+supplierLabel+creditLabel+ownershipLabel+'. نتائج السنة القادمة غير مضمونة.';
  modal(company.emoji||'🏢','إدارة '+company.title,detail,[
   choice('🧰','إدارة التشغيل','إدارة الموردين والموظفين والمنتجات لهذه الشركة بشكل مستقل.',()=>{managedCompanyId=String(company.id);businessMenu();}),
   choice('📊','سجل التقارير','راجع الإيرادات والمصروفات وصافي النتيجة عبر السنوات.',()=>businessReportsMenu(company,company.title,()=>companyDetailMenu(index))),
+  choice('📑','سجل الملكية','راجع حصتك وبقية المستفيدين المسجلين دون تغيير الحسابات.',()=>businessOwnershipMenu(company,()=>companyDetailMenu(index))),
   choice('📈','إعادة استثمار','ضخ رأس مال لرفع المستوى والنمو.',()=>reinvestCompany(index),'20,000 '+state.place.unit),
-  choice('💵','بيع الشركة','تصفية الشركة مقابل 75% تقريبًا من قيمتها الحالية.',()=>sellCompany(index),cash(Math.round(company.value*.75))),
+  choice('💵',ownership.valid&&ownership.activeShareBps<10000?'بيع الحصة (مؤجل)':'بيع الشركة',ownership.valid&&ownership.activeShareBps<10000?'بيع الحصة المشتركة متوقف حتى تتوفر معاملات موحدة بين ملفات الورثة.':'تصفية الشركة مقابل 75% تقريبًا من قيمتها الحالية.',()=>sellCompany(index),cash(Math.round(company.value*.75))),
   choice('↩️','رجوع للمحفظة','',companyPortfolioMenu)
  ]);
 }
 
 function reinvestCompany(index){
- closeModal();const company=(state.companies||[])[index];if(!company)return;const cost=20000;
+ closeModal();const company=(state.companies||[])[index];if(!company)return;const ownership=businessOwnershipSnapshot(company,state.legacy&&state.legacy.activeBeneficiaryId||state.lifeId||state.name,state.name);if(!ownership.valid){info('⚠️','سجل الملكية غير متوازن','أوقفنا إعادة الاستثمار حتى تتم مراجعة دفتر الحصص.');return;}const cost=20000;
  if(!spendBusinessTreasury(company,cost)){info('💳','خزينة النشاط غير كافية','إعادة الاستثمار تحتاج '+cash(cost)+'. حوّل رأس مال إلى الشركة أولًا.');return;}
  company.level=clamp((company.level||1)+1,1,20);company.value=Math.round(company.value*1.12);
  const asset=state.assets.find(a=>a.id===company.id);if(asset)asset.value=company.value;
  log('📈','إعادة استثمار في '+company.title,'ارتفع مستوى الشركة إلى '+company.level+' والقيمة التقديرية إلى '+cash(company.value)+'.','good');save();render();companyDetailMenu(index);
 }
 function sellCompany(index){
- closeModal();const company=(state.companies||[])[index];if(!company)return;const grossProceeds=Math.round(company.value*.75),creditBalance=businessCreditBalance(company);
+ closeModal();const company=(state.companies||[])[index];if(!company)return;const ownership=businessOwnershipSnapshot(company,state.legacy&&state.legacy.activeBeneficiaryId||state.lifeId||state.name,state.name);if(!ownership.valid){info('⚠️','سجل الملكية غير متوازن','لم نبع الشركة لأن دفتر الحصص يحتاج مراجعة.');return;}if(ownership.activeShareBps<10000){info('🔒','بيع الحصة المشتركة مؤجل','السجل يوضح أن النشاط مملوك لأكثر من مستفيد، لكن ملفات الورثة لا تتزامن بعد. أوقفنا البيع حتى لا تبقى سجلات الملكية متعارضة.');return;}const grossProceeds=Math.round(company.value*.75),creditBalance=businessCreditBalance(company);
  const companyCash=businessUsesSeparateTreasury(company)?businessTreasuryBalance(company):0;
  const proceeds=grossProceeds+companyCash-creditBalance;
  if(proceeds<0){info('🏦','تعذر بيع الشركة','صافي حصيلة البيع بعد احتساب خزينة الشركة '+cash(companyCash)+' وتسوية التمويل '+cash(creditBalance)+' سيكون '+cash(proceeds)+'. موّل النشاط أو سدّد جزءًا من الدين أولًا.');return;}
@@ -6976,6 +6979,7 @@ function businessMenu(){
  const taxLabel=taxLiability?' · متأخرات ضريبية '+cash(taxLiability):' · لا توجد متأخرات ضريبية';
  const opts=[
   choice('📊','التقرير السنوي','راجع الإيرادات والمصروفات وصافي النتيجة.',()=>businessReportsMenu(b,b.title||'مشروعك',businessMenu)),
+  choice('📑','سجل الملكية','راجع حصتك ونسب بقية الملاك المسجلين.',()=>businessOwnershipMenu(b,businessMenu)),
   choice('🏦','خزينة النشاط ورأس المال','افصل أموال الشركة عن أموالك الشخصية أو حوّل رأس المال بين الحسابين.',businessTreasuryMenu,cash(businessTreasuryBalance(b))),
   choice('🏦','تمويل النشاط','اطلب تسهيلًا تجاريًا أو سدّد التمويل القائم مع متابعة الفوائد.',businessCreditMenu,creditBalance?cash(creditBalance):cash(businessCreditLimit(b))),
   choice('📦','التعاقد مع مورد','قارن الجودة والتكلفة ومدة العقد قبل الاختيار.',businessSupplierMenu),
@@ -7018,7 +7022,7 @@ function buyAsset(a){
  const condition=(a.kind==='car'||a.kind==='racecar'||a.kind==='property')?100:undefined;
  const propertyOwnership=a.kind==='property'?{familyAssetId:'family-property-'+encodeURIComponent(String(state.lifeId||state.name||'life'))+'-'+encodeURIComponent(String(assetId)),familyAssetOriginalValue:Math.round(a.value),ownershipShare:1,ownerBeneficiaryId:String(state.lifeId||state.name||'life')}:{};
  state.assets.push({id:assetId,title:a.title,emoji:a.emoji,kind:a.kind,value:a.value,upkeep:a.upkeep,bought:state.age,...(condition===undefined?{}:{condition}),...propertyOwnership});
- if(a.kind==='business')state.business={assetId,title:a.title,value:a.value,level:1,treasuryMode:'separate',cashBalance:0,pendingOwnerContributions:0,pendingOwnerWithdrawals:0};
+ if(a.kind==='business')state.business={assetId,title:a.title,value:a.value,level:1,treasuryMode:'separate',cashBalance:0,pendingOwnerContributions:0,pendingOwnerWithdrawals:0,ownershipLedger:createBusinessOwnershipLedger(state.legacy&&state.legacy.activeBeneficiaryId||state.lifeId||state.name,state.name,state.age)};
  stat('happiness',6);log(a.emoji,'اشتريت '+a.title,'دفعت '+cash(a.value)+'. خلي بالك من مصاريف الصيانة كل سنة.','good');achievement('امتلاك '+a.title);render();info('🎉','مبروك الأصل الجديد','الأصل اتضاف لممتلكاتك، وتقدر تبيعه لاحقًا حسب قيمته وحالته الحالية.');
 }
 
@@ -9395,8 +9399,9 @@ function prisonEvent(){
 function willMenu(){
  const describe=policy=>buildInheritancePreview({...state,willDistribution:policy}).beneficiarySummary;
  const businessSummary=businessInheritanceSnapshot(state);
+ const sharedBusinessCount=businessSummary.entries.filter(entry=>entry.activeShareBps<10000).length;
  const businessDescription=businessSummary.count
-  ?'الأنشطة '+businessSummary.count+' · قيمة الأصول '+cash(businessSummary.value)+' · نقد الخزائن '+cash(businessSummary.treasuryCash)+' · الالتزامات '+cash(businessSummary.liabilities)+'.'
+  ?'الأنشطة '+businessSummary.count+' · قيمة الحصص '+cash(businessSummary.value)+' · نقد الخزائن '+cash(businessSummary.treasuryCash)+' · الالتزامات '+cash(businessSummary.liabilities)+' · أنشطة بحصص مشتركة '+sharedBusinessCount+'.'
   :'لا توجد شركات مسجلة ضمن التركة.';
  const opts=[
   choice('🌳','عرض شجرة العائلة','استعراض أفراد الأسرة والأجيال المسجلة.',familyTreeMenu),
@@ -9413,8 +9418,8 @@ function businessInheritanceSummaryMenu(previous=state){
  if(!summary.count){info('🏢','لا توجد أنشطة في التركة','لم يتم تسجيل شركة أو نشاط تجاري ضمن ممتلكات هذه الحياة.');return;}
  const opts=summary.entries.map(entry=>choice(
   '🏢',entry.title,
-  'قيمة الأصل '+cash(entry.value)+' · رصيد الخزينة '+cash(entry.treasuryBalance)+' · التمويل '+cash(entry.creditBalance)+' · الضرائب '+cash(entry.taxLiability)+' · صافي المساهمة '+cash(entry.netContribution),
-  ()=>info('📊','تفاصيل '+entry.title,'القيمة المحتسبة '+cash(entry.value)+'، نقد الخزينة '+cash(entry.treasuryCash)+'، الالتزامات '+cash(entry.liabilities)+'، وصافي المساهمة '+cash(entry.netContribution)+'.'),
+  'قيمة حصتك '+cash(entry.value)+' · ملكيتك '+formatBusinessOwnershipPercent(entry.activeShareBps)+'% · الملاك '+entry.shareholderCount+' · رصيد الخزينة '+cash(entry.treasuryBalance)+' · التمويل '+cash(entry.creditBalance)+' · الضرائب '+cash(entry.taxLiability)+' · صافي المساهمة '+cash(entry.netContribution),
+  ()=>businessOwnershipMenu(entry.entity,()=>businessInheritanceSummaryMenu(previous)),
   cash(entry.netContribution)
  ));
  opts.push(choice('↩️','رجوع للوصية','',willMenu));
@@ -10026,10 +10031,113 @@ function calculateEstateSnapshot(previous){
  const net=Math.max(0,gross-personalDebt-businessLiabilities);
  return {bank,assets,investments,valueOf,businessEntries,backingAssetFor,businessCash,businessOverdraft,businessLiabilities,gross,personalDebt,net};
 }
+
+function createBusinessOwnershipLedger(activeBeneficiaryId,activeName,age){
+ const id=String(activeBeneficiaryId||'current-owner').trim().slice(0,120)||'current-owner';
+ const name=String(activeName||'المالك الحالي').trim().slice(0,80)||'المالك الحالي';
+ return {version:1,activeBeneficiaryId:id,shareholders:[{beneficiaryId:id,name,kind:'owner',shareBps:10000}],updatedAtAge:Math.max(0,Math.min(120,Math.floor(Number(age)||0)))};
+}
+function normalizeBusinessOwnershipLedger(raw,fallbackBeneficiaryId,fallbackName){
+ const fallbackId=String(fallbackBeneficiaryId||'current-owner').trim().slice(0,120)||'current-owner';
+ if(raw===undefined||raw===null)return {valid:true,legacyFallback:true,issues:[],ledger:createBusinessOwnershipLedger(fallbackId,fallbackName,0)};
+ const activeId=String(raw&&raw.activeBeneficiaryId||fallbackId).trim().slice(0,120)||fallbackId;
+ const issues=[];
+ if(!raw||typeof raw!=='object'||Array.isArray(raw)||Number(raw.version)!==1||!Array.isArray(raw.shareholders)||raw.auditStatus==='needs_review'){
+  issues.push('ledger_shape_invalid');
+  return {valid:false,legacyFallback:false,issues,ledger:{version:1,activeBeneficiaryId:activeId,shareholders:[],auditStatus:'needs_review',auditIssues:issues}};
+ }
+ const seen=new Set(),shareholders=[];
+ let invalid=false;
+ raw.shareholders.slice(0,32).forEach(item=>{
+  if(!item||typeof item!=='object'||Array.isArray(item)){invalid=true;return;}
+  const beneficiaryId=String(item.beneficiaryId||'').trim().slice(0,120);
+  const name=String(item.name||'').trim().slice(0,80);
+  const shareBps=Number(item.shareBps);
+  if(!beneficiaryId||!name||seen.has(beneficiaryId)||!Number.isSafeInteger(shareBps)||shareBps<=0||shareBps>10000){invalid=true;return;}
+  seen.add(beneficiaryId);
+  shareholders.push({beneficiaryId,name,kind:String(item.kind||'owner').slice(0,24),shareBps});
+ });
+ const total=shareholders.reduce((sum,item)=>sum+item.shareBps,0);
+ const active=shareholders.find(item=>item.beneficiaryId===activeId);
+ if(raw.shareholders.length>32||invalid||shareholders.length!==raw.shareholders.length||total!==10000||!active){
+  issues.push(invalid?'shareholder_entry_invalid':'ownership_total_or_active_owner_invalid');
+  return {valid:false,legacyFallback:false,issues,ledger:{version:1,activeBeneficiaryId:activeId,shareholders,auditStatus:'needs_review',auditIssues:issues}};
+ }
+ const updatedAtAge=Number(raw.updatedAtAge);
+ return {valid:true,legacyFallback:false,issues:[],ledger:{version:1,activeBeneficiaryId:activeId,shareholders,updatedAtAge:Number.isFinite(updatedAtAge)?Math.max(0,Math.min(120,Math.floor(updatedAtAge))):0}};
+}
+function formatBusinessOwnershipPercent(shareBps){
+ const percent=Math.max(0,Math.min(10000,Math.round(Number(shareBps)||0)))/100;
+ return percent.toFixed(2).replace(/\.?0+$/,'');
+}
+function businessOwnershipSnapshot(entity,fallbackBeneficiaryId,fallbackName){
+ const normalized=normalizeBusinessOwnershipLedger(entity&&entity.ownershipLedger,fallbackBeneficiaryId,fallbackName);
+ if(!normalized.valid)return {valid:false,legacyFallback:false,issues:normalized.issues,shareholders:[],activeShareBps:0,stakeValue:Math.max(0,Math.round(Number(entity&&entity.value)||0)),wholeValueEstimate:0};
+ const active=normalized.ledger.shareholders.find(item=>item.beneficiaryId===normalized.ledger.activeBeneficiaryId);
+ const stakeValue=Math.max(0,Math.round(Number(entity&&entity.value)||0)),activeShareBps=active?active.shareBps:0;
+ return {valid:!!active,legacyFallback:normalized.legacyFallback,issues:normalized.issues,activeBeneficiaryId:normalized.ledger.activeBeneficiaryId,activeShareBps,stakeValue,wholeValueEstimate:activeShareBps>0?Math.round(stakeValue*10000/activeShareBps):0,shareholders:normalized.ledger.shareholders.map(item=>({...item}))};
+}
+function buildInheritedBusinessOwnershipLedger(entity,beneficiaryAccounts,nextActiveBeneficiaryId,fallbackActiveBeneficiaryId,fallbackName,age){
+ const normalized=normalizeBusinessOwnershipLedger(entity&&entity.ownershipLedger,fallbackActiveBeneficiaryId,fallbackName);
+ const nextId=String(nextActiveBeneficiaryId||'').trim().slice(0,120);
+ const invalidLedger=issues=>({version:1,activeBeneficiaryId:nextId||normalized.ledger.activeBeneficiaryId,shareholders:normalized.ledger.shareholders.map(item=>({...item})),auditStatus:'needs_review',auditIssues:Array.isArray(issues)?issues:['ownership_transfer_invalid']});
+ if(!normalized.valid)return invalidLedger(normalized.issues);
+ const currentOwner=normalized.ledger.shareholders.find(item=>item.beneficiaryId===normalized.ledger.activeBeneficiaryId);
+ const rawAccounts=Array.isArray(beneficiaryAccounts)?beneficiaryAccounts:(beneficiaryAccounts&&Array.isArray(beneficiaryAccounts.accounts)?beneficiaryAccounts.accounts:[]);
+ if(!currentOwner||!nextId||!rawAccounts.length)return invalidLedger(['active_owner_or_beneficiaries_missing']);
+ const parts=rawAccounts.map((account,index)=>{
+  const beneficiaryId=String(account&&account.beneficiaryId||'').trim().slice(0,120),name=String(account&&account.name||'').trim().slice(0,80),share=Number(account&&account.share);
+  if(!beneficiaryId||!name||!Number.isFinite(share)||share<=0)return null;
+  const rawShare=currentOwner.shareBps*share,base=Math.floor(rawShare);
+  return {beneficiaryId,name,kind:String(account.kind||'beneficiary').slice(0,24),shareBps:base,fraction:rawShare-base,index};
+ });
+ if(parts.some(part=>!part))return invalidLedger(['beneficiary_entry_invalid']);
+ const allocationTotal=parts.reduce((sum,part)=>sum+Number(rawAccounts[part.index].share),0);
+ if(Math.abs(allocationTotal-1)>.00001)return invalidLedger(['beneficiary_shares_not_balanced']);
+ let remainder=currentOwner.shareBps-parts.reduce((sum,part)=>sum+part.shareBps,0);
+ const remainderOrder=parts.slice().sort((a,b)=>b.fraction-a.fraction||a.index-b.index);
+ for(let i=0;i<remainder&&remainderOrder.length;i++)remainderOrder[i%remainderOrder.length].shareBps++;
+ const merged=new Map();
+ normalized.ledger.shareholders.filter(item=>item.beneficiaryId!==currentOwner.beneficiaryId).forEach(item=>merged.set(item.beneficiaryId,{...item}));
+ parts.forEach(part=>{
+  if(part.shareBps<=0)return;
+  const existing=merged.get(part.beneficiaryId);
+  if(existing)existing.shareBps+=part.shareBps;
+  else merged.set(part.beneficiaryId,{beneficiaryId:part.beneficiaryId,name:part.name,kind:part.kind,shareBps:part.shareBps});
+ });
+ const shareholders=Array.from(merged.values()).filter(item=>item.shareBps>0),total=shareholders.reduce((sum,item)=>sum+item.shareBps,0);
+ if(total!==10000||!shareholders.some(item=>item.beneficiaryId===nextId&&item.shareBps>0))return invalidLedger(['ownership_transfer_total_or_active_heir_invalid']);
+ return {version:1,activeBeneficiaryId:nextId,shareholders,updatedAtAge:Math.max(0,Math.min(120,Math.floor(Number(age)||0))),auditStatus:'balanced'};
+}
+function applyInheritedBusinessOwnership(previous,inheritance,beneficiaryAccounts,nextActiveBeneficiaryId){
+ if(!previous||!inheritance)return false;
+ const estate=calculateEstateSnapshot(previous);
+ let portfolioIndex=0;
+ estate.businessEntries.forEach(entry=>{
+  const inherited=entry.type==='primary'?inheritance.business:(Array.isArray(inheritance.companies)?inheritance.companies[portfolioIndex++]:null);
+  if(!inherited)return;
+  const fallbackId=entry.entity&&entry.entity.ownershipLedger&&entry.entity.ownershipLedger.activeBeneficiaryId||previous.legacy&&previous.legacy.activeBeneficiaryId||previous.lifeId||previous.name;
+  inherited.ownershipLedger=buildInheritedBusinessOwnershipLedger(entry.entity,beneficiaryAccounts,nextActiveBeneficiaryId,fallbackId,previous.name,previous.age);
+ });
+ return true;
+}
+function businessOwnershipMenu(entity,back){
+ const fallbackId=state&&state.legacy&&state.legacy.activeBeneficiaryId||state&&state.lifeId||state&&state.name;
+ const snapshot=businessOwnershipSnapshot(entity,fallbackId,state&&state.name);
+ if(!snapshot.valid){info('⚠️','سجل الملكية يحتاج مراجعة','لم نتمكن من إثبات توازن الحصص أو هوية المالك النشط. أوقفنا عرض أي تصرف مالي حتى لا تتغير الملكية بالخطأ.');return;}
+ const activeId=snapshot.activeBeneficiaryId;
+ const opts=snapshot.shareholders.map(item=>choice(item.beneficiaryId===activeId?'👑':'👤',item.name+' · '+formatBusinessOwnershipPercent(item.shareBps)+'%','حصة ملكية مسجلة '+formatBusinessOwnershipPercent(item.shareBps)+'%'+(item.beneficiaryId===activeId?' · حصتك الحالية':' · مستفيد آخر مسجل'),()=>info('📑','تفاصيل المالك',item.name+' يملك '+formatBusinessOwnershipPercent(item.shareBps)+'% من النشاط حسب سجل الملكية المحلي.')));
+ opts.push(choice('ℹ️','حدود السجل','السجل يحفظ نسب المستفيدين داخل هذه الحياة فقط؛ لا توجد مزامنة مشتركة بين ملفات الورثة أو معاملات تصويت وتوزيع أرباح حتى الآن.',()=>info('ℹ️','حدود الملكية المشتركة','تظهر النسب المحفوظة في ملفك الحالي. لا يتم تحديث ملفات بقية الورثة تلقائيًا، لذلك تظل عمليات البيع والتوزيع المشترك مؤجلة حتى إضافة سجل معاملات موحد.')));
+ opts.push(choice('↩️','رجوع','',typeof back==='function'?back:companyPortfolioMenu));
+ const detail='حصتك الحالية '+formatBusinessOwnershipPercent(snapshot.activeShareBps)+'% · قيمة حصتك '+cash(snapshot.stakeValue)+' · قيمة النشاط الكاملة التقديرية '+cash(snapshot.wholeValueEstimate)+'.'+(snapshot.legacyFallback?' هذا تقدير آمن لحفظ قديم لم يكن يحتوي دفتر حصص.':'');
+ modal('📑','سجل ملكية '+String(entity&&entity.title||'النشاط'),detail,opts);
+}
+
 function businessInheritanceSnapshot(previous){
  const estate=calculateEstateSnapshot(previous);
  const entries=estate.businessEntries.map((entry,index)=>{
   const entity=entry.entity,backing=estate.backingAssetFor(entity),value=Math.max(0,Math.round(estate.valueOf(backing||entity)));
+  const ownership=businessOwnershipSnapshot(entity,previous&&previous.legacy&&previous.legacy.activeBeneficiaryId||previous&&previous.lifeId||previous&&previous.name,previous&&previous.name);
   const rawBalance=Number(entity.cashBalance),separateTreasury=businessUsesSeparateTreasury(entity);
   const treasuryBalance=separateTreasury&&Number.isFinite(rawBalance)?Math.round(rawBalance):0;
   const treasuryCash=Math.max(0,treasuryBalance),overdraft=Math.max(0,-treasuryBalance);
@@ -10041,6 +10149,10 @@ function businessInheritanceSnapshot(previous){
    title:String(entity.title||'نشاط عائلي '+(index+1)).slice(0,100),
    type:entry.type,
    value,treasuryBalance,treasuryCash,creditBalance,taxLiability,overdraft,liabilities,
+   activeShareBps:ownership.valid?ownership.activeShareBps:0,
+   shareholderCount:ownership.valid?ownership.shareholders.length:0,
+   ownershipStatus:ownership.valid?'balanced':'needs_review',
+   entity,
    netContribution:Math.round(value+treasuryCash-liabilities)
   };
  });
@@ -10618,6 +10730,8 @@ function startAsChild(index){
  const beneficiaryAccounts=buildInheritanceAccounts(previous,distributionPreview,index,inheritance.value);
  const beneficiaryWallets=buildBeneficiaryWallets(previous.legacy,beneficiaryAccounts,previous.name,previous.age);
  const childAccounts=beneficiaryAccounts.accounts.filter(account=>account.kind==='child');
+ const selectedOwnershipBeneficiaryId=String(childAccounts[index]&&childAccounts[index].beneficiaryId||child.id||previous.lifeId||child.name||'heir');
+ applyInheritedBusinessOwnership(previous,inheritance,beneficiaryAccounts,selectedOwnershipBeneficiaryId);
  const siblingAllocations=distributionPreview.siblingAllocations.map((allocation,i)=>({...allocation,selected:i===index,accountId:childAccounts[i]?childAccounts[i].id:null,accountStatus:i===index?'transferred':'reserved'}));
  if(siblingAllocations[index])siblingAllocations[index].actualValue=inheritance.value;
  const familyPropertyOwnership=buildFamilyPropertyOwnership(previous,beneficiaryAccounts);
