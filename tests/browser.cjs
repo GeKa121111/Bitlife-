@@ -2931,7 +2931,7 @@ async function run() {
       format: 'hayah-backup',
       backupVersion: 1,
       life: { version: 1, lifeId: 909, name: 'اختبار فحص الحفظ', age: 45, stats: {}, log: [], family: [], place: {} },
-      cemetery: [{ id: 'older-life' }],
+      cemetery: [{ id: 'older-life', name: 'حياة سابقة' }],
       settings: { textScale: 'normal' },
       perks: { owned: {} }
     };
@@ -2940,7 +2940,7 @@ async function run() {
       mimeType: 'application/json',
       buffer: Buffer.from(JSON.stringify(checkerBundle))
     });
-    await page.getByText('البنية الأساسية سليمة', { exact: true }).waitFor();
+    await page.getByText('متوافق مبدئيًا مع شروط الاستيراد — مع ملاحظات', { exact: true }).waitFor();
     const checkerReportText = await page.locator('#backupResult').innerText();
     assert.ok(checkerReportText.includes('اختبار فحص الحفظ'));
     assert.ok(checkerReportText.includes('حزمة حفظ حياة كاملة'));
@@ -2952,7 +2952,7 @@ async function run() {
       mimeType: 'application/json',
       buffer: Buffer.from(JSON.stringify({ ...checkerBundle, cemetery: [null] }))
     });
-    await page.getByText('الملف غير صالح بنيويًا', { exact: true }).waitFor();
+    await page.getByText('لن يجتاز الملف شروط الاستيراد الأساسية', { exact: true }).waitFor();
     assert.ok((await page.locator('#backupResult').innerText()).includes('المقبرة'));
     assert.equal(await page.evaluate(() => localStorage.getItem('hekayat_hayah_save_v1')), saveBeforeLocalInspection,
       'a rejected bundle must leave the active game save untouched');
