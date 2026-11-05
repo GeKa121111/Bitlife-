@@ -103,5 +103,9 @@ jobs:
         run: |
           npm install --no-save --package-lock=false playwright@1.64.1
           npx playwright install --with-deps chromium
+      - name: Check expanded large-text browser test syntax
+        run: node --check tests/accessibility-large-text.browser.cjs
       - name: Run mobile browser end-to-end tests
         run: node tests/browser.cjs
+      - name: Run expanded large-text accessibility browser checks
+        run: node tests/accessibility-large-text.browser.cjs
