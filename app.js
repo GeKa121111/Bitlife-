@@ -7087,8 +7087,8 @@ function ensureAutoRacingProfile(){
   wins:clamp(Math.floor(number(raw.wins,0)),0,1000000),
   podiums:clamp(Math.floor(number(raw.podiums,0)),0,1000000),
   earnings:clamp(Math.round(number(raw.earnings,0)),-1000000000000,1000000000000),
-  lastRaceYear:Number.isFinite(Number(raw.lastRaceYear))?Number(raw.lastRaceYear):null,
-  lastTrainingYear:Number.isFinite(Number(raw.lastTrainingYear))?Number(raw.lastTrainingYear):null,
+  lastRaceYear:raw.lastRaceYear!==null&&raw.lastRaceYear!==undefined&&Number.isFinite(Number(raw.lastRaceYear))?Number(raw.lastRaceYear):null,
+  lastTrainingYear:raw.lastTrainingYear!==null&&raw.lastTrainingYear!==undefined&&Number.isFinite(Number(raw.lastTrainingYear))?Number(raw.lastTrainingYear):null,
   history:Array.isArray(raw.history)?raw.history.filter(item=>item&&typeof item==='object'&&!Array.isArray(item)).slice(-12).map(item=>({
    year:clamp(Math.floor(number(item.year,0)),0,1000000),
    eventId:item.eventId==='pro'?'pro':'local',
