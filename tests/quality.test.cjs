@@ -792,7 +792,7 @@ test('تطبيق الويب قابل للتثبيت ويحتفظ بملفات ا
   assert.match(app, /navigator\.serviceWorker\.register\('\.\/sw\.js'\)/);
   assert.match(worker, /const CACHE_NAME = 'hayah-shell-v154'/);
   assert.match(worker, /cache\.addAll\(APP_SHELL\)/);
-  assert.match(worker, /APP_SHELL\\.find\\(url => new URL\\(url\\)\\.pathname === requestUrl\\.pathname\\) \\|\\| APP_SHELL\\[0\\]/);
+  assert.match(worker, /APP_SHELL\.find\(url => new URL\(url\)\.pathname === requestUrl\.pathname\) \|\| APP_SHELL\[0\]/);
   assert.match(worker, /const matchCached = async \(\) =>/);
   assert.match(icon, /حياة/);
 });
