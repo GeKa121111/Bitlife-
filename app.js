@@ -1023,7 +1023,8 @@ function applyCombatDrugTestSanction(c){
  c.rank=c.leaguePoints>=150?4:c.leaguePoints>=100?3:c.leaguePoints>=60?2:c.leaguePoints>=25?1:0;
  c.sponsorship=null;
  c.fanbase=Math.max(0,Math.floor((Number(c.fanbase)||0)*.85));
- return {pointsLost:before-c.leaguePoints,suspensionYears:c.dopingSuspensionYears,violations:c.dopingViolations};
+ const titleStripped=c.champion===true;c.champion=false;
+ return {pointsLost:before-c.leaguePoints,suspensionYears:c.dopingSuspensionYears,violations:c.dopingViolations,titleStripped};
 }
 function advanceCombatSuspensionYear(c){
  if(!c||typeof c!=='object'||c.retired===true)return 0;
@@ -8696,7 +8697,7 @@ function startCombatBout(mode,communityFighterId=null){
   if(combatDrugTestPositive(c,Math.random())){
    const sanction=applyCombatDrugTestSanction(c);
    closeModal();
-   const sanctionText='ثبتت مخالفة استخدام مادة غير مصرح بها. تم إيقافك '+sanction.suspensionYears+' سنة، وخصم '+sanction.pointsLost+' نقطة من الدوري، وإنهاء عقد الرعاية الحالي.';
+   const sanctionText='ثبتت مخالفة استخدام مادة غير مصرح بها. تم إيقافك '+sanction.suspensionYears+' سنة، وخصم '+sanction.pointsLost+' نقطة من الدوري، وإنهاء عقد الرعاية الحالي.'+(sanction.titleStripped?' كما جُرّدت من لقب بطل العالم الحالي، مع الاحتفاظ بسجل التتويج التاريخي.':'');
    log('🚫','إيقاف بسبب مخالفة رياضية',sanctionText,'bad');
    save();render();info('🚫','فشل فحص ما قبل النزال',sanctionText+' لا تُخصم رسوم النزال لأن المواجهة لم تبدأ.');
    return;
