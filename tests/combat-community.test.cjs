@@ -15,7 +15,7 @@ assert.ok(communityStart >= 0 && communityEnd > communityStart,
 function functionSource(name) {
   const start = app.indexOf('function ' + name + '(');
   assert.notEqual(start, -1, 'expected function ' + name);
-  const end = app.indexOf('\\nfunction ', start + 1);
+  const end = app.indexOf('\nfunction ', start + 1);
   assert.notEqual(end, -1, 'expected a following function after ' + name);
   return app.slice(start, end);
 }
