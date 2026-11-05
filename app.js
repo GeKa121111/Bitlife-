@@ -8553,9 +8553,16 @@ function selectCombatMove(){
  }).filter(Boolean);
  modal('🎯','الحركة الرئيسية','اختار حركة تناسب أسلوب منافسك القادم.',opts);
 }
+function combatCoachPrisonGuard(){
+ if(!state||!state.prison)return false;
+ closeModal();
+ info('🚔','التعاقد مع المدرب غير متاح','تقدر تراجع مسيرتك أثناء العقوبة، لكن التعاقد مع مدرب جديد متاح بعد انتهاء مدة السجن.');
+ return true;
+}
 function hireCombatCoach(){
  const c=ensureCombatCareer();
  if(c.retired){closeModal();info('🏁','المسيرة معتزلة','أنهيت مسيرتك القتالية بالفعل. لا يمكن تنفيذ هذا الإجراء بعد الاعتزال؛ سجل المسيرة ما زال متاحًا للمراجعة.');return;}
+ if(combatCoachPrisonGuard())return;
  const opts=combatCoachCatalog.map(coach=>choice(coach.level===3?'🌟':coach.level===2?'🧑‍🏫':'🥋',coach.title+' · '+coach.name,coach.desc+' مكافأة النزال +'+coach.bonus+' · تكلفة سنوية '+cash(coach.annualCost)+'.',()=>assignCombatCoach(coach.id),cash(coach.price)));
  if(c.coach)opts.unshift(choice('↩️','إنهاء التعاقد','إيقاف المصاريف السنوية للمدرب الحالي.',()=>{closeModal();c.coach=null;log('🧑‍🏫','إنهاء التعاقد','أنهيت التعاقد مع المدرب لتقليل المصاريف السنوية.');save();render();combatCareerMenu();}));
  modal('🧑‍🏫','اختيار المدرب','التعاقد له سعر بداية ومصاريف سنوية. لو رصيدك لا يكفي المصروف السنوي، ينتهي العقد تلقائيًا.',opts);
@@ -8563,6 +8570,7 @@ function hireCombatCoach(){
 function assignCombatCoach(id){
  const c=ensureCombatCareer();
  if(c.retired){closeModal();info('🏁','المسيرة معتزلة','أنهيت مسيرتك القتالية بالفعل. لا يمكن تنفيذ هذا الإجراء بعد الاعتزال؛ سجل المسيرة ما زال متاحًا للمراجعة.');return;}
+ if(combatCoachPrisonGuard())return;
  const coach=combatCoachCatalog.find(x=>x.id===id);
  if(!coach)return;
  if(state.bank<coach.price){closeModal();info('💳','الرصيد مش كفاية','التعاقد يحتاج '+cash(coach.price)+' كبداية.');return;}
