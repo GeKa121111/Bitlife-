@@ -94,8 +94,11 @@ test('عينة حتمية من 4096 مواجهة تحافظ على مفاضلة 
   let seed = 0x5eed1234;
   const pick = length => {
     seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
-    return seed % length;
+    return Math.floor((seed / 0x100000000) * length);
   };
+  const sampledMoveStyles = new Set();
+  let matchedCounterReads = 0;
+  let missedCounterReads = 0;
   const totals = Object.fromEntries(plans.map(plan => [plan, {
     score: 0,
     energy: 0,
@@ -110,6 +113,12 @@ test('عينة حتمية من 4096 مواجهة تحافظ على مفاضلة 
       opponentStyle: styles[pick(styles.length)],
       weakTo: styles[pick(styles.length)]
     };
+    sampledMoveStyles.add(matchup.move.style);
+    if (matchup.move.strongAgainst === matchup.opponentStyle || matchup.move.style === matchup.weakTo) {
+      matchedCounterReads++;
+    } else {
+      missedCounterReads++;
+    }
 
     for (const plan of plans) {
       const effect = api.effect(plan, matchup.move, matchup.opponentStyle, matchup.weakTo);
@@ -128,6 +137,10 @@ test('عينة حتمية من 4096 مواجهة تحافظ على مفاضلة 
     assert.ok(Number.isFinite(totals[plan].energy));
   }
 
+  assert.equal(sampledMoveStyles.size, styles.length,
+    'the sample must exercise every move style; use high PRNG bits rather than correlated low bits');
+  assert.ok(matchedCounterReads > 0 && missedCounterReads > 0,
+    'the sample must contain both successful and unsuccessful counter reads');
   assert.equal(totals.balanced.score, 0);
   assert.equal(totals.balanced.energy, 0);
   assert.ok(totals.pressure.score > totals.conserve.score,
