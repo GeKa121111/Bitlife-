@@ -368,7 +368,7 @@ test('الفحص السلبي يستهلك المكافأة ويحفظها دا�
 });
 
 test('شاشة الجولة نفسها تمر عبر حارس السجن والإيقاف قبل قراءة النزال', () => {
-  assert.match(app, /function combatBoutRoundMenu\\(\\)\\{\\s*if\\(combatBoutAccessGuard\\(\\)\\)return;/);
+  assert.match(app, /function combatBoutRoundMenu\(\)\{\s*if\(combatBoutAccessGuard\(\)\)return;/);
 });
 
 test('محرك الجولة يسجل المكافأة في نقاط الجولة وسجل المواجهة', () => {
