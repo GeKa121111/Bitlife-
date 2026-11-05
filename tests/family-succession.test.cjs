@@ -72,6 +72,7 @@ const runtime = [
   'businessUsesSeparateTreasury',
   'businessCreditBalance',
   'calculateEstateSnapshot',
+  'businessInheritanceSnapshot',
   'inheritanceBeneficiaryShares',
   'calculateInheritance',
   'childInheritancePoolShare',
@@ -2598,4 +2599,40 @@ test('فشل حفظ توجه استثمار الشقيق يعيد التوجه �
   assert.equal(context.logs.length, 0, 'a failed save must not record a successful change');
   assert.equal(context.infoMessages.length, 1);
   assert.equal(context.infoMessages[0][1], 'تعذر حفظ التغيير');
+});
+
+
+test('ملخص أنشطة العائلة في الوصية يحسب الأصول والخزائن والالتزامات دون تكرار قيمة الشركة', () => {
+  const context = makeContext();
+  context.previous = makeParent();
+  const original = JSON.stringify(context.previous);
+  vm.runInContext('globalThis.snapshot = businessInheritanceSnapshot(previous);', context);
+  const summary = context.snapshot;
+
+  assert.equal(summary.count, 2);
+  assert.equal(summary.value, 300000,
+    'backing business assets must be counted once instead of adding both the asset and company record');
+  assert.equal(summary.treasuryCash, 90000);
+  assert.equal(summary.liabilities, 48000);
+  assert.equal(summary.netContribution, 342000);
+  assert.equal(summary.entries[0].title, 'شركة المدار');
+  assert.equal(summary.entries[0].creditBalance, 11000);
+  assert.equal(summary.entries[0].taxLiability, 5000);
+  assert.equal(summary.entries[1].title, 'شركة النيل');
+  assert.equal(summary.entries[1].creditBalance, 22000);
+  assert.equal(JSON.stringify(context.previous), original,
+    'the read-only inheritance summary must not mutate the saved life');
+
+  context.previous.business.cashBalance = -5000;
+  vm.runInContext('globalThis.overdraftSnapshot = businessInheritanceSnapshot(previous);', context);
+  const primary = context.overdraftSnapshot.entries[0];
+  assert.equal(primary.treasuryBalance, -5000);
+  assert.equal(primary.treasuryCash, 0,
+    'a negative treasury must not be counted as positive estate cash');
+  assert.equal(primary.overdraft, 5000);
+  assert.equal(primary.netContribution, 79000,
+    'the overdraft must reduce the business contribution exactly once');
+  assert.match(app, /function businessInheritanceSummaryMenu\(previous=state\)/);
+  assert.match(app, /businessInheritanceSummaryMenu\(state\)/,
+    'the will menu must expose the business inheritance breakdown');
 });
