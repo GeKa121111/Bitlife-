@@ -587,17 +587,38 @@ function recordCombatRivalStyleMemory(fighter,roundHistory){
 function combatOpponentMemoryInsight(opponent,rawMemory=[],opponentId=''){
  const memory=normalizeCombatStyleMemory(rawMemory),counts=Object.create(null);
  memory.forEach(style=>{counts[style]=(counts[style]||0)+1;});
- let observedStyle='';
- combatMemoryStyles.forEach(style=>{if((counts[style]||0)>(counts[observedStyle]||0))observedStyle=style;});
- const repeated=counts[observedStyle]||0,archetype=combatOpponentArchetype(opponent,opponentId);
+ let observedStyle='',repeated=0,runnerUp=0;
+ combatMemoryStyles.forEach(style=>{
+  const count=counts[style]||0;
+  if(count>repeated){runnerUp=repeated;repeated=count;observedStyle=style;}
+  else if(count>runnerUp)runnerUp=count;
+ });
+ // A tied distribution is variety, not a readable habit. Require a unique leader.
+ const dominant=repeated>=2&&repeated>runnerUp;
+ const archetype=combatOpponentArchetype(opponent,opponentId);
  const rating=Number(opponent&&opponent.rating),awareness=Number.isFinite(rating)?Math.max(0,Math.min(100,rating)):0;
  const thresholds={pressure:54,watcher:62,stubborn:82,balanced:60};
  const minObservations=archetype.id==='stubborn'?5:3;
- if(memory.length<minObservations||repeated<2||awareness<(thresholds[archetype.id]||60)){
-  return {counterStyle:'',observedStyle,observations:memory.length,repeated,archetypeId:archetype.id};
+ if(memory.length<minObservations||!dominant||awareness<(thresholds[archetype.id]||60)){
+  return {counterStyle:'',observedStyle,observations:memory.length,repeated,runnerUp,dominant,archetypeId:archetype.id};
  }
  const counters={'قوة':'دفاع','سرعة':'تقنية','دفاع':'سرعة','تقنية':'قوة'};
- return {counterStyle:counters[observedStyle]||'',observedStyle,observations:memory.length,repeated,archetypeId:archetype.id};
+ return {counterStyle:counters[observedStyle]||'',observedStyle,observations:memory.length,repeated,runnerUp,dominant:true,archetypeId:archetype.id};
+}
+function combatRivalScoutingReport(fighter){
+ const memory=normalizeCombatStyleMemory(fighter&&fighter.styleMemory);
+ const styleCounts=combatMemoryStyles.map(style=>({style,count:memory.filter(item=>item===style).length}));
+ styleCounts.sort((a,b)=>b.count-a.count||combatMemoryStyles.indexOf(a.style)-combatMemoryStyles.indexOf(b.style));
+ const ratingBase=Number(fighter&&fighter.rating),momentum=Number(fighter&&fighter.momentum);
+ const rating=clamp((Number.isFinite(ratingBase)?ratingBase:20)+(Number.isFinite(momentum)?momentum:0),20,95);
+ const insight=combatOpponentMemoryInsight({rating},memory,fighter&&fighter.id||'');
+ const total=memory.length;
+ let message;
+ if(total<3)message='العينة المسجلة غير كافية بعد؛ أكمل مواجهات أكثر قبل الحكم على أسلوبك.';
+ else if(!insight.dominant)message='أساليبك متنوعة؛ لم يثبت وجود نمط واحد يستطيع المنافس استغلاله.';
+ else if(!insight.counterStyle)message='لاحظ المنافس تكرار أسلوب '+insight.observedStyle+'، لكن مستوى قراءته لا يكفي لتجهيز مضاد ثابت.';
+ else message='رصد المنافس تكرار أسلوب '+insight.observedStyle+' ('+insight.repeated+' من '+total+' جولات مسجلة)، وقد يواجهه بأسلوب '+insight.counterStyle+'. نوّع اختياراتك لتفادي القراءة.';
+ return {observedStyle:insight.observedStyle||'',repeated:insight.repeated,runnerUp:insight.runnerUp,total,counterStyle:insight.counterStyle,dominant:insight.dominant===true,styleCounts,message};
 }
 function combatOpponentStyleForRound(opponent,round,lastPlayerStyle,roundHistory=[],opponentId='',longTermHistory=[]){
  const baseStyles=['قوة','سرعة','دفاع','تقنية'];
@@ -8329,11 +8350,13 @@ function combatCommunityFighterMenu(fighterId){
  }
  const currentRating=clamp(fighter.rating+(Number(fighter.momentum)||0),20,95);
  const memoryBouts=Math.max(0,Math.min(10000,Math.floor(Number(fighter.memoryBouts)||0)));
- const memoryNote=memoryBouts?'ذاكرة تكتيكية: جمع ملاحظات من '+memoryBouts+' مواجهة سابقة.':'ذاكرة تكتيكية: لا توجد مواجهات سابقة كافية لتكوين نمط.';
+ const scouting=combatRivalScoutingReport(fighter);
+ const memoryNote=memoryBouts?'ذاكرة تكتيكية: جمع ملاحظات من '+memoryBouts+' مواجهة سابقة. '+scouting.message:'ذاكرة تكتيكية: لا توجد مواجهات سابقة كافية لتكوين نمط.';
  const canInteract=fighter.lastInteractionAge!==state.age;
  const contactNote=canInteract?'تفاعل اجتماعي واحد مع هذا المقاتل كل سنة.':'استخدمت تفاعلك الاجتماعي معه في هذه السنة؛ تقدر تتواصل من جديد بعد التقدم بالعمر.';
  const opts=[
   choice('🔎','قراءة المنافس','التقييم '+currentRating+'/100 · '+combatDifficultyLabel(currentRating)+' · الحالة التنافسية: '+combatCommunityFormLabel(fighter)+' · طابع القتال '+archetype.title+' · أسلوبه '+fighter.style+' · نقطة ضعفه '+fighter.weakTo+'. '+memoryNote,()=>{closeModal();info('📊','ملف '+fighter.name,'التقييم الحالي '+currentRating+'/100 · '+combatCommunityFormLabel(fighter)+' · الاحترام '+fighter.respect+'% · التوتر '+fighter.tension+'% · الحالة '+combatCommunityRelationLabel(fighter)+'. '+memoryNote+' آخر تواصل: '+(fighter.lastInteractionAge<0?'لم يحدث بعد':'عمر '+fighter.lastInteractionAge)+'.');}),
+  choice('🧠','تقرير كشف الأسلوب',scouting.message+' · توزيع آخر '+scouting.total+' جولات: '+scouting.styleCounts.map(item=>item.style+' '+item.count).join('، '),()=>{closeModal();info('🧠','تقرير كشف الأسلوب',scouting.message+' · توزيع آخر '+scouting.total+' جولات: '+scouting.styleCounts.map(item=>item.style+' '+item.count).join('، ')+'.');}),
   choice('💬','حديث ودي',contactNote+' زوّد الاحترام وهدّي التوتر.',()=>interactCombatFighter(fighter.id,'friendly')),
   choice('📣','استفزاز إعلامي',contactNote+' قد يحوّل المنافس إلى خصم دائم ويرفع شهرتك قليلًا.',()=>interactCombatFighter(fighter.id,'trash')),
   choice(fighter.allied?'🔓':'🤝',fighter.allied?'إنهاء التحالف':'عرض تحالف',fighter.allied?'إنهاء التعاون وفتح باب المنافسة من جديد.':'يتطلب احترامًا 55% على الأقل وتوترًا لا يتجاوز 45%.',()=>interactCombatFighter(fighter.id,fighter.allied?'break':'alliance')),
