@@ -288,6 +288,23 @@ test('الإيقاف يمنع بدء النزال قبل استئناف أي م�
   assert.equal(calls.logs.length, before);
 });
 
+test('السجن والإيقاف يمنعان استئناف نزال محفوظ قبل فتح الجولة', () => {
+  const pending = { mode: 'street', round: 2 };
+  context.career = makeCareer({ pendingBout: pending, dopingSuspensionYears: 0 });
+  context.state.prison = { years: 1 };
+  const beforeBoutMenus = calls.menus.filter(item => item === 'bout').length;
+  context.api.startBout('street');
+  assert.equal(calls.menus.filter(item => item === 'bout').length, beforeBoutMenus);
+  assert.ok(calls.notices.some(entry => entry[1] === 'المنافسات غير متاحة'));
+
+  context.career = makeCareer({ pendingBout: pending, dopingSuspensionYears: 1 });
+  context.state.prison = null;
+  const beforeSuspensionMenus = calls.menus.filter(item => item === 'bout').length;
+  context.api.startBout('street');
+  assert.equal(calls.menus.filter(item => item === 'bout').length, beforeSuspensionMenus);
+  assert.ok(calls.notices.some(entry => entry[1] === 'إيقاف رياضي'));
+});
+
 test('الفحص الإيجابي يوقف النزال قبل خصم رسوم الدوري أو إنشاء مواجهة', () => {
   context.career = makeCareer({
     dopingBoostAvailable: true,
