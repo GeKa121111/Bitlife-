@@ -57,6 +57,10 @@ jobs:
         run: node --check tests/combat-coach-prison.test.cjs
       - name: Run combat coach prison guard regression tests
         run: node --test tests/combat-coach-prison.test.cjs
+      - name: Check combat integrity regression test syntax
+        run: node --check tests/combat-integrity.test.cjs
+      - name: Run combat integrity and pre-fight screening tests
+        run: node --test tests/combat-integrity.test.cjs
       - name: Run game smoke tests
         run: node tests/smoke.cjs
       - name: Run regression checks

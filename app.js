@@ -782,6 +782,7 @@ function normalizePendingCombatBout(raw){
   mode,
   distance:safeDistance(raw.distance),
   gamePlan:gamePlans.includes(raw.gamePlan)?raw.gamePlan:'balanced',
+  integrityBoost:raw.integrityBoost===true,
   opponent:{
    name,
    style:source.style,
@@ -983,18 +984,76 @@ function settleCombatSponsorshipYear(c,bank){
  c.sponsorship=ended?null:contract;
  return {bank:balance+payout,payout,brand:sponsor?sponsor.name:'جهة راعية',ended};
 }
+function normalizeCombatIntegrity(c){
+ if(!c||typeof c!=='object'||Array.isArray(c))return null;
+ const year=Math.max(0,Math.floor(Number(state&&state.yearCount)||0));
+ const safeYear=value=>{
+  const parsed=Number(value);
+  return Number.isFinite(parsed)?Math.max(-1,Math.min(year,Math.floor(parsed))):-1;
+ };
+ c.integrity=clamp(Number.isFinite(Number(c.integrity))?Number(c.integrity):100);
+ c.dopingRisk=clamp(Number.isFinite(Number(c.dopingRisk))?Number(c.dopingRisk):0);
+ c.dopingSuspensionYears=clamp(Math.floor(Number(c.dopingSuspensionYears)||0),0,5);
+ c.dopingViolations=clamp(Math.floor(Number(c.dopingViolations)||0),0,999);
+ c.dopingBoostAvailable=c.dopingBoostAvailable===true;
+ c.dopingUsedYear=safeYear(c.dopingUsedYear);
+ c.lastDopingTestYear=safeYear(c.lastDopingTestYear);
+ c.lastIntegrityRecoveryYear=safeYear(c.lastIntegrityRecoveryYear);
+ return c;
+}
+function combatDrugTestProbability(c){
+ const risk=clamp(Number(c&&c.dopingRisk)||0);
+ const rawSmart=Number(state&&state.stats&&state.stats.smart);
+ const smart=Number.isFinite(rawSmart)?clamp(rawSmart):50;
+ return Math.max(.05,Math.min(.75,.12+risk*.006-smart*.0008));
+}
+function combatDrugTestPositive(c,roll){
+ const value=Number(roll);
+ return Number.isFinite(value)&&value>=0&&value<1&&value<combatDrugTestProbability(c);
+}
+function applyCombatDrugTestSanction(c){
+ if(!c||typeof c!=='object')return {pointsLost:0,suspensionYears:0,violations:0};
+ const before=Math.max(0,Math.floor(Number(c.leaguePoints)||0));
+ c.dopingViolations=clamp((Number(c.dopingViolations)||0)+1,0,999);
+ c.dopingSuspensionYears=Math.max(2,Math.floor(Number(c.dopingSuspensionYears)||0));
+ c.integrity=clamp((Number.isFinite(Number(c.integrity))?Number(c.integrity):100)-30);
+ c.dopingRisk=0;
+ c.dopingBoostAvailable=false;
+ c.leaguePoints=Math.max(0,before-20);
+ c.rank=c.leaguePoints>=150?4:c.leaguePoints>=100?3:c.leaguePoints>=60?2:c.leaguePoints>=25?1:0;
+ c.sponsorship=null;
+ c.fanbase=Math.max(0,Math.floor((Number(c.fanbase)||0)*.85));
+ const titleStripped=c.champion===true;c.champion=false;
+ return {pointsLost:before-c.leaguePoints,suspensionYears:c.dopingSuspensionYears,violations:c.dopingViolations,titleStripped};
+}
+function advanceCombatSuspensionYear(c){
+ if(!c||typeof c!=='object'||c.retired===true)return 0;
+ const current=clamp(Math.floor(Number(c.dopingSuspensionYears)||0),0,5);
+ c.dopingSuspensionYears=Math.max(0,current-1);
+ return c.dopingSuspensionYears;
+}
+function combatIntegrityBoutBonus(session){
+ return session&&session.integrityBoost===true?5:0;
+}
+function combatBoutAccessGuard(){
+ if(state&&state.prison){closeModal();info('🚔','المنافسات غير متاحة','لا يمكن بدء النزال أو استكماله أثناء تنفيذ العقوبة.');return true;}
+ const career=state&&state.combatCareer;
+ if(career&&Number(career.dopingSuspensionYears)>0){closeModal();info('⛔','إيقاف رياضي','لا يمكن بدء النزال أو استكماله قبل انتهاء الإيقاف الرياضي.');return true;}
+ return false;
+}
 function createCombatCareer(){
  return {gamePlan:'balanced',rank:0,leaguePoints:0,streetCred:0,streetWins:0,leagueWins:0,wins:0,losses:0,knockouts:0,draws:0,
   technique:32+Math.floor(Math.random()*8),power:28+Math.floor(Math.random()*8),speed:31+Math.floor(Math.random()*8),defense:28+Math.floor(Math.random()*8),stamina:34+Math.floor(Math.random()*8),energy:100,
-  injury:0,injuryYears:0,restUsedYear:-1,lastMovePracticeYear:-1,coach:null,movesKnown:['quick-jab','high-guard'],moveMastery:{},selectedMove:'quick-jab',champion:false,championshipHistory:[],bouts:[],pendingBout:null,retired:false,retiredAge:null,retiredYear:null,fanbase:0,sponsorship:null,lastSponsorNegotiationYear:-1,community:normalizeCombatCommunity([],state?state.yearCount:0),startedAge:state?state.age:18,nextRecruitmentAge:(state?state.age:18)+5};
+  injury:0,injuryYears:0,restUsedYear:-1,lastMovePracticeYear:-1,coach:null,movesKnown:['quick-jab','high-guard'],moveMastery:{},selectedMove:'quick-jab',champion:false,championshipHistory:[],bouts:[],pendingBout:null,retired:false,retiredAge:null,retiredYear:null,fanbase:0,integrity:100,dopingRisk:0,dopingSuspensionYears:0,dopingViolations:0,dopingBoostAvailable:false,dopingUsedYear:-1,lastDopingTestYear:-1,lastIntegrityRecoveryYear:-1,sponsorship:null,lastSponsorNegotiationYear:-1,community:normalizeCombatCommunity([],state?state.yearCount:0),startedAge:state?state.age:18,nextRecruitmentAge:(state?state.age:18)+5};
 }
 function ensureCombatCareer(){
  if(!state)return null;
  let c=state.combatCareer;
  if(!c||typeof c!=='object')c=state.combatCareer=createCombatCareer();
- const defaults={rank:0,leaguePoints:0,streetCred:0,streetWins:0,leagueWins:0,wins:0,losses:0,knockouts:0,draws:0,technique:25,power:25,speed:25,defense:25,stamina:30,energy:100,injury:0,injuryYears:0,restUsedYear:-1,lastMovePracticeYear:-1,coach:null,movesKnown:['quick-jab','high-guard'],moveMastery:{},selectedMove:'quick-jab',champion:false,championshipHistory:[],bouts:[],pendingBout:null,retired:false,retiredAge:null,retiredYear:null,fanbase:0,sponsorship:null,lastSponsorNegotiationYear:-1,community:[],gamePlan:'balanced'};
+ const defaults={rank:0,leaguePoints:0,streetCred:0,streetWins:0,leagueWins:0,wins:0,losses:0,knockouts:0,draws:0,technique:25,power:25,speed:25,defense:25,stamina:30,energy:100,injury:0,injuryYears:0,restUsedYear:-1,lastMovePracticeYear:-1,coach:null,movesKnown:['quick-jab','high-guard'],moveMastery:{},selectedMove:'quick-jab',champion:false,championshipHistory:[],bouts:[],pendingBout:null,retired:false,retiredAge:null,retiredYear:null,fanbase:0,integrity:100,dopingRisk:0,dopingSuspensionYears:0,dopingViolations:0,dopingBoostAvailable:false,dopingUsedYear:-1,lastDopingTestYear:-1,lastIntegrityRecoveryYear:-1,sponsorship:null,lastSponsorNegotiationYear:-1,community:[],gamePlan:'balanced'};
  Object.keys(defaults).forEach(k=>{if(c[k]===undefined||c[k]===null)c[k]=defaults[k];});
  c.gamePlan=['balanced','pressure','counter','conserve'].includes(c.gamePlan)?c.gamePlan:'balanced';
+ normalizeCombatIntegrity(c);
  if(!Array.isArray(c.movesKnown))c.movesKnown=['quick-jab','high-guard'];
  if(!c.movesKnown.length)c.movesKnown=['quick-jab','high-guard'];
  c.moveMastery=normalizeCombatMoveMastery(c.moveMastery,c.movesKnown);
@@ -5669,6 +5728,7 @@ function advanceAge(){
   const playerCareerActive=!!(state.specialCareer&&state.specialCareer.id==='fighter'&&cc.retired!==true);
   if(playerCareerActive)cc.energy=100;
   advanceCombatCommunityWorld(cc);
+  if(cc.retired!==true&&cc.dopingSuspensionYears>0&&advanceCombatSuspensionYear(cc)===0)log('🔓','انتهاء الإيقاف الرياضي','انتهت مدة الإيقاف الرياضي ويمكنك العودة إلى المنافسات.','good');
   if(playerCareerActive&&cc.coach&&cc.coach.yearsLeft>0){
    const annualCost=cc.coach.annualCost||0;
    if(state.bank<annualCost){log('💳','تعذر دفع مصاريف المدرب','الرصيد لا يكفي مصاريف المدرب السنوية؛ انتهى التعاقد دون خصم المصروف.','bad');cc.coach=null;}
@@ -8409,7 +8469,7 @@ function combatGamePlanMenu(){
 function combatCareerMenu(){
  if(!validState()||!state.specialCareer||state.specialCareer.id!=='fighter'){info('🥊','مسيرة القتال','ابدأ مسار المقاتل المحترف من قائمة المهن الخاصة أولًا.');return;}
  const c=ensureCombatCareer();
- if(c.pendingBout&&!c.retired){combatBoutRoundMenu();return;}
+ if(c.pendingBout&&!c.retired){if(combatBoutAccessGuard())return;combatBoutRoundMenu();return;}
  const rank=combatRankName(c),moves=c.movesKnown.length,masteredMoves=c.movesKnown.filter(id=>combatMoveMasteryLevel(c.moveMastery[id]||0)===4).length;
  const currentPlan=combatGamePlanCatalog.find(item=>item.id===c.gamePlan)||combatGamePlanCatalog[0];
  const injury=c.injury>0?' · إصابة '+c.injury+'%':'';
@@ -8434,6 +8494,7 @@ function combatCareerMenu(){
   choice('📚','تعلّم حركة جديدة','تعلّم حركات بأساليب وقوة مختلفة، وافتح الحركات المتقدمة مع التقدم.',learnCombatMove),
   choice('🎯','اختيار الحركة الرئيسية','الحركة المختارة: '+((combatMoveCatalog.find(m=>m.id===c.selectedMove)||combatMoveCatalog[0]).title)+'.',selectCombatMove),
   choice('🧑‍🏫',c.coach?'تغيير المدرب':'التعاقد مع مدرب','المدرب يحسّن فرصك، لكن له تكلفة سنوية.',hireCombatCoach),
+  choice('⚖️','النزاهة الرياضية','راجع سجل الفحوص والمخالفات والمكافآت المؤقتة.',combatIntegrityMenu),
   choice('📣','الجمهور وعقود الرعاية','ابنِ جمهورًا حول مسيرتك وتفاوض على عقد رعاية سنوي.',combatSponsorshipMenu),
   choice('🤝','مجتمع المقاتلين','تعرّف على المنافسين، ابنِ تحالفات أو خصومات، وتحدّ مقاتلًا بعينه.',combatCommunityMenu,'',c.community.filter(fighter=>fighter.allied).length*20),
   choice('🧭','خطة الركن القتالية','الخطة الحالية: '+currentPlan.title+'. غيّر أسلوبك قبل بدء المواجهة.',combatGamePlanMenu),
@@ -8446,6 +8507,44 @@ function combatCareerMenu(){
   choice('↩️','قائمة المهن الخاصة','ارجع إلى قائمة المسارات المتخصصة.',specialCareers)
  ];
  modal('🥊','مسيرة القتال',summary+' · الحركات المتاحة '+moves+' · سجل النزالات '+c.wins+' فوز و'+c.losses+' خسارة.',opts);
+}
+function combatIntegrityMenu(){
+ if(!validState()||!state.specialCareer||state.specialCareer.id!=='fighter'){specialCareers();return;}
+ const c=ensureCombatCareer();
+ const probability=Math.round(combatDrugTestProbability(c)*100);
+ const summary='النزاهة '+c.integrity+'% · خطر الفحص '+c.dopingRisk+'% · احتمال الاكتشاف التقديري '+probability+'% · مخالفات مثبتة '+c.dopingViolations+' · إيقاف متبقٍ '+c.dopingSuspensionYears+' سنة'+(c.dopingBoostAvailable?' · توجد مكافأة مؤقتة تنتظر فحص ما قبل النزال':'');
+ const opts=[
+  choice('🧪','استخدام منشط غير مصرح به','مكافأة مؤقتة +5 نقاط في كل جولة من النزال القادم، مع ارتفاع خطر اكتشاف المخالفة. التكلفة 2,500.',useCombatForbiddenBooster,cash(2500)),
+  choice('🧘','جلسة استعادة الانضباط','ترفع النزاهة 6 نقاط وتقلل خطر الفحص 18 نقطة، وتلغي المكافأة غير المستخدمة. مرة واحدة في السنة.',recoverCombatIntegrity,cash(1000)),
+  choice('↩️','رجوع لمسيرة القتال','',combatCareerMenu)
+ ];
+ modal('⚖️','النزاهة الرياضية',summary,opts);
+}
+function useCombatForbiddenBooster(){
+ if(!validState()||!state.specialCareer||state.specialCareer.id!=='fighter')return;
+ const c=ensureCombatCareer(),year=Math.max(0,Math.floor(Number(state.yearCount)||0));
+ if(c.retired){closeModal();info('🏁','المسيرة معتزلة','لا يمكن استخدام مواد محظورة بعد اعتزال مسيرة القتال.');return;}
+ if(state.prison){closeModal();info('🚔','الإجراء غير متاح','لا يمكن تنفيذ هذا الإجراء أثناء السجن.');return;}
+ if(c.pendingBout){closeModal();info('🥊','النزال بدأ بالفعل','لا يمكن تغيير تجهيزات النزاهة بعد بدء النزال.');return;}
+ if(c.dopingSuspensionYears>0){closeModal();info('⛔','إيقاف رياضي','ينتهي الإيقاف بعد '+c.dopingSuspensionYears+' سنة.');return;}
+ if(c.dopingBoostAvailable){closeModal();info('🧪','المكافأة جاهزة','لديك مكافأة مؤقتة تنتظر فحص ما قبل النزال.');return;}
+ if(c.dopingUsedYear===year){closeModal();info('📅','استخدمت الخيار هذا العام','لا يمكن تكرار القرار في السنة نفسها.');return;}
+ if(state.bank<2500){closeModal();info('💳','الرصيد غير كافٍ','تحتاج 2,500 لاستخدام هذا الخيار.');return;}
+ closeModal();state.bank-=2500;c.dopingBoostAvailable=true;c.dopingUsedYear=year;c.dopingRisk=clamp(c.dopingRisk+35);c.integrity=clamp(c.integrity-12);
+ log('🧪','مكسب محفوف بالمخاطر','استخدمت منشطًا غير مصرح به. ستحصل على +5 نقاط في كل جولة من النزال القادم إذا اجتزت فحص ما قبل النزال، لكن خطر اكتشاف المخالفة ارتفع.','bad');
+ save();render();combatIntegrityMenu();
+}
+function recoverCombatIntegrity(){
+ if(!validState()||!state.specialCareer||state.specialCareer.id!=='fighter')return;
+ const c=ensureCombatCareer(),year=Math.max(0,Math.floor(Number(state.yearCount)||0));
+ if(c.retired){closeModal();info('🏁','المسيرة معتزلة','لا تحتاج إلى جلسات استعادة نزاهة لمسيرة معتزلة.');return;}
+ if(state.prison){closeModal();info('🚔','الإجراء غير متاح','لا يمكن تنفيذ الجلسة أثناء السجن.');return;}
+ if(c.pendingBout){closeModal();info('🥊','النزال بدأ بالفعل','أكمل النزال قبل تغيير سجل النزاهة.');return;}
+ if(c.lastIntegrityRecoveryYear===year){closeModal();info('📅','الجلسة مستخدمة','يمكنك تنفيذ جلسة واحدة فقط في كل سنة.');return;}
+ if(state.bank<1000){closeModal();info('💳','الرصيد غير كافٍ','تحتاج 1,000 لجلسة استعادة الانضباط.');return;}
+ closeModal();state.bank-=1000;c.integrity=clamp(c.integrity+6);c.dopingRisk=clamp(c.dopingRisk-18);c.dopingBoostAvailable=false;c.lastIntegrityRecoveryYear=year;
+ log('🧘','جلسة استعادة الانضباط','استعدت جزءًا من نزاهتك الرياضية وخفّضت خطر الفحص، وألغيت أي مكافأة مؤقتة لم تُستخدم.','good');
+ save();render();combatIntegrityMenu();
 }
 function combatTrainingMenu(){
  if(!validState()||!state.specialCareer||state.specialCareer.id!=='fighter'){specialCareers();return;}
@@ -8582,6 +8681,7 @@ function startCombatBout(mode,communityFighterId=null){
  if(!validState()||!state.specialCareer||state.specialCareer.id!=='fighter'){specialCareers();return;}
  const c=ensureCombatCareer();
  if(c.retired){closeModal();info('🏁','المسيرة معتزلة','أنهيت مسيرتك القتالية بالفعل. لا يمكن تنفيذ هذا الإجراء بعد الاعتزال؛ سجل المسيرة ما زال متاحًا للمراجعة.');return;}
+ if(combatBoutAccessGuard())return;
  if(c.pendingBout){combatBoutRoundMenu();return;}
  if(c.injuryYears>0||c.injury>=65){closeModal();info('🩹','محتاج تتعافى','عندك إصابة '+c.injury+'% ولسه '+c.injuryYears+' سنوات متوقعة للتعافي. اختار العلاج أو انتظر قبل النزال التالي.');return;}
  if(c.energy<25){closeModal();info('🫁','الطاقة منخفضة','استرح سنة أو تدرب بخفة قبل النزال التالي.');return;}
@@ -8591,6 +8691,20 @@ function startCombatBout(mode,communityFighterId=null){
  if(communityFighterId&&!communityFighter){closeModal();info('🥊','المنافس غير متاح','لم نتمكن من العثور على المقاتل المطلوب في مجتمعك.');combatCommunityMenu();return;}
  if(communityFighterId&&communityFighter.deceased===true){closeModal();info('🕯️','المنافس متوفى','توفي هذا المقاتل؛ ملفه وسجل مواجهاته محفوظان، لكن لا يمكن تحديه.');combatCommunityFighterMenu(communityFighterId);return;}
  if(communityFighterId&&communityFighter.retired===true){closeModal();info('🏁','المنافس معتزل','أنهى هذا المقاتل مسيرته؛ يمكنك مراجعة ملفه من الأرشيف دون تحديه.');combatCommunityFighterMenu(communityFighterId);return;}
+ let integrityBoost=false;
+ if(c.dopingBoostAvailable){
+  c.lastDopingTestYear=Math.max(0,Math.floor(Number(state.yearCount)||0));
+  if(combatDrugTestPositive(c,Math.random())){
+   const sanction=applyCombatDrugTestSanction(c);
+   closeModal();
+   const sanctionText='ثبتت مخالفة استخدام مادة غير مصرح بها. تم إيقافك '+sanction.suspensionYears+' سنة، وخصم '+sanction.pointsLost+' نقطة من الدوري، وإنهاء عقد الرعاية الحالي.'+(sanction.titleStripped?' كما جُرّدت من لقب بطل العالم الحالي، مع الاحتفاظ بسجل التتويج التاريخي.':'');
+   log('🚫','إيقاف بسبب مخالفة رياضية',sanctionText,'bad');
+   save();render();info('🚫','فشل فحص ما قبل النزال',sanctionText+' لا تُخصم رسوم النزال لأن المواجهة لم تبدأ.');
+   return;
+  }
+  c.dopingBoostAvailable=false;c.dopingRisk=clamp(c.dopingRisk-5);integrityBoost=true;
+  log('🧪','اجتزت فحص ما قبل النزال','اجتزت الفحص. ستستفيد من +5 نقاط في كل جولة من هذه المواجهة، لكن سجل النزاهة سيظل يحمل أثر القرار.','special');
+ }
  const type=communityFighter?null:pick(combatOpponentTypes);
  const opponent=communityFighter?
   {name:communityFighter.name,style:communityFighter.style,weakTo:communityFighter.weakTo,emoji:communityFighter.emoji,
@@ -8598,11 +8712,12 @@ function startCombatBout(mode,communityFighterId=null){
   {name:pick(combatOpponentNames),style:type.style,weakTo:type.weakTo,emoji:type.emoji,
    rating:mode==='league'?34+c.rank*8+Math.floor(Math.random()*13):18+Math.floor(Math.random()*31),mode,fee:mode==='league'?1500:0};
  if(mode==='league')state.bank-=1500;
- c.pendingBout=normalizePendingCombatBout({mode,opponent,gamePlan:c.gamePlan,round:1,distance:'mid',playerScore:0,opponentScore:0,roundHistory:[],lastStyle:'',lastMoveId:'',startedAge:state.age,feePaid:mode==='league',communityFighterId:communityFighter?communityFighter.id:null,reactionId:''});
+ c.pendingBout=normalizePendingCombatBout({mode,opponent,gamePlan:c.gamePlan,integrityBoost,round:1,distance:'mid',playerScore:0,opponentScore:0,roundHistory:[],lastStyle:'',lastMoveId:'',startedAge:state.age,feePaid:mode==='league',communityFighterId:communityFighter?communityFighter.id:null,reactionId:''});
  log('🥊','بدأ النزال','دخلت مواجهة من ثلاث جولات أمام '+opponent.name+'. '+(communityFighter?'هذه مواجهة مباشرة مع أحد أعضاء مجتمعك. ':'')+'راقب أسلوب المنافس ووازن بين الهجوم والطاقة.','special');
  save();render();combatBoutRoundMenu();
 }
 function combatBoutRoundMenu(){
+ if(combatBoutAccessGuard())return;
  const c=ensureCombatCareer(),session=c&&c.pendingBout;
  if(!session){combatCareerMenu();return;}
  const opponent=session.opponent,round=session.round;
@@ -8667,6 +8782,7 @@ function chooseCombatReaction(reactionId){
 }
 function resolveCombatRound(actionId){
  if(!validState()||!state.specialCareer||state.specialCareer.id!=='fighter')return;
+ if(combatBoutAccessGuard())return;
  const c=ensureCombatCareer(),session=c.pendingBout;
  if(!session){combatCareerMenu();return;}
  if(!['guard','dodge','counter'].includes(session.reactionId)){combatBoutRoundMenu();return;}
@@ -8693,13 +8809,14 @@ function resolveCombatRound(actionId){
  const masteryLevel=learnedMove?combatMoveMasteryLevel(masteryUses):0;
  const masteryBonus=learnedMove?combatMoveMasteryBonus(masteryUses):0;
  const coachBonus=c.coach?c.coach.bonus:0;
+ const integrityBoostBonus=combatIntegrityBoutBonus(session);
  const counterBonus=move.strongAgainst===opponentStyle?12:(move.style===opponent.weakTo?7:(move.style===opponentStyle?-4:0));
  const agePenalty=state.age>38?(state.age-38)*.8:0;
  const energyFactor=.62+c.energy/263;
  const styleVarietyModifier=combatStyleVarietyModifier(session.roundHistory,move.style);
  const communityFighter=session.communityFighterId?c.community.find(fighter=>fighter.id===session.communityFighterId):null;
  const communityAdjustment=communityFighter?clamp(Math.round((communityFighter.respect-communityFighter.tension)/25),-4,4):0;
- const playerScore=(c.technique*.19+c.power*.18+c.speed*.16+c.defense*.13+c.stamina*.10+state.stats.health*.10+(state.specialCareer.level||1)*.8+move.power*.12+coachBonus-c.injury*.16-agePenalty)*energyFactor+counterBonus+styleVarietyModifier+communityAdjustment+masteryBonus+reaction.playerBonus+reactionTiming.bonus+distanceResult.playerBonus+planEffect.scoreBonus;
+ const playerScore=(c.technique*.19+c.power*.18+c.speed*.16+c.defense*.13+c.stamina*.10+state.stats.health*.10+(state.specialCareer.level||1)*.8+move.power*.12+coachBonus-c.injury*.16-agePenalty)*energyFactor+counterBonus+styleVarietyModifier+communityAdjustment+masteryBonus+reaction.playerBonus+reactionTiming.bonus+distanceResult.playerBonus+planEffect.scoreBonus+integrityBoostBonus;
  const opponentScore=opponent.rating+(Math.random()*12-6)+(round-1)*1.2+reaction.opponentBonus+distanceResult.opponentBonus;
  const healthBefore=clamp(state.stats.health),injuryBefore=clamp(c.injury);
  const impact=combatRoundImpact(opponent.rating,c.defense,reaction.quality,reactionTiming.bonus);
@@ -8713,7 +8830,7 @@ function resolveCombatRound(actionId){
  const nextMasteryUses=learnedMove?Math.min(100,masteryUses+1):masteryUses;
  if(learnedMove)c.moveMastery[move.id]=nextMasteryUses;
  session.playerScore+=playerScore;session.opponentScore+=opponentScore;
- session.roundHistory.push({round,actionId:move.id,actionTitle:move.title,style:move.style,gamePlan:planId,gamePlanBonus:planEffect.scoreBonus,styleVarietyModifier,distanceBefore:distanceResult.before,moveRange:distanceResult.range,distancePlayerBonus:distanceResult.playerBonus,distanceOpponentBonus:distanceResult.opponentBonus,distanceAfter:distanceResult.after,opponentStyle,playerScore,opponentScore,masteryLevel,masteryBonus,masteryUses:nextMasteryUses,
+ session.roundHistory.push({round,actionId:move.id,actionTitle:move.title,style:move.style,gamePlan:planId,gamePlanBonus:planEffect.scoreBonus,styleVarietyModifier,distanceBefore:distanceResult.before,moveRange:distanceResult.range,distancePlayerBonus:distanceResult.playerBonus,distanceOpponentBonus:distanceResult.opponentBonus,distanceAfter:distanceResult.after,opponentStyle,playerScore,opponentScore,masteryLevel,masteryBonus,masteryUses:nextMasteryUses,integrityBoostBonus,
   intentStyle:intent.style,intentTitle:intent.title,reactionId:reaction.id,reactionTitle:reaction.title,reactionQuality:reaction.quality,
   reactionPlayerBonus:reaction.playerBonus,reactionOpponentBonus:reaction.opponentBonus,reactionCost:energyResult.reactionCost,
   reactionTimeMs:reactionTiming.elapsedMs,reactionTimingBonus:reactionTiming.bonus,reactionTimingAssist:session.reactionTimingAssist===true,
@@ -8787,7 +8904,7 @@ function resolveCombatBout(mode,opponent,moveId,probabilityOverride=null,session
  c.rank=c.leaguePoints>=150?4:c.leaguePoints>=100?3:c.leaguePoints>=60?2:c.leaguePoints>=25?1:0;
  const fanbaseResult=growCombatFanbase(c,won,mode,state.fame,c.rank);
  if(fanbaseResult.gain>0)detail+=' زاد جمهورك بمقدار '+fmt(fanbaseResult.gain)+' متابع، وأصبح إجمالي جمهورك '+fmt(fanbaseResult.total)+'.';
- const roundSummary=session?session.roundHistory.map(item=>({round:item.round,move:item.actionTitle,style:item.style,gamePlan:normalizeCombatGamePlan(item.gamePlan||session.gamePlan),gamePlanBonus:item.gamePlanBonus||0,styleVarietyModifier:item.styleVarietyModifier||0,distanceBefore:['close','mid','long'].includes(item.distanceBefore)?item.distanceBefore:null,moveRange:['close','mid','long'].includes(item.moveRange)?item.moveRange:null,distancePlayerBonus:item.distancePlayerBonus||0,distanceOpponentBonus:item.distanceOpponentBonus||0,distanceAfter:['close','mid','long'].includes(item.distanceAfter)?item.distanceAfter:null,opponentStyle:item.opponentStyle,playerScore:Math.round(item.playerScore),opponentScore:Math.round(item.opponentScore),masteryLevel:item.masteryLevel||0,masteryBonus:item.masteryBonus||0,masteryUses:item.masteryUses||0,
+ const roundSummary=session?session.roundHistory.map(item=>({round:item.round,move:item.actionTitle,style:item.style,gamePlan:normalizeCombatGamePlan(item.gamePlan||session.gamePlan),gamePlanBonus:item.gamePlanBonus||0,styleVarietyModifier:item.styleVarietyModifier||0,distanceBefore:['close','mid','long'].includes(item.distanceBefore)?item.distanceBefore:null,moveRange:['close','mid','long'].includes(item.moveRange)?item.moveRange:null,distancePlayerBonus:item.distancePlayerBonus||0,distanceOpponentBonus:item.distanceOpponentBonus||0,distanceAfter:['close','mid','long'].includes(item.distanceAfter)?item.distanceAfter:null,opponentStyle:item.opponentStyle,playerScore:Math.round(item.playerScore),opponentScore:Math.round(item.opponentScore),masteryLevel:item.masteryLevel||0,masteryBonus:item.masteryBonus||0,masteryUses:item.masteryUses||0,integrityBoostBonus:item.integrityBoostBonus||0,
   intentStyle:item.intentStyle||item.opponentStyle,intentTitle:item.intentTitle||'',reactionId:item.reactionId||'',reactionTitle:item.reactionTitle||'',reactionQuality:item.reactionQuality||'',reactionCost:item.reactionCost===undefined?null:item.reactionCost,
   reactionTimeMs:item.reactionTimeMs===undefined?null:item.reactionTimeMs,reactionTimingBonus:item.reactionTimingBonus||0,reactionTimingAssist:item.reactionTimingAssist===true,
   energyBefore:item.energyBefore===undefined?null:item.energyBefore,energyCost:item.energyCost===undefined?null:item.energyCost,energyRecovery:item.energyRecovery===undefined?null:item.energyRecovery,energyAfter:item.energyAfter===undefined?null:item.energyAfter,
@@ -8795,7 +8912,7 @@ function resolveCombatBout(mode,opponent,moveId,probabilityOverride=null,session
   injuryBefore:item.injuryBefore===undefined?null:item.injuryBefore,injuryGain:item.injuryGain||0,injuryAfter:item.injuryAfter===undefined?null:item.injuryAfter})):[];
  const roundHealthDamage=roundSummary.reduce((sum,item)=>sum+Math.max(0,Number(item.healthDamage)||0),0);
  const roundInjuryGain=roundSummary.reduce((sum,item)=>sum+Math.max(0,Number(item.injuryGain)||0),0);
- c.bouts.push({age:state.age,mode,opponent:opponent.name,opponentStyle:opponent.style,gamePlan:session?normalizeCombatGamePlan(session.gamePlan):normalizeCombatGamePlan(c.gamePlan),communityFighterId:session&&session.communityFighterId?session.communityFighterId:null,move:move.title,moves:roundSummary.map(item=>item.move),rounds:roundSummary,scoreline:session?{player:Math.round(session.playerScore),opponent:Math.round(session.opponentScore)}:null,won,probability,earnings,fanbaseGain:fanbaseResult.gain,fanbaseAfter:fanbaseResult.total,injury:c.injury,rank:c.rank,healthDamage:roundHealthDamage,roundInjuryGain,healthAfterBout:clamp(state.stats.health)});
+ c.bouts.push({age:state.age,mode,opponent:opponent.name,opponentStyle:opponent.style,gamePlan:session?normalizeCombatGamePlan(session.gamePlan):normalizeCombatGamePlan(c.gamePlan),integrityBoost:session&&session.integrityBoost===true,communityFighterId:session&&session.communityFighterId?session.communityFighterId:null,move:move.title,moves:roundSummary.map(item=>item.move),rounds:roundSummary,scoreline:session?{player:Math.round(session.playerScore),opponent:Math.round(session.opponentScore)}:null,won,probability,earnings,fanbaseGain:fanbaseResult.gain,fanbaseAfter:fanbaseResult.total,injury:c.injury,rank:c.rank,healthDamage:roundHealthDamage,roundInjuryGain,healthAfterBout:clamp(state.stats.health)});
  if(c.bouts.length>30)c.bouts.shift();
  const record=state.specialCareer.record||(state.specialCareer.record={attempts:0,wins:0,losses:0,projects:0,totalEarnings:0,bestLevel:1});
  record.attempts=(record.attempts||0)+1;record.wins=(record.wins||0)+(won?1:0);record.losses=(record.losses||0)+(won?0:1);record.totalEarnings=(record.totalEarnings||0)+earnings;record.bestLevel=Math.max(record.bestLevel||1,state.specialCareer.level||1);
