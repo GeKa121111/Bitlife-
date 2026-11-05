@@ -111,6 +111,21 @@
     if (!input || !dropZone || !resultNode || !clearButton) return;
 
     const runtime = host || (typeof globalThis === 'object' ? globalThis : {});
+    let activeReader = null;
+    let inspectionSequence = 0;
+
+    // Invalidate any pending read before starting another inspection or clearing the report.
+    // Some browsers may still deliver a late load callback after abort(), so the sequence
+    // guard is authoritative even when cancellation is supported.
+    const cancelPendingRead = () => {
+      inspectionSequence += 1;
+      const pending = activeReader;
+      activeReader = null;
+      if (pending && typeof pending.abort === 'function') {
+        try { pending.abort(); } catch { /* A stale callback is still blocked by the sequence guard. */ }
+      }
+    };
+
     const appendText = (parent, tag, className, value) => {
       const node = doc.createElement(tag);
       if (className) node.className = className;
@@ -175,6 +190,8 @@
 
     const inspectFile = file => {
       if (!file) return;
+      cancelPendingRead();
+      const sequence = inspectionSequence;
       if (file.size > MAX_FILE_BYTES) {
         showMessage('حجم الملف أكبر من الحد الآمن للفحص (15 ميجابايت). لم تتم قراءة محتواه.', 'report-invalid');
         return;
@@ -185,8 +202,19 @@
       }
 
       const reader = new runtime.FileReader();
-      reader.onerror = () => showMessage('تعذّرت قراءة الملف من الجهاز.', 'report-invalid');
+      activeReader = reader;
+      const isCurrentRead = () => sequence === inspectionSequence && activeReader === reader;
+      reader.onerror = () => {
+        if (!isCurrentRead()) return;
+        activeReader = null;
+        showMessage('تعذّرت قراءة الملف من الجهاز.', 'report-invalid');
+      };
+      reader.onabort = () => {
+        if (isCurrentRead()) activeReader = null;
+      };
       reader.onload = () => {
+        if (!isCurrentRead()) return;
+        activeReader = null;
         try {
           const parsed = JSON.parse(String(reader.result || ''));
           renderReport(file, inspectBackup(parsed));
@@ -194,7 +222,13 @@
           showMessage('الملف ليس JSON صالحًا أو تعذّرت قراءته.', 'report-invalid');
         }
       };
-      reader.readAsText(file, 'UTF-8');
+      try {
+        reader.readAsText(file, 'UTF-8');
+      } catch {
+        if (!isCurrentRead()) return;
+        activeReader = null;
+        showMessage('تعذّرت قراءة الملف من الجهاز.', 'report-invalid');
+      }
     };
 
     input.addEventListener('change', event => inspectFile(event.target.files && event.target.files[0]));
@@ -209,6 +243,7 @@
       inspectFile(event.dataTransfer && event.dataTransfer.files && event.dataTransfer.files[0]);
     });
     clearButton.addEventListener('click', () => {
+      cancelPendingRead();
       input.value = '';
       resultNode.replaceChildren();
       appendText(resultNode, 'p', 'muted', 'لم يتم اختيار ملف بعد.');
