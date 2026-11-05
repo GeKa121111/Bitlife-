@@ -739,6 +739,8 @@ function normalizePendingCombatBout(raw){
    actionId:typeof item.actionId==='string'?item.actionId.slice(0,48):'',
    actionTitle:typeof item.actionTitle==='string'?item.actionTitle.slice(0,48):'حركة قتالية',
    style:styles.includes(item.style)?item.style:'تقنية',
+   gamePlan:normalizeCombatGamePlan(item.gamePlan||raw.gamePlan),
+   gamePlanBonus:Math.round(finite(item.gamePlanBonus,0,-2,5)),
    styleVarietyModifier:Math.round(finite(item.styleVarietyModifier,0,-6,2)),
    distanceBefore:recordedDistance(item.distanceBefore),
    moveRange:recordedDistance(item.moveRange),
