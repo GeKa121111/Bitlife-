@@ -612,7 +612,7 @@ assert.match(app, /function combatDistanceEffects\(distance,move,opponentStyle,r
 assert.match(app, /session\.distance=distanceResult\.after/);
 assert.match(app, /function combatStyleVarietyModifier\(roundHistory,style\)/);
 assert.match(app, /function combatOpponentStyleForRound\(opponent,round,lastPlayerStyle,roundHistory=\[\],opponentId='',longTermHistory=\[\]\)/);
-assert.match(app, /function combatRivalScoutingReport\\(fighter\\)/, 'rival scouting should explain learned player patterns');
+assert.match(app, /function combatRivalScoutingReport\(fighter\)/, 'rival scouting should explain learned player patterns');
 assert.match(app, /تقرير كشف الأسلوب/, 'community profiles should expose an Arabic scouting report');
 assert.match(app, /intent\.read/);
 assert.match(app, /سجل الجولات غير مكتمل؛ المنافس يستخدم استجابة احتياطية/);
