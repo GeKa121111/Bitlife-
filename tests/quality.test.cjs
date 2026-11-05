@@ -1540,7 +1540,7 @@ test('مسيرة القتال تدير ثلاث جولات وتستعيد الن
   assert.match(roundMenuSource, /intent\.read/);
 
 
-  const reactionHelpers = app.slice(app.indexOf('function combatOpponentArchetype('), app.indexOf('const combatMoveMasteryThresholds='));
+  const reactionHelpers = app.slice(app.indexOf('const combatMemoryStyles=['), app.indexOf('const combatMoveMasteryThresholds='));
   const reactionContext = { clamp: (value,min=0,max=100) => Math.max(min,Math.min(max,Math.round(Number(value)||0))) };
   vm.runInNewContext(reactionHelpers + `
     globalThis.powerGuard=combatReactionEffect('قوة','guard');
