@@ -6360,7 +6360,7 @@ function companyPortfolioMenu(){
 function acquireCompany(title,sector,value,emoji){
  closeModal();if(state.age<18){info('🔒','الشراء غير متاح','تقدر تستحوذ على الشركات بعد سن 18.');return;}
  if(state.bank<value){info('💳','رأس المال غير كافٍ','شراء '+title+' يحتاج '+cash(value)+'.');return;}
- state.bank-=value;const id=Date.now()+Math.random(),company={id,assetId:id,title,sector,value,level:1,upkeep:Math.round(value*.025),bought:state.age,emoji,treasuryMode:'separate',cashBalance:0,pendingOwnerContributions:0,pendingOwnerWithdrawals:0,ownershipLedger:createBusinessOwnershipLedger(state.legacy&&state.legacy.activeBeneficiaryId||state.lifeId||state.name,state.name,state.age)};
+ state.bank-=value;const id=Date.now()+Math.random(),company={id,assetId:id,title,sector,value,level:1,upkeep:Math.round(value*.025),bought:state.age,emoji,treasuryMode:'separate',cashBalance:0,pendingOwnerContributions:0,pendingOwnerWithdrawals:0,ownershipLedger:createBusinessOwnershipLedger(state.lifeId||state.name||state.legacy&&state.legacy.activeBeneficiaryId,state.name,state.age)};
  state.companies.push(company);state.assets.push({id,title,emoji,kind:'business',value,upkeep:0,bought:state.age,companyPortfolio:true});
  log('🏢','استحواذ على شركة','اشتريت '+title+' في قطاع '+sector+'. تقدر تدير الموردين والموظفين والمنتجات والتقارير بشكل مستقل.','special');achievement('تنويع محفظة الشركات');save();render();companyPortfolioMenu();
 }
@@ -6466,7 +6466,7 @@ function companyDetailMenu(index){
  const supplierLabel=supplier?' · المورد '+supplier.title:' · دون مورد متعاقد';
  const creditBalance=businessCreditBalance(company);
  const creditLabel=creditBalance?' · تمويل مستحق '+cash(creditBalance):'';
- const ownership=businessOwnershipSnapshot(company,state.legacy&&state.legacy.activeBeneficiaryId||state.lifeId||state.name,state.name);
+ const ownership=businessOwnershipSnapshot(company,state.lifeId||state.name||state.legacy&&state.legacy.activeBeneficiaryId,state.name);
  const ownershipLabel=ownership.valid?' · ملكيتك '+formatBusinessOwnershipPercent(ownership.activeShareBps)+'% · الملاك '+ownership.shareholders.length:' · سجل الملكية يحتاج مراجعة';
  const detail='قيمة تقديرية '+cash(company.value)+' · القطاع '+company.sector+' · المستوى '+company.level+' · الفريق '+staffCount+'/5 · المنتجات '+productCount+supplierLabel+creditLabel+ownershipLabel+'. نتائج السنة القادمة غير مضمونة.';
  modal(company.emoji||'🏢','إدارة '+company.title,detail,[
@@ -6480,14 +6480,14 @@ function companyDetailMenu(index){
 }
 
 function reinvestCompany(index){
- closeModal();const company=(state.companies||[])[index];if(!company)return;const ownership=businessOwnershipSnapshot(company,state.legacy&&state.legacy.activeBeneficiaryId||state.lifeId||state.name,state.name);if(!ownership.valid){info('⚠️','سجل الملكية غير متوازن','أوقفنا إعادة الاستثمار حتى تتم مراجعة دفتر الحصص.');return;}const cost=20000;
+ closeModal();const company=(state.companies||[])[index];if(!company)return;const ownership=businessOwnershipSnapshot(company,state.lifeId||state.name||state.legacy&&state.legacy.activeBeneficiaryId,state.name);if(!ownership.valid){info('⚠️','سجل الملكية غير متوازن','أوقفنا إعادة الاستثمار حتى تتم مراجعة دفتر الحصص.');return;}const cost=20000;
  if(!spendBusinessTreasury(company,cost)){info('💳','خزينة النشاط غير كافية','إعادة الاستثمار تحتاج '+cash(cost)+'. حوّل رأس مال إلى الشركة أولًا.');return;}
  company.level=clamp((company.level||1)+1,1,20);company.value=Math.round(company.value*1.12);
  const asset=state.assets.find(a=>a.id===company.id);if(asset)asset.value=company.value;
  log('📈','إعادة استثمار في '+company.title,'ارتفع مستوى الشركة إلى '+company.level+' والقيمة التقديرية إلى '+cash(company.value)+'.','good');save();render();companyDetailMenu(index);
 }
 function sellCompany(index){
- closeModal();const company=(state.companies||[])[index];if(!company)return;const ownership=businessOwnershipSnapshot(company,state.legacy&&state.legacy.activeBeneficiaryId||state.lifeId||state.name,state.name);if(!ownership.valid){info('⚠️','سجل الملكية غير متوازن','لم نبع الشركة لأن دفتر الحصص يحتاج مراجعة.');return;}if(ownership.activeShareBps<10000){info('🔒','بيع الحصة المشتركة مؤجل','السجل يوضح أن النشاط مملوك لأكثر من مستفيد، لكن ملفات الورثة لا تتزامن بعد. أوقفنا البيع حتى لا تبقى سجلات الملكية متعارضة.');return;}const grossProceeds=Math.round(company.value*.75),creditBalance=businessCreditBalance(company);
+ closeModal();const company=(state.companies||[])[index];if(!company)return;const ownership=businessOwnershipSnapshot(company,state.lifeId||state.name||state.legacy&&state.legacy.activeBeneficiaryId,state.name);if(!ownership.valid){info('⚠️','سجل الملكية غير متوازن','لم نبع الشركة لأن دفتر الحصص يحتاج مراجعة.');return;}if(ownership.activeShareBps<10000){info('🔒','بيع الحصة المشتركة مؤجل','السجل يوضح أن النشاط مملوك لأكثر من مستفيد، لكن ملفات الورثة لا تتزامن بعد. أوقفنا البيع حتى لا تبقى سجلات الملكية متعارضة.');return;}const grossProceeds=Math.round(company.value*.75),creditBalance=businessCreditBalance(company);
  const companyCash=businessUsesSeparateTreasury(company)?businessTreasuryBalance(company):0;
  const proceeds=grossProceeds+companyCash-creditBalance;
  if(proceeds<0){info('🏦','تعذر بيع الشركة','صافي حصيلة البيع بعد احتساب خزينة الشركة '+cash(companyCash)+' وتسوية التمويل '+cash(creditBalance)+' سيكون '+cash(proceeds)+'. موّل النشاط أو سدّد جزءًا من الدين أولًا.');return;}
@@ -7022,7 +7022,7 @@ function buyAsset(a){
  const condition=(a.kind==='car'||a.kind==='racecar'||a.kind==='property')?100:undefined;
  const propertyOwnership=a.kind==='property'?{familyAssetId:'family-property-'+encodeURIComponent(String(state.lifeId||state.name||'life'))+'-'+encodeURIComponent(String(assetId)),familyAssetOriginalValue:Math.round(a.value),ownershipShare:1,ownerBeneficiaryId:String(state.lifeId||state.name||'life')}:{};
  state.assets.push({id:assetId,title:a.title,emoji:a.emoji,kind:a.kind,value:a.value,upkeep:a.upkeep,bought:state.age,...(condition===undefined?{}:{condition}),...propertyOwnership});
- if(a.kind==='business')state.business={assetId,title:a.title,value:a.value,level:1,treasuryMode:'separate',cashBalance:0,pendingOwnerContributions:0,pendingOwnerWithdrawals:0,ownershipLedger:createBusinessOwnershipLedger(state.legacy&&state.legacy.activeBeneficiaryId||state.lifeId||state.name,state.name,state.age)};
+ if(a.kind==='business')state.business={assetId,title:a.title,value:a.value,level:1,treasuryMode:'separate',cashBalance:0,pendingOwnerContributions:0,pendingOwnerWithdrawals:0,ownershipLedger:createBusinessOwnershipLedger(state.lifeId||state.name||state.legacy&&state.legacy.activeBeneficiaryId,state.name,state.age)};
  stat('happiness',6);log(a.emoji,'اشتريت '+a.title,'دفعت '+cash(a.value)+'. خلي بالك من مصاريف الصيانة كل سنة.','good');achievement('امتلاك '+a.title);render();info('🎉','مبروك الأصل الجديد','الأصل اتضاف لممتلكاتك، وتقدر تبيعه لاحقًا حسب قيمته وحالته الحالية.');
 }
 
@@ -7258,7 +7258,7 @@ function sellAsset(index){
  if(a.kind==='business'){
   if(a.companyPortfolio){info('🏢','بيع الشركة من ملفها','افتح ملف الشركة من محفظة الشركات لتسوية الخزينة والتمويل وسجل الملكية قبل البيع.');return;}
   if(state.business&&state.business.assetId===a.id){
-   const ownership=businessOwnershipSnapshot(state.business,state.legacy&&state.legacy.activeBeneficiaryId||state.lifeId||state.name,state.name);
+   const ownership=businessOwnershipSnapshot(state.business,state.lifeId||state.name||state.legacy&&state.legacy.activeBeneficiaryId,state.name);
    if(!ownership.valid){info('⚠️','سجل الملكية غير متوازن','لم نبع النشاط لأن دفتر الحصص يحتاج مراجعة.');return;}
    if(ownership.activeShareBps<10000){info('🔒','بيع الحصة المشتركة مؤجل','لا توجد مزامنة بين ملفات الورثة لتحديث حصص الجميع؛ أوقفنا البيع حتى لا تتعارض السجلات.');return;}
   }
@@ -10124,13 +10124,13 @@ function applyInheritedBusinessOwnership(previous,inheritance,beneficiaryAccount
  estate.businessEntries.forEach(entry=>{
   const inherited=entry.type==='primary'?inheritance.business:(Array.isArray(inheritance.companies)?inheritance.companies[portfolioIndex++]:null);
   if(!inherited)return;
-  const fallbackId=entry.entity&&entry.entity.ownershipLedger&&entry.entity.ownershipLedger.activeBeneficiaryId||previous.legacy&&previous.legacy.activeBeneficiaryId||previous.lifeId||previous.name;
+  const fallbackId=entry.entity&&entry.entity.ownershipLedger&&entry.entity.ownershipLedger.activeBeneficiaryId||previous.lifeId||previous.name||previous.legacy&&previous.legacy.activeBeneficiaryId;
   inherited.ownershipLedger=buildInheritedBusinessOwnershipLedger(entry.entity,beneficiaryAccounts,nextActiveBeneficiaryId,fallbackId,previous.name,previous.age);
  });
  return true;
 }
 function businessOwnershipMenu(entity,back){
- const fallbackId=state&&state.legacy&&state.legacy.activeBeneficiaryId||state&&state.lifeId||state&&state.name;
+ const fallbackId=state&&state.lifeId||state&&state.name||state&&state.legacy&&state.legacy.activeBeneficiaryId;
  const snapshot=businessOwnershipSnapshot(entity,fallbackId,state&&state.name);
  if(!snapshot.valid){info('⚠️','سجل الملكية يحتاج مراجعة','لم نتمكن من إثبات توازن الحصص أو هوية المالك النشط. أوقفنا عرض أي تصرف مالي حتى لا تتغير الملكية بالخطأ.');return;}
  const activeId=snapshot.activeBeneficiaryId;
@@ -10149,7 +10149,7 @@ function businessInheritanceSnapshot(previous){
  const estate=calculateEstateSnapshot(previous);
  const entries=estate.businessEntries.map((entry,index)=>{
   const entity=entry.entity,backing=estate.backingAssetFor(entity),value=Math.max(0,Math.round(estate.valueOf(backing||entity)));
-  const ownership=businessOwnershipSnapshot(entity,previous&&previous.legacy&&previous.legacy.activeBeneficiaryId||previous&&previous.lifeId||previous&&previous.name,previous&&previous.name);
+  const ownership=businessOwnershipSnapshot(entity,previous&&previous.lifeId||previous&&previous.name||previous&&previous.legacy&&previous.legacy.activeBeneficiaryId,previous&&previous.name);
   const rawBalance=Number(entity.cashBalance),separateTreasury=businessUsesSeparateTreasury(entity);
   const treasuryBalance=separateTreasury&&Number.isFinite(rawBalance)?Math.round(rawBalance):0;
   const treasuryCash=Math.max(0,treasuryBalance),overdraft=Math.max(0,-treasuryBalance);
