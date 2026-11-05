@@ -20,7 +20,11 @@ const helperStart = app.indexOf('function normalizeCombatDistance(');
 const helperEnd = app.indexOf('function combatStyleVarietyModifier(', helperStart);
 assert.ok(helperStart >= 0 && helperEnd > helperStart, 'combat distance helpers should be defined together');
 const helperSource = app.slice(helperStart, helperEnd);
-const pendingSource = sourceOf('normalizePendingCombatBout', 'combatDifficultyLabel');
+const planStart = app.indexOf('const combatGamePlanCatalog=');
+const planEnd = app.indexOf('const combatCoachCatalog=', planStart);
+assert.ok(planStart >= 0 && planEnd > planStart, 'combat game plans should be declared before coach data');
+const planSource = app.slice(planStart, planEnd);
+const pendingSource = planSource + '\n' + sourceOf('normalizePendingCombatBout', 'combatDifficultyLabel');
 
 test('مدى الحركة والمسافة يضيفان أفضلية محدودة ومتوازنة', () => {
   const context = {};
@@ -78,7 +82,7 @@ test('خطط الركن تغيّر النقاط والطاقة وتظل متوا
   assert.ok(planStart >= 0 && planEnd > planStart, 'combat game plans should be declared before coach data');
   const planSource = app.slice(planStart, planEnd);
   const context = {};
-  vm.runInNewContext(planSource + '\n' + pendingSource + '\n' +
+  vm.runInNewContext(pendingSource + '\n' +
     'globalThis.api={normalize:normalizeCombatGamePlan,effect:combatGamePlanEffect,normalizeBout:normalizePendingCombatBout};', context);
   const api = context.api;
   const asPlain = value => JSON.parse(JSON.stringify(value));
