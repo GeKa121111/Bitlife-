@@ -83,6 +83,46 @@ test('نظام البطولات متصل بالأصول ولا يفرض ترحي
   assert.match(app, /return \{version:1,lifeId:/);
 });
 
+test('الحفظ القديم ينشئ ملف السباقات اختياريًا دون ترحيل أو قيم سنة وهمية', () => {
+  const legacyState = { age: 38 };
+  const ensure = vm.runInNewContext(
+    sourceBetween('ensureAutoRacingProfile', 'autoRacingEventsFor') + '\nensureAutoRacingProfile',
+    { state: legacyState, clamp: (value, min, max) => Math.max(min, Math.min(max, Number(value) || 0)) }
+  );
+  const profile = ensure();
+  assert.equal(profile.version, 1);
+  assert.equal(profile.skill, 25);
+  assert.equal(profile.lastRaceYear, null);
+  assert.equal(profile.lastTrainingYear, null);
+  assert.deepEqual(JSON.parse(JSON.stringify(profile.history)), []);
+  assert.ok(legacyState.autoRacing);
+});
+
+test('تطبيع ملف السائق يقيّد القيم غير الصالحة ويحتفظ بسجل محدود', () => {
+  const legacyState = {
+    autoRacing: {
+      skill: '150',
+      races: '-3',
+      lastRaceYear: null,
+      lastTrainingYear: null,
+      history: [{ year: '8', position: 12, score: 140, style: 'unknown' }, null]
+    }
+  };
+  const ensure = vm.runInNewContext(
+    sourceBetween('ensureAutoRacingProfile', 'autoRacingEventsFor') + '\nensureAutoRacingProfile',
+    { state: legacyState, clamp: (value, min, max) => Math.max(min, Math.min(max, Number(value) || 0)) }
+  );
+  const profile = ensure();
+  assert.equal(profile.skill, 100);
+  assert.equal(profile.races, 0);
+  assert.equal(profile.lastRaceYear, null);
+  assert.equal(profile.lastTrainingYear, null);
+  assert.equal(profile.history.length, 1);
+  assert.equal(profile.history[0].position, 8);
+  assert.equal(profile.history[0].score, 100);
+  assert.equal(profile.history[0].style, 'balanced');
+});
+
 test('سيارات السباق تحصل على حالة وصيانة وتكاليف سنوية واضحة', () => {
   assert.match(app, /a\.kind==='car'\|\|a\.kind==='racecar'\|\|a\.kind==='property'\)\?100:undefined/);
   assert.match(app, /a\.kind!=='property'&&a\.kind!=='car'&&a\.kind!=='racecar'/);
