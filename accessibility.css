@@ -137,7 +137,7 @@ body.text-large #modalRoot input,
 body.text-large #modalRoot select,
 body.text-large #modalRoot textarea {
   min-height: 46px !important;
-  font-size: 16px !important;
+  font-size: 18px !important;
   line-height: 1.4 !important;
 }
 
