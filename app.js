@@ -9216,14 +9216,33 @@ function prisonEvent(){
 
 function willMenu(){
  const describe=policy=>buildInheritancePreview({...state,willDistribution:policy}).beneficiarySummary;
+ const businessSummary=businessInheritanceSnapshot(state);
+ const businessDescription=businessSummary.count
+  ?'الأنشطة '+businessSummary.count+' · قيمة الأصول '+cash(businessSummary.value)+' · نقد الخزائن '+cash(businessSummary.treasuryCash)+' · الالتزامات '+cash(businessSummary.liabilities)+'.'
+  :'لا توجد شركات مسجلة ضمن التركة.';
  const opts=[
   choice('🌳','عرض شجرة العائلة','استعراض أفراد الأسرة والأجيال المسجلة.',familyTreeMenu),
   choice('👪','الأسرة بالتساوي','توزيع حسب أفراد الأسرة الموجودين: '+describe('الأسرة بالتساوي')+'.',()=>setWill('الأسرة بالتساوي')),
   choice('🧒','الأبناء أولًا','توزيع حسب أفراد الأسرة الموجودين: '+describe('الأبناء أولًا')+'.',()=>setWill('الأبناء أولًا')),
   choice('❤️','الشريك أولًا','توزيع حسب أفراد الأسرة الموجودين: '+describe('الشريك أولًا')+'.',()=>setWill('الشريك أولًا')),
-  choice('🤝','التبرع بجزء','توزيع حسب أفراد الأسرة الموجودين: '+describe('التبرع بجزء')+'.',()=>setWill('التبرع بجزء'))
+  choice('🤝','التبرع بجزء','توزيع حسب أفراد الأسرة الموجودين: '+describe('التبرع بجزء')+'.',()=>setWill('التبرع بجزء')),
+  choice('🏢','تفاصيل أنشطة العائلة',businessDescription,()=>businessInheritanceSummaryMenu(state),cash(businessSummary.netContribution))
  ];
- modal('📜','الوصية والإرث','تُعاد موازنة الحصص تلقائيًا إذا لم يوجد شريك أو أبناء؛ وتظل الحصص التقديرية واضحة قبل استكمال السلالة.',opts);
+ modal('📜','الوصية والإرث',businessDescription+' تُعاد موازنة الحصص تلقائيًا إذا لم يوجد شريك أو أبناء؛ والقيم التجارية تقديرية ولا تمثل سعر بيع مضمونًا.',opts);
+}
+function businessInheritanceSummaryMenu(previous=state){
+ const summary=businessInheritanceSnapshot(previous);
+ if(!summary.count){info('🏢','لا توجد أنشطة في التركة','لم يتم تسجيل شركة أو نشاط تجاري ضمن ممتلكات هذه الحياة.');return;}
+ const opts=summary.entries.map(entry=>choice(
+  '🏢',entry.title,
+  'قيمة الأصل '+cash(entry.value)+' · رصيد الخزينة '+cash(entry.treasuryBalance)+' · التمويل '+cash(entry.creditBalance)+' · الضرائب '+cash(entry.taxLiability)+' · صافي المساهمة '+cash(entry.netContribution),
+  ()=>info('📊','تفاصيل '+entry.title,'القيمة المحتسبة '+cash(entry.value)+'، نقد الخزينة '+cash(entry.treasuryCash)+'، الالتزامات '+cash(entry.liabilities)+'، وصافي المساهمة '+cash(entry.netContribution)+'.'),
+  cash(entry.netContribution)
+ ));
+ opts.push(choice('↩️','رجوع للوصية','',willMenu));
+ modal('🏢','أنشطة العائلة ضمن التركة',
+  'إجمالي قيمة الأصول '+cash(summary.value)+' · نقد الخزائن '+cash(summary.treasuryCash)+' · الالتزامات '+cash(summary.liabilities)+' · صافي المساهمة '+cash(summary.netContribution)+'. هذه قراءة تقديرية وليست سجلًا لحصص ملكية مشتركة.',
+  opts);
 }
 function setWill(value){closeModal();state.willDistribution=value;log('📜','تحديث الوصية','حددت توزيع الإرث: '+value+'.','special');render();info('📜','تم تحديث الوصية','توزيع الإرث الحالي: '+value+'.');}
 function dailyReward(){
@@ -9828,6 +9847,34 @@ function calculateEstateSnapshot(previous){
  const personalDebt=Math.max(0,Number(previous&&previous.debt)||0);
  const net=Math.max(0,gross-personalDebt-businessLiabilities);
  return {bank,assets,investments,valueOf,businessEntries,backingAssetFor,businessCash,businessOverdraft,businessLiabilities,gross,personalDebt,net};
+}
+function businessInheritanceSnapshot(previous){
+ const estate=calculateEstateSnapshot(previous);
+ const entries=estate.businessEntries.map((entry,index)=>{
+  const entity=entry.entity,backing=estate.backingAssetFor(entity),value=Math.max(0,Math.round(estate.valueOf(backing||entity)));
+  const rawBalance=Number(entity.cashBalance),separateTreasury=businessUsesSeparateTreasury(entity);
+  const treasuryBalance=separateTreasury&&Number.isFinite(rawBalance)?Math.round(rawBalance):0;
+  const treasuryCash=Math.max(0,treasuryBalance),overdraft=Math.max(0,-treasuryBalance);
+  const creditBalance=Math.max(0,Math.round(businessCreditBalance(entity)||0));
+  const taxLiability=Math.max(0,Math.round(Number(entity.taxLiability)||0));
+  const liabilities=creditBalance+taxLiability+overdraft;
+  return {
+   id:String(entity.assetId??entity.id??('business-'+index)),
+   title:String(entity.title||'نشاط عائلي '+(index+1)).slice(0,100),
+   type:entry.type,
+   value,treasuryBalance,treasuryCash,creditBalance,taxLiability,overdraft,liabilities,
+   netContribution:Math.round(value+treasuryCash-liabilities)
+  };
+ });
+ const sum=key=>entries.reduce((total,entry)=>total+(Number(entry[key])||0),0);
+ return {
+  count:entries.length,
+  value:sum('value'),
+  treasuryCash:sum('treasuryCash'),
+  liabilities:sum('liabilities'),
+  netContribution:sum('netContribution'),
+  entries
+ };
 }
 function calculateInheritance(previous,share,targetValue){
  const estate=calculateEstateSnapshot(previous);
