@@ -257,7 +257,9 @@ test('optional shell asset failures fall back to the essential playable shell', 
     scope + 'app.js',
     scope + 'pwa-update.js',
     scope + 'manifest.webmanifest',
-    scope + 'icon.svg'
+    scope + 'icon.svg',
+    scope + 'backup-check.html',
+    scope + 'backup-check.js'
   ];
   const coreShell = [scope + 'index.html', scope + 'style.css', scope + 'app.js'];
   const harness = makeHarness(
