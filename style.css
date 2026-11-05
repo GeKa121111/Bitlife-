@@ -3037,3 +3037,56 @@ html,body{background:#f2f4f6}
   #modalRoot .event-modal .choice{min-height:44px}
 }
 @media(prefers-reduced-motion:reduce){#modalRoot .event-modal{animation:none}}
+
+
+/* Last-mile polish from the supplied screen captures and forced-colors regression. */
+#modalRoot .drawer-head .modalicon{display:none}
+#modalRoot .drawer-head .modaltitle{
+  flex:1;text-align:center;margin-inline:auto;
+}
+#modalRoot .drawer-head .closebtn{
+  width:38px;height:38px;flex:0 0 38px;
+  display:grid;place-items:center;
+  border:2px solid #ffffff;border-radius:50%;
+  background:transparent;color:transparent;font-size:0;
+}
+#modalRoot .drawer-head .closebtn::before{
+  content:"‹";display:block;color:#fff;
+  font-family:Arial,sans-serif;font-size:30px;line-height:1;
+  transform:translateY(-1px);
+}
+#modalRoot .event-modal::before{
+  content:"";display:block;height:44px;background:#fff;
+}
+#modalRoot .event-modal .event-summary{padding-top:26px}
+#modalRoot .event-modal .event-banner .closebtn{
+  position:fixed;left:auto;right:9px;top:auto;
+  bottom:calc(10px + env(safe-area-inset-bottom));
+  z-index:100;width:40px;height:40px;
+  border:2px solid #ffe34b;border-radius:50%;
+  background:#d71920;color:#ffe34b;font-size:25px;
+  display:grid;place-items:center;
+}
+@media (forced-colors: active){
+  #app > .topbar,
+  #app > .hero,
+  #app > .story-heading,
+  #app > .feed,
+  #app > .bottom-dock,
+  #app > .bottom-dock > .nav,
+  #app > .bottom-dock > .stats{
+    background:Canvas!important;color:CanvasText!important;
+    border-color:CanvasText!important;box-shadow:none!important;
+  }
+  #app .name,#app .story-heading h1,#app .wealthlabel,#app .wealthnum,
+  #app .logtitle,#app .logtext,#app .statlabel,#app .statvalue,
+  #app .navbtn{color:CanvasText!important}
+  #app .navbtn.active{
+    background:Highlight!important;color:HighlightText!important;
+    outline:1px solid HighlightText;outline-offset:-2px;
+  }
+  #app .agebtn{
+    background:Highlight!important;color:HighlightText!important;
+    border:2px solid ButtonText!important;box-shadow:none!important;
+  }
+}
