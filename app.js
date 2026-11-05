@@ -10134,7 +10134,11 @@ function businessOwnershipMenu(entity,back){
  const snapshot=businessOwnershipSnapshot(entity,fallbackId,state&&state.name);
  if(!snapshot.valid){info('⚠️','سجل الملكية يحتاج مراجعة','لم نتمكن من إثبات توازن الحصص أو هوية المالك النشط. أوقفنا عرض أي تصرف مالي حتى لا تتغير الملكية بالخطأ.');return;}
  const activeId=snapshot.activeBeneficiaryId;
- const opts=snapshot.shareholders.map(item=>choice(item.beneficiaryId===activeId?'👑':'👤',item.name+' · '+formatBusinessOwnershipPercent(item.shareBps)+'%','حصة ملكية مسجلة '+formatBusinessOwnershipPercent(item.shareBps)+'%'+(item.beneficiaryId===activeId?' · حصتك الحالية':' · مستفيد آخر مسجل'),()=>info('📑','تفاصيل المالك',item.name+' يملك '+formatBusinessOwnershipPercent(item.shareBps)+'% من النشاط حسب سجل الملكية المحلي.')));
+ const activeOwner=snapshot.shareholders.find(item=>item.beneficiaryId===activeId);
+ const visibleShareholders=[activeOwner,...snapshot.shareholders.filter(item=>item.beneficiaryId!==activeId).slice(0,23)].filter(Boolean);
+ const opts=visibleShareholders.map(item=>choice(item.beneficiaryId===activeId?'👑':'👤',item.name+' · '+formatBusinessOwnershipPercent(item.shareBps)+'%','حصة ملكية مسجلة '+formatBusinessOwnershipPercent(item.shareBps)+'%'+(item.beneficiaryId===activeId?' · حصتك الحالية':' · مستفيد آخر مسجل'),()=>info('📑','تفاصيل المالك',item.name+' يملك '+formatBusinessOwnershipPercent(item.shareBps)+'% من النشاط حسب سجل الملكية المحلي.')));
+ const hiddenShareholderCount=snapshot.shareholders.length-visibleShareholders.length;
+ if(hiddenShareholderCount>0)opts.push(choice('👥','ملاك إضافيون ('+hiddenShareholderCount+')','يوجد ملاك آخرون محفوظون في الدفتر. افتح السجل الكامل من ملف الحفظ عند الحاجة.',()=>info('👥','بقية الملاك','يوجد '+hiddenShareholderCount+' مستفيدًا إضافيًا محفوظًا ضمن سجل الملكية.')));
  opts.push(choice('ℹ️','حدود السجل','السجل يحفظ نسب المستفيدين داخل هذه الحياة فقط؛ لا توجد مزامنة مشتركة بين ملفات الورثة أو معاملات تصويت وتوزيع أرباح حتى الآن.',()=>info('ℹ️','حدود الملكية المشتركة','تظهر النسب المحفوظة في ملفك الحالي. لا يتم تحديث ملفات بقية الورثة تلقائيًا، لذلك تظل عمليات البيع والتوزيع المشترك مؤجلة حتى إضافة سجل معاملات موحد.')));
  opts.push(choice('↩️','رجوع','',typeof back==='function'?back:companyPortfolioMenu));
  const detail='حصتك الحالية '+formatBusinessOwnershipPercent(snapshot.activeShareBps)+'% · قيمة حصتك '+cash(snapshot.stakeValue)+' · قيمة النشاط الكاملة التقديرية '+cash(snapshot.wholeValueEstimate)+'.'+(snapshot.legacyFallback?' هذا تقدير آمن لحفظ قديم لم يكن يحتوي دفتر حصص.':'');
