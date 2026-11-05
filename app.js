@@ -1034,6 +1034,12 @@ function advanceCombatSuspensionYear(c){
 function combatIntegrityBoutBonus(session){
  return session&&session.integrityBoost===true?5:0;
 }
+function combatBoutAccessGuard(){
+ if(state&&state.prison){closeModal();info('🚔','المنافسات غير متاحة','لا يمكن بدء النزال أو استكماله أثناء تنفيذ العقوبة.');return true;}
+ const career=state&&state.combatCareer;
+ if(career&&Number(career.dopingSuspensionYears)>0){closeModal();info('⛔','إيقاف رياضي','لا يمكن بدء النزال أو استكماله قبل انتهاء الإيقاف الرياضي.');return true;}
+ return false;
+}
 function createCombatCareer(){
  return {gamePlan:'balanced',rank:0,leaguePoints:0,streetCred:0,streetWins:0,leagueWins:0,wins:0,losses:0,knockouts:0,draws:0,
   technique:32+Math.floor(Math.random()*8),power:28+Math.floor(Math.random()*8),speed:31+Math.floor(Math.random()*8),defense:28+Math.floor(Math.random()*8),stamina:34+Math.floor(Math.random()*8),energy:100,
@@ -8462,7 +8468,7 @@ function combatGamePlanMenu(){
 function combatCareerMenu(){
  if(!validState()||!state.specialCareer||state.specialCareer.id!=='fighter'){info('🥊','مسيرة القتال','ابدأ مسار المقاتل المحترف من قائمة المهن الخاصة أولًا.');return;}
  const c=ensureCombatCareer();
- if(c.pendingBout&&!c.retired){combatBoutRoundMenu();return;}
+ if(c.pendingBout&&!c.retired){if(combatBoutAccessGuard())return;combatBoutRoundMenu();return;}
  const rank=combatRankName(c),moves=c.movesKnown.length,masteredMoves=c.movesKnown.filter(id=>combatMoveMasteryLevel(c.moveMastery[id]||0)===4).length;
  const currentPlan=combatGamePlanCatalog.find(item=>item.id===c.gamePlan)||combatGamePlanCatalog[0];
  const injury=c.injury>0?' · إصابة '+c.injury+'%':'';
@@ -8674,8 +8680,7 @@ function startCombatBout(mode,communityFighterId=null){
  if(!validState()||!state.specialCareer||state.specialCareer.id!=='fighter'){specialCareers();return;}
  const c=ensureCombatCareer();
  if(c.retired){closeModal();info('🏁','المسيرة معتزلة','أنهيت مسيرتك القتالية بالفعل. لا يمكن تنفيذ هذا الإجراء بعد الاعتزال؛ سجل المسيرة ما زال متاحًا للمراجعة.');return;}
- if(state.prison){closeModal();info('🚔','المنافسات غير متاحة','لا يمكن بدء نزال أثناء تنفيذ العقوبة.');return;}
- if(c.dopingSuspensionYears>0){closeModal();info('⛔','إيقاف رياضي','لا يمكنك خوض نزالات لمدة '+c.dopingSuspensionYears+' سنة بسبب مخالفة سابقة.');return;}
+ if(combatBoutAccessGuard())return;
  if(c.pendingBout){combatBoutRoundMenu();return;}
  if(c.injuryYears>0||c.injury>=65){closeModal();info('🩹','محتاج تتعافى','عندك إصابة '+c.injury+'% ولسه '+c.injuryYears+' سنوات متوقعة للتعافي. اختار العلاج أو انتظر قبل النزال التالي.');return;}
  if(c.energy<25){closeModal();info('🫁','الطاقة منخفضة','استرح سنة أو تدرب بخفة قبل النزال التالي.');return;}
@@ -8775,6 +8780,7 @@ function chooseCombatReaction(reactionId){
 }
 function resolveCombatRound(actionId){
  if(!validState()||!state.specialCareer||state.specialCareer.id!=='fighter')return;
+ if(combatBoutAccessGuard())return;
  const c=ensureCombatCareer(),session=c.pendingBout;
  if(!session){combatCareerMenu();return;}
  if(!['guard','dodge','counter'].includes(session.reactionId)){combatBoutRoundMenu();return;}
