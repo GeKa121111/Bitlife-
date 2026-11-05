@@ -104,19 +104,19 @@
 
 /* Expanded reading mode: make secondary modal content and controls easier to read. */
 body.text-large #modalRoot .modaltitle {
-  font-size: 18px;
-  line-height: 1.5;
+  font-size: 18px !important;
+  line-height: 1.5 !important;
 }
 
 body.text-large #modalRoot .desc {
-  font-size: 18px;
-  line-height: 1.75;
+  font-size: 18px !important;
+  line-height: 1.75 !important;
 }
 
 body.text-large #modalRoot .choice .ctitle,
 body.text-large #modalRoot .listtitle {
-  font-size: 15px;
-  line-height: 1.6;
+  font-size: 15px !important;
+  line-height: 1.6 !important;
 }
 
 body.text-large #modalRoot .choice .cdesc,
@@ -124,29 +124,29 @@ body.text-large #modalRoot .muted,
 body.text-large #modalRoot .pill,
 body.text-large #modalRoot .notice,
 body.text-large #modalRoot .summarylabel {
-  font-size: 13px;
-  line-height: 1.65;
+  font-size: 13px !important;
+  line-height: 1.65 !important;
 }
 
 body.text-large #modalRoot .summaryvalue {
-  font-size: 18px;
-  line-height: 1.4;
+  font-size: 18px !important;
+  line-height: 1.4 !important;
 }
 
 body.text-large #modalRoot input,
 body.text-large #modalRoot select,
 body.text-large #modalRoot textarea {
-  min-height: 46px;
-  font-size: 16px;
-  line-height: 1.4;
+  min-height: 46px !important;
+  font-size: 16px !important;
+  line-height: 1.4 !important;
 }
 
 body.text-large #modalRoot .smallbtn {
-  min-height: 44px;
-  font-size: 14px;
+  min-height: 44px !important;
+  font-size: 14px !important;
 }
 
 body.text-large #modalRoot .primarybtn {
-  min-height: 50px;
-  font-size: 15px;
+  min-height: 50px !important;
+  font-size: 15px !important;
 }
