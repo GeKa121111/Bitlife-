@@ -7986,7 +7986,7 @@ function combatSponsorshipMenu(){
  if(contract){
   options.push(choice('🤝','تفاصيل عقد الرعاية',status+' بدأ في عمر '+contract.signedAge+' سنة. تُصرف الدفعة مع التقدم السنوي.',()=>{closeModal();info('📣','عقد الرعاية',status+' الجمهور الحالي '+fmt(c.fanbase)+' متابع.');}));
  }else if(c.retired){
-  options.push(choice('🏁','مسيرة معتزلة','الجمهور النهائي '+fmt(c.fanbase)+' متابع. لا يمكن توقيع عقود جديدة بعد الاعتزال.',()=>{closeModal();info('📣','أرشيف الجمهور','وصل جمهورك إلى '+fmt(c.fanbase)+' متابع خلال مسيرتك القتالية.');}));
+  options.push(choice('🏁','جمهور المسيرة','الجمهور النهائي '+fmt(c.fanbase)+' متابع. لا يمكن توقيع عقود جديدة بعد الاعتزال.',()=>{closeModal();info('📣','جمهور المسيرة','وصل جمهورك إلى '+fmt(c.fanbase)+' متابع خلال مسيرتك القتالية.');}));
  }else{
   const alreadyTried=c.lastSponsorNegotiationYear===currentYear;
   combatSponsorshipCatalog.forEach(sponsor=>{
@@ -8040,7 +8040,7 @@ function combatCareerMenu(){
    choice('📊','ملف المقاتل',retiredSummary,()=>{closeModal();info('🏁','سجل المسيرة',retiredSummary+' · فوز '+c.wins+' · خسارة '+c.losses+' · نزالات الشوارع '+c.streetWins+' · نزالات الدوري '+c.leagueWins+'.');},'',c.leaguePoints/2),
    choice('🏆','سجل الألقاب','عدد الألقاب المسجلة '+c.championshipHistory.length+'.',combatChampionshipHistory),
    choice('📜','سجل النزالات','راجع نتائج آخر النزالات ومكاسبها.',combatBoutHistory),
-   choice('📣','الجمهور وعقود الرعاية','راجع جمهورك وأرشيف مسيرة الرعاية للقراءة فقط.',combatSponsorshipMenu),
+   choice('📣','الجمهور وعقود الرعاية','راجع إجمالي جمهورك بعد الاعتزال؛ لا يمكن توقيع عقود جديدة.',combatSponsorshipMenu),
    choice('🤝','مجتمع المقاتلين','استعرض ملفات المنافسين والعلاقات السابقة دون بدء نزالات أو تفاعلات جديدة.',combatCommunityMenu),
    choice('↩️','قائمة المهن الخاصة','',specialCareers)
   ];
