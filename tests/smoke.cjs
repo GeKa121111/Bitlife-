@@ -834,7 +834,7 @@ assert.match(backupCheckerScript, /function inspectBackup\(data\)/);
 assert.match(backupCheckerScript, /MAX_FILE_BYTES = 15 \* 1024 \* 1024/);
 assert.doesNotMatch(backupCheckerScript, /localStorage|fetch\s*\(|XMLHttpRequest/,
   'the save inspector must remain local and read-only');
-assert.match(serviceWorker, /'\.\\/backup-check\.html'/);
-assert.match(serviceWorker, /'\.\\/backup-check\.js'/);
-assert.match(serviceWorker, /APP_SHELL\.find\(url => new URL\(url\)\.pathname === requestUrl\.pathname\)/,
+assert.ok(serviceWorker.includes("'./backup-check.html'"));
+assert.ok(serviceWorker.includes("'./backup-check.js'"));
+assert.ok(serviceWorker.includes('APP_SHELL.find(url => new URL(url).pathname === requestUrl.pathname)'),
   'known standalone pages should be cached and served by their own URL while offline');
