@@ -3086,8 +3086,17 @@ html,body{background:#f2f4f6}
     outline:1px solid HighlightText;outline-offset:-2px;
   }
   #app .agebtn{
-    forced-color-adjust:none;
-    background:CanvasText!important;color:Canvas!important;
-    border:2px solid CanvasText!important;box-shadow:none!important;
+    background:Highlight!important;color:HighlightText!important;
+    border:2px solid ButtonText!important;box-shadow:none!important;
+  }
+}
+
+/* The primary year button uses system colors in Windows/high-contrast mode. */
+@media (forced-colors: active){
+  #app .agebtn{
+    background:ButtonText!important;
+    color:HighlightText!important;
+    border:2px solid HighlightText!important;
+    box-shadow:none!important;
   }
 }

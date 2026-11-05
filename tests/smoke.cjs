@@ -853,3 +853,5 @@ assert.match(css, /#app \.fill\{[\s\S]*?linear-gradient\(90deg,#169447,#38b95c\)
 assert.match(css, /#modalRoot \.drawer-head \.closebtn::before[\s\S]*?content:"‹"/);
 assert.match(css, /#modalRoot \.event-modal::before[\s\S]*?height:44px/);
 assert.match(css, /@media \(forced-colors: active\)[\s\S]*?#app \.agebtn[\s\S]*?background:Highlight!important/);
+
+assert.match(css, /#app \.agebtn\{\s*background:ButtonText!important;\s*color:HighlightText!important;\s*border:2px solid HighlightText!important/);
