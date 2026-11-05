@@ -8674,9 +8674,9 @@ function startCombatBout(mode,communityFighterId=null){
  if(!validState()||!state.specialCareer||state.specialCareer.id!=='fighter'){specialCareers();return;}
  const c=ensureCombatCareer();
  if(c.retired){closeModal();info('🏁','المسيرة معتزلة','أنهيت مسيرتك القتالية بالفعل. لا يمكن تنفيذ هذا الإجراء بعد الاعتزال؛ سجل المسيرة ما زال متاحًا للمراجعة.');return;}
- if(c.pendingBout){combatBoutRoundMenu();return;}
  if(state.prison){closeModal();info('🚔','المنافسات غير متاحة','لا يمكن بدء نزال أثناء تنفيذ العقوبة.');return;}
  if(c.dopingSuspensionYears>0){closeModal();info('⛔','إيقاف رياضي','لا يمكنك خوض نزالات لمدة '+c.dopingSuspensionYears+' سنة بسبب مخالفة سابقة.');return;}
+ if(c.pendingBout){combatBoutRoundMenu();return;}
  if(c.injuryYears>0||c.injury>=65){closeModal();info('🩹','محتاج تتعافى','عندك إصابة '+c.injury+'% ولسه '+c.injuryYears+' سنوات متوقعة للتعافي. اختار العلاج أو انتظر قبل النزال التالي.');return;}
  if(c.energy<25){closeModal();info('🫁','الطاقة منخفضة','استرح سنة أو تدرب بخفة قبل النزال التالي.');return;}
  if(mode==='league'&&(c.streetWins<2||c.streetCred<20)){closeModal();info('🔒','الدوري لسه مقفول','محتاج فوزين في نزالات الشوارع ورصيد شارع 20 على الأقل. الحالي: '+c.streetWins+' فوز و'+c.streetCred+' رصيد.');return;}
