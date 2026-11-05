@@ -104,6 +104,7 @@ const runtime = [
   'buildInheritanceHistory',
   'familyTreeNode',
   'changeSiblingInvestmentRisk',
+  'siblingSetInvestmentRisk',
   'startAsChild'
 ].map(findFunction);
 
@@ -2572,4 +2573,29 @@ test('ملف الاستقلال المالي يعرض إعداد توجه الا
   assert.ok(app.includes('lastInvestmentRiskChangeYear'));
   assert.ok(app.includes("const KEY = 'hekayat_hayah_save_v1';"));
   assert.ok(app.includes('return {version:1,lifeId:'));
+});
+
+
+test('فشل حفظ توجه استثمار الشقيق يعيد التوجه والسنة السابقين دون تسجيل نجاح', () => {
+  const context = makeContext();
+  context.state = { yearCount: 12 };
+  context.saveResult = false;
+  context.sibling = {
+    name: 'نور',
+    economicProfile: {
+      investmentRisk: 'balanced',
+      lastInvestmentRiskChangeYear: 8,
+      investmentBalance: 50000
+    }
+  };
+
+  vm.runInContext("siblingSetInvestmentRisk(sibling, 'growth');", context);
+
+  assert.equal(context.saveCalls, 1);
+  assert.equal(context.sibling.economicProfile.investmentRisk, 'balanced');
+  assert.equal(context.sibling.economicProfile.lastInvestmentRiskChangeYear, 8);
+  assert.equal(context.sibling.economicProfile.investmentBalance, 50000);
+  assert.equal(context.logs.length, 0, 'a failed save must not record a successful change');
+  assert.equal(context.infoMessages.length, 1);
+  assert.equal(context.infoMessages[0][1], 'تعذر حفظ التغيير');
 });
