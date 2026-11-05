@@ -220,6 +220,7 @@ test('service worker installs a fresh shell cache and removes only obsolete Haya
   assert.equal(harness.cacheStore.has('hayah-shell-v150'), false, 'the previous v150 shell cache should be removed');
   assert.equal(harness.cacheStore.has('hayah-shell-v151'), false, 'the previous v151 shell cache should be removed');
   assert.equal(harness.cacheStore.has('hayah-shell-v152'), false, 'the previous v152 shell cache should be removed');
+  assert.equal(harness.cacheStore.has('hayah-shell-v153'), false, 'the previous v153 shell cache should be removed');
   assert.ok(harness.cacheStore.has('hayah-shell-v154'), 'the current shell cache should be retained');
   assert.equal(harness.cacheStore.has('hayah-shell-v110'), false);
   assert.equal(harness.cacheStore.has('hayah-shell-v111'), false);
