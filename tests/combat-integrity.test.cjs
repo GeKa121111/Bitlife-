@@ -28,7 +28,7 @@ const context = vm.createContext({
   },
   career: null,
   validState: () => true,
-  ensureCombatCareer() { return context.career; },
+  ensureCombatCareer() { context.state.combatCareer = context.career; return context.career; },
   closeModal() { calls.closed += 1; },
   info(...args) { calls.notices.push(args); },
   log(...args) { calls.logs.push(args); },
