@@ -109,3 +109,9 @@ test('shared business stakes cannot bypass the sale guard through the assets scr
   assert.match(sellCompany, /businessOwnershipSnapshot/);
   assert.match(sellCompany, /ownership\.activeShareBps<10000/);
 });
+
+
+test('the child succession flow applies ownership using the selected beneficiary account', () => {
+  assert.match(app, /const selectedOwnershipBeneficiaryId=String\(childAccounts\[index\]/);
+  assert.match(app, /applyInheritedBusinessOwnership\(previous,inheritance,beneficiaryAccounts,selectedOwnershipBeneficiaryId\)/);
+});
