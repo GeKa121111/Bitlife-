@@ -422,6 +422,11 @@ const combatCommunityNewcomerProfiles=[
  {id:'louay-hamdan',name:'لؤي حمدان',style:'قوة',weakTo:'دفاع',emoji:'🥊',rating:64,respect:40,tension:33,age:26,retirementAge:46}
 ];
 
+const combatMemoryStyles=['قوة','سرعة','دفاع','تقنية'];
+function normalizeCombatStyleMemory(raw){
+ if(!Array.isArray(raw))return [];
+ return raw.filter(style=>combatMemoryStyles.includes(style)).slice(-8);
+}
 function combatRivalDeathAge(profile){
  const id=String(profile&&profile.id||'rival');
  let hash=0;
@@ -464,7 +469,9 @@ function normalizeCombatCommunity(raw,currentYear=0){
    lastBoutAge:bounded(item.lastBoutAge,-1,-1,120),
    momentum:bounded(item.momentum,0,-5,5),
    lastProgressYear:bounded(item.lastProgressYear,safeYear,-1,safeYear),
-   lastAction:['friendly','trash','alliance','break','spar'].includes(item.lastAction)?item.lastAction:''
+   lastAction:['friendly','trash','alliance','break','spar'].includes(item.lastAction)?item.lastAction:'',
+   styleMemory:normalizeCombatStyleMemory(item.styleMemory),
+   memoryBouts:bounded(item.memoryBouts,0,0,10000)
   };
  });
 }
@@ -500,11 +507,40 @@ function combatOpponentArchetype(opponent,opponentId=''){
  for(let index=0;index<identity.length;index++)hash=(hash*31+identity.charCodeAt(index))%2147483647;
  return profiles[hash%profiles.length];
 }
-function combatOpponentStyleForRound(opponent,round,lastPlayerStyle,roundHistory=[],opponentId=''){
+function recordCombatRivalStyleMemory(fighter,roundHistory){
+ if(!fighter||typeof fighter!=='object'||Array.isArray(fighter))return {added:0,total:0,bouts:0};
+ const current=normalizeCombatStyleMemory(fighter.styleMemory);
+ const observed=Array.isArray(roundHistory)?roundHistory.slice(0,3).map(item=>item&&item.style).filter(style=>combatMemoryStyles.includes(style)):[];
+ fighter.styleMemory=current;
+ fighter.memoryBouts=Math.max(0,Math.min(10000,Math.floor(Number(fighter.memoryBouts)||0)));
+ if(observed.length!==3)return {added:0,total:current.length,bouts:fighter.memoryBouts};
+ fighter.styleMemory=normalizeCombatStyleMemory(current.concat(observed));
+ fighter.memoryBouts=Math.min(10000,fighter.memoryBouts+1);
+ return {added:observed.length,total:fighter.styleMemory.length,bouts:fighter.memoryBouts};
+}
+function combatOpponentMemoryInsight(opponent,rawMemory=[],opponentId=''){
+ const memory=normalizeCombatStyleMemory(rawMemory),counts=Object.create(null);
+ memory.forEach(style=>{counts[style]=(counts[style]||0)+1;});
+ let observedStyle='';
+ combatMemoryStyles.forEach(style=>{if((counts[style]||0)>(counts[observedStyle]||0))observedStyle=style;});
+ const repeated=counts[observedStyle]||0,archetype=combatOpponentArchetype(opponent,opponentId);
+ const rating=Number(opponent&&opponent.rating),awareness=Number.isFinite(rating)?Math.max(0,Math.min(100,rating)):0;
+ const thresholds={pressure:54,watcher:62,stubborn:82,balanced:60};
+ const minObservations=archetype.id==='stubborn'?5:3;
+ if(memory.length<minObservations||repeated<2||awareness<(thresholds[archetype.id]||60)){
+  return {counterStyle:'',observedStyle,observations:memory.length,repeated,archetypeId:archetype.id};
+ }
+ const counters={'قوة':'دفاع','سرعة':'تقنية','دفاع':'سرعة','تقنية':'قوة'};
+ return {counterStyle:counters[observedStyle]||'',observedStyle,observations:memory.length,repeated,archetypeId:archetype.id};
+}
+function combatOpponentStyleForRound(opponent,round,lastPlayerStyle,roundHistory=[],opponentId='',longTermHistory=[]){
  const baseStyles=['قوة','سرعة','دفاع','تقنية'];
  const base=opponent&&baseStyles.includes(opponent.style)?opponent.style:'قوة';
  const roundNumber=Math.max(1,Math.floor(Number(round)||1));
- if(roundNumber<=1)return base;
+ if(roundNumber<=1){
+  const memory=combatOpponentMemoryInsight(opponent,longTermHistory,opponentId);
+  return memory.counterStyle||base;
+ }
  const adaptive={'سرعة':'تقنية','تقنية':'قوة','قوة':'دفاع','دفاع':'سرعة'};
  const next=adaptive[lastPlayerStyle];
  if(!next)return base;
@@ -520,21 +556,23 @@ function combatOpponentStyleForRound(opponent,round,lastPlayerStyle,roundHistory
  if(awareness>=archetype.mixedPreviousThreshold)return adaptive[previous]||base;
  return baseStyles[(baseStyles.indexOf(next)+1)%baseStyles.length];
 }
-function combatOpponentIntent(opponent,round,lastPlayerStyle,roundHistory=[],opponentId=''){
+function combatOpponentIntent(opponent,round,lastPlayerStyle,roundHistory=[],opponentId='',longTermHistory=[]){
  const archetype=combatOpponentArchetype(opponent,opponentId);
- const style=combatOpponentStyleForRound(opponent,round,lastPlayerStyle,roundHistory,opponentId);
+ const roundNumber=Math.max(1,Math.floor(Number(round)||1));
+ const memory=roundNumber===1?combatOpponentMemoryInsight(opponent,longTermHistory,opponentId):null;
+ const style=combatOpponentStyleForRound(opponent,round,lastPlayerStyle,roundHistory,opponentId,longTermHistory);
  const intents={
   'قوة':{title:'ضربة ثقيلة',description:'المنافس يحمّل هجمة مباشرة تعتمد على القوة.'},
   'سرعة':{title:'هجوم خاطف',description:'المنافس يجهز سلسلة سريعة ويبحث عن فتحة.'},
   'دفاع':{title:'استدراج دفاعي',description:'المنافس ينتظر اندفاعك ليحاول الرد من وضع آمن.'},
   'تقنية':{title:'محاولة سيطرة',description:'المنافس يغيّر المسافة ويحاول فرض اشتباك فني.'}
  };
- const roundNumber=Math.max(1,Math.floor(Number(round)||1));
  const recent=Array.isArray(roundHistory)?roundHistory.slice(-2).map(item=>item&&['قوة','سرعة','دفاع','تقنية'].includes(item.style)?item.style:null).filter(Boolean):[];
  const ratingValue=Number(opponent&&opponent.rating);
  const awareness=Number.isFinite(ratingValue)?Math.max(0,Math.min(100,ratingValue)):0;
  let read='يبدأ المنافس بأسلوبه الأساسي.';
- if(roundNumber===2)read='المنافس يحاول الرد على اختيارك السابق.';
+ if(roundNumber===1&&memory&&memory.counterStyle)read='استفاد من مواجهاتكما السابقة ولاحظ ميلك إلى أسلوب '+memory.observedStyle+'؛ لذلك بدأ بخطة مضادة.';
+ else if(roundNumber===2)read='المنافس يحاول الرد على اختيارك السابق.';
  else if(roundNumber>=3){
   if(recent.length<2)read='سجل الجولات غير مكتمل؛ المنافس يستخدم استجابة احتياطية.';
   else if(recent[0]===recent[1])read=awareness>=archetype.repeatThreshold?archetype.repeatRead:archetype.repeatHoldRead;
@@ -542,7 +580,7 @@ function combatOpponentIntent(opponent,round,lastPlayerStyle,roundHistory=[],opp
   else if(awareness>=archetype.mixedPreviousThreshold)read=archetype.previousRead;
   else read=archetype.mixedHoldRead;
  }
- return {style,...intents[style],read,archetypeId:archetype.id,archetypeTitle:archetype.title,archetypeDescription:archetype.description};
+ return {style,...intents[style],read,memoryRead:!!(memory&&memory.counterStyle),rememberedStyle:memory?memory.observedStyle:'',archetypeId:archetype.id,archetypeTitle:archetype.title,archetypeDescription:archetype.description};
 }
 const combatReactionCatalog=[
  {id:'guard',title:'صد محكم',energyCost:1,description:'ثبّت الحراسة وامتص الهجمة المتوقعة.'},
@@ -7903,10 +7941,12 @@ function combatCommunityFighterMenu(fighterId){
   return;
  }
  const currentRating=clamp(fighter.rating+(Number(fighter.momentum)||0),20,95);
+ const memoryBouts=Math.max(0,Math.min(10000,Math.floor(Number(fighter.memoryBouts)||0)));
+ const memoryNote=memoryBouts?'ذاكرة تكتيكية: جمع ملاحظات من '+memoryBouts+' مواجهة سابقة.':'ذاكرة تكتيكية: لا توجد مواجهات سابقة كافية لتكوين نمط.';
  const canInteract=fighter.lastInteractionAge!==state.age;
  const contactNote=canInteract?'تفاعل اجتماعي واحد مع هذا المقاتل كل سنة.':'استخدمت تفاعلك الاجتماعي معه في هذه السنة؛ تقدر تتواصل من جديد بعد التقدم بالعمر.';
  const opts=[
-  choice('🔎','قراءة المنافس','التقييم '+currentRating+'/100 · '+combatDifficultyLabel(currentRating)+' · الحالة التنافسية: '+combatCommunityFormLabel(fighter)+' · طابع القتال '+archetype.title+' · أسلوبه '+fighter.style+' · نقطة ضعفه '+fighter.weakTo+'.',()=>{closeModal();info('📊','ملف '+fighter.name,'التقييم الحالي '+currentRating+'/100 · '+combatCommunityFormLabel(fighter)+' · الاحترام '+fighter.respect+'% · التوتر '+fighter.tension+'% · الحالة '+combatCommunityRelationLabel(fighter)+'. آخر تواصل: '+(fighter.lastInteractionAge<0?'لم يحدث بعد':'عمر '+fighter.lastInteractionAge)+'.');}),
+  choice('🔎','قراءة المنافس','التقييم '+currentRating+'/100 · '+combatDifficultyLabel(currentRating)+' · الحالة التنافسية: '+combatCommunityFormLabel(fighter)+' · طابع القتال '+archetype.title+' · أسلوبه '+fighter.style+' · نقطة ضعفه '+fighter.weakTo+'. '+memoryNote,()=>{closeModal();info('📊','ملف '+fighter.name,'التقييم الحالي '+currentRating+'/100 · '+combatCommunityFormLabel(fighter)+' · الاحترام '+fighter.respect+'% · التوتر '+fighter.tension+'% · الحالة '+combatCommunityRelationLabel(fighter)+'. '+memoryNote+' آخر تواصل: '+(fighter.lastInteractionAge<0?'لم يحدث بعد':'عمر '+fighter.lastInteractionAge)+'.');}),
   choice('💬','حديث ودي',contactNote+' زوّد الاحترام وهدّي التوتر.',()=>interactCombatFighter(fighter.id,'friendly')),
   choice('📣','استفزاز إعلامي',contactNote+' قد يحوّل المنافس إلى خصم دائم ويرفع شهرتك قليلًا.',()=>interactCombatFighter(fighter.id,'trash')),
   choice(fighter.allied?'🔓':'🤝',fighter.allied?'إنهاء التحالف':'عرض تحالف',fighter.allied?'إنهاء التعاون وفتح باب المنافسة من جديد.':'يتطلب احترامًا 55% على الأقل وتوترًا لا يتجاوز 45%.',()=>interactCombatFighter(fighter.id,fighter.allied?'break':'alliance')),
@@ -7914,7 +7954,7 @@ function combatCommunityFighterMenu(fighterId){
   ...(fighter.allied?[choice('🥋','تدريب مشترك','تدريب مع حليفك مقابل 800 من عملة اللعبة؛ يحسن التقنية والدفاع قليلًا.',()=>interactCombatFighter(fighter.id,'spar'),'800 '+state.place.unit)]:[]),
   choice('↩️','رجوع للمجتمع','',combatCommunityMenu)
  ];
- modal('⚔️',fighter.name,'التقييم '+currentRating+'/100 · طابع القتال '+archetype.title+' · '+archetype.description+' · '+combatCommunityFormLabel(fighter)+' · الاحترام '+fighter.respect+'% · التوتر '+fighter.tension+'% · '+combatCommunityRelationLabel(fighter)+'. '+contactNote,opts);
+ modal('⚔️',fighter.name,'التقييم '+currentRating+'/100 · طابع القتال '+archetype.title+' · '+archetype.description+' · '+combatCommunityFormLabel(fighter)+' · الاحترام '+fighter.respect+'% · التوتر '+fighter.tension+'% · '+combatCommunityRelationLabel(fighter)+'. '+memoryNote+' '+contactNote,opts);
 }
 function interactCombatFighter(fighterId,action){
  const c=ensureCombatCareer();
@@ -8216,7 +8256,8 @@ function combatBoutRoundMenu(){
  const c=ensureCombatCareer(),session=c&&c.pendingBout;
  if(!session){combatCareerMenu();return;}
  const opponent=session.opponent,round=session.round;
- const intent=combatOpponentIntent(opponent,round,session.lastStyle,session.roundHistory,session.communityFighterId);
+ const rememberedRival=session.communityFighterId?c.community.find(fighter=>fighter.id===session.communityFighterId):null;
+ const intent=combatOpponentIntent(opponent,round,session.lastStyle,session.roundHistory,session.communityFighterId,rememberedRival?rememberedRival.styleMemory:[]);
  if(!session.reactionId){
   if(session.reactionTimingAssist!==true&&(!Number.isFinite(Number(session.reactionWindowStartedAt))||Number(session.reactionWindowStartedAt)<=0)){
    session.reactionTimingAssist=uiSettings.combatTimingAssist===true;
@@ -8286,7 +8327,8 @@ function resolveCombatRound(actionId){
   closeModal();info('🫁','استعادة الطاقة مستخدمة','تقدر تستخدم التقاط الأنفاس مرة واحدة فقط في النزال.');combatBoutRoundMenu();return;
  }
  const round=session.round,opponent=session.opponent;
- const intent=combatOpponentIntent(opponent,round,session.lastStyle,session.roundHistory,session.communityFighterId),opponentStyle=intent.style;
+ const rememberedRival=session.communityFighterId?c.community.find(fighter=>fighter.id===session.communityFighterId):null;
+ const intent=combatOpponentIntent(opponent,round,session.lastStyle,session.roundHistory,session.communityFighterId,rememberedRival?rememberedRival.styleMemory:[]),opponentStyle=intent.style;
  const reaction=combatReactionEffect(opponentStyle,session.reactionId);
  if(!reaction){session.reactionId='';session.reactionTimeMs=null;session.reactionWindowStartedAt=null;session.reactionTimingAssist=false;save();combatBoutRoundMenu();return;}
  const reactionTiming=combatReactionTiming(session.reactionTimeMs,session.reactionTimingAssist===true);
@@ -8382,6 +8424,8 @@ function resolveCombatBout(mode,opponent,moveId,probabilityOverride=null,session
   }
   detail+=won?' زاد الاحترام بينك وبين '+communityFighter.name+' وهدأ التوتر.':' أصبح التنافس بينك وبين '+communityFighter.name+' أكثر حدة.';
  }
+ const memoryResult=communityFighter?recordCombatRivalStyleMemory(communityFighter,session&&session.roundHistory):{added:0,total:0,bouts:0};
+ if(memoryResult.added>0)detail+=' احتفظ '+communityFighter.name+' بملاحظات تكتيكية عن أساليبك بعد هذه المواجهة.';
  c.rank=c.leaguePoints>=150?4:c.leaguePoints>=100?3:c.leaguePoints>=60?2:c.leaguePoints>=25?1:0;
  const fanbaseResult=growCombatFanbase(c,won,mode,state.fame,c.rank);
  if(fanbaseResult.gain>0)detail+=' زاد جمهورك بمقدار '+fmt(fanbaseResult.gain)+' متابع، وأصبح إجمالي جمهورك '+fmt(fanbaseResult.total)+'.';
