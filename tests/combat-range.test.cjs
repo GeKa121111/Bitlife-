@@ -35,7 +35,7 @@ test('مدى الحركة والمسافة يضيفان أفضلية محدود�
   assert.deepEqual(JSON.parse(JSON.stringify(mismatch)), { before:'close', range:'long', playerBonus:-3, opponentBonus:2, after:'mid' });
   assert.equal(context.api.label('long'), 'بعيد');
   assert.equal(context.api.normalize('unknown'), 'mid');
-  assert.equal(context.api.effects('long', { id:'unlisted-move' }, 'غير معروف', 'dodge').after, 'long');
+  assert.equal(context.api.effects('long', { id:'unlisted-move' }, 'غير معروف', 'dodge').after, 'mid');
 });
 
 test('الحفظ القديم للنزال يستعيد مسافة آمنة ويحفظ المسافات الجديدة بعد التنقية', () => {
@@ -67,6 +67,6 @@ test('اختيار الحركة يعرض المسافة ويحدّثها ويح�
   assert.match(round, /distanceResult\.opponentBonus/);
   assert.match(round, /session\.distance=distanceResult\.after/);
   assert.match(sourceOf('combatBoutRoundMenu','chooseCombatReaction'), /المسافة الحالية/);
-  assert.match(sourceOf('resolveCombatBout','recoverCombatInjury'), /distanceBefore:item\.distanceBefore/);
+  assert.match(sourceOf('resolveCombatBout','recoverCombatInjury'), /distanceBefore:normalizeCombatDistance\(item\.distanceBefore\)/);
   assert.match(sourceOf('combatBoutHistory','combatChampionshipHistory'), /المسافة بين الجولات/);
 });
