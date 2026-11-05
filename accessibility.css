@@ -82,3 +82,21 @@
     outline-offset: 3px !important;
   }
 }
+
+
+/* Keep compact controls easy to reach on touch-first devices. */
+@media (pointer: coarse), (any-pointer: coarse) {
+  #app .menu-trigger,
+  #app .header-action,
+  #app .member-btn {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  #app .identity-info {
+    flex: 0 0 44px;
+    width: 44px;
+    min-width: 44px;
+    height: 44px;
+  }
+}
