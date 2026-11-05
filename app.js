@@ -377,7 +377,17 @@ const combatMoveCatalog=[
  {id:'body-lock-shift',title:'تحويل السيطرة',style:'تقنية',strongAgainst:'قوة',power:60,rank:3,cost:14100,desc:'استخدم التوازن لتغيير اتجاه ضغط المنافس.'},
  {id:'guard-split',title:'اختراق الحراسة',style:'قوة',strongAgainst:'دفاع',power:63,rank:3,cost:15400,desc:'ركّز الهجوم على فتحة صغيرة بدل استنزاف الطاقة بلا هدف.'},
  {id:'last-minute-shell',title:'حماية الدقيقة الأخيرة',style:'دفاع',strongAgainst:'قوة',power:65,rank:4,cost:18700,desc:'حافظ على دفاعك وهدوءك عندما يشتد ضغط الجولة الأخيرة.'},
- {id:'champion-angle',title:'زاوية البطل',style:'تقنية',strongAgainst:'دفاع',power:68,rank:4,cost:22000,desc:'خطة متقدمة تجمع تغيير الزاوية وقراءة رد فعل المنافس.'}
+ {id:'champion-angle',title:'زاوية البطل',style:'تقنية',strongAgainst:'دفاع',power:68,rank:4,cost:22000,desc:'خطة متقدمة تجمع تغيير الزاوية وقراءة رد فعل المنافس.'},
+ {id:'snap-teep',title:'ركلة الدفع الخاطفة',style:'سرعة',strongAgainst:'قوة',power:44,rank:1,cost:3600,range:'long',energyCost:8,desc:'ادفع المنافس بعيدًا مع الحفاظ على إيقاع سريع يمنع اندفاع القوة.'},
+ {id:'wrist-control',title:'تحكم المعصم',style:'تقنية',strongAgainst:'سرعة',power:51,rank:2,cost:7900,range:'close',energyCost:10,desc:'سيطرة قريبة تكسر توقيت الخصم السريع وتمنحك فرصة لتغيير الوضع.'},
+ {id:'elbow-shell',title:'درع المرفق',style:'دفاع',strongAgainst:'قوة',power:53,rank:2,cost:8200,range:'close',energyCost:7,desc:'حماية قريبة تمتص ضغط المنافس القوي من دون استنزاف مبالغ للطاقة.'},
+ {id:'double-level-change',title:'تغيير المستوى المزدوج',style:'تقنية',strongAgainst:'دفاع',power:56,rank:3,cost:12600,range:'close',energyCost:11,desc:'غيّر مستوى الحركة مرتين لفتح مساحة أمام الحراسة الثابتة.'},
+ {id:'angle-burst',title:'اندفاع الزاوية',style:'سرعة',strongAgainst:'تقنية',power:59,rank:3,cost:13400,range:'long',energyCost:10,desc:'انتقل إلى زاوية بعيدة بسرعة قبل أن يثبت المنافس قراءته الفنية.'},
+ {id:'corner-exit',title:'الخروج من الركن',style:'دفاع',strongAgainst:'سرعة',power:58,rank:3,cost:13800,range:'mid',energyCost:6,desc:'استعد المساحة بهدوء وامنع المنافس السريع من حصارك عند الحافة.'},
+ {id:'counter-knee',title:'ركبة مضادة',style:'قوة',strongAgainst:'دفاع',power:65,rank:4,cost:19800,range:'close',energyCost:13,desc:'رد قوي في المسافة القريبة عندما يبالغ المنافس في حماية نفسه.'},
+ {id:'pivot-throw',title:'إسقاط الارتكاز',style:'تقنية',strongAgainst:'قوة',power:67,rank:4,cost:22000,range:'close',energyCost:12,desc:'استخدم دوران الجسم وتحويل الوزن لإبطال اندفاع القوة.'},
+ {id:'range-breaker',title:'كسر المسافة',style:'سرعة',strongAgainst:'دفاع',power:64,rank:4,cost:21500,range:'long',energyCost:9,desc:'افتح المسافة ثم غيّر الإيقاع حتى لا يستطيع الدفاع توقع خطوتك التالية.'},
+ {id:'last-breath-shell',title:'حراسة النفس الأخير',style:'دفاع',strongAgainst:'تقنية',power:62,rank:4,cost:20500,range:'mid',energyCost:5,desc:'حافظ على توازنك في اللحظات الأخيرة وقلّل استنزاف الطاقة.'}
 ];
 const combatTacticCatalog=[
  {id:'tactic-guard',title:'حراسة متحركة',style:'دفاع',strongAgainst:'قوة',power:31,energyCost:5,desc:'خفّف الاندفاع وحافظ على توازنك في الجولة.'},
@@ -494,6 +504,8 @@ function combatDistanceLabel(value){
  return labels[normalizeCombatDistance(value)];
 }
 function combatMoveRange(move){
+ const explicitRange=String(move&&move.range||'');
+ if(['close','mid','long'].includes(explicitRange))return explicitRange;
  const ranges={
   'quick-jab':'long','high-guard':'mid','footwork':'long','counter-read':'mid','body-force':'close',
   'clinch-control':'close','iron-guard':'mid','flash-step':'long','champion-finish':'close','ring-general':'mid',
@@ -10762,7 +10774,7 @@ function startAsChild(index){
 function applyUiSettings(){
  const body=document.body;
  if(body&&body.classList){body.classList.toggle('theme-dark',uiSettings.theme==='dark');body.classList.toggle('theme-gold',uiSettings.theme==='gold');body.classList.toggle('text-large',uiSettings.textScale==='large');}
- if(typeof document.querySelector==='function'){const themeMeta=document.querySelector('meta[name="theme-color"]');if(themeMeta)themeMeta.setAttribute('content',uiSettings.theme==='dark'?'#17232c':uiSettings.theme==='gold'?'#c3982a':'#123e3a');}
+ if(typeof document.querySelector==='function'){const themeMeta=document.querySelector('meta[name="theme-color"]');if(themeMeta)themeMeta.setAttribute('content',uiSettings.theme==='dark'?'#17232c':uiSettings.theme==='gold'?'#c3982a':'#075b9b');}
 }
 
 function normalizeUiSettings(raw){
