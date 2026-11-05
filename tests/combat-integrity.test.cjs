@@ -367,6 +367,10 @@ test('الفحص السلبي يستهلك المكافأة ويحفظها دا�
   assert.equal(context.career.dopingRisk, 15);
 });
 
+test('شاشة الجولة نفسها تمر عبر حارس السجن والإيقاف قبل قراءة النزال', () => {
+  assert.match(app, /function combatBoutRoundMenu\\(\\)\\{\\s*if\\(combatBoutAccessGuard\\(\\)\\)return;/);
+});
+
 test('محرك الجولة يسجل المكافأة في نقاط الجولة وسجل المواجهة', () => {
   assert.match(app, /const integrityBoostBonus=combatIntegrityBoutBonus\(session\)/);
   assert.match(app, /planEffect\.scoreBonus\+integrityBoostBonus/);
