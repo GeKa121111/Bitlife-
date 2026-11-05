@@ -8716,6 +8716,7 @@ function startCombatBout(mode,communityFighterId=null){
  save();render();combatBoutRoundMenu();
 }
 function combatBoutRoundMenu(){
+ if(combatBoutAccessGuard())return;
  const c=ensureCombatCareer(),session=c&&c.pendingBout;
  if(!session){combatCareerMenu();return;}
  const opponent=session.opponent,round=session.round;
