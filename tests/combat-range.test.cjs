@@ -115,7 +115,7 @@ test('خطط الركن تغيّر النقاط والطاقة وتظل متوا
 
 test('خطة الركن تُثبت عند بدء النزال وتؤثر في الجولة وتظهر في الواجهة والسجل', () => {
   assert.match(sourceOf('createCombatCareer','ensureCombatCareer'), /gamePlan:'balanced'/);
-  assert.match(sourceOf('ensureCombatCareer','combatRankName'), /c\.gamePlan=normalizeCombatGamePlan\(c\.gamePlan\)/);
+  assert.match(sourceOf('ensureCombatCareer','combatRankName'), /c\.gamePlan=\['balanced','pressure','counter','conserve'\]\.includes\(c\.gamePlan\)\?c\.gamePlan:'balanced'/);
   assert.match(sourceOf('startCombatBout','combatBoutRoundMenu'), /gamePlan:c\.gamePlan/);
   const menu = sourceOf('combatGamePlanMenu','combatCareerMenu');
   assert.match(menu, /combatGamePlanCatalog\.map/);
