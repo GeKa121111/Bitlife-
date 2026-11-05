@@ -7050,7 +7050,7 @@ function changeTenantRent(index,multiplier){
 }
 
 const AUTO_RACING_EVENT_CATALOG=[
- {id:'local',title:'كأس الحلبة المحلية',emoji:'🏁',fee:12000,minValue:1000000,difficulty:36,prizes:[85000,45000,25000,12000,6000,2500,0,0],description:'سباق افتتاحي لاختبار سيارتك وبناء اسمك على الحلبة.'},
+ {id:'local',title:'كأس الحلبة المحلية',emoji:'🏁',fee:12000,minValue:500000,difficulty:36,prizes:[85000,45000,25000,12000,6000,2500,0,0],description:'سباق افتتاحي لاختبار سيارتك وبناء اسمك على الحلبة.'},
  {id:'pro',title:'بطولة السرعة المفتوحة',emoji:'🏆',fee:60000,minValue:4000000,difficulty:62,prizes:[420000,220000,115000,55000,25000,8000,0,0],description:'منافسة أقوى للسيارات الأعلى أداءً والسائقين أصحاب الخبرة.'}
 ];
 function calculateAutoRaceResult(input={}){
