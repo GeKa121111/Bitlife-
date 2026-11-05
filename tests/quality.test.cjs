@@ -1592,7 +1592,7 @@ test('مسيرة القتال تدير ثلاث جولات وتستعيد الن
   vm.runInNewContext(helper + ';globalThis.levels=[combatDifficultyLabel(10),combatDifficultyLabel(45),combatDifficultyLabel(62),combatDifficultyLabel(90)];', context);
   assert.deepEqual(Array.from(context.levels), ['سهل', 'متوسط', 'صعب', 'نخبة']);
 
-  const pendingHelpers = app.slice(app.indexOf('function combatOpponentArchetype('), app.indexOf('function createCombatCareer('));
+  const pendingHelpers = app.slice(app.indexOf('const combatMemoryStyles=['), app.indexOf('function createCombatCareer('));
   const pendingContext = { clamp: (value,min=0,max=100) => Math.max(min,Math.min(max,Math.round(value))) };
   vm.runInNewContext(pendingHelpers + `
     globalThis.styles=[
