@@ -98,3 +98,14 @@ test('primary and portfolio businesses receive inheritance ledgers without mutat
  assert.equal(totalShares(inheritance.companies[0].ownershipLedger),10000);
  assert.equal(primary.ownershipLedger.activeBeneficiaryId,'parent');assert.equal(company.ownershipLedger.activeBeneficiaryId,'parent');
 });
+
+
+test('shared business stakes cannot bypass the sale guard through the assets screen', () => {
+  const sellAsset = findFunction('sellAsset');
+  const sellCompany = findFunction('sellCompany');
+  assert.match(sellAsset, /companyPortfolio/);
+  assert.match(sellAsset, /businessOwnershipSnapshot/);
+  assert.match(sellAsset, /ownership\.activeShareBps<10000/);
+  assert.match(sellCompany, /businessOwnershipSnapshot/);
+  assert.match(sellCompany, /ownership\.activeShareBps<10000/);
+});
