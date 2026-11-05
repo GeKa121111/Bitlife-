@@ -67,6 +67,6 @@ test('اختيار الحركة يعرض المسافة ويحدّثها ويح�
   assert.match(round, /distanceResult\.opponentBonus/);
   assert.match(round, /session\.distance=distanceResult\.after/);
   assert.match(sourceOf('combatBoutRoundMenu','chooseCombatReaction'), /المسافة الحالية/);
-  assert.match(sourceOf('resolveCombatBout','recoverCombatInjury'), /distanceBefore:normalizeCombatDistance\(item\.distanceBefore\)/);
+  assert.match(sourceOf('resolveCombatBout','recoverCombatInjury'), /distanceBefore:\['close','mid','long'\]\.includes\(item\.distanceBefore\)\?item\.distanceBefore:null/);
   assert.match(sourceOf('combatBoutHistory','combatChampionshipHistory'), /المسافة بين الجولات/);
 });
