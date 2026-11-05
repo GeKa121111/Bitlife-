@@ -822,16 +822,61 @@ function recordCombatChampionship(c,opponent,age,year){
  if(c.championshipHistory.length>20)c.championshipHistory.shift();
  return true;
 }
+const combatSponsorshipCatalog=[
+ {id:'local',name:'نبض الرياضي',minRank:1,minFanbase:750,annualBase:2200,duration:2},
+ {id:'regional',name:'مدار للأداء',minRank:2,minFanbase:6000,annualBase:8500,duration:3},
+ {id:'elite',name:'قمة الرياضيين',minRank:4,minFanbase:18000,annualBase:19000,duration:3}
+];
+function normalizeCombatSponsorship(raw){
+ if(!raw||typeof raw!=='object'||Array.isArray(raw))return null;
+ const sponsor=combatSponsorshipCatalog.find(item=>item.id===String(raw.id||''));
+ if(!sponsor)return null;
+ const years=Number(raw.yearsLeft),income=Number(raw.annualIncome);
+ if(!Number.isFinite(years)||!Number.isFinite(income)||years<1||income<1)return null;
+ return {id:sponsor.id,yearsLeft:Math.max(1,Math.min(sponsor.duration,Math.floor(years))),annualIncome:Math.max(1,Math.min(350000,Math.round(income))),signedAge:clamp(Number(raw.signedAge)||18,0,150),signedYear:Math.max(0,Math.min(100000,Math.floor(Number(raw.signedYear)||0)))};
+}
+function combatSponsorshipEligible(c,sponsorId){
+ const sponsor=combatSponsorshipCatalog.find(item=>item.id===String(sponsorId||''));
+ if(!c||!sponsor||c.retired===true||c.sponsorship)return false;
+ const rank=clamp(Number(c.rank)||0,0,4),audience=clamp(Number(c.fanbase)||0,0,50000000);
+ return rank>=sponsor.minRank&&audience>=sponsor.minFanbase;
+}
+function combatSponsorshipOfferOdds(c,sponsor){
+ if(!c||!sponsor)return 0;
+ const fame=clamp(Number(state&&state.fame)||0,0,100);
+ const rank=clamp(Number(c.rank)||0,0,4),audience=clamp(Number(c.fanbase)||0,0,50000000);
+ return clamp(24+Math.round(fame*.16)+rank*9+Math.min(22,Math.floor(audience/1200)),12,88);
+}
+function growCombatFanbase(c,won,mode,fame,rank){
+ if(!c)return {gain:0,total:0};
+ const current=clamp(Number(c.fanbase)||0,0,50000000),fameValue=clamp(Number(fame)||0,0,100),rankValue=clamp(Number(rank)||0,0,4);
+ const base=mode==='league'?(won?650:35):(won?130:12);
+ const visibility=Math.round(fameValue*(won?1.8:.25)),rankBoost=won?rankValue*65:Math.floor(rankValue*8);
+ const gain=Math.max(0,Math.min(2600,base+visibility+rankBoost)),total=Math.min(50000000,current+gain);
+ c.fanbase=total;
+ return {gain:total-current,total};
+}
+function settleCombatSponsorshipYear(c,bank){
+ const balance=Number.isFinite(Number(bank))?Number(bank):0;
+ if(!c||c.retired===true){if(c)c.sponsorship=null;return {bank:balance,payout:0,brand:'',ended:false};}
+ const contract=normalizeCombatSponsorship(c.sponsorship);
+ if(!contract){c.sponsorship=null;return {bank:balance,payout:0,brand:'',ended:false};}
+ const sponsor=combatSponsorshipCatalog.find(item=>item.id===contract.id),payout=contract.annualIncome;
+ contract.yearsLeft--;
+ const ended=contract.yearsLeft<=0;
+ c.sponsorship=ended?null:contract;
+ return {bank:balance+payout,payout,brand:sponsor?sponsor.name:'جهة راعية',ended};
+}
 function createCombatCareer(){
  return {rank:0,leaguePoints:0,streetCred:0,streetWins:0,leagueWins:0,wins:0,losses:0,knockouts:0,draws:0,
   technique:32+Math.floor(Math.random()*8),power:28+Math.floor(Math.random()*8),speed:31+Math.floor(Math.random()*8),defense:28+Math.floor(Math.random()*8),stamina:34+Math.floor(Math.random()*8),energy:100,
-  injury:0,injuryYears:0,restUsedYear:-1,lastMovePracticeYear:-1,coach:null,movesKnown:['quick-jab','high-guard'],moveMastery:{},selectedMove:'quick-jab',champion:false,championshipHistory:[],bouts:[],pendingBout:null,retired:false,retiredAge:null,retiredYear:null,community:normalizeCombatCommunity([],state?state.yearCount:0),startedAge:state?state.age:18,nextRecruitmentAge:(state?state.age:18)+5};
+  injury:0,injuryYears:0,restUsedYear:-1,lastMovePracticeYear:-1,coach:null,movesKnown:['quick-jab','high-guard'],moveMastery:{},selectedMove:'quick-jab',champion:false,championshipHistory:[],bouts:[],pendingBout:null,retired:false,retiredAge:null,retiredYear:null,fanbase:0,sponsorship:null,lastSponsorNegotiationYear:-1,community:normalizeCombatCommunity([],state?state.yearCount:0),startedAge:state?state.age:18,nextRecruitmentAge:(state?state.age:18)+5};
 }
 function ensureCombatCareer(){
  if(!state)return null;
  let c=state.combatCareer;
  if(!c||typeof c!=='object')c=state.combatCareer=createCombatCareer();
- const defaults={rank:0,leaguePoints:0,streetCred:0,streetWins:0,leagueWins:0,wins:0,losses:0,knockouts:0,draws:0,technique:25,power:25,speed:25,defense:25,stamina:30,energy:100,injury:0,injuryYears:0,restUsedYear:-1,lastMovePracticeYear:-1,coach:null,movesKnown:['quick-jab','high-guard'],moveMastery:{},selectedMove:'quick-jab',champion:false,championshipHistory:[],bouts:[],pendingBout:null,retired:false,retiredAge:null,retiredYear:null,community:[]};
+ const defaults={rank:0,leaguePoints:0,streetCred:0,streetWins:0,leagueWins:0,wins:0,losses:0,knockouts:0,draws:0,technique:25,power:25,speed:25,defense:25,stamina:30,energy:100,injury:0,injuryYears:0,restUsedYear:-1,lastMovePracticeYear:-1,coach:null,movesKnown:['quick-jab','high-guard'],moveMastery:{},selectedMove:'quick-jab',champion:false,championshipHistory:[],bouts:[],pendingBout:null,retired:false,retiredAge:null,retiredYear:null,fanbase:0,sponsorship:null,lastSponsorNegotiationYear:-1,community:[]};
  Object.keys(defaults).forEach(k=>{if(c[k]===undefined||c[k]===null)c[k]=defaults[k];});
  if(!Array.isArray(c.movesKnown))c.movesKnown=['quick-jab','high-guard'];
  if(!c.movesKnown.length)c.movesKnown=['quick-jab','high-guard'];
@@ -847,6 +892,10 @@ function ensureCombatCareer(){
   :Math.min(150,hasNewcomers?Math.max(startedAge,Number(state.age)||startedAge)+5:startedAge+5);
  c.pendingBout=normalizePendingCombatBout(c.pendingBout);
  c.retired=c.retired===true;
+ c.fanbase=clamp(Number(c.fanbase)||0,0,50000000);
+ c.sponsorship=c.retired?null:normalizeCombatSponsorship(c.sponsorship);
+ const negotiationYear=Number(c.lastSponsorNegotiationYear),currentSponsorYear=Math.max(0,Math.floor(Number(state.yearCount)||0));
+ c.lastSponsorNegotiationYear=Number.isFinite(negotiationYear)?Math.max(-1,Math.min(currentSponsorYear,Math.floor(negotiationYear))):-1;
  const hasRetiredAge=c.retiredAge!==null&&c.retiredAge!==undefined&&Number.isFinite(Number(c.retiredAge));
  const hasRetiredYear=c.retiredYear!==null&&c.retiredYear!==undefined&&Number.isFinite(Number(c.retiredYear));
  c.retiredAge=c.retired?clamp(hasRetiredAge?Number(c.retiredAge):Number(state.age)||0,0,150):null;
@@ -5505,6 +5554,12 @@ function advanceAge(){
    if(state.bank<annualCost){log('💳','تعذر دفع مصاريف المدرب','الرصيد لا يكفي مصاريف المدرب السنوية؛ انتهى التعاقد دون خصم المصروف.','bad');cc.coach=null;}
    else{state.bank-=annualCost;cc.coach.yearsLeft--;if(cc.coach.yearsLeft<=0){log('🧑‍🏫','انتهاء عقد المدرب','انتهى عقد المدرب. يمكنك تجديده من مسيرة القتال.');cc.coach=null;}}
   }
+  if(cc.sponsorship){
+   const settlement=settleCombatSponsorshipYear(cc,state.bank);
+   state.bank=settlement.bank;
+   if(settlement.payout>0)log('🤝','دفعة رعاية قتالية','استلمت '+cash(settlement.payout)+' من '+settlement.brand+' عن عقد الرعاية.','good');
+   if(settlement.ended)log('📄','انتهاء عقد الرعاية','انتهى عقد الرعاية مع '+settlement.brand+'. يمكنك التفاوض على عرض جديد في سنة لاحقة إذا استوفيت الشروط.');
+  }
  }
  advanceChildren();
  (state.family||[]).forEach(relative=>{if(relative.deceased)return;relative.age=(relative.age||0)+1;const oldest=relative.age>=100;const parent=/(الأب|الأم|والد|والدة)/.test(relative.relation||'');const risk=relative.age>75?Math.min(.45,.012+(relative.age-75)*.012):0;if(oldest||(risk&&chance(risk))){relative.deceased=true;const close=(relative.relationshipLevel||50)>=70;state.stats.happiness=clamp(state.stats.happiness-(close?12:5));log('🕯️','وفاة أحد أفراد العائلة','توفي '+relative.name+' بعد رحلة من العمر. الخبر أثر عليك وعلى علاقتك بالعائلة.','bad');achievement('وداع '+relative.name);}});
@@ -7913,13 +7968,63 @@ function retireCombatCareer(){
    c.retired=true;
    c.retiredAge=clamp(Number(state.age)||0,0,150);
    c.retiredYear=Math.max(0,Math.floor(Number(state.yearCount)||0));
+   const sponsorshipEnded=!!c.sponsorship;
+   c.sponsorship=null;
    c.coach=null;
-   log('🏁','اعتزال مسيرة القتال','أنهيت مسيرتك كمقاتل في عمر '+c.retiredAge+' سنة. سجل النزالات وإنجازاتك سيظلان محفوظين.','special');
+   log('🏁','اعتزال مسيرة القتال','أنهيت مسيرتك كمقاتل في عمر '+c.retiredAge+' سنة. سجل النزالات وإنجازاتك سيظلان محفوظين.'+(sponsorshipEnded?' وتم إنهاء عقد الرعاية مع الاعتزال.':''),'special');
    achievement('اعتزال مسيرة القتال');
    save();render();combatCareerMenu();
   }),
   choice('↩️','أكمل المسيرة','',()=>{closeModal();combatCareerMenu();})
  ]);
+}
+function combatSponsorshipMenu(){
+ if(!validState()||!state.specialCareer||state.specialCareer.id!=='fighter'){info('📣','جمهور المقاتل','ابدأ مسيرة القتال أولًا لبناء جمهور والتفاوض على الرعاية.');return;}
+ const c=ensureCombatCareer(),currentYear=Math.max(0,Math.floor(Number(state.yearCount)||0)),contract=c.sponsorship?normalizeCombatSponsorship(c.sponsorship):null;
+ c.sponsorship=contract;
+ const options=[],status=contract?'العقد الحالي: '+combatSponsorshipCatalog.find(item=>item.id===contract.id).name+' · دخل سنوي '+cash(contract.annualIncome)+' · متبقي '+contract.yearsLeft+' سنة.':'لا يوجد عقد رعاية نشط.';
+ if(contract){
+  options.push(choice('🤝','تفاصيل عقد الرعاية',status+' بدأ في عمر '+contract.signedAge+' سنة. تُصرف الدفعة مع التقدم السنوي.',()=>{closeModal();info('📣','عقد الرعاية',status+' الجمهور الحالي '+fmt(c.fanbase)+' متابع.');}));
+ }else if(c.retired){
+  options.push(choice('🏁','جمهور المسيرة','الجمهور النهائي '+fmt(c.fanbase)+' متابع. لا يمكن توقيع عقود جديدة بعد الاعتزال.',()=>{closeModal();info('📣','جمهور المسيرة','وصل جمهورك إلى '+fmt(c.fanbase)+' متابع خلال مسيرتك القتالية.');}));
+ }else{
+  const alreadyTried=c.lastSponsorNegotiationYear===currentYear;
+  combatSponsorshipCatalog.forEach(sponsor=>{
+   const eligible=combatSponsorshipEligible(c,sponsor.id),requirements='المطلوب: رتبة '+['مبتدئ','هاوٍ','محترف','منافس على اللقب','بطل الدوري'][sponsor.minRank]+' على الأقل و'+fmt(sponsor.minFanbase)+' متابع · دخل سنوي يبدأ من '+cash(sponsor.annualBase)+' · مدة '+sponsor.duration+' سنوات.';
+   const reason=alreadyTried?'استخدمت فرصة التفاوض هذه السنة؛ حاول بعد التقدم بالعمر.':!eligible?'لم تستوفِ متطلبات الرتبة والجمهور بعد.':'متاح للتفاوض · فرصة القبول '+combatSponsorshipOfferOdds(c,sponsor)+'%.';
+   options.push(choice('🤝',sponsor.name,requirements+' '+reason,()=>{
+    if(alreadyTried){closeModal();info('📄','التفاوض السنوي','يمكنك تقديم طلب رعاية واحد فقط في كل سنة من اللعبة.');return;}
+    if(!combatSponsorshipEligible(c,sponsor.id)){closeModal();info('🔒','العرض غير متاح','ارفع رتبتك وابنِ جمهورًا أكبر قبل التفاوض.');return;}
+    negotiateCombatSponsorship(sponsor.id);
+   },cash(sponsor.annualBase)+' سنويًا',Math.min(100,Math.round(c.fanbase/sponsor.minFanbase*100))));
+  });
+ }
+ options.push(choice('↩️','العودة لمسيرة القتال','',combatCareerMenu));
+ modal('📣','الجمهور وعقود الرعاية','جمهورك الحالي '+fmt(c.fanbase)+' متابع · '+status+' الفوز في النزالات والظهور والرتبة يزيدون فرص الرعاية. العقود خيالية داخل اللعبة.',options);
+}
+function negotiateCombatSponsorship(sponsorId){
+ closeModal();
+ if(!validState()||!state.specialCareer||state.specialCareer.id!=='fighter'){info('📣','مسيرة القتال','ابدأ مسيرة المقاتل أولًا.');return;}
+ const c=ensureCombatCareer(),sponsor=combatSponsorshipCatalog.find(item=>item.id===String(sponsorId||'')),currentYear=Math.max(0,Math.floor(Number(state.yearCount)||0));
+ if(c.retired){info('🏁','المسيرة معتزلة','لا يمكن توقيع عقد رعاية جديد بعد الاعتزال.');return;}
+ if(c.pendingBout){info('🥊','أنهِ النزال أولًا','لا يمكن التفاوض على عقد أثناء وجود نزال محفوظ.');return;}
+ if(c.sponsorship){info('🤝','عقد نشط','أنهِ عقد الرعاية الحالي قبل التفاوض على عقد جديد.');return;}
+ if(c.lastSponsorNegotiationYear===currentYear){info('📄','التفاوض السنوي','قدمت طلب رعاية بالفعل هذه السنة؛ حاول بعد التقدم بالعمر.');return;}
+ if(!sponsor||!combatSponsorshipEligible(c,sponsor.id)){info('🔒','العرض غير متاح','تحتاج إلى رتبة وجمهور أعلى لاستيفاء شروط الراعي.');return;}
+ c.lastSponsorNegotiationYear=currentYear;
+ const odds=combatSponsorshipOfferOdds(c,sponsor);
+ if(chance(odds/100)){
+  const annualIncome=Math.min(300000,Math.round(sponsor.annualBase+c.fanbase*.06+(Number(state.fame)||0)*35+c.rank*650));
+  c.sponsorship={id:sponsor.id,yearsLeft:sponsor.duration,annualIncome,signedAge:clamp(Number(state.age)||0,0,150),signedYear:currentYear};
+  state.reputation=clamp((state.reputation||50)+4);
+  log('🤝','توقيع عقد رعاية قتالية','وقّعت عقدًا مع '+sponsor.name+' لمدة '+sponsor.duration+' سنوات، بدخل سنوي '+cash(annualIncome)+'.','good');
+  achievement('وقّعت أول عقد رعاية قتالية');
+  save();render();info('🎉','عرض رعاية ناجح','هتستلم '+cash(annualIncome)+' مع كل تقدم سنوي طوال مدة العقد. الجمهور الحالي '+fmt(c.fanbase)+' متابع.');
+ }else{
+  state.stats.happiness=clamp(state.stats.happiness-1);
+  log('📄','لم تكتمل مفاوضات الرعاية','الجهة الراعية طلبت نتائج وجمهورًا أكبر قبل توقيع العقد. تقدر تحاول مرة أخرى في سنة لاحقة.','bad');
+  save();render();info('📄','المفاوضات لم تنجح','فرصة القبول كانت '+odds+'%. واصل المنافسة وبناء الجمهور ثم حاول في سنة لاحقة.');
+ }
 }
 function combatCareerMenu(){
  if(!validState()||!state.specialCareer||state.specialCareer.id!=='fighter'){info('🥊','مسيرة القتال','ابدأ مسار المقاتل المحترف من قائمة المهن الخاصة أولًا.');return;}
@@ -7928,13 +8033,14 @@ function combatCareerMenu(){
  const rank=combatRankName(c),moves=c.movesKnown.length,masteredMoves=c.movesKnown.filter(id=>combatMoveMasteryLevel(c.moveMastery[id]||0)===4).length;
  const injury=c.injury>0?' · إصابة '+c.injury+'%':'';
  const coach=c.coach?' · المدرب '+c.coach.name+' ('+fmt(c.coach.yearsLeft||0)+' سنوات متبقية)':' · من غير مدرب';
- const summary='الرتبة: '+rank+' · نقاط الدوري '+fmt(c.leaguePoints)+' · رصيد الشارع '+fmt(c.streetCred)+injury+coach+' · حركات خبيرة '+masteredMoves+'/'+moves;
+ const summary='الرتبة: '+rank+' · نقاط الدوري '+fmt(c.leaguePoints)+' · رصيد الشارع '+fmt(c.streetCred)+injury+coach+' · الجمهور '+fmt(c.fanbase)+' متابع · حركات خبيرة '+masteredMoves+'/'+moves;
  if(c.retired){
   const retiredSummary=summary+' · معتزل منذ عمر '+c.retiredAge+' سنة';
   const retiredOpts=[
    choice('📊','ملف المقاتل',retiredSummary,()=>{closeModal();info('🏁','سجل المسيرة',retiredSummary+' · فوز '+c.wins+' · خسارة '+c.losses+' · نزالات الشوارع '+c.streetWins+' · نزالات الدوري '+c.leagueWins+'.');},'',c.leaguePoints/2),
    choice('🏆','سجل الألقاب','عدد الألقاب المسجلة '+c.championshipHistory.length+'.',combatChampionshipHistory),
    choice('📜','سجل النزالات','راجع نتائج آخر النزالات ومكاسبها.',combatBoutHistory),
+   choice('📣','الجمهور وعقود الرعاية','راجع إجمالي جمهورك بعد الاعتزال؛ لا يمكن توقيع عقود جديدة.',combatSponsorshipMenu),
    choice('🤝','مجتمع المقاتلين','استعرض ملفات المنافسين والعلاقات السابقة دون بدء نزالات أو تفاعلات جديدة.',combatCommunityMenu),
    choice('↩️','قائمة المهن الخاصة','',specialCareers)
   ];
@@ -7947,6 +8053,7 @@ function combatCareerMenu(){
   choice('📚','تعلّم حركة جديدة','تعلّم حركات بأساليب وقوة مختلفة، وافتح الحركات المتقدمة مع التقدم.',learnCombatMove),
   choice('🎯','اختيار الحركة الرئيسية','الحركة المختارة: '+((combatMoveCatalog.find(m=>m.id===c.selectedMove)||combatMoveCatalog[0]).title)+'.',selectCombatMove),
   choice('🧑‍🏫',c.coach?'تغيير المدرب':'التعاقد مع مدرب','المدرب يحسّن فرصك، لكن له تكلفة سنوية.',hireCombatCoach),
+  choice('📣','الجمهور وعقود الرعاية','ابنِ جمهورًا حول مسيرتك وتفاوض على عقد رعاية سنوي.',combatSponsorshipMenu),
   choice('🤝','مجتمع المقاتلين','تعرّف على المنافسين، ابنِ تحالفات أو خصومات، وتحدّ مقاتلًا بعينه.',combatCommunityMenu,'',c.community.filter(fighter=>fighter.allied).length*20),
   choice('🥊','نزال شوارع','منافسة تدريبية تبني خبرتك وسمعتك في عالم القتال.',()=>startCombatBout('street'),''),
   choice('🏆','نزال الدوري','افتح الدوري بعد فوزين في الشوارع ورصيد 20 على الأقل. الفوز يرفع رتبتك.',()=>startCombatBout('league'),''),
@@ -8276,6 +8383,8 @@ function resolveCombatBout(mode,opponent,moveId,probabilityOverride=null,session
   detail+=won?' زاد الاحترام بينك وبين '+communityFighter.name+' وهدأ التوتر.':' أصبح التنافس بينك وبين '+communityFighter.name+' أكثر حدة.';
  }
  c.rank=c.leaguePoints>=150?4:c.leaguePoints>=100?3:c.leaguePoints>=60?2:c.leaguePoints>=25?1:0;
+ const fanbaseResult=growCombatFanbase(c,won,mode,state.fame,c.rank);
+ if(fanbaseResult.gain>0)detail+=' زاد جمهورك بمقدار '+fmt(fanbaseResult.gain)+' متابع، وأصبح إجمالي جمهورك '+fmt(fanbaseResult.total)+'.';
  const roundSummary=session?session.roundHistory.map(item=>({round:item.round,move:item.actionTitle,style:item.style,styleVarietyModifier:item.styleVarietyModifier||0,opponentStyle:item.opponentStyle,playerScore:Math.round(item.playerScore),opponentScore:Math.round(item.opponentScore),masteryLevel:item.masteryLevel||0,masteryBonus:item.masteryBonus||0,masteryUses:item.masteryUses||0,
   intentStyle:item.intentStyle||item.opponentStyle,intentTitle:item.intentTitle||'',reactionId:item.reactionId||'',reactionTitle:item.reactionTitle||'',reactionQuality:item.reactionQuality||'',reactionCost:item.reactionCost===undefined?null:item.reactionCost,
   reactionTimeMs:item.reactionTimeMs===undefined?null:item.reactionTimeMs,reactionTimingBonus:item.reactionTimingBonus||0,reactionTimingAssist:item.reactionTimingAssist===true,
@@ -8284,7 +8393,7 @@ function resolveCombatBout(mode,opponent,moveId,probabilityOverride=null,session
   injuryBefore:item.injuryBefore===undefined?null:item.injuryBefore,injuryGain:item.injuryGain||0,injuryAfter:item.injuryAfter===undefined?null:item.injuryAfter})):[];
  const roundHealthDamage=roundSummary.reduce((sum,item)=>sum+Math.max(0,Number(item.healthDamage)||0),0);
  const roundInjuryGain=roundSummary.reduce((sum,item)=>sum+Math.max(0,Number(item.injuryGain)||0),0);
- c.bouts.push({age:state.age,mode,opponent:opponent.name,opponentStyle:opponent.style,communityFighterId:session&&session.communityFighterId?session.communityFighterId:null,move:move.title,moves:roundSummary.map(item=>item.move),rounds:roundSummary,scoreline:session?{player:Math.round(session.playerScore),opponent:Math.round(session.opponentScore)}:null,won,probability,earnings,injury:c.injury,rank:c.rank,healthDamage:roundHealthDamage,roundInjuryGain,healthAfterBout:clamp(state.stats.health)});
+ c.bouts.push({age:state.age,mode,opponent:opponent.name,opponentStyle:opponent.style,communityFighterId:session&&session.communityFighterId?session.communityFighterId:null,move:move.title,moves:roundSummary.map(item=>item.move),rounds:roundSummary,scoreline:session?{player:Math.round(session.playerScore),opponent:Math.round(session.opponentScore)}:null,won,probability,earnings,fanbaseGain:fanbaseResult.gain,fanbaseAfter:fanbaseResult.total,injury:c.injury,rank:c.rank,healthDamage:roundHealthDamage,roundInjuryGain,healthAfterBout:clamp(state.stats.health)});
  if(c.bouts.length>30)c.bouts.shift();
  const record=state.specialCareer.record||(state.specialCareer.record={attempts:0,wins:0,losses:0,projects:0,totalEarnings:0,bestLevel:1});
  record.attempts=(record.attempts||0)+1;record.wins=(record.wins||0)+(won?1:0);record.losses=(record.losses||0)+(won?0:1);record.totalEarnings=(record.totalEarnings||0)+earnings;record.bestLevel=Math.max(record.bestLevel||1,state.specialCareer.level||1);
