@@ -43,9 +43,9 @@ test('الحفظ القديم للنزال يستعيد مسافة آمنة وي
   vm.runInNewContext(helperSource + '\n' + pendingSource + '\n' + 'globalThis.normalizeBout=normalizePendingCombatBout;', context);
   const legacy = context.normalizeBout({ mode:'street', opponent:{name:'منافس قديم',style:'قوة'}, roundHistory:[{style:'سرعة',actionId:'quick-jab'}] });
   assert.equal(legacy.distance,'mid');
-  assert.equal(legacy.roundHistory[0].distanceBefore,'mid');
-  assert.equal(legacy.roundHistory[0].moveRange,'mid');
-  assert.equal(legacy.roundHistory[0].distanceAfter,'mid');
+  assert.equal(legacy.roundHistory[0].distanceBefore,null,'legacy round history must not invent a recorded distance');
+  assert.equal(legacy.roundHistory[0].moveRange,null);
+  assert.equal(legacy.roundHistory[0].distanceAfter,null);
   const current = context.normalizeBout({
     mode:'street', distance:'long', opponent:{name:'منافس جديد',style:'سرعة'},
     roundHistory:[{style:'سرعة',actionId:'quick-jab',distanceBefore:'close',moveRange:'long',distanceAfter:'long',distancePlayerBonus:99,distanceOpponentBonus:-99}]
