@@ -4011,7 +4011,7 @@ test('أداة فحص الحفظ تقرأ الحزم والملفات القدي
     format: 'hayah-backup',
     backupVersion: 1,
     life: legacy,
-    cemetery: [{ id: 'past-life' }],
+    cemetery: [{ id: 'past-life', name: 'حياة سابقة' }],
     settings: { textScale: 'normal' },
     perks: { owned: { fighterPack: true } }
   };
