@@ -7050,8 +7050,8 @@ function changeTenantRent(index,multiplier){
 }
 
 const AUTO_RACING_EVENT_CATALOG=[
- {id:'local',title:'كأس الحلبة المحلية',emoji:'🏁',fee:12000,minValue:500000,difficulty:36,prizes:[85000,45000,25000,12000,6000,2500,0,0],description:'سباق افتتاحي لاختبار سيارتك وبناء اسمك على الحلبة.'},
- {id:'pro',title:'بطولة السرعة المفتوحة',emoji:'🏆',fee:60000,minValue:4000000,difficulty:62,prizes:[420000,220000,115000,55000,25000,8000,0,0],description:'منافسة أقوى للسيارات الأعلى أداءً والسائقين أصحاب الخبرة.'}
+ {id:'local',title:'كأس الحلبة المحلية',emoji:'🏁',fee:8000,minValue:500000,difficulty:30,prizes:[80000,42000,24000,15000,10000,6000,2000,0],description:'سباق افتتاحي لاختبار سيارتك وبناء اسمك على الحلبة.'},
+ {id:'pro',title:'بطولة السرعة المفتوحة',emoji:'🏆',fee:30000,minValue:4000000,difficulty:55,prizes:[350000,180000,95000,50000,30000,15000,5000,0],description:'منافسة أقوى للسيارات الأعلى أداءً والسائقين أصحاب الخبرة.'}
 ];
 function calculateAutoRaceResult(input={}){
  const bound=(value,min,max)=>Math.max(min,Math.min(max,Number.isFinite(Number(value))?Number(value):0));
