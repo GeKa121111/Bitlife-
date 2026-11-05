@@ -724,6 +724,7 @@ function normalizePendingCombatBout(raw){
  const mode=raw.mode==='league'?'league':raw.mode==='street'?'street':null;
  const source=raw.opponent&&typeof raw.opponent==='object'&&!Array.isArray(raw.opponent)?raw.opponent:{};
  const styles=['قوة','سرعة','دفاع','تقنية'];
+ const gamePlans=['balanced','pressure','counter','conserve'];
  const name=typeof source.name==='string'?source.name.trim().slice(0,48):'';
  if(!mode||!name||!styles.includes(source.style)||(mode==='league'&&raw.feePaid!==true))return null;
  const finite=(value,fallback,min,max)=>{
@@ -739,7 +740,7 @@ function normalizePendingCombatBout(raw){
    actionId:typeof item.actionId==='string'?item.actionId.slice(0,48):'',
    actionTitle:typeof item.actionTitle==='string'?item.actionTitle.slice(0,48):'حركة قتالية',
    style:styles.includes(item.style)?item.style:'تقنية',
-   gamePlan:normalizeCombatGamePlan(item.gamePlan||raw.gamePlan),
+   gamePlan:gamePlans.includes(item.gamePlan)?item.gamePlan:(gamePlans.includes(raw.gamePlan)?raw.gamePlan:'balanced'),
    gamePlanBonus:Math.round(finite(item.gamePlanBonus,0,-2,5)),
    styleVarietyModifier:Math.round(finite(item.styleVarietyModifier,0,-6,2)),
    distanceBefore:recordedDistance(item.distanceBefore),
@@ -780,7 +781,7 @@ function normalizePendingCombatBout(raw){
  return {
   mode,
   distance:safeDistance(raw.distance),
-  gamePlan:normalizeCombatGamePlan(raw.gamePlan),
+  gamePlan:gamePlans.includes(raw.gamePlan)?raw.gamePlan:'balanced',
   opponent:{
    name,
    style:source.style,
@@ -993,7 +994,7 @@ function ensureCombatCareer(){
  if(!c||typeof c!=='object')c=state.combatCareer=createCombatCareer();
  const defaults={rank:0,leaguePoints:0,streetCred:0,streetWins:0,leagueWins:0,wins:0,losses:0,knockouts:0,draws:0,technique:25,power:25,speed:25,defense:25,stamina:30,energy:100,injury:0,injuryYears:0,restUsedYear:-1,lastMovePracticeYear:-1,coach:null,movesKnown:['quick-jab','high-guard'],moveMastery:{},selectedMove:'quick-jab',champion:false,championshipHistory:[],bouts:[],pendingBout:null,retired:false,retiredAge:null,retiredYear:null,fanbase:0,sponsorship:null,lastSponsorNegotiationYear:-1,community:[],gamePlan:'balanced'};
  Object.keys(defaults).forEach(k=>{if(c[k]===undefined||c[k]===null)c[k]=defaults[k];});
- c.gamePlan=normalizeCombatGamePlan(c.gamePlan);
+ c.gamePlan=['balanced','pressure','counter','conserve'].includes(c.gamePlan)?c.gamePlan:'balanced';
  if(!Array.isArray(c.movesKnown))c.movesKnown=['quick-jab','high-guard'];
  if(!c.movesKnown.length)c.movesKnown=['quick-jab','high-guard'];
  c.moveMastery=normalizeCombatMoveMastery(c.moveMastery,c.movesKnown);
