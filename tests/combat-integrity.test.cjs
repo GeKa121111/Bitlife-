@@ -82,10 +82,13 @@ const names = [
   'applyCombatDrugTestSanction',
   'advanceCombatSuspensionYear',
   'combatIntegrityBoutBonus',
+  'combatBoutAccessGuard',
   'normalizePendingCombatBout',
   'combatIntegrityMenu',
   'useCombatForbiddenBooster',
   'recoverCombatIntegrity',
+  'combatCareerMenu',
+  'resolveCombatRound',
   'startCombatBout'
 ];
 vm.runInContext(
@@ -97,10 +100,13 @@ vm.runInContext(
   ' sanction: applyCombatDrugTestSanction,' +
   ' advanceSuspension: advanceCombatSuspensionYear,' +
   ' boutBonus: combatIntegrityBoutBonus,' +
+  ' accessGuard: combatBoutAccessGuard,' +
   ' normalizeBout: normalizePendingCombatBout,' +
   ' menu: combatIntegrityMenu,' +
   ' useBooster: useCombatForbiddenBooster,' +
   ' recover: recoverCombatIntegrity,' +
+  ' careerMenu: combatCareerMenu,' +
+  ' resolveRound: resolveCombatRound,' +
   ' startBout: startCombatBout' +
   '};',
   context,
@@ -303,6 +309,26 @@ test('السجن والإيقاف يمنعان استئناف نزال محفو�
   context.api.startBout('street');
   assert.equal(calls.menus.filter(item => item === 'bout').length, beforeSuspensionMenus);
   assert.ok(calls.notices.some(entry => entry[1] === 'إيقاف رياضي'));
+});
+
+test('قائمة المسيرة وحل الجولة المباشر يحترمان حارس السجن والإيقاف', () => {
+  const pending = { mode: 'street', round: 2 };
+  context.career = makeCareer({ pendingBout: pending, dopingSuspensionYears: 0 });
+  context.state.prison = { years: 1 };
+  const before = calls.menus.filter(item => item === 'bout').length;
+  context.api.careerMenu();
+  context.api.resolveRound('quick-jab');
+  assert.equal(calls.menus.filter(item => item === 'bout').length, before);
+  assert.ok(calls.notices.some(entry => entry[1] === 'المنافسات غير متاحة'));
+
+  context.career = makeCareer({ pendingBout: pending, dopingSuspensionYears: 1 });
+  context.state.prison = null;
+  const beforeSuspension = calls.menus.filter(item => item === 'bout').length;
+  context.api.careerMenu();
+  context.api.resolveRound('quick-jab');
+  assert.equal(calls.menus.filter(item => item === 'bout').length, beforeSuspension);
+  assert.ok(calls.notices.some(entry => entry[1] === 'إيقاف رياضي'));
+  assert.equal(context.api.accessGuard(), true);
 });
 
 test('الفحص الإيجابي يوقف النزال قبل خصم رسوم الدوري أو إنشاء مواجهة', () => {
