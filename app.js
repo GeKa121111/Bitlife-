@@ -700,6 +700,7 @@ function normalizePendingCombatBout(raw){
   return Math.max(min,Math.min(max,Number.isFinite(parsed)?parsed:fallback));
  };
  const safeDistance=value=>['close','mid','long'].includes(value)?value:'mid';
+ const recordedDistance=value=>['close','mid','long'].includes(value)?value:null;
  const history=(Array.isArray(raw.roundHistory)?raw.roundHistory:[]).slice(0,2).map((item,index)=>{
   if(!item||typeof item!=='object'||Array.isArray(item))return null;
   return {
@@ -708,11 +709,11 @@ function normalizePendingCombatBout(raw){
    actionTitle:typeof item.actionTitle==='string'?item.actionTitle.slice(0,48):'حركة قتالية',
    style:styles.includes(item.style)?item.style:'تقنية',
    styleVarietyModifier:Math.round(finite(item.styleVarietyModifier,0,-6,2)),
-   distanceBefore:safeDistance(item.distanceBefore),
-   moveRange:safeDistance(item.moveRange),
+   distanceBefore:recordedDistance(item.distanceBefore),
+   moveRange:recordedDistance(item.moveRange),
    distancePlayerBonus:Math.round(finite(item.distancePlayerBonus,0,-3,4)),
    distanceOpponentBonus:Math.round(finite(item.distanceOpponentBonus,0,-2,2)),
-   distanceAfter:safeDistance(item.distanceAfter),
+   distanceAfter:recordedDistance(item.distanceAfter),
    opponentStyle:styles.includes(item.opponentStyle)?item.opponentStyle:source.style,
    playerScore:finite(item.playerScore,0,-200,200),
    opponentScore:finite(item.opponentScore,0,-200,200),
@@ -8473,7 +8474,7 @@ function resolveCombatBout(mode,opponent,moveId,probabilityOverride=null,session
  c.rank=c.leaguePoints>=150?4:c.leaguePoints>=100?3:c.leaguePoints>=60?2:c.leaguePoints>=25?1:0;
  const fanbaseResult=growCombatFanbase(c,won,mode,state.fame,c.rank);
  if(fanbaseResult.gain>0)detail+=' زاد جمهورك بمقدار '+fmt(fanbaseResult.gain)+' متابع، وأصبح إجمالي جمهورك '+fmt(fanbaseResult.total)+'.';
- const roundSummary=session?session.roundHistory.map(item=>({round:item.round,move:item.actionTitle,style:item.style,styleVarietyModifier:item.styleVarietyModifier||0,distanceBefore:normalizeCombatDistance(item.distanceBefore),moveRange:normalizeCombatDistance(item.moveRange),distancePlayerBonus:item.distancePlayerBonus||0,distanceOpponentBonus:item.distanceOpponentBonus||0,distanceAfter:normalizeCombatDistance(item.distanceAfter),opponentStyle:item.opponentStyle,playerScore:Math.round(item.playerScore),opponentScore:Math.round(item.opponentScore),masteryLevel:item.masteryLevel||0,masteryBonus:item.masteryBonus||0,masteryUses:item.masteryUses||0,
+ const roundSummary=session?session.roundHistory.map(item=>({round:item.round,move:item.actionTitle,style:item.style,styleVarietyModifier:item.styleVarietyModifier||0,distanceBefore:['close','mid','long'].includes(item.distanceBefore)?item.distanceBefore:null,moveRange:['close','mid','long'].includes(item.moveRange)?item.moveRange:null,distancePlayerBonus:item.distancePlayerBonus||0,distanceOpponentBonus:item.distanceOpponentBonus||0,distanceAfter:['close','mid','long'].includes(item.distanceAfter)?item.distanceAfter:null,opponentStyle:item.opponentStyle,playerScore:Math.round(item.playerScore),opponentScore:Math.round(item.opponentScore),masteryLevel:item.masteryLevel||0,masteryBonus:item.masteryBonus||0,masteryUses:item.masteryUses||0,
   intentStyle:item.intentStyle||item.opponentStyle,intentTitle:item.intentTitle||'',reactionId:item.reactionId||'',reactionTitle:item.reactionTitle||'',reactionQuality:item.reactionQuality||'',reactionCost:item.reactionCost===undefined?null:item.reactionCost,
   reactionTimeMs:item.reactionTimeMs===undefined?null:item.reactionTimeMs,reactionTimingBonus:item.reactionTimingBonus||0,reactionTimingAssist:item.reactionTimingAssist===true,
   energyBefore:item.energyBefore===undefined?null:item.energyBefore,energyCost:item.energyCost===undefined?null:item.energyCost,energyRecovery:item.energyRecovery===undefined?null:item.energyRecovery,energyAfter:item.energyAfter===undefined?null:item.energyAfter,
