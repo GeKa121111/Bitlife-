@@ -77,7 +77,7 @@
         cemeteryCount = data.cemetery.length;
         const invalidEntry = data.cemetery.findIndex(entry => !isRecord(entry) || typeof entry.name !== 'string' || !entry.name.trim());
         if (invalidEntry !== -1) {
-          errors.push('يوجد سجل مقبرة يفتقد اسمًا صالحًا عند الموضع ' + (invalidEntry + 1) + '.');
+          errors.push('يوجد سجل في المقبرة يفتقد اسمًا صالحًا عند الموضع ' + (invalidEntry + 1) + '.');
         }
         if (data.cemetery.length > 100) {
           warnings.push('تحتوي المقبرة على أكثر من 100 سجل؛ سيحتفظ الاستيراد بأول 100 سجل فقط.');
@@ -86,8 +86,8 @@
 
       hasSettings = isRecord(data.settings);
       hasPerks = isRecord(data.perks);
-      if (!hasSettings) warnings.push('إعدادات العرض غير مرفقة في الحزمة.');
-      if (!hasPerks) warnings.push('بيانات المزايا الدائمة غير مرفقة في الحزمة.');
+      if (!hasSettings) errors.push('إعدادات العرض مطلوبة في حزمة النسخ ويجب أن تكون كائنًا صالحًا.');
+      if (!hasPerks) errors.push('بيانات المزايا الدائمة مطلوبة في حزمة النسخ ويجب أن تكون كائنًا صالحًا.');
     } else if (isRecord(data) && data.version === 1) {
       format = 'حفظ حياة منفرد — الإصدار 1';
       life = data;
