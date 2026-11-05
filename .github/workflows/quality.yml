@@ -31,6 +31,10 @@ jobs:
         run: node --check tests/auto-racing.test.cjs
       - name: Run deterministic auto-racing regression tests
         run: node --test tests/auto-racing.test.cjs
+      - name: Check business ownership regression test syntax
+        run: node --check tests/business-ownership.test.cjs
+      - name: Run business ownership and inheritance tests
+        run: node --test tests/business-ownership.test.cjs
       - name: Check browser-test syntax
         run: node --check tests/browser.cjs
       - name: Check activity-hub regression test syntax
