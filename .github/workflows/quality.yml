@@ -33,6 +33,10 @@ jobs:
         run: node --check tests/activity-hub.test.cjs
       - name: Run activity-hub regression tests
         run: node --test tests/activity-hub.test.cjs
+      - name: Check combat-range regression test syntax
+        run: node --check tests/combat-range.test.cjs
+      - name: Run combat-range regression tests
+        run: node --test tests/combat-range.test.cjs
       - name: Run game smoke tests
         run: node tests/smoke.cjs
       - name: Run regression checks
