@@ -3566,6 +3566,9 @@ function ensureSiblingEconomicProfile(relative){
  profile.investmentReturn=siblingSafeSigned(profile.investmentReturn);profile.investmentContributionsTotal=siblingSafeMoney(profile.investmentContributionsTotal);
  profile.investmentReturnsTotal=siblingSafeSigned(profile.investmentReturnsTotal);
  profile.investmentRisk=['conservative','balanced','growth'].includes(profile.investmentRisk)?profile.investmentRisk:siblingInvestmentRiskFor(relative);
+ const rawRiskChangeYear=profile.lastInvestmentRiskChangeYear;
+ const numericRiskChangeYear=Number(rawRiskChangeYear);
+ profile.lastInvestmentRiskChangeYear=rawRiskChangeYear!==undefined&&rawRiskChangeYear!==null&&Number.isSafeInteger(numericRiskChangeYear)&&numericRiskChangeYear>=0?Math.min(year,numericRiskChangeYear):-1;
  profile.ownedProperties=(Array.isArray(profile.ownedProperties)?profile.ownedProperties:[]).map((asset,index)=>{
   if(!asset||typeof asset!=='object'||Array.isArray(asset)||!['residence','rental'].includes(asset.kind))return null;
   const kind=asset.kind,purchasePrice=siblingSafeMoney(asset.purchasePrice??asset.marketValue??asset.value),marketValue=siblingSafeMoney(asset.marketValue??asset.value??purchasePrice);
@@ -7560,6 +7563,61 @@ function siblingMortgagePrepaymentConfirm(n,assetId){
 }
 
 
+function changeSiblingInvestmentRisk(profile,risk,year){
+ if(!profile||typeof profile!=='object'||Array.isArray(profile))return {ok:false,reason:'profile'};
+ if(!['conservative','balanced','growth'].includes(risk))return {ok:false,reason:'risk'};
+ const numericYear=Number(year);
+ if(!Number.isSafeInteger(numericYear)||numericYear<0)return {ok:false,reason:'year'};
+ const currentRisk=['conservative','balanced','growth'].includes(profile.investmentRisk)?profile.investmentRisk:'balanced';
+ if(currentRisk===risk)return {ok:false,reason:'unchanged',risk:currentRisk};
+ const rawLastYear=profile.lastInvestmentRiskChangeYear;
+ const numericLastYear=Number(rawLastYear);
+ const lastYear=rawLastYear!==undefined&&rawLastYear!==null&&Number.isSafeInteger(numericLastYear)&&numericLastYear>=0
+  ?Math.min(numericYear,numericLastYear):-1;
+ const nextAllowedYear=lastYear>=0?lastYear+3:numericYear;
+ if(lastYear>=0&&numericYear<nextAllowedYear)return {ok:false,reason:'cooldown',risk:currentRisk,nextAllowedYear,previousYear:lastYear};
+ profile.investmentRisk=risk;
+ profile.lastInvestmentRiskChangeYear=numericYear;
+ return {ok:true,previousRisk:currentRisk,risk,nextAllowedYear:numericYear+3,previousYear:lastYear};
+}
+function siblingInvestmentRiskMenu(n){
+ const profile=n&&n.economicProfile;
+ if(!profile){info('📈','لا توجد محفظة استثمارية','يبدأ سجل الاستثمار المستقل عند بلوغ الأخ أو الأخت 18 سنة.');return;}
+ const year=Number.isSafeInteger(Number(state&&state.yearCount))?Math.max(0,Number(state.yearCount)):Math.max(0,Number(n.age)||0);
+ const rawLastYear=profile.lastInvestmentRiskChangeYear,lastYear=rawLastYear!==undefined&&rawLastYear!==null&&Number.isSafeInteger(Number(rawLastYear))&&Number(rawLastYear)>=0?Math.min(year,Number(rawLastYear)):-1;
+ const nextAllowedYear=lastYear>=0?lastYear+3:null;
+ const cooldown=nextAllowedYear!==null&&year<nextAllowedYear;
+ const current=siblingInvestmentRiskLabel(profile.investmentRisk);
+ const note=cooldown?'التغيير التالي متاح في سنة '+fmt(nextAllowedYear)+'.':'يمكنك اختيار توجه جديد الآن؛ وبعد التغيير تنتظر المحفظة ثلاث سنوات قبل إعادة ضبطه.';
+ const options=[
+  choice('🛡️','محافظ','تقلبات أهدأ عادةً، مع بقاء احتمال الخسارة قائمًا.',()=>siblingSetInvestmentRisk(n,'conservative')),
+  choice('⚖️','متوازن','مزيج متوسط بين فرص النمو وحجم التذبذب.',()=>siblingSetInvestmentRisk(n,'balanced')),
+  choice('🚀','نمو','فرص صعود أعلى مقابل احتمال خسائر وتذبذب أكبر.',()=>siblingSetInvestmentRisk(n,'growth')),
+  choice('↩️','رجوع','',()=>siblingEconomicDetails(n))
+ ];
+ info('📈','توجه الاستثمار · '+String(n.name||'أحد الإخوة'),'التوجه الحالي: '+current+'. يؤثر الاختيار على العائد السنوي لمحفظته فقط، ولا يسحب أموالًا من رصيد الشخصية الحالية. '+note,options);
+}
+function siblingSetInvestmentRisk(n,risk){
+ const profile=n&&n.economicProfile;
+ if(!profile){info('⚠️','تعذر تغيير التوجه','لا يوجد سجل مالي مستقل لهذا الفرد.');return;}
+ const year=Number.isSafeInteger(Number(state&&state.yearCount))?Math.max(0,Number(state.yearCount)):Math.max(0,Number(n.age)||0);
+ const result=changeSiblingInvestmentRisk(profile,risk,year);
+ if(!result.ok){
+  if(result.reason==='cooldown')info('⏳','تغيير التوجه مؤجل','يمكن تعديل توجه الاستثمار مرة كل ثلاث سنوات. الموعد التالي في سنة '+fmt(result.nextAllowedYear)+'.');
+  else if(result.reason==='unchanged')info('ℹ️','التوجه محدد بالفعل','محفظة '+String(n.name||'هذا الفرد')+' تعمل بالفعل بالتوجه '+siblingInvestmentRiskLabel(result.risk)+'.');
+  else info('⚠️','اختيار غير صالح','لم يتم تغيير بيانات المحفظة.');
+  return;
+ }
+ if(!save()){
+  profile.investmentRisk=result.previousRisk;
+  profile.lastInvestmentRiskChangeYear=result.previousYear;
+  info('⚠️','تعذر حفظ التغيير','لم يتم اعتماد التوجه الجديد؛ أُعيدت بيانات المحفظة إلى حالتها السابقة.');
+  return;
+ }
+ log('📈','تحديث توجه استثمار '+String(n.name||'أحد الإخوة'),'أصبح توجه المحفظة '+siblingInvestmentRiskLabel(result.risk)+'. يمكن إعادة ضبطه ابتداءً من السنة '+fmt(result.nextAllowedYear)+'.','good');
+ render();
+ siblingEconomicDetails(n);
+}
 function siblingEconomicDetails(n){
  const profile=n&&n.economicProfile;if(!profile){info('📊','لا يوجد سجل مالي بعد','يبدأ الحساب المالي المستقل عند بلوغ الأخ أو الأخت سن 18 سنة.');return;}
  const netWorth=Number(profile.netWorth)||0,properties=Array.isArray(profile.ownedProperties)?profile.ownedProperties:[],propertyValue=siblingOwnedPropertyValue(profile);
@@ -7590,7 +7648,7 @@ function siblingEconomicDetails(n){
  const history=(Array.isArray(profile.history)?profile.history:[]).slice(-5).reverse();
  const historyText=history.length?history.map(item=>'سنة '+fmt(item.year)+' · '+siblingEmploymentStateLabel(item.employmentState)+(siblingEmploymentEventLabel(item.employmentEvent)?' ('+siblingEmploymentEventLabel(item.employmentEvent)+')':'')+' · دخل '+cash(item.income)+' · إيجار '+cash(item.rentIncome||0)+' · فاقد إيجار '+cash(item.rentLoss||0)+' · متأخرات محصلة '+cash(item.rentArrearsCollected||0)+' · رصيد متأخرات '+cash(item.rentArrearsBalance||0)+(item.rentArrearsWrittenOff?' · شطب متأخرات '+cash(item.rentArrearsWrittenOff):'')+' · قسط تمويل '+cash(item.mortgagePayment||0)+' · أصل مسدد '+cash(item.mortgagePrincipal||0)+' · رصيد تمويل '+cash(item.mortgageBalance||0)+(item.mortgageDefault?' · تعثر تمويلي':'')+' · مصروف '+cash(item.expenses)+' · مدخرات '+cash(item.savings)+' · محفظة '+cash(item.investmentBalance||0)+' · قيمة العقار '+cash(item.propertyValue||0)+' · صيانة '+cash(item.propertyExpenses||0)+(item.propertyPurchase?' · شراء مسكن':'')+(item.rentalPurchase?' · شراء عقار استثماري':'')+(Array.isArray(item.rentLeaseEvents)&&item.rentLeaseEvents.length?' · عقود إيجار '+item.rentLeaseEvents.map(event=>(event.event==='signed'?'توقيع ':event.event==='renewed'?'تجديد ':'انتهاء ')+String(event.tenantName||'')).join('، '):'')+(item.propertySale?' · بيع عقار '+cash(item.propertySaleGross||0)+' وصافي '+cash(item.propertySaleNet||0):'')).join('؛ '):'لا توجد سنوات مالية مسجلة بعد.';
  const description='الأسرة المستقلة: '+householdSummary+childCareerSummary+' · دخل الشريك السنوي '+cash(profile.householdIncomeAnnual||0)+' · مصروفات الأسرة '+cash(profile.householdExpensesAnnual||0)+'. المهنة: '+String(profile.job||n.job||'غير محدد')+' · حالة العمل: '+siblingEmploymentStateLabel(profile.employmentState)+' · المستوى المهني '+fmt(profile.rank||1)+' · الخبرة '+fmt(profile.yearsWorked||0)+' سنة. الدخل السنوي '+cash(profile.annualIncome||0)+' '+String(profile.currency||'')+'، منه دخل إيجار '+cash(profile.annualRentIncome||0)+' وإجمالي إيجارات محصلة '+cash(profile.rentalIncomeTotal||0)+' وفاقد إيجاري '+cash(profile.rentalLossTotal||0)+'، ومتأخرات إيجار قائمة '+cash(profile.rentalArrearsBalance||0)+' ومحصلة '+cash(profile.rentalArrearsCollectedTotal||0)+' ومضافة '+cash(profile.rentalArrearsAddedTotal||0)+' ومشطوبة '+cash(profile.rentalArrearsWrittenOffTotal||0)+'. التمويل العقاري القائم '+cash(profile.mortgageDebtBalance||0)+'، ومتأخرات الأقساط '+cash(profile.mortgageArrearsBalance||0)+'، والمدفوع سنويًا '+cash(profile.mortgagePaymentAnnual||0)+'، والسداد المبكر التراكمي '+cash(profile.mortgagePrepaymentsTotal||0)+' ورسومه '+cash(profile.mortgageFeesTotal||0)+'. المصروفات '+cash(profile.annualExpenses||0)+' منها صيانة عقارية '+cash(profile.propertyExpensesAnnual||0)+'. المدخرات '+cash(profile.savings||0)+'، والمحفظة الاستثمارية '+cash(profile.investmentBalance||0)+' بمخاطرة '+siblingInvestmentRiskLabel(profile.investmentRisk)+'، والعائد التراكمي '+cash(profile.investmentReturnsTotal||0)+'، والديون الإجمالية '+cash(profile.debt||0)+'. العقارات المستقلة: '+properties.length+' · '+propertyText+' · إجمالي قيمتها '+cash(propertyValue)+' · إجمالي مبيعات العقارات '+cash(profile.propertySalesTotal||0)+' · صافي الثروة '+(netWorth<0?'سالب ':'')+cash(Math.abs(netWorth))+'. المتأخرات غير المحصلة لا تدخل في صافي الثروة إلا بعد تحصيلها. سجل المعاملات: '+transactionText+'. الحالة المالية: '+String(profile.employmentStatus||'مستقر')+'. آخر السنوات: '+historyText;
- info('📊','الاستقلال المالي · '+String(n.name||'أحد الإخوة'),description,[...rentalLeaseChoices,...rentalSaleChoices,...mortgageChoices,...childPortfolioChoices,choice('↩️','العودة لملف الشخصية','',()=>personModal(n))]);
+ info('📊','الاستقلال المالي · '+String(n.name||'أحد الإخوة'),description,[...rentalLeaseChoices,...rentalSaleChoices,...mortgageChoices,...childPortfolioChoices,choice('📈','تعديل توجه الاستثمار','التوجه الحالي '+siblingInvestmentRiskLabel(profile.investmentRisk)+' · يمكن تغييره مرة كل 3 سنوات.',()=>siblingInvestmentRiskMenu(n)),choice('↩️','العودة لملف الشخصية','',()=>personModal(n))]);
 }
 function relationshipHistory(n){
  const history=Array.isArray(n.interactions)?n.interactions.slice().reverse():[];
