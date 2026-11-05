@@ -3086,7 +3086,8 @@ html,body{background:#f2f4f6}
     outline:1px solid HighlightText;outline-offset:-2px;
   }
   #app .agebtn{
-    background:Highlight!important;color:HighlightText!important;
-    border:2px solid ButtonText!important;box-shadow:none!important;
+    forced-color-adjust:none;
+    background:CanvasText!important;color:Canvas!important;
+    border:2px solid CanvasText!important;box-shadow:none!important;
   }
 }
