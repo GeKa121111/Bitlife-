@@ -1529,7 +1529,8 @@ test('مسيرة القتال تدير ثلاث جولات وتستعيد الن
     'style variety should reward a fresh style and penalize repetition across the last two rounds');
   const resolveRoundSource = functionSource('resolveCombatRound', 'resolveCombatBout');
   assert.match(resolveRoundSource, /const styleVarietyModifier=combatStyleVarietyModifier\(session\.roundHistory,move\.style\)/);
-  assert.match(resolveRoundSource, /counterBonus\+styleVarietyModifier-moveRepetition\.playerPenalty\+communityAdjustment/);
+  assert.match(resolveRoundSource, /counterBonus\+styleVarietyModifier-playerAdaptationPenalty\+communityAdjustment/);
+  assert.match(resolveRoundSource, /const moveAdaptation=combatMoveAdaptationEffect\(opponent,session\.roundHistory/);
   assert.match(resolveRoundSource, /styleVarietyModifier,/);
   assert.match(resolveRoundSource, /combatOpponentIntent\(opponent,round,session\.lastStyle,session\.roundHistory,session\.communityFighterId,rememberedRival\?rememberedRival\.styleMemory:\[\]\)/);
   assert.match(resolveRoundSource, /intent\.read/);
