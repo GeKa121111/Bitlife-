@@ -43,3 +43,9 @@ body.theme-gold .diary-search-filter[aria-pressed="true"]{background:#9a7528;bor
     padding-block:2px!important;
   }
 }
+
+.diary-search-jump{display:flex;align-items:center;gap:8px;min-width:0}
+.diary-search-jump-button{flex:1 1 0;min-width:0;min-height:44px;padding:7px 10px;border:1px solid var(--hayah-line,#dce9e4);border-radius:11px;background:var(--hayah-bg,#f7faf8);color:var(--hayah-primary,#176b66);font-size:11px;font-weight:900;cursor:pointer}
+.diary-search-jump-button:disabled{opacity:.45;cursor:not-allowed}
+.diary-search-jump-button:focus-visible{outline:3px solid var(--hayah-focus-ring,#e5b34b);outline-offset:2px}
+body.theme-dark .diary-search-jump-button{background:#17384d;color:#e9f3f4;border-color:#36596c}
