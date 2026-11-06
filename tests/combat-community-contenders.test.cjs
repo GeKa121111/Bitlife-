@@ -61,7 +61,7 @@ test('تعادل المؤشر يُحسم بترتيب ثابت حسب التقي
     JSON.parse(JSON.stringify(board.map(item => item.fighter.id))),
     ['higher-base', 'alpha', 'zeta']
   );
-  assert.deepEqual(api.board(null), []);
+  assert.deepEqual(JSON.parse(JSON.stringify(api.board(null))), []);
 });
 
 test('مجتمع المقاتلين يفتح لوحة المؤشر وملف المنافس يتيح تحديًا دوريًا بالاسم', () => {
