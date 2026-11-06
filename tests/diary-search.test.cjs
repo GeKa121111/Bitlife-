@@ -61,6 +61,19 @@ test('البحث بعنوان مجموعة عمرية يعرض أحداث الم
   assert.equal(second.hidden, false);
 });
 
+test('البحث يدعم بطاقات الأحداث المتداخلة داخل مجموعات العمر', () => {
+  const search = api();
+  const heading = node('agegroup', 'العمر 31');
+  const matching = node('logcard', 'بداية مشروع جديد');
+  const other = node('logcard', 'رحلة قصيرة');
+  const feed = { children: [], querySelectorAll: () => [heading, matching, other] };
+  const result = search.filterFeed(feed, 'مشروع');
+  assert.deepEqual(JSON.parse(JSON.stringify(result)), { visibleCount: 1, totalCount: 2 });
+  assert.equal(matching.hidden, false);
+  assert.equal(other.hidden, true);
+  assert.equal(heading.hidden, false);
+});
+
 test('مسح البحث يعيد إظهار العناصر ويحتفظ بحالة الإخفاء الأصلية', () => {
   const search = api();
   const heading = node('agegroup', 'العمر 40');
