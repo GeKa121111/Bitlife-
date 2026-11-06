@@ -1,0 +1,220 @@
+'use strict';
+
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+const vm = require('node:vm');
+
+const source = fs.readFileSync(path.join(__dirname, '..', 'combat-season.js'), 'utf8');
+
+function createContext(overrides = {}) {
+  const context = vm.createContext({
+    state: { age: 24, yearCount: 24, specialCareer: { id: 'fighter' } },
+    choice(icon, title, description, action) {
+      return { icon, title, description, action };
+    },
+    modal(...args) {
+      context.lastModal = args;
+    },
+    info(...args) {
+      context.lastInfo = args;
+    },
+    ensureCombatCareer() {
+      return context.career;
+    },
+    combatCommunityMenu() {
+      context.communityMenuOpened = true;
+    },
+    advanceCombatCommunity() {
+      return true;
+    },
+    ...overrides
+  });
+  context.window = context;
+  vm.runInContext(source, context, { filename: 'combat-season.js' });
+  return context;
+}
+
+function makeCareer() {
+  return {
+    leagueWins: 7,
+    leaguePoints: 90,
+    champion: true,
+    community: [
+      { id: 'rival-c', name: 'منافس ج', rating: 75, momentum: 0, respect: 50, tension: 10 },
+      { id: 'rival-a', name: 'منافس أ', rating: 88, momentum: 2, respect: 70, tension: 15 },
+      { id: 'rival-b', name: 'منافس ب', rating: 68, momentum: -1, respect: 45, tension: 30 },
+      { id: 'retired', name: 'معتزل', rating: 95, retired: true },
+      { id: 'deceased', name: 'متوفى', rating: 95, deceased: true }
+    ]
+  };
+}
+
+test('الحفظ القديم بلا سجل مواسم يحصل على بنية اختيارية آمنة دون تغيير حقول الدوري أو اللقب', () => {
+  const context = createContext();
+  const career = makeCareer();
+  const result = context.HayahCombatSeason.simulate(career);
+
+  assert.ok(result);
+  assert.equal(career.communityLeague.season, 1);
+  assert.equal(career.communityLeague.history.length, 1);
+  assert.equal(career.leagueWins, 7);
+  assert.equal(career.leaguePoints, 90);
+  assert.equal(career.champion, true);
+  assert.equal(career.communityLeague.history[0].matches, 3);
+});
+
+test('الموسم يحاكي كل مواجهة فريدة بين المنافسين النشطين مرة واحدة', () => {
+  const context = createContext();
+  const career = makeCareer();
+  const result = context.HayahCombatSeason.simulate(career);
+
+  assert.equal(result.matches, 3);
+  assert.equal(result.standings.length, 3);
+  assert.deepEqual(
+    JSON.parse(JSON.stringify(result.standings.map(row => row.played))),
+    [2, 2, 2]
+  );
+  assert.ok(result.standings.every(row => row.wins + row.draws + row.losses === 2));
+  assert.ok(result.standings.every((row, index, rows) =>
+    index === 0 || rows[index - 1].points >= row.points
+  ));
+  assert.ok(result.standings.every(row => row.id !== 'retired' && row.id !== 'deceased'));
+});
+
+test('نتائج الموسم حتمية لنفس العمر والبيانات ولا تستخدم عشوائية', () => {
+  const firstContext = createContext();
+  const secondContext = createContext();
+  const firstCareer = makeCareer();
+  const secondCareer = JSON.parse(JSON.stringify(firstCareer));
+
+  const first = firstContext.HayahCombatSeason.simulate(firstCareer);
+  const second = secondContext.HayahCombatSeason.simulate(secondCareer);
+
+  assert.deepEqual(
+    JSON.parse(JSON.stringify(first.standings)),
+    JSON.parse(JSON.stringify(second.standings))
+  );
+  assert.deepEqual(
+    JSON.parse(JSON.stringify(firstCareer.community)),
+    JSON.parse(JSON.stringify(secondCareer.community))
+  );
+});
+
+test('لا يتكرر الموسم مرتين في العمر نفسه، ويبدأ موسم جديد بعد تقدم العمر', () => {
+  const context = createContext();
+  const career = makeCareer();
+
+  assert.ok(context.HayahCombatSeason.simulate(career));
+  assert.equal(context.HayahCombatSeason.simulate(career), null);
+  assert.equal(career.communityLeague.season, 1);
+
+  context.state.age += 1;
+  assert.ok(context.HayahCombatSeason.simulate(career));
+  assert.equal(career.communityLeague.season, 2);
+});
+
+test('سجل النتائج يحتفظ بآخر 12 موسمًا فقط', () => {
+  const context = createContext();
+  const career = makeCareer();
+
+  for (let age = 20; age < 35; age += 1) {
+    context.state.age = age;
+    assert.ok(context.HayahCombatSeason.simulate(career));
+  }
+
+  assert.equal(career.communityLeague.season, 15);
+  assert.equal(career.communityLeague.history.length, 12);
+  assert.equal(career.communityLeague.history[0].season, 4);
+  assert.equal(career.communityLeague.history.at(-1).season, 15);
+});
+
+test('تقدم مجتمع المقاتلين يشغل الموسم تلقائيًا مرة واحدة عند نجاح التقدم السنوي', () => {
+  let canAdvance = true;
+  const context = createContext({
+    advanceCombatCommunity() {
+      if (!canAdvance) return false;
+      canAdvance = false;
+      return true;
+    }
+  });
+  const career = makeCareer();
+
+  assert.equal(context.advanceCombatCommunity(career), true);
+  assert.equal(career.communityLeague.season, 1);
+  assert.equal(context.advanceCombatCommunity(career), false);
+  assert.equal(career.communityLeague.season, 1);
+
+  context.state.age += 1;
+  canAdvance = true;
+  assert.equal(context.advanceCombatCommunity(career), true);
+  assert.equal(career.communityLeague.season, 2);
+});
+
+test('قائمة مجتمع المقاتلين تعرض سجل المواسم ولا تغيّر القوائم الأخرى', () => {
+  const context = createContext();
+  context.career = makeCareer();
+
+  context.modal('🤝', 'مجتمع المقاتلين', 'ملخص المجتمع', []);
+  assert.equal(context.lastModal[3][0].title, 'سجل مواسم المنافسين');
+  context.lastModal[3][0].action();
+  assert.equal(context.lastModal[1], 'سجل مواسم المنافسين');
+  assert.match(context.lastModal[2], /لم يبدأ موسم بعد/);
+
+  context.modal('ℹ️', 'معلومات عامة', 'نص', []);
+  assert.equal(context.lastModal[3].length, 0);
+});
+
+test('لوحة الموسم تعرض الترتيب وآخر متصدر وتوضح أن نقاطها لا تخص اللاعب', () => {
+  const context = createContext();
+  context.career = makeCareer();
+  context.HayahCombatSeason.simulate(context.career);
+
+  context.HayahCombatSeason.openMenu();
+  assert.equal(context.lastModal[1], 'سجل مواسم المنافسين');
+  assert.match(context.lastModal[2], /منافس/);
+  assert.match(context.lastModal[2], /نقطة/);
+  assert.match(context.lastModal[2], /آخر موسم/);
+});
+
+test('تطبيع سجل الموسم يحد القيم ويحذف السجلات غير الصالحة', () => {
+  const context = createContext();
+  const normalized = context.HayahCombatSeason.normalize({
+    season: -10,
+    lastSimulatedAge: 999,
+    matchesLastSeason: 9999,
+    standings: [
+      null,
+      { id: 'valid', position: 999, points: -1, played: 999, wins: 999, rating: 999 },
+      { id: '', name: 'بلا معرّف' }
+    ],
+    history: Array.from({ length: 15 }, (_, index) => ({
+      season: index + 1,
+      age: 200,
+      matches: 999,
+      leaderId: 'rival',
+      leaderName: 'منافس',
+      leaderPoints: 99999999,
+      topThree: [{ id: 'rival', name: 'منافس', points: 99999999, played: 999 }]
+    }))
+  });
+
+  assert.equal(normalized.season, 0);
+  assert.equal(normalized.lastSimulatedAge, 150);
+  assert.equal(normalized.matchesLastSeason, 190);
+  assert.equal(normalized.standings.length, 1);
+  assert.equal(normalized.standings[0].position, 20);
+  assert.equal(normalized.standings[0].points, 0);
+  assert.equal(normalized.standings[0].played, 20);
+  assert.equal(normalized.standings[0].rating, 95);
+  assert.equal(normalized.history.length, 12);
+  assert.equal(normalized.history[0].season, 4);
+  assert.equal(normalized.history.at(-1).age, 150);
+});
+
+test('نظام المواسم لا يكتب مباشرة إلى localStorage ولا يغير مفاتيح الحفظ الأساسية', () => {
+  assert.doesNotMatch(source, /localStorage|sessionStorage/);
+  assert.match(source, /communityLeague/);
+  assert.doesNotMatch(source, /hekayat_hayah_save_v1\s*=/);
+});
