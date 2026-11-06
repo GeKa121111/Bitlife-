@@ -455,19 +455,21 @@
 
   function installCommunityMenuObserver() {
     if (!global.document || typeof global.document.getElementById !== 'function') return;
-    const root = global.document.getElementById('modalRoot');
+    const getRoot = () => global.document.getElementById('modalRoot');
+    const root = getRoot();
     if (!root) return;
-    injectSeasonMenuEntry(root);
+    const injectCurrentMenu = () => injectSeasonMenuEntry(getRoot());
+    injectCurrentMenu();
     if (typeof global.MutationObserver === 'function') {
-      const observer = new global.MutationObserver(() => injectSeasonMenuEntry(root));
-      observer.observe(root, { childList: true, subtree: true });
+      const observer = new global.MutationObserver(injectCurrentMenu);
+      observer.observe(global.document.body || root, { childList: true, subtree: true });
       global.__hayahCombatSeasonMenuObserver = observer;
     }
     const originalCommunityMenu = global.combatCommunityMenu;
     if (typeof originalCommunityMenu === 'function') {
       global.combatCommunityMenu = function () {
         const result = originalCommunityMenu.apply(this, arguments);
-        injectSeasonMenuEntry(root);
+        injectCurrentMenu();
         return result;
       };
     }
