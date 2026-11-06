@@ -35,7 +35,8 @@ function createHarness({ failKey = null, saveFails = false, snapshotAge = 39, sn
     name: 'مريم',
     age: snapshotAge,
     stats: { health: 82 },
-    status: 'حي'
+    status: 'حي',
+    accomplishments: []
   };
   const currentState = {
     version: 1,
