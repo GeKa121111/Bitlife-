@@ -9,9 +9,9 @@ const vm = require('node:vm');
 const app = fs.readFileSync(path.join(__dirname, '..', 'app.js'), 'utf8');
 
 const catalogStart = app.indexOf('const combatMoveCatalog=');
-const memoryStart = app.indexOf('const combatMemoryStyles=');
-const communityEnd = app.indexOf('\nfunction combatRoundEnergy(', memoryStart);
-assert.ok(catalogStart >= 0 && memoryStart > catalogStart && communityEnd > memoryStart,
+const communityStart = app.indexOf('const combatCommunityProfiles=');
+const communityEnd = app.indexOf('\nfunction combatRoundEnergy(', communityStart);
+assert.ok(catalogStart >= 0 && communityStart > catalogStart && communityEnd > communityStart,
   'combat catalogs and community memory helpers must remain available');
 
 const context = vm.createContext({
@@ -30,8 +30,14 @@ function functionSource(name) {
 }
 
 vm.runInContext([
-  app.slice(catalogStart, memoryStart),
-  app.slice(memoryStart, communityEnd),
+  app.slice(catalogStart, communityStart),
+  app.slice(communityStart, communityEnd),
+  functionSource('combatOpponentArchetype'),
+  functionSource('combatMoveLongTermEffect'),
+  functionSource('combatMoveMemorySummary'),
+  functionSource('recordCombatRivalMoveMemory'),
+  functionSource('combatOpponentMemoryInsight'),
+  functionSource('combatRivalScoutingReport'),
   functionSource('normalizePendingCombatBout'),
   'globalThis.api = { normalizeMoves: normalizeCombatMoveMemory, normalizeCommunity: normalizeCombatCommunity, record: recordCombatRivalMoveMemory, effect: combatMoveLongTermEffect, summary: combatMoveMemorySummary, report: combatRivalScoutingReport, pending: normalizePendingCombatBout, archetype: combatOpponentArchetype };'
 ].join(String.fromCharCode(10)), context, { filename: 'combat-move-memory.test.cjs' });
