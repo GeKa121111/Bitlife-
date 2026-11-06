@@ -643,8 +643,8 @@ assert.match(app, /const KEY = 'hekayat_hayah_save_v1';/);
 assert.match(serviceWorker, /hayah-shell-v185/);
 
 assert.match(app, /function combatRoundEnergy\(currentEnergy,move,mode='street',reactionCost=0\)/);
-assert.match(app, /function normalizeCombatTitleDefenseHistory\\(raw\\)/);
-assert.match(app, /function recordCombatTitleDefense\\(c,opponent,age,year,won\\)/);
+assert.match(app, /function normalizeCombatTitleDefenseHistory\(raw\)/);
+assert.match(app, /function recordCombatTitleDefense\(c,opponent,age,year,won\)/);
 assert.match(app, /titleDefenseResult,probability,earnings/);
 assert.match(app, /function combatDistanceEffects\(distance,move,opponentStyle,reactionId\)/);
 assert.match(app, /session\.distance=distanceResult\.after/);
