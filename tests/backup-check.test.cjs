@@ -38,6 +38,9 @@ test('الحفظ القديم بلا سجل رجوع يظل صالحًا ولا 
   assert.equal(report.rewindSnapshotCount, 0);
   assert.equal(report.rewindSnapshotChars, 0);
   assert.equal(report.rewindInvalidSnapshotCount, 0);
+  assert.equal(report.rewindMalformedSnapshotCount, 0);
+  assert.equal(report.rewindUnusableSnapshotCount, 0);
+  assert.equal(report.rewindUsableSnapshotCount, 0);
   assert.equal(report.warnings.some(message => message.includes('سجل الرجوع')), false);
 });
 
@@ -49,6 +52,9 @@ test('الفاحص يعرض عدد اللقطات وطول تمثيل JSON ال�
   assert.equal(report.rewindSnapshotCount, 2);
   assert.equal(report.rewindSnapshotChars, JSON.stringify(snapshots).length);
   assert.equal(report.rewindInvalidSnapshotCount, 0);
+  assert.equal(report.rewindMalformedSnapshotCount, 0);
+  assert.equal(report.rewindUnusableSnapshotCount, 2);
+  assert.equal(report.rewindUsableSnapshotCount, 0);
 });
 
 test('المدخلات الفارغة وغير النصية تُحسب كمستبعدة دون تعديل ملف الحفظ', () => {
@@ -60,7 +66,9 @@ test('المدخلات الفارغة وغير النصية تُحسب كمست�
   assert.equal(report.rewindSnapshotCount, 1);
   assert.equal(report.rewindInvalidSnapshotCount, 4);
   assert.equal(report.rewindSnapshotChars, JSON.stringify(['{"age":41}']).length);
-  assert.ok(report.warnings.some(message => message.includes('مدخل غير نصي أو فارغ')));
+  assert.equal(report.rewindUnusableSnapshotCount, 1);
+  assert.equal(report.rewindUsableSnapshotCount, 0);
+  assert.ok(report.warnings.some(message => message.includes('مدخل فارغ أو غير نصي')));
   assert.deepEqual(snapshots, original);
 });
 
@@ -100,6 +108,9 @@ test('حقل سجل الرجوع غير المصفوفي يعطي تحذيرًا
   assert.equal(report.valid, true);
   assert.equal(report.rewindSnapshotCount, 0);
   assert.equal(report.rewindInvalidSnapshotCount, 1);
+  assert.equal(report.rewindMalformedSnapshotCount, 0);
+  assert.equal(report.rewindUnusableSnapshotCount, 0);
+  assert.equal(report.rewindUsableSnapshotCount, 0);
   assert.ok(report.warnings.some(message => message.includes('ليس مصفوفة')));
 });
 
@@ -111,5 +122,89 @@ test('حزمة hayah-backup الكاملة تعرض بيانات الرجوع م
   assert.equal(report.format, 'حزمة حفظ حياة كاملة');
   assert.equal(report.rewindSnapshotCount, 2);
   assert.equal(report.rewindSnapshotChars, JSON.stringify(life.timeMachineSnapshots).length);
+  assert.equal(report.rewindUsableSnapshotCount, 0);
+  assert.equal(report.rewindUnusableSnapshotCount, 2);
   assert.equal(report.cemeteryCount, 0);
+});
+
+
+function makeWrappedSnapshot(age, lifeId = 77, overrides = {}) {
+  return JSON.stringify({
+    snapshotVersion: 1,
+    logLength: 0,
+    state: {
+      version: 1,
+      lifeId,
+      name: 'مريم',
+      age,
+      stats: {},
+      status: 'حي',
+      ...overrides
+    }
+  });
+}
+
+function makeLegacySnapshot(age, lifeId, overrides = {}) {
+  return JSON.stringify({
+    version: 1,
+    ...(lifeId === undefined ? {} : { lifeId }),
+    name: 'مريم',
+    age,
+    stats: {},
+    log: [],
+    status: 'حي',
+    ...overrides
+  });
+}
+
+test('الفاحص يميز اللقطات الحالية القديمة القابلة للاستعادة', () => {
+  const life = makeLife({
+    lifeId: 77,
+    age: 45,
+    timeMachineSnapshots: [
+      makeWrappedSnapshot(43, 77),
+      makeLegacySnapshot(44, 77),
+      makeLegacySnapshot(42, undefined)
+    ]
+  });
+  const report = inspectBackup(life);
+
+  assert.equal(report.valid, true);
+  assert.equal(report.rewindSnapshotCount, 3);
+  assert.equal(report.rewindUsableSnapshotCount, 3);
+  assert.equal(report.rewindMalformedSnapshotCount, 0);
+  assert.equal(report.rewindUnusableSnapshotCount, 0);
+});
+
+test('نصوص JSON التالفة تحذر اللاعب دون رفض حياة سليمة', () => {
+  const report = inspectBackup(makeLife({
+    timeMachineSnapshots: ['{"snapshotVersion":1,', 'not-json', '']
+  }));
+
+  assert.equal(report.valid, true);
+  assert.equal(report.rewindSnapshotCount, 2);
+  assert.equal(report.rewindInvalidSnapshotCount, 1);
+  assert.equal(report.rewindMalformedSnapshotCount, 2);
+  assert.equal(report.rewindUnusableSnapshotCount, 0);
+  assert.equal(report.rewindUsableSnapshotCount, 0);
+  assert.ok(report.warnings.some(message => message.includes('نص JSON تالف')));
+});
+
+test('النقاط القابلة للتحليل لكنها غير صالحة للاستعادة تُفصل عن JSON التالف', () => {
+  const report = inspectBackup(makeLife({
+    lifeId: 77,
+    age: 45,
+    timeMachineSnapshots: [
+      makeWrappedSnapshot(45, 77),
+      makeLegacySnapshot(44, 88),
+      makeWrappedSnapshot(43, 77, { status: 'متوفى' }),
+      JSON.stringify({ snapshotVersion: 1, state: null })
+    ]
+  }));
+
+  assert.equal(report.valid, true);
+  assert.equal(report.rewindMalformedSnapshotCount, 0);
+  assert.equal(report.rewindUnusableSnapshotCount, 4);
+  assert.equal(report.rewindUsableSnapshotCount, 0);
+  assert.ok(report.warnings.some(message => message.includes('لا تخص عمرًا أقدم')));
 });

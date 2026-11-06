@@ -58,21 +58,87 @@
       version: life.version
     };
   }
+  function isRestorableRewindSnapshot(parsed, life) {
+    let snapshotState = parsed;
+    const wrapped = isRecord(parsed) && parsed.snapshotVersion === 1 &&
+      parsed.state && typeof parsed.state === 'object';
+    if (wrapped) snapshotState = parsed.state;
+    if (!isRecord(snapshotState)) return false;
+
+    const ageText = snapshotState.age === null || snapshotState.age === undefined
+      ? '' : String(snapshotState.age).trim();
+    const age = Number(snapshotState.age);
+    const validAge = ageText !== '' && Number.isFinite(age) && age >= 0 && age <= 150;
+    if (snapshotState.version !== 1 ||
+        typeof snapshotState.name !== 'string' || !snapshotState.name.trim() ||
+        !validAge || !isRecord(snapshotState.stats) ||
+        snapshotState.status === 'متوفى') return false;
+
+    // Current compact checkpoints store the log length separately; legacy full
+    // snapshots must still carry the log array required by the rewind engine.
+    if (!wrapped && !Array.isArray(snapshotState.log)) return false;
+
+    const currentAge = Number(life && life.age);
+    if (!Number.isFinite(currentAge) || age >= currentAge) return false;
+
+    const currentLifeId = life && life.lifeId;
+    const snapshotLifeId = snapshotState.lifeId;
+    const hasCurrentLifeId = currentLifeId !== undefined && currentLifeId !== null &&
+      String(currentLifeId).trim() !== '';
+    const hasSnapshotLifeId = snapshotLifeId !== undefined && snapshotLifeId !== null &&
+      String(snapshotLifeId).trim() !== '';
+    // A snapshot with a different explicit identity cannot be restored into this life.
+    // A legacy snapshot without an ID remains supported; the engine binds it to the active life.
+    if (hasSnapshotLifeId &&
+        (!hasCurrentLifeId || String(snapshotLifeId) !== String(currentLifeId))) return false;
+
+    return true;
+  }
+
   function inspectRewindHistory(life, warnings) {
     const raw = isRecord(life) ? life.timeMachineSnapshots : undefined;
     if (raw === undefined || raw === null) {
-      return { count: 0, serializedChars: 0, invalidCount: 0 };
+      return {
+        count: 0, serializedChars: 0, invalidCount: 0,
+        malformedJsonCount: 0, unusableCount: 0, usableCount: 0
+      };
     }
     if (!Array.isArray(raw)) {
       warnings.push('حقل نقاط الرجوع موجود لكنه ليس مصفوفة؛ قد يتجاهله المحرك عند الاستيراد.');
-      return { count: 0, serializedChars: 0, invalidCount: 1 };
+      return {
+        count: 0, serializedChars: 0, invalidCount: 1,
+        malformedJsonCount: 0, unusableCount: 0, usableCount: 0
+      };
     }
 
     // The game stores rewind snapshots as JSON strings and filters empty/non-string entries.
     const snapshots = raw.filter(snapshot => typeof snapshot === 'string' && snapshot.length > 0);
     const invalidCount = raw.length - snapshots.length;
+    let malformedJsonCount = 0;
+    let unusableCount = 0;
+    let usableCount = 0;
+
     if (invalidCount > 0) {
-      warnings.push('يوجد ' + invalidCount + ' مدخل غير نصي أو فارغ في سجل الرجوع؛ قد يتجاهلها المحرك.');
+      warnings.push('يوجد ' + invalidCount + ' مدخل فارغ أو غير نصي في سجل الرجوع؛ قد يتجاهلها المحرك.');
+    }
+
+    snapshots.forEach(snapshot => {
+      let parsed;
+      try {
+        parsed = JSON.parse(snapshot);
+      } catch {
+        malformedJsonCount += 1;
+        return;
+      }
+      if (isRestorableRewindSnapshot(parsed, life)) usableCount += 1;
+      else unusableCount += 1;
+    });
+
+    if (malformedJsonCount > 0) {
+      warnings.push('يوجد ' + malformedJsonCount + ' نقطة رجوع تحتوي على نص JSON تالف؛ لن يمكن قراءتها أو استعادتها.');
+    }
+    if (unusableCount > 0) {
+      warnings.push('يوجد ' + unusableCount + ' نقطة رجوع لا تطابق بنية الاستعادة أو لا تخص عمرًا أقدم وحياة متوافقة؛ لن تظهر كخيارات صالحة.');
     }
 
     const serializedChars = snapshots.length ? JSON.stringify(snapshots).length : 0;
@@ -85,7 +151,7 @@
       warnings.push('يتجاوز سجل الرجوع ميزانية التخزين البالغة ' + MAX_REWIND_SNAPSHOT_CHARS + ' وحدة نصية؛ قد يستبعد المحرك بعض اللقطات لتقليل الحجم.');
     }
 
-    return { count: snapshots.length, serializedChars, invalidCount };
+    return { count: snapshots.length, serializedChars, invalidCount, malformedJsonCount, unusableCount, usableCount };
   }
 
   function inspectBackup(data) {
@@ -140,6 +206,9 @@
       rewindSnapshotCount: rewind.count,
       rewindSnapshotChars: rewind.serializedChars,
       rewindInvalidSnapshotCount: rewind.invalidCount,
+      rewindMalformedSnapshotCount: rewind.malformedJsonCount,
+      rewindUnusableSnapshotCount: rewind.unusableCount,
+      rewindUsableSnapshotCount: rewind.usableCount,
       cemeteryCount,
       hasSettings,
       hasPerks,
@@ -212,7 +281,10 @@
         ['إصدار بيانات الحياة', report.lifeVersion === null ? 'غير متاح' : report.lifeVersion],
         ['نقاط الرجوع بالزمن', report.rewindSnapshotCount],
         ['طول سجل الرجوع', report.rewindSnapshotChars ? report.rewindSnapshotChars + ' وحدة نصية' : 'لا توجد نقاط محفوظة'],
-        ['مدخلات رجوع مستبعدة', report.rewindInvalidSnapshotCount],
+        ['نقاط قابلة للاستعادة', report.rewindUsableSnapshotCount],
+        ['نقاط JSON تالفة', report.rewindMalformedSnapshotCount],
+        ['نقاط غير متوافقة مع الحياة الحالية', report.rewindUnusableSnapshotCount],
+        ['مدخلات فارغة أو غير نصية', report.rewindInvalidSnapshotCount],
         ['الحيوات السابقة', report.cemeteryCount === null ? 'غير مشمولة' : report.cemeteryCount],
         ['إعدادات العرض', report.hasSettings ? 'مرفقة' : 'غير مرفقة'],
         ['المزايا الدائمة', report.hasPerks ? 'مرفقة' : 'غير مرفقة']
