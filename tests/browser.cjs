@@ -14,6 +14,8 @@ const routes = new Map([
   ['/accessibility.css', 'accessibility.css'],
   ['/diary-search.css', 'diary-search.css'],
   ['/diary-search.js', 'diary-search.js'],
+  ['/pwa-update.css', 'pwa-update.css'],
+  ['/pwa-update.js', 'pwa-update.js'],
   ['/app.js', 'app.js'],
   ['/sw.js', 'sw.js'],
   ['/manifest.webmanifest', 'manifest.webmanifest'],
