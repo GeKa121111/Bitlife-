@@ -62,7 +62,7 @@ test('كتالوج القتال يحتوي على 50 حركة أصلية بمع�
 test('الحركات العشر الجديدة موزعة على الرتب والمدى والطاقة دون تجاوز الحدود', () => {
   const added = api.catalog.filter(move => newMoveIds.includes(move.id));
   assert.equal(added.length, 10);
-  assert.deepEqual(added.map(move => move.id).sort(), [...newMoveIds].sort());
+  assert.deepEqual(Array.from(added, move => move.id).sort(), [...newMoveIds].sort());
 
   const rangeCounts = { close: 0, mid: 0, long: 0 };
   for (const move of added) {
