@@ -140,6 +140,8 @@ test('الرجوع بعد الوفاة يحدّث المقبرة ونسختها 
   assert.deepEqual(storedList(harness, 'cemetery'), [{ id: 'life-2', name: 'سليم', age: 76 }]);
   assert.deepEqual(storedList(harness, 'cemeteryBackup'), [{ id: 'life-2', name: 'سليم', age: 76 }]);
   assert.equal(JSON.parse(harness.values.get('life-save')).age, 39);
+  assert.equal(JSON.parse(harness.values.get('life-backup')).age, 39,
+    'the recovery copy should follow the restored timeline rather than retain the undone death');
   assert.equal(harness.context.calls.save, 1);
 });
 
@@ -170,6 +172,22 @@ test('فشل تحديث نسخة المقبرة الاحتياطية يلغي ا
   assert.deepEqual(storedList(harness, 'cemetery'), harness.cemetery);
   assert.deepEqual(storedList(harness, 'cemeteryBackup'), harness.cemetery);
   assert.equal(harness.context.calls.save, 0);
+  assert.ok(harness.context.calls.info.length > 0);
+});
+
+test('فشل مزامنة نسخة الحفظ الاحتياطية يلغي الرجوع ويعيد الحفظ والمقبرة', () => {
+  const harness = createHarness({ failKey: 'life-backup' });
+  const originalState = harness.context.state;
+  harness.context.rewindToSnapshot(0);
+
+  assert.equal(harness.context.state, originalState);
+  assert.equal(harness.context.state.status, 'متوفى');
+  assert.equal(harness.context.dead, true);
+  assert.equal(JSON.parse(harness.values.get('life-save')).status, 'متوفى');
+  assert.equal(harness.values.get('life-backup'), 'legacy-life-backup');
+  assert.deepEqual(storedList(harness, 'cemetery'), harness.cemetery);
+  assert.deepEqual(storedList(harness, 'cemeteryBackup'), harness.cemetery);
+  assert.equal(harness.context.calls.save, 1);
   assert.ok(harness.context.calls.info.length > 0);
 });
 

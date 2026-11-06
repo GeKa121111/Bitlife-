@@ -10216,7 +10216,16 @@ function rewindToSnapshot(index){
  state=restored;dead=false;ensureGamingTalent();closeModal();
  log('⏳','رجوع بالزمن','رجعت من عمر '+currentAge+' إلى عمر '+state.age+'. مسار الحياة اتراجع، وتقدر تختار قرارات مختلفة من هنا.','special');
  achievement('استخدمت الرجوع بالزمن');
- if(!save()){
+ let rewindSaved=save();
+ if(rewindSaved){
+  try{
+   const activeSaveRaw=localStorage.getItem(KEY);
+   if(!activeSaveRaw)throw new Error('rewind-save-missing');
+   localStorage.setItem(BACKUP_KEY,activeSaveRaw);
+   if(localStorage.getItem(BACKUP_KEY)!==activeSaveRaw)throw new Error('rewind-backup-write-unverified');
+  }catch(e){rewindSaved=false;}
+ }
+ if(!rewindSaved){
   state=previousState;dead=previousDead;
   let rollbackOk=true;
   try{restoreRewindStorageValue(KEY,previousLifeRaw);restoreRewindStorageValue(BACKUP_KEY,previousBackupRaw);}catch(e){rollbackOk=false;}
