@@ -5913,6 +5913,22 @@ function advanceAge(){
  randomEvent();
 }
 
+function fitTimeMachineSnapshots(history,limit,maxChars=300000){
+ const source=Array.isArray(history)?history.filter(entry=>typeof entry==='string'&&entry.length>0):[];
+ const entryLimit=Number.isFinite(Number(limit))?Math.max(1,Math.min(60,Math.floor(Number(limit)))):8;
+ const charBudget=Number.isFinite(Number(maxChars))?Math.max(1,Math.floor(Number(maxChars))):300000;
+ const selected=[];let usedChars=0,newestKept=false;
+ // LocalStorage strings are UTF-16; cap the snapshot history conservatively instead of relying only on entry count.
+ for(let index=source.length-1;index>=0&&selected.length<entryLimit;index--){
+  const size=source[index].length;
+  if(size>charBudget)continue;
+  if(usedChars+size>charBudget)break;
+  selected.unshift(source[index]);usedChars+=size;
+  if(index===source.length-1)newestKept=true;
+ }
+ return {snapshots:selected,usedChars,skippedNewest:source.length>0&&!newestKept,removedCount:source.length-selected.length};
+}
+
 function ageUp(){
  if(!validState())return;
  if(state.combatCareer&&state.combatCareer.pendingBout){
@@ -5924,7 +5940,11 @@ function ageUp(){
  const logSnapshot=logLength>=280&&Array.isArray(state.log)?JSON.parse(JSON.stringify(state.log)):null;
  if(!Array.isArray(state.timeMachineSnapshots))state.timeMachineSnapshots=[];
  const checkpoint={snapshotVersion:1,logLength,state:snapshot};if(logSnapshot)checkpoint.logSnapshot=logSnapshot;
- state.timeMachineSnapshots.push(JSON.stringify(checkpoint));const historyLimit=perkOwned('expandedTime')?60:8;if(state.timeMachineSnapshots.length>historyLimit)state.timeMachineSnapshots.splice(0,state.timeMachineSnapshots.length-historyLimit);
+ state.timeMachineSnapshots.push(JSON.stringify(checkpoint));
+ const historyLimit=perkOwned('expandedTime')?60:8;
+ const boundedHistory=fitTimeMachineSnapshots(state.timeMachineSnapshots,historyLimit);
+ state.timeMachineSnapshots=boundedHistory.snapshots;
+ if(boundedHistory.skippedNewest)flash('حجم بيانات الحياة كبير؛ احتفظنا بنقاط الرجوع السابقة ولم نضف نقطة لهذه السنة.',true);
  logBatchDepth++;
  try{advanceAge();}
  finally{
@@ -10126,6 +10146,8 @@ function timeMachineMenu(){
   closeModal();info('⏳','الرجوع بالزمن','الميزة بتظهر بعد ما تتقدم سنة واحدة على الأقل في الحياة.');return;
  }
  const isDead=state.status==='متوفى',history=state.timeMachineSnapshots,opts=[];
+ const expanded=perkOwned('expandedTime'),historyLimit=expanded?60:8;
+ const historyDescription=(expanded?'ذاكرة الزمن الموسّعة تتيح حتى 60 نقطة سنوية.':'الذاكرة الأساسية تتيح حتى 8 نقاط سنوية.')+' المتاح حاليًا '+history.length+' نقطة. للحفاظ على مساحة الحفظ، يُقلّص السجل من الأقدم عند الحاجة، وقد لا تُضاف نقطة جديدة إذا تجاوز حجمها الحد الآمن التقريبي.';
  for(let index=history.length-1;index>=0;index--){
   try{
    const parsed=JSON.parse(history[index]),snap=parsed&&parsed.snapshotVersion===1?parsed.state:parsed;
@@ -10133,7 +10155,7 @@ function timeMachineMenu(){
   }catch(e){}
  }
  opts.push(choice('↩️','رجوع','العودة للحياة الحالية دون تغيير.',()=>{closeModal();if(isDead)death(state.cause||'نهاية رحلة الحياة');}));
- modal('⏳','الرجوع بالزمن',perkOwned('expandedTime')?'ذاكرة الزمن الموسّعة تحفظ حتى 60 نقطة سنوية على هذا الجهاز، بحد آمن لحجم الحفظ.':'تقدر ترجع لواحدة من آخر 8 نقاط حفظ سنوية. افتح ذاكرة الزمن الموسّعة لزيادة العدد إلى 60.',opts);
+ modal('⏳','الرجوع بالزمن',historyDescription,opts);
 }
 
 function restoreRewindStorageValue(key,raw){
