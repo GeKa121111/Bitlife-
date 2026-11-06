@@ -496,9 +496,12 @@
     global.advanceCombatCommunity = function (career) {
       const result = originalAdvance.apply(this, arguments);
       if (result === true) {
-        simulateCommunitySeason(career || (
+        const targetCareer = career || (
           typeof global.ensureCombatCareer === 'function' ? global.ensureCombatCareer() : null
-        ));
+        );
+        const simulateAfterAnnualProgress = () => simulateCommunitySeason(targetCareer);
+        if (typeof global.queueMicrotask === 'function') global.queueMicrotask(simulateAfterAnnualProgress);
+        else Promise.resolve().then(simulateAfterAnnualProgress);
       }
       return result;
     };
