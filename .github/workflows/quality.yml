@@ -69,6 +69,10 @@ jobs:
         run: node --check tests/combat-community.test.cjs
       - name: Run combat community lifecycle and social interaction tests
         run: node --test tests/combat-community.test.cjs
+      - name: Check combat title-defense regression test syntax
+        run: node --check tests/combat-title-defense.test.cjs
+      - name: Run combat title-defense and legacy-save tests
+        run: node --test tests/combat-title-defense.test.cjs
       - name: Check combat scouting regression test syntax
         run: node --check tests/combat-scouting.test.cjs
       - name: Run rival scouting and adaptive counter tests
