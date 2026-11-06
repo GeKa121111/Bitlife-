@@ -1497,7 +1497,16 @@ function save(){
    if(previousRaw){
     const previous=JSON.parse(previousRaw);
     if(isValidSaveData(previous)&&(previous.lifeId!==state.lifeId||Number(previous.age)!==Number(state.age))){
-     localStorage.setItem(BACKUP_KEY,previousRaw);
+     let checkpointRaw=previousRaw;
+     if(Array.isArray(previous.timeMachineSnapshots)){
+      const historyLimit=perkOwned('expandedTime')?60:8;
+      const boundedHistory=fitTimeMachineSnapshots(previous.timeMachineSnapshots,historyLimit);
+      if(boundedHistory.snapshots.length!==previous.timeMachineSnapshots.length){
+       previous.timeMachineSnapshots=boundedHistory.snapshots;
+       checkpointRaw=JSON.stringify(previous);
+      }
+     }
+     localStorage.setItem(BACKUP_KEY,checkpointRaw);
     }
    }
   }catch(e){}
