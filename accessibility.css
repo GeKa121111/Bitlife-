@@ -163,3 +163,25 @@ body.reduce-motion *::after {
   transition-delay: 0ms !important;
   scroll-behavior: auto !important;
 }
+
+
+/* Modal controls use the same generous touch targets as the main header. */
+@media (pointer: coarse), (any-pointer: coarse) {
+  #modalRoot .closebtn {
+    width: 44px !important;
+    min-width: 44px !important;
+    height: 44px !important;
+    min-height: 44px !important;
+    display: inline-grid;
+    place-items: center;
+  }
+
+  #modalRoot .event-banner {
+    min-height: 48px;
+    padding-inline-end: 54px;
+  }
+
+  #modalRoot .smallbtn {
+    min-height: 44px !important;
+  }
+}
