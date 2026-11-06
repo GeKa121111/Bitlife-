@@ -17,5 +17,5 @@ body.theme-dark #diarySearchInput{background:#17384d;color:#fff;border-color:#36
 body.theme-dark .diary-search-status{color:#c2d3d8}
 body.theme-gold .diary-search-toggle,body.theme-gold .diary-search-clear{color:#5d4718;border-color:#d6bf85}
 body.theme-gold .diary-search-panel label{color:#755617}
-@media(max-width:360px){.diary-search-toggle{min-width:40px;padding-inline:8px}.diary-search-panel{padding-inline:10px}}
+@media(max-width:360px){.diary-search-toggle{padding-inline:8px}.diary-search-panel{padding-inline:10px}}
 @media(prefers-reduced-motion:reduce){.diary-search-panel *{scroll-behavior:auto!important;transition:none!important;animation:none!important}}
