@@ -17,7 +17,9 @@
   function filterFeed(feed, query) {
     if (!feed) return { visibleCount: 0, totalCount: 0 };
     const normalized = normalizeText(query);
-    const children = Array.from(feed.children || []);
+    const children = typeof feed.querySelectorAll === 'function'
+      ? Array.from(feed.querySelectorAll('.agegroup, .logcard'))
+      : Array.from(feed.children || []);
     let currentHeading = null;
     let groupMatches = 0;
     let headingMatches = false;
