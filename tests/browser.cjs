@@ -2927,10 +2927,11 @@ async function run() {
 
     await page.goto(origin + '/backup-check.html', { waitUntil: 'domcontentloaded' });
     const saveBeforeLocalInspection = await page.evaluate(() => localStorage.getItem('hekayat_hayah_save_v1'));
+    const makeCheckerSnapshot = age => JSON.stringify({ snapshotVersion: 1, logLength: 0, state: { version: 1, lifeId: 909, name: 'اختبار فحص الحفظ', age, stats: {}, status: 'حي' } });
     const checkerBundle = {
       format: 'hayah-backup',
       backupVersion: 1,
-      life: { version: 1, lifeId: 909, name: 'اختبار فحص الحفظ', age: 45, stats: {}, log: [], family: [], place: {}, timeMachineSnapshots: ['{"age":43}', '{"age":44}'] },
+      life: { version: 1, lifeId: 909, name: 'اختبار فحص الحفظ', age: 45, stats: {}, log: [], family: [], place: {}, timeMachineSnapshots: [makeCheckerSnapshot(43), makeCheckerSnapshot(44), '{"age":44'] },
       cemetery: [{ id: 'older-life', name: 'حياة سابقة' }],
       settings: { textScale: 'normal' },
       perks: { owned: {} }
@@ -2944,8 +2945,12 @@ async function run() {
     const checkerReportText = await page.locator('#backupResult').innerText();
     assert.ok(checkerReportText.includes('اختبار فحص الحفظ'));
     assert.ok(checkerReportText.includes('حزمة حفظ حياة كاملة'));
-    assert.match(checkerReportText, /نقاط الرجوع بالزمن\s+2/,
-      'the preflight report should display the number of readable rewind points');
+    assert.match(checkerReportText, /نقاط الرجوع بالزمن\s+3/,
+      'the preflight report should display all stored non-empty rewind entries');
+    assert.match(checkerReportText, /نقاط قابلة للاستعادة\s+2/,
+      'the preflight report should distinguish snapshots the game can actually restore');
+    assert.match(checkerReportText, /نقاط JSON تالفة\s+1/,
+      'the preflight report should warn about malformed snapshot JSON');
     assert.ok(checkerReportText.includes('طول سجل الرجوع'),
       'the preflight report should display serialized rewind-history size');
     assert.equal(await page.evaluate(() => localStorage.getItem('hekayat_hayah_save_v1')), saveBeforeLocalInspection,
