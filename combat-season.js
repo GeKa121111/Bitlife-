@@ -369,10 +369,18 @@
   }
 
   function openCommunitySeasonMenu() {
+    const current = gameState();
     const getCareer = getEnsureCombatCareer();
-    if (!getCareer) return;
-    const career = getCareer();
+    const career = getCareer ? getCareer() : (current && current.combatCareer);
     if (!career || typeof career !== 'object') return;
+    const modalRoot = global.document && global.document.getElementById('modalRoot');
+    const previousCommunityMarkup = modalRoot ? modalRoot.innerHTML : '';
+    const backToMenu = () => {
+      if (typeof global.combatCommunityMenu === 'function' || typeof combatCommunityMenu === 'function') {
+        return returnToCommunityMenu();
+      }
+      if (modalRoot) modalRoot.innerHTML = previousCommunityMarkup;
+    };
     const league = normalizeCommunityLeague(career.communityLeague);
     career.communityLeague = league;
 
@@ -394,7 +402,7 @@
         makeChoice('📘', 'عن نظام المواسم', 'يواجه كل منافس نشط بقية المنافسين مرة واحدة في الموسم. النتائج حتمية وقابلة لإعادة الاختبار، وتؤثر تدريجيًا في الزخم والاحترام.', () => {
           showInfo('📘', 'عن نظام المواسم', 'تُحاكى مواجهات المنافسين مرة واحدة لكل عمر عند تقدم الحياة. لا تُحتسب هذه النتائج ضمن سجل نزالات اللاعب أو دفاعاته عن لقب العالم.');
         }),
-        makeChoice('↩️', 'رجوع إلى مجتمع المقاتلين', '', returnToCommunityMenu)
+        makeChoice('↩️', 'رجوع إلى مجتمع المقاتلين', '', backToMenu)
       ];
       showModal('🏆', 'سجل مواسم المنافسين', summary, options);
       return;
