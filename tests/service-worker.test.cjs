@@ -309,7 +309,7 @@ test('optional shell asset failures fall back to the essential playable shell', 
   assert.deepEqual(harness.cacheCalls.added, coreShell);
   assert.equal(harness.cacheCalls.skipped, 1,
     'the worker should activate after the essential game files are cached');
-  const cache = harness.cacheStore.get('hayah-shell-v178');
+  const cache = harness.cacheStore.get('hayah-shell-v179');
   for (const url of coreShell) assert.ok(cache.has(url), 'essential shell asset should be cached: ' + url);
   assert.equal(cache.has(scope + 'accessibility.css'), false,
     'the failed optional asset should not block the playable shell');
@@ -594,7 +594,7 @@ test('optional shell fallback preserves older cached Hayah assets before cleanup
 
   await harness.dispatchLifecycle('install');
 
-  const currentShell = harness.cacheStore.get('hayah-shell-v178');
+  const currentShell = harness.cacheStore.get('hayah-shell-v179');
   assert.equal(
     await (await currentShell.get(scope + 'accessibility.css').clone()).text(),
     'previous accessibility stylesheet',
@@ -640,7 +640,7 @@ test('optional shell fallback prefers the newest available Hayah asset', async (
 
   await harness.dispatchLifecycle('install');
 
-  const currentShell = harness.cacheStore.get('hayah-shell-v178');
+  const currentShell = harness.cacheStore.get('hayah-shell-v179');
   assert.equal(
     await (await currentShell.get(scope + 'accessibility.css').clone()).text(),
     'newer accessibility stylesheet',
