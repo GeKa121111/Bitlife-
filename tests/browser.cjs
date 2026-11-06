@@ -2782,8 +2782,8 @@ async function run() {
     const seasonMenuEntry = page.locator('.choice').filter({ hasText: 'سجل مواسم المنافسين' });
     await seasonMenuEntry.waitFor();
     await seasonMenuEntry.click();
-    await page.waitForFunction(() => document.querySelector('#modalRoot')?.textContent.includes('سجل مواسم المنافسين'));
-    assert.match(await page.locator('#modalRoot').innerText(), /سجل مواسم المنافسين/);
+    await page.waitForFunction(() => document.querySelector('#modalRoot .modaltitle')?.textContent.trim() === 'سجل مواسم المنافسين');
+    assert.equal((await page.locator('#modalRoot .modaltitle').innerText()).trim(), 'سجل مواسم المنافسين');
     assert.match(await page.locator('#modalRoot').innerText(), /كل منافس يواجه خصمين/,
       'the season screen should explain the bounded annual opponent schedule');
     await page.locator('#modalRoot .choice').filter({ hasText: 'رجوع إلى مجتمع المقاتلين' }).click();
