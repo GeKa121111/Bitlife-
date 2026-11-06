@@ -338,12 +338,16 @@
     return button;
   }
 
-  function renderFallbackSeasonModal(summary) {
+  function renderFallbackSeasonModal(summary, onBack) {
     const doc = global.document;
     const root = doc && typeof doc.getElementById === 'function' ? doc.getElementById('modalRoot') : null;
     if (!root || typeof doc.createElement !== 'function') return;
 
     const previousMarkup = root.innerHTML;
+    const returnToPrevious = () => {
+      if (typeof onBack === 'function') return onBack();
+      root.innerHTML = previousMarkup;
+    };
     root.innerHTML = '';
     const overlay = doc.createElement('div');
     overlay.className = 'overlay';
@@ -365,7 +369,7 @@
     close.className = 'closebtn';
     close.setAttribute('aria-label', 'العودة إلى مجتمع المقاتلين');
     close.textContent = '×';
-    close.addEventListener('click', () => { root.innerHTML = previousMarkup; });
+    close.addEventListener('click', returnToPrevious);
     header.appendChild(icon);
     header.appendChild(heading);
     header.appendChild(close);
@@ -393,7 +397,7 @@
       '↩️',
       'رجوع إلى مجتمع المقاتلين',
       '',
-      () => { root.innerHTML = previousMarkup; }
+      returnToPrevious
     );
     grid.appendChild(about);
     grid.appendChild(back);
@@ -444,7 +448,7 @@
       return;
     }
 
-    renderFallbackSeasonModal(summary);
+    renderFallbackSeasonModal(summary, backToMenu);
   }
 
   function injectSeasonMenuEntry(root) {
