@@ -17,6 +17,14 @@ class FakeElement {
     this.className = '';
     this.textContent = '';
     this.type = '';
+    this._innerHTML = '';
+  }
+
+  get innerHTML() { return this._innerHTML; }
+
+  set innerHTML(value) {
+    this._innerHTML = String(value);
+    if (this._innerHTML === '') this.children = [];
   }
 
   setAttribute(name, value) {
@@ -90,6 +98,18 @@ function makeCareer() {
       { id: 'deceased', name: 'متوفى', rating: 95, deceased: true }
     ]
   };
+}
+
+function findChoiceByTitle(node, titleText) {
+  if (!node) return null;
+  if (node.className === 'choice' && node.children.some(child =>
+    child.className === 'ctext' && child.children.some(item => item.className === 'ctitle' && item.textContent === titleText)
+  )) return node;
+  for (const child of node.children || []) {
+    const found = findChoiceByTitle(child, titleText);
+    if (found) return found;
+  }
+  return null;
 }
 
 function makeCommunityModalRoot(titleText) {
@@ -264,6 +284,28 @@ test('لوحة الموسم تعرض الترتيب وآخر متصدر وتوض
   assert.match(context.lastModal[2], /منافس/);
   assert.match(context.lastModal[2], /نقطة/);
   assert.match(context.lastModal[2], /آخر موسم/);
+});
+
+test('واجهة الموسم تعمل حتى إذا لم تكن دوال النافذة الرئيسية مكشوفة عالميًا', () => {
+  const root = new FakeElement('div');
+  root.innerHTML = 'community-menu-markup';
+  const document = {
+    getElementById(id) {
+      return id === 'modalRoot' ? root : null;
+    },
+    createElement(tagName) {
+      return new FakeElement(tagName);
+    }
+  };
+  const context = createContext({ document, modal: undefined, choice: undefined });
+  context.career = makeCareer();
+
+  context.HayahCombatSeason.openMenu();
+  assert.equal(root.children.length, 1);
+  const back = findChoiceByTitle(root, 'رجوع إلى مجتمع المقاتلين');
+  assert.ok(back);
+  back.listeners.click();
+  assert.equal(root.innerHTML, 'community-menu-markup');
 });
 
 test('تطبيع سجل الموسم يحد القيم ويحذف السجلات غير الصالحة', () => {
