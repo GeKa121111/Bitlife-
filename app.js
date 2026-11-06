@@ -5921,7 +5921,7 @@ function fitTimeMachineSnapshots(history,limit,maxChars=300000){
  // LocalStorage strings are UTF-16; cap the snapshot history conservatively instead of relying only on entry count.
  for(let index=source.length-1;index>=0&&selected.length<entryLimit;index--){
   const size=source[index].length;
-  if(size>charBudget)continue;
+  if(size>charBudget){if(index===source.length-1)continue;break;}
   if(usedChars+size>charBudget)break;
   selected.unshift(source[index]);usedChars+=size;
   if(index===source.length-1)newestKept=true;
