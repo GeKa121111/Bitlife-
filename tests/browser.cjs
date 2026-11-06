@@ -2977,15 +2977,32 @@ async function run() {
     const diarySearchToggle = page.getByRole('button', { name: 'بحث في يوميات الحياة' });
     await diarySearchToggle.waitFor();
     const savedLifeBeforeDiarySearch = await page.evaluate(() => localStorage.getItem('hekayat_hayah_save_v1'));
+    await page.locator('#lifeFeed').evaluate(feed => {
+      const match = document.createElement('article');
+      match.className = 'logcard';
+      match.dataset.diarySearchProbe = 'match';
+      match.textContent = 'حدث اختبار يوميات فريد';
+      const miss = document.createElement('article');
+      miss.className = 'logcard';
+      miss.dataset.diarySearchProbe = 'miss';
+      miss.textContent = 'حدث آخر لا يطابق العبارة';
+      feed.append(match, miss);
+    });
     await diarySearchToggle.click();
     const diarySearchInput = page.getByRole('searchbox', { name: 'ابحث في أحداث حياتك' });
     await diarySearchInput.waitFor();
-    await diarySearchInput.fill('بداية اختبار المتصفح');
-    await page.waitForFunction(() => document.querySelectorAll('#lifeFeed .logcard:not([hidden])').length === 1);
-    assert.match(await page.locator('#lifeFeed .logcard:not([hidden])').first().textContent(), /بداية اختبار المتصفح/);
+    await diarySearchInput.fill('اختبار يوميات فريد');
+    await page.waitForFunction(() => {
+      const match = document.querySelector('[data-diary-search-probe="match"]');
+      const miss = document.querySelector('[data-diary-search-probe="miss"]');
+      return !!match && !match.hidden && !!miss && miss.hidden;
+    });
+    assert.equal(await page.locator('[data-diary-search-probe="match"]').isVisible(), true);
+    assert.equal(await page.locator('[data-diary-search-probe="miss"]').isVisible(), false);
     await page.locator('#diarySearchClear').click();
-    assert.equal(await page.locator('#lifeFeed .logcard:not([hidden])').count(), await page.locator('#lifeFeed .logcard').count(),
-      'clearing diary search should restore the complete visible life history');
+    assert.equal(await page.locator('[data-diary-search-probe]').evaluateAll(nodes => nodes.every(node => !node.hidden)), true,
+      'clearing diary search should restore both matching and non-matching events');
+    await page.locator('[data-diary-search-probe]').evaluateAll(nodes => nodes.forEach(node => node.remove()));
     await diarySearchToggle.click();
     assert.equal(await page.locator('#diarySearchPanel').isVisible(), false);
     assert.equal(await page.evaluate(() => localStorage.getItem('hekayat_hayah_save_v1')), savedLifeBeforeDiarySearch,
