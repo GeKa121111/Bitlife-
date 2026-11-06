@@ -183,7 +183,7 @@ test('الموسم يحد النزالات بمواجهتين لكل منافس 
   context.state.age += 1;
   const second = context.HayahCombatSeason.simulate(career);
   assert.ok(second);
-  assert.notDeepEqual(first.matchups, second.matchups,
+  assert.notDeepEqual(JSON.parse(JSON.stringify(first.matchups)), JSON.parse(JSON.stringify(second.matchups)),
     'the deterministic opponent rotation should change in the next season');
 });
 
