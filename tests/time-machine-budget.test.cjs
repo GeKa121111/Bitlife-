@@ -17,6 +17,7 @@ function functionSource(name, nextName) {
 }
 
 const helperSource = functionSource('fitTimeMachineSnapshots', 'ageUp');
+const saveSource = functionSource('save', 'normalizeHeirlooms');
 const ageUpSource = functionSource('ageUp', 'age18Choice');
 const menuSource = functionSource('timeMachineMenu', 'restoreRewindStorageValue');
 const context = {};
@@ -89,4 +90,54 @@ test('التقدم بالعمر يطبق ميزانية التخزين، وال�
     'legacy v1 lives should continue to initialize with an empty optional rewind history');
   assert.match(app, /const KEY = 'hekayat_hayah_save_v1';/);
   assert.match(app, /const BACKUP_KEY = 'hekayat_hayah_save_backup_v1';/);
+});
+\n
+test('نسخة الحفظ الاحتياطية القديمة تُقلّص سجل الرجوع قبل كتابتها دون تغيير بقية الحياة', () => {
+  const oldHistory = Array.from({ length: 8 }, (_, index) =>
+    JSON.stringify({ age: index + 1, payload: 'x'.repeat(50000) }));
+  const previous = {
+    version: 1,
+    lifeId: 'legacy-life',
+    name: 'مريم',
+    age: 41,
+    bank: 125000,
+    marker: { preserve: true },
+    timeMachineSnapshots: oldHistory
+  };
+  const current = {
+    version: 1,
+    lifeId: 'legacy-life',
+    name: 'مريم',
+    age: 42,
+    bank: 130000,
+    timeMachineSnapshots: ['current-snapshot']
+  };
+  const values = new Map([['life-save', JSON.stringify(previous)]]);
+  const storage = {
+    getItem(key) { return values.has(key) ? values.get(key) : null; },
+    setItem(key, value) { values.set(key, String(value)); }
+  };
+  const context = {
+    state: current,
+    KEY: 'life-save',
+    BACKUP_KEY: 'life-backup',
+    localStorage: storage,
+    isValidSaveData(value) {
+      return !!value && value.version === 1 && typeof value.name === 'string' && Number.isFinite(Number(value.age));
+    },
+    perkOwned() { return false; },
+    $() { return { textContent: '' }; }
+  };
+  vm.runInNewContext(helperSource + '\\n' + saveSource + '\\nglobalThis.runSave = save;', context);
+
+  assert.equal(context.runSave(), true);
+  const backup = JSON.parse(values.get('life-backup'));
+  const primary = JSON.parse(values.get('life-save'));
+  assert.equal(backup.age, 41);
+  assert.equal(backup.bank, 125000);
+  assert.deepEqual(backup.marker, { preserve: true });
+  assert.ok(JSON.stringify(backup.timeMachineSnapshots).length <= 300000);
+  assert.ok(backup.timeMachineSnapshots.length < oldHistory.length);
+  assert.equal(primary.age, 42);
+  assert.deepEqual(primary.timeMachineSnapshots, ['current-snapshot']);
 });
