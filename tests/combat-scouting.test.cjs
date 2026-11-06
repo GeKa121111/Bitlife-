@@ -16,9 +16,11 @@ function functionSource(name) {
   return app.slice(start, end);
 }
 
+const catalogStart = app.indexOf('const combatMoveCatalog=');
 const styleStart = app.indexOf('const combatMemoryStyles=');
 const styleEnd = app.indexOf('\nfunction combatRivalDeathAge', styleStart);
-assert.ok(styleStart >= 0 && styleEnd > styleStart, 'combat style memory helpers must remain available');
+assert.ok(catalogStart >= 0 && styleStart > catalogStart && styleEnd > styleStart,
+  'combat catalogs and style memory helpers must remain available');
 
 const context = vm.createContext({
   clamp(value, min = 0, max = 100) {
@@ -28,9 +30,10 @@ const context = vm.createContext({
 });
 
 vm.runInContext([
-  app.slice(styleStart, styleEnd),
+  app.slice(catalogStart, styleEnd),
   functionSource('combatOpponentArchetype'),
   functionSource('combatOpponentMemoryInsight'),
+  functionSource('combatMoveMemorySummary'),
   functionSource('combatRivalScoutingReport'),
   functionSource('combatOpponentStyleForRound'),
   'globalThis.api = { insight: combatOpponentMemoryInsight, report: combatRivalScoutingReport, style: combatOpponentStyleForRound };'
