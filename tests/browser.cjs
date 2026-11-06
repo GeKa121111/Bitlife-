@@ -2784,6 +2784,8 @@ async function run() {
     await seasonMenuEntry.click();
     await page.waitForFunction(() => document.querySelector('#modalRoot')?.textContent.includes('سجل مواسم المنافسين'));
     assert.match(await page.locator('#modalRoot').innerText(), /سجل مواسم المنافسين/);
+    assert.match(await page.locator('#modalRoot').innerText(), /كل منافس يواجه خصمين/,
+      'the season screen should explain the bounded annual opponent schedule');
     await page.locator('#modalRoot .choice').filter({ hasText: 'رجوع إلى مجتمع المقاتلين' }).click();
     await page.locator('.choice').filter({ hasText: 'آدم منصور' }).click();
     const communityBeforeChat = await page.evaluate(() => {
