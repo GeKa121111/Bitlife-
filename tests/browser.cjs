@@ -2787,6 +2787,28 @@ async function run() {
     assert.match(await page.locator('#modalRoot').innerText(), /كل منافس يواجه خصمين/,
       'the season screen should explain the bounded annual opponent schedule');
     await page.locator('#modalRoot .choice').filter({ hasText: 'رجوع إلى مجتمع المقاتلين' }).click();
+    const ageBeforeCommunitySeason = await page.evaluate(() =>
+      JSON.parse(localStorage.getItem('hekayat_hayah_save_v1') || 'null').age
+    );
+    await page.locator('#ageUpBtn').click();
+    await page.waitForFunction(() => {
+      const saved = JSON.parse(localStorage.getItem('hekayat_hayah_save_v1') || 'null');
+      const league = saved && saved.combatCareer && saved.combatCareer.communityLeague;
+      return !!league && league.season >= 1 && league.lastSimulatedAge === saved.age;
+    }, null, { timeout: 8000 });
+    const persistedCommunitySeason = await page.evaluate(() => {
+      const saved = JSON.parse(localStorage.getItem('hekayat_hayah_save_v1') || 'null');
+      return {
+        age: saved.age,
+        league: saved.combatCareer.communityLeague
+      };
+    });
+    assert.ok(persistedCommunitySeason.age > ageBeforeCommunitySeason,
+      'the season should be generated after the player advances a year');
+    assert.ok(persistedCommunitySeason.league.matchesLastSeason <= 20,
+      'a persisted annual season should not exceed twenty NPC bouts');
+    assert.ok(persistedCommunitySeason.league.standings.every(row => row.played <= 2),
+      'a rival should not be scheduled for more than two bouts in one season');
     await page.locator('.choice').filter({ hasText: 'آدم منصور' }).click();
     const communityBeforeChat = await page.evaluate(() => {
       const saved = JSON.parse(localStorage.getItem('hekayat_hayah_save_v1') || 'null');
