@@ -68,7 +68,7 @@ test('المدخلات الفارغة وغير النصية تُحسب كمست�
   assert.equal(report.rewindSnapshotChars, JSON.stringify(['{"age":41}']).length);
   assert.equal(report.rewindUnusableSnapshotCount, 1);
   assert.equal(report.rewindUsableSnapshotCount, 0);
-  assert.ok(report.warnings.some(message => message.includes('مدخل غير نصي أو فارغ')));
+  assert.ok(report.warnings.some(message => message.includes('مدخل فارغ أو غير نصي')));
   assert.deepEqual(snapshots, original);
 });
 
