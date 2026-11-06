@@ -74,7 +74,7 @@ test('الفاحص يوضح الفرق بين الحد الأساسي والحد
     timeMachineSnapshots: Array.from({ length: 61 }, (_, index) => 'snapshot-' + index)
   }));
   assert.equal(absoluteOverflow.rewindSnapshotCount, 61);
-  assert.ok(absoluteOverflow.warnings.some(message => message.includes('الحد الأقصى المدعوم (60)')));
+  assert.ok(absoluteOverflow.warnings.some(message => message.includes('الحد الأقصى المدعوم (60 نقطة)')));
 });
 
 test('الفاحص يحذر من سجل يتجاوز ميزانية 300000 وحدة نصية', () => {
