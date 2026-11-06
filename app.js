@@ -618,6 +618,27 @@ function combatMoveMemorySummary(fighter){
  const move=catalog.find(item=>item.id===actionId);
  return {actionId,observations,title:move?move.title:actionId};
 }
+function combatMoveMemoryCounterInsight(opponent,rawMemory,opponentId=''){
+ const memory=normalizeCombatMoveMemory(rawMemory),counts=Object.create(null);
+ memory.forEach(id=>{counts[id]=(counts[id]||0)+1;});
+ let actionId='',observations=0,runnerUp=0;
+ Object.keys(counts).forEach(id=>{
+  const count=counts[id]||0;
+  if(count>observations){runnerUp=observations;observations=count;actionId=id;}
+  else if(count>runnerUp)runnerUp=count;
+ });
+ const catalog=(typeof combatMoveCatalog!=='undefined'?combatMoveCatalog:[]).concat(typeof combatTacticCatalog!=='undefined'?combatTacticCatalog:[]);
+ const move=catalog.find(item=>item&&item.id===actionId);
+ const archetype=combatOpponentArchetype(opponent,opponentId);
+ const rating=Number(opponent&&opponent.rating);
+ const awareness=Number.isFinite(rating)?Math.max(0,Math.min(100,rating)):0;
+ const awarenessThreshold={pressure:54,watcher:62,stubborn:82,balanced:60}[archetype.id]||60;
+ const requiredObservations=archetype.id==='stubborn'?4:3;
+ const dominant=!!(move&&observations>=requiredObservations&&observations>runnerUp);
+ const counters={'قوة':'دفاع','سرعة':'تقنية','دفاع':'سرعة','تقنية':'قوة'};
+ const counterStyle=dominant&&awareness>=awarenessThreshold?(counters[move.style]||''):'';
+ return {actionId,moveTitle:move?move.title:actionId,moveStyle:move?move.style:'',observations,runnerUp,requiredObservations,awareness,awarenessThreshold,dominant,counterStyle};
+}
 function combatMoveAdaptationEffect(opponent,roundHistory,rawMemory,actionId,opponentId=''){
  const repetition=combatMoveRepetitionEffect(roundHistory,actionId);
  const memory=combatMoveLongTermEffect(opponent,rawMemory,actionId,opponentId);
@@ -713,11 +734,13 @@ function combatOpponentStyleForRound(opponent,round,lastPlayerStyle,roundHistory
  if(awareness>=archetype.mixedPreviousThreshold)return adaptive[previous]||base;
  return baseStyles[(baseStyles.indexOf(next)+1)%baseStyles.length];
 }
-function combatOpponentIntent(opponent,round,lastPlayerStyle,roundHistory=[],opponentId='',longTermHistory=[]){
+function combatOpponentIntent(opponent,round,lastPlayerStyle,roundHistory=[],opponentId='',longTermHistory=[],longTermMoveMemory=[]){
  const archetype=combatOpponentArchetype(opponent,opponentId);
  const roundNumber=Math.max(1,Math.floor(Number(round)||1));
  const memory=roundNumber===1?combatOpponentMemoryInsight(opponent,longTermHistory,opponentId):null;
- const style=combatOpponentStyleForRound(opponent,round,lastPlayerStyle,roundHistory,opponentId,longTermHistory);
+ const moveMemory=roundNumber===1?combatMoveMemoryCounterInsight(opponent,longTermMoveMemory,opponentId):null;
+ const moveMemoryRead=!!(moveMemory&&moveMemory.counterStyle);
+ const style=moveMemoryRead?moveMemory.counterStyle:combatOpponentStyleForRound(opponent,round,lastPlayerStyle,roundHistory,opponentId,longTermHistory);
  const intents={
   'قوة':{title:'ضربة ثقيلة',description:'المنافس يحمّل هجمة مباشرة تعتمد على القوة.'},
   'سرعة':{title:'هجوم خاطف',description:'المنافس يجهز سلسلة سريعة ويبحث عن فتحة.'},
@@ -728,7 +751,8 @@ function combatOpponentIntent(opponent,round,lastPlayerStyle,roundHistory=[],opp
  const ratingValue=Number(opponent&&opponent.rating);
  const awareness=Number.isFinite(ratingValue)?Math.max(0,Math.min(100,ratingValue)):0;
  let read='يبدأ المنافس بأسلوبه الأساسي.';
- if(roundNumber===1&&memory&&memory.counterStyle)read='استفاد من مواجهاتكما السابقة ولاحظ ميلك إلى أسلوب '+memory.observedStyle+'؛ لذلك بدأ بخطة مضادة.';
+ if(moveMemoryRead)read='لاحظ المنافس تكرار حركة '+moveMemory.moveTitle+' ('+moveMemory.observations+' مرات)، فجهز أسلوب '+moveMemory.counterStyle+' لمواجهتها.';
+ else if(roundNumber===1&&memory&&memory.counterStyle)read='استفاد من مواجهاتكما السابقة ولاحظ ميلك إلى أسلوب '+memory.observedStyle+'؛ لذلك بدأ بخطة مضادة.';
  else if(roundNumber===2)read='المنافس يحاول الرد على اختيارك السابق.';
  else if(roundNumber>=3){
   if(recent.length<2)read='سجل الجولات غير مكتمل؛ المنافس يستخدم استجابة احتياطية.';
@@ -737,7 +761,7 @@ function combatOpponentIntent(opponent,round,lastPlayerStyle,roundHistory=[],opp
   else if(awareness>=archetype.mixedPreviousThreshold)read=archetype.previousRead;
   else read=archetype.mixedHoldRead;
  }
- return {style,...intents[style],read,memoryRead:!!(memory&&memory.counterStyle),rememberedStyle:memory?memory.observedStyle:'',archetypeId:archetype.id,archetypeTitle:archetype.title,archetypeDescription:archetype.description};
+ return {style,...intents[style],read,memoryRead:!!((memory&&memory.counterStyle)||moveMemoryRead),rememberedStyle:memory?memory.observedStyle:'',moveMemoryRead,rememberedMoveTitle:moveMemory?moveMemory.moveTitle:'',rememberedMoveStyle:moveMemory?moveMemory.moveStyle:'',moveMemoryObservations:moveMemory?moveMemory.observations:0,moveMemoryCounterStyle:moveMemory?moveMemory.counterStyle:'',archetypeId:archetype.id,archetypeTitle:archetype.title,archetypeDescription:archetype.description};
 }
 const combatReactionCatalog=[
  {id:'guard',title:'صد محكم',energyCost:1,description:'ثبّت الحراسة وامتص الهجمة المتوقعة.'},
@@ -8850,7 +8874,7 @@ function combatBoutRoundMenu(){
  const opponent=session.opponent,round=session.round;
  const gamePlan=combatGamePlanCatalog.find(item=>item.id===normalizeCombatGamePlan(session.gamePlan))||combatGamePlanCatalog[0];
  const rememberedRival=session.communityFighterId?c.community.find(fighter=>fighter.id===session.communityFighterId):null;
- const intent=combatOpponentIntent(opponent,round,session.lastStyle,session.roundHistory,session.communityFighterId,rememberedRival?rememberedRival.styleMemory:[]);
+ const intent=combatOpponentIntent(opponent,round,session.lastStyle,session.roundHistory,session.communityFighterId,rememberedRival?rememberedRival.styleMemory:[],rememberedRival?rememberedRival.moveMemory:[]);
  if(!session.reactionId){
   if(session.reactionTimingAssist!==true&&(!Number.isFinite(Number(session.reactionWindowStartedAt))||Number(session.reactionWindowStartedAt)<=0)){
    session.reactionTimingAssist=uiSettings.combatTimingAssist===true;
@@ -8926,7 +8950,7 @@ function resolveCombatRound(actionId){
  }
  const round=session.round,opponent=session.opponent;
  const rememberedRival=session.communityFighterId?c.community.find(fighter=>fighter.id===session.communityFighterId):null;
- const intent=combatOpponentIntent(opponent,round,session.lastStyle,session.roundHistory,session.communityFighterId,rememberedRival?rememberedRival.styleMemory:[]),opponentStyle=intent.style;
+ const intent=combatOpponentIntent(opponent,round,session.lastStyle,session.roundHistory,session.communityFighterId,rememberedRival?rememberedRival.styleMemory:[],rememberedRival?rememberedRival.moveMemory:[]),opponentStyle=intent.style;
  const reaction=combatReactionEffect(opponentStyle,session.reactionId);
  if(!reaction){session.reactionId='';session.reactionTimeMs=null;session.reactionWindowStartedAt=null;session.reactionTimingAssist=false;save();combatBoutRoundMenu();return;}
  const planId=normalizeCombatGamePlan(session.gamePlan);
