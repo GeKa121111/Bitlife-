@@ -83,7 +83,39 @@
   function currentAge() {
     const current = gameState();
     if (!current) return -1;
-    return boundedInteger(current.age, -1, 0, 150);
+    const age = Number(current.age);
+    if (!Number.isFinite(age)) return -1;
+    return boundedInteger(age, -1, 0, 150);
+  }
+
+  function getEnsureCombatCareer() {
+    if (typeof global.ensureCombatCareer === 'function') return global.ensureCombatCareer;
+    if (typeof ensureCombatCareer === 'function') return ensureCombatCareer;
+    return null;
+  }
+
+  function makeChoice(icon, title, description, action) {
+    if (typeof global.choice === 'function') return global.choice(icon, title, description, action);
+    if (typeof choice === 'function') return choice(icon, title, description, action);
+    return { icon, title, description, action };
+  }
+
+  function showModal(icon, title, body, options) {
+    if (typeof global.modal === 'function') return global.modal(icon, title, body, options);
+    if (typeof modal === 'function') return modal(icon, title, body, options);
+    return undefined;
+  }
+
+  function showInfo(icon, title, body) {
+    if (typeof global.info === 'function') return global.info(icon, title, body);
+    if (typeof info === 'function') return info(icon, title, body);
+    return showModal(icon, title, body, []);
+  }
+
+  function returnToCommunityMenu() {
+    if (typeof global.combatCommunityMenu === 'function') return global.combatCommunityMenu();
+    if (typeof combatCommunityMenu === 'function') return combatCommunityMenu();
+    return undefined;
   }
 
   function stableHash(value) {
@@ -238,16 +270,9 @@
   }
 
   function openCommunitySeasonMenu() {
-    const current = gameState();
-    if (!current || !current.specialCareer || current.specialCareer.id !== 'fighter') {
-      if (typeof global.info === 'function') {
-        global.info('🏆', 'مواسم المنافسين', 'افتح مسيرة القتال أولًا لعرض سجل المواسم.');
-      }
-      return;
-    }
-    if (typeof global.ensureCombatCareer !== 'function') return;
-
-    const career = global.ensureCombatCareer();
+    const getCareer = getEnsureCombatCareer();
+    if (!getCareer) return;
+    const career = getCareer();
     if (!career || typeof career !== 'object') return;
     const league = normalizeCommunityLeague(career.communityLeague);
     career.communityLeague = league;
@@ -266,19 +291,78 @@
       : 'لم يبدأ موسم بعد. تُحاكى مواجهات المنافسين تلقائيًا عند التقدم بالعمر داخل مسيرة القتال، بعد تحديث أعمار المجتمع.\n\nالنتائج تخص منافسي المجتمع فقط، ولا تضيف نقاطًا إلى مسيرة اللاعب أو تغيّر لقب العالم مباشرة.';
 
     const options = [
-      global.choice('📘', 'عن نظام المواسم', 'يواجه كل منافس نشط بقية المنافسين مرة واحدة في الموسم. النتائج حتمية وقابلة لإعادة الاختبار، وتؤثر تدريجيًا في الزخم والاحترام.', () => {
-        if (typeof global.info === 'function') {
-          global.info('📘', 'عن نظام المواسم', 'تُحاكى مواجهات المنافسين مرة واحدة لكل عمر عند تقدم الحياة. لا تُحتسب هذه النتائج ضمن سجل نزالات اللاعب أو دفاعاته عن لقب العالم.');
-        }
+      makeChoice('📘', 'عن نظام المواسم', 'يواجه كل منافس نشط بقية المنافسين مرة واحدة في الموسم. النتائج حتمية وقابلة لإعادة الاختبار، وتؤثر تدريجيًا في الزخم والاحترام.', () => {
+        showInfo('📘', 'عن نظام المواسم', 'تُحاكى مواجهات المنافسين مرة واحدة لكل عمر عند تقدم الحياة. لا تُحتسب هذه النتائج ضمن سجل نزالات اللاعب أو دفاعاته عن لقب العالم.');
       }),
-      global.choice('↩️', 'رجوع إلى مجتمع المقاتلين', '', () => {
-        if (typeof global.combatCommunityMenu === 'function') global.combatCommunityMenu();
-      })
+      makeChoice('↩️', 'رجوع إلى مجتمع المقاتلين', '', returnToCommunityMenu)
     ];
 
-    if (typeof global.modal === 'function') {
-      global.modal('🏆', 'سجل مواسم المنافسين', summary, options);
-    }
+    showModal('🏆', 'سجل مواسم المنافسين', summary, options);
+  }
+
+  function injectSeasonMenuEntry(root) {
+    if (!root || typeof root.querySelector !== 'function' || !global.document) return false;
+    const heading = root.querySelector('.modaltitle');
+    if (!heading || String(heading.textContent || '').trim() !== 'مجتمع المقاتلين') return false;
+    const grid = root.querySelector('.choicegrid');
+    if (!grid || typeof grid.appendChild !== 'function') return false;
+    if (typeof grid.querySelector === 'function' && grid.querySelector('[data-hayah-combat-season-entry]')) return false;
+
+    const button = global.document.createElement('button');
+    button.type = 'button';
+    button.className = 'choice';
+    button.setAttribute('data-hayah-combat-season-entry', 'true');
+    button.setAttribute('aria-label', 'سجل مواسم المنافسين');
+
+    const icon = global.document.createElement('span');
+    icon.className = 'choiceico';
+    icon.textContent = '🏆';
+
+    const copy = global.document.createElement('span');
+    copy.className = 'ctext';
+    const title = global.document.createElement('span');
+    title.className = 'ctitle';
+    title.textContent = 'سجل مواسم المنافسين';
+    const description = global.document.createElement('span');
+    description.className = 'cdesc';
+    description.textContent = 'تابع نتائج المواجهات السنوية وترتيب منافسي المجتمع.';
+
+    copy.appendChild(title);
+    copy.appendChild(description);
+    button.appendChild(icon);
+    button.appendChild(copy);
+    button.addEventListener('click', openCommunitySeasonMenu);
+    grid.appendChild(button);
+    return true;
+  }
+
+  function installCommunityMenuObserver() {
+    if (!global.document || typeof global.document.getElementById !== 'function') return;
+    const root = global.document.getElementById('modalRoot');
+    if (!root) return;
+    injectSeasonMenuEntry(root);
+    if (typeof global.MutationObserver !== 'function') return;
+    const observer = new global.MutationObserver(() => injectSeasonMenuEntry(root));
+    observer.observe(root, { childList: true, subtree: true });
+    global.__hayahCombatSeasonMenuObserver = observer;
+  }
+
+  function installAgeButtonFallback() {
+    if (!global.document || typeof global.document.getElementById !== 'function') return;
+    const button = global.document.getElementById('ageUpBtn');
+    if (!button || typeof button.addEventListener !== 'function') return;
+    let observedAge = currentAge();
+    button.addEventListener('click', () => {
+      const afterAgeChange = () => {
+        const age = currentAge();
+        if (age < 0 || age === observedAge) return;
+        observedAge = age;
+        const current = gameState();
+        if (current && current.combatCareer) simulateCommunitySeason(current.combatCareer);
+      };
+      if (typeof global.queueMicrotask === 'function') global.queueMicrotask(afterAgeChange);
+      else Promise.resolve().then(afterAgeChange);
+    });
   }
 
   const originalAdvance = global.advanceCombatCommunity;
@@ -294,28 +378,13 @@
     };
   }
 
-  const originalModal = global.modal;
-  if (typeof originalModal === 'function' && typeof global.choice === 'function') {
-    global.modal = function () {
-      const args = Array.prototype.slice.call(arguments);
-      if (args[1] === 'مجتمع المقاتلين' && Array.isArray(args[3])) {
-        const alreadyAdded = args[3].some(option =>
-          option && (option.title === 'سجل مواسم المنافسين' || option.label === 'سجل مواسم المنافسين')
-        );
-        if (!alreadyAdded) {
-          args[3] = [
-            global.choice('🏆', 'سجل مواسم المنافسين', 'تابع نتائج المواجهات السنوية وترتيب منافسي المجتمع.', openCommunitySeasonMenu),
-            ...args[3]
-          ];
-        }
-      }
-      return originalModal.apply(this, args);
-    };
-  }
+  installCommunityMenuObserver();
+  installAgeButtonFallback();
 
   global.HayahCombatSeason = Object.freeze({
     normalize: normalizeCommunityLeague,
     simulate: simulateCommunitySeason,
-    openMenu: openCommunitySeasonMenu
+    openMenu: openCommunitySeasonMenu,
+    injectMenuEntry: injectSeasonMenuEntry
   });
 })(window);
