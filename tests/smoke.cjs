@@ -619,7 +619,8 @@ assert.match(app, /function combatRivalScoutingReport\(fighter\)/, 'rival scouti
 assert.match(app, /تقرير كشف الأسلوب/, 'community profiles should expose an Arabic scouting report');
 assert.match(app, /intent\.read/);
 assert.match(app, /سجل الجولات غير مكتمل؛ المنافس يستخدم استجابة احتياطية/);
-assert.match(app, /تنويع الأساليب عبر الجولات/);
+assert.match(app, /تنويع الأساليب يمنح أفضلية صغيرة/);
+assert.match(app, /تكرار الأسلوب أو الحركة نفسها يسهّل قراءة خطتك/);
 assert.ok(app.includes('function combatRoundImpact(opponentRating,defense,reactionQuality,timingBonus=0)'));
 assert.ok(app.includes('function normalizeCombatInjuryYears(value)'));
 assert.ok(app.includes('c.injuryYears=normalizeCombatInjuryYears(c.injuryYears)'));
