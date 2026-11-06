@@ -164,10 +164,13 @@ test('التنقل يقفز إلى أقدم وأحدث حدث ظاهر فقط', 
   assert.equal(visible[1], newest);
   assert.equal(search.jumpToEdge(feed, 'first'), oldest);
   assert.equal(search.jumpToEdge(feed, 'last'), newest);
-  assert.deepEqual(calls, [
-    { target: 'oldest', options: { behavior: 'auto', block: 'nearest' } },
-    { target: 'newest', options: { behavior: 'auto', block: 'nearest' } }
-  ]);
+  assert.equal(calls.length, 2);
+  assert.equal(calls[0].target, 'oldest');
+  assert.equal(calls[0].options.behavior, 'auto');
+  assert.equal(calls[0].options.block, 'nearest');
+  assert.equal(calls[1].target, 'newest');
+  assert.equal(calls[1].options.behavior, 'auto');
+  assert.equal(calls[1].options.block, 'nearest');
   assert.equal(hidden.hidden, true);
 });
 
