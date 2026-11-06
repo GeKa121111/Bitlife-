@@ -738,7 +738,7 @@ async function run() {
     assert.equal(enabledSensorySettings.sound, true, 'sound setting should persist when enabled');
     assert.equal(enabledSensorySettings.haptics, true, 'haptics setting should persist when enabled');
     const lifeSaveBeforeMotionToggle = await page.evaluate(() => localStorage.getItem('hekayat_hayah_save_v1'));
-    await page.locator('.choice').filter({ hasText: 'تقليل الحركة: متوقفة' }).click();
+    await page.locator('.choice').filter({ hasText: 'تقليل الحركة: متوقف' }).click();
     const reducedMotionEnabled = await page.evaluate(() => ({
       setting: JSON.parse(localStorage.getItem('hayah_ui_settings_v1') || '{}').reducedMotion,
       bodyClass: document.body.classList.contains('reduce-motion'),
