@@ -1060,6 +1060,44 @@ function recordCombatChampionship(c,opponent,age,year){
  if(c.championshipHistory.length>20)c.championshipHistory.shift();
  return true;
 }
+function normalizeCombatTitleDefenseHistory(raw){
+ if(!Array.isArray(raw))return [];
+ const bounded=(value,fallback,min,max)=>{
+  const number=Number(value);
+  return Math.max(min,Math.min(max,Number.isFinite(number)?Math.floor(number):fallback));
+ };
+ return raw.map(item=>{
+  if(!item||typeof item!=='object'||Array.isArray(item))return null;
+  const age=Number(item.age),year=Number(item.year),opponent=String(item.opponent||'').trim().slice(0,80);
+  const result=item.result==='defended'||item.result==='lost'?item.result:null;
+  if(!Number.isFinite(age)||!Number.isFinite(year)||!opponent||!result)return null;
+  return {
+   age:bounded(age,0,0,150),
+   year:bounded(year,0,0,100000),
+   opponent,
+   result,
+   leagueWins:bounded(item.leagueWins,0,0,100000),
+   leaguePoints:bounded(item.leaguePoints,0,0,100000000)
+  };
+ }).filter(Boolean).slice(-50);
+}
+function recordCombatTitleDefense(c,opponent,age,year,won){
+ if(!c||c.champion!==true||typeof won!=='boolean')return null;
+ c.titleDefenseHistory=normalizeCombatTitleDefenseHistory(c.titleDefenseHistory);
+ const safeName=String(opponent&&opponent.name||'منافس غير مسجل').trim().slice(0,80)||'منافس غير مسجل';
+ const record={
+  age:Math.max(0,Math.min(150,Math.floor(Number(age)||0))),
+  year:Math.max(0,Math.min(100000,Math.floor(Number(year)||0))),
+  opponent:safeName,
+  result:won?'defended':'lost',
+  leagueWins:Math.max(0,Math.min(100000,Math.floor(Number(c.leagueWins)||0))),
+  leaguePoints:Math.max(0,Math.min(100000000,Math.floor(Number(c.leaguePoints)||0)))
+ };
+ c.titleDefenseHistory.push(record);
+ if(c.titleDefenseHistory.length>50)c.titleDefenseHistory.shift();
+ if(!won)c.champion=false;
+ return record;
+}
 const combatSponsorshipCatalog=[
  {id:'local',name:'نبض الرياضي',minRank:1,minFanbase:750,annualBase:2200,duration:2},
  {id:'regional',name:'مدار للأداء',minRank:2,minFanbase:6000,annualBase:8500,duration:3},
@@ -1165,13 +1203,13 @@ function combatBoutAccessGuard(){
 function createCombatCareer(){
  return {gamePlan:'balanced',rank:0,leaguePoints:0,streetCred:0,streetWins:0,leagueWins:0,wins:0,losses:0,knockouts:0,draws:0,
   technique:32+Math.floor(Math.random()*8),power:28+Math.floor(Math.random()*8),speed:31+Math.floor(Math.random()*8),defense:28+Math.floor(Math.random()*8),stamina:34+Math.floor(Math.random()*8),energy:100,
-  injury:0,injuryYears:0,restUsedYear:-1,lastMovePracticeYear:-1,coach:null,movesKnown:['quick-jab','high-guard'],moveMastery:{},selectedMove:'quick-jab',champion:false,championshipHistory:[],bouts:[],pendingBout:null,retired:false,retiredAge:null,retiredYear:null,fanbase:0,integrity:100,dopingRisk:0,dopingSuspensionYears:0,dopingViolations:0,dopingBoostAvailable:false,dopingUsedYear:-1,lastDopingTestYear:-1,lastIntegrityRecoveryYear:-1,sponsorship:null,lastSponsorNegotiationYear:-1,community:normalizeCombatCommunity([],state?state.yearCount:0),startedAge:state?state.age:18,nextRecruitmentAge:(state?state.age:18)+5};
+  injury:0,injuryYears:0,restUsedYear:-1,lastMovePracticeYear:-1,coach:null,movesKnown:['quick-jab','high-guard'],moveMastery:{},selectedMove:'quick-jab',champion:false,championshipHistory:[],titleDefenseHistory:[],bouts:[],pendingBout:null,retired:false,retiredAge:null,retiredYear:null,fanbase:0,integrity:100,dopingRisk:0,dopingSuspensionYears:0,dopingViolations:0,dopingBoostAvailable:false,dopingUsedYear:-1,lastDopingTestYear:-1,lastIntegrityRecoveryYear:-1,sponsorship:null,lastSponsorNegotiationYear:-1,community:normalizeCombatCommunity([],state?state.yearCount:0),startedAge:state?state.age:18,nextRecruitmentAge:(state?state.age:18)+5};
 }
 function ensureCombatCareer(){
  if(!state)return null;
  let c=state.combatCareer;
  if(!c||typeof c!=='object')c=state.combatCareer=createCombatCareer();
- const defaults={rank:0,leaguePoints:0,streetCred:0,streetWins:0,leagueWins:0,wins:0,losses:0,knockouts:0,draws:0,technique:25,power:25,speed:25,defense:25,stamina:30,energy:100,injury:0,injuryYears:0,restUsedYear:-1,lastMovePracticeYear:-1,coach:null,movesKnown:['quick-jab','high-guard'],moveMastery:{},selectedMove:'quick-jab',champion:false,championshipHistory:[],bouts:[],pendingBout:null,retired:false,retiredAge:null,retiredYear:null,fanbase:0,integrity:100,dopingRisk:0,dopingSuspensionYears:0,dopingViolations:0,dopingBoostAvailable:false,dopingUsedYear:-1,lastDopingTestYear:-1,lastIntegrityRecoveryYear:-1,sponsorship:null,lastSponsorNegotiationYear:-1,community:[],gamePlan:'balanced'};
+ const defaults={rank:0,leaguePoints:0,streetCred:0,streetWins:0,leagueWins:0,wins:0,losses:0,knockouts:0,draws:0,technique:25,power:25,speed:25,defense:25,stamina:30,energy:100,injury:0,injuryYears:0,restUsedYear:-1,lastMovePracticeYear:-1,coach:null,movesKnown:['quick-jab','high-guard'],moveMastery:{},selectedMove:'quick-jab',champion:false,championshipHistory:[],titleDefenseHistory:[],bouts:[],pendingBout:null,retired:false,retiredAge:null,retiredYear:null,fanbase:0,integrity:100,dopingRisk:0,dopingSuspensionYears:0,dopingViolations:0,dopingBoostAvailable:false,dopingUsedYear:-1,lastDopingTestYear:-1,lastIntegrityRecoveryYear:-1,sponsorship:null,lastSponsorNegotiationYear:-1,community:[],gamePlan:'balanced'};
  Object.keys(defaults).forEach(k=>{if(c[k]===undefined||c[k]===null)c[k]=defaults[k];});
  c.gamePlan=['balanced','pressure','counter','conserve'].includes(c.gamePlan)?c.gamePlan:'balanced';
  normalizeCombatIntegrity(c);
@@ -1180,6 +1218,7 @@ function ensureCombatCareer(){
  c.moveMastery=normalizeCombatMoveMastery(c.moveMastery,c.movesKnown);
  if(!Array.isArray(c.bouts))c.bouts=[];
  c.championshipHistory=normalizeCombatChampionshipHistory(c.championshipHistory);
+ c.titleDefenseHistory=normalizeCombatTitleDefenseHistory(c.titleDefenseHistory);
  c.community=normalizeCombatCommunity(c.community,Math.max(0,Math.floor(Number(state.yearCount)||0)));
  const startedAge=clamp(Number(c.startedAge)||Number(state.age)||18,0,150);
  const hasNewcomers=c.community.some(fighter=>combatCommunityNewcomerProfiles.some(profile=>profile.id===fighter.id));
@@ -9029,6 +9068,7 @@ function resolveCombatBout(mode,opponent,moveId,probabilityOverride=null,session
  const opponentScore=opponent.rating+(Math.random()*12-6);
  const probability=probabilityOverride!==null&&probabilityOverride!==undefined&&Number.isFinite(Number(probabilityOverride))?clamp(Number(probabilityOverride),12,88):clamp(50+(playerScore-opponentScore)*1.65+counterBonus,12,88);
  const won=chance(probability/100);
+ const defendingTitle=mode==='league'&&c.champion===true;
  if(!session)c.energy=clamp(c.energy-(mode==='league'?30:20));
  let earnings=0,title,detail,tone='bad';
  if(won){
@@ -9065,6 +9105,20 @@ function resolveCombatBout(mode,opponent,moveId,probabilityOverride=null,session
  const moveMemoryResult=communityFighter?recordCombatRivalMoveMemory(communityFighter,session&&session.roundHistory):{added:0,total:0};
  if(moveMemoryResult.added>0)detail+=' حفظ المنافس سجل الحركات التي استخدمتها ليقرأ تكرارها في مواجهاتكما القادمة.';
  c.rank=c.leaguePoints>=150?4:c.leaguePoints>=100?3:c.leaguePoints>=60?2:c.leaguePoints>=25?1:0;
+ let titleDefenseResult=null;
+ if(defendingTitle){
+  const defense=recordCombatTitleDefense(c,opponent,state.age,state.yearCount,won);
+  if(defense){
+   titleDefenseResult=defense.result;
+   if(won){
+    title='دفاع ناجح عن اللقب';
+    detail+=' نجحت في الدفاع عن لقب بطل العالم أمام '+defense.opponent+'.';
+   }else{
+    title='فقدت لقب بطل العالم';
+    detail+=' انتهت فترة حملك للقب بعد خسارة الدفاع أمام '+defense.opponent+'. يمكنك السعي لاستعادته عبر الفوز في الدوري من جديد.';
+   }
+  }
+ }
  const fanbaseResult=growCombatFanbase(c,won,mode,state.fame,c.rank);
  if(fanbaseResult.gain>0)detail+=' زاد جمهورك بمقدار '+fmt(fanbaseResult.gain)+' متابع، وأصبح إجمالي جمهورك '+fmt(fanbaseResult.total)+'.';
  const roundSummary=session?session.roundHistory.map(item=>({round:item.round,move:item.actionTitle,style:item.style,gamePlan:normalizeCombatGamePlan(item.gamePlan||session.gamePlan),gamePlanBonus:item.gamePlanBonus||0,styleVarietyModifier:item.styleVarietyModifier||0,moveRepetitionCount:item.moveRepetitionCount||0,moveRepetitionPenalty:item.moveRepetitionPenalty||0,opponentAdaptationBonus:item.opponentAdaptationBonus||0,moveMemoryObservations:item.moveMemoryObservations||0,moveMemoryPenalty:item.moveMemoryPenalty||0,opponentMemoryBonus:item.opponentMemoryBonus||0,distanceBefore:['close','mid','long'].includes(item.distanceBefore)?item.distanceBefore:null,moveRange:['close','mid','long'].includes(item.moveRange)?item.moveRange:null,distancePlayerBonus:item.distancePlayerBonus||0,distanceOpponentBonus:item.distanceOpponentBonus||0,distanceAfter:['close','mid','long'].includes(item.distanceAfter)?item.distanceAfter:null,opponentStyle:item.opponentStyle,playerScore:Math.round(item.playerScore),opponentScore:Math.round(item.opponentScore),masteryLevel:item.masteryLevel||0,masteryBonus:item.masteryBonus||0,masteryUses:item.masteryUses||0,integrityBoostBonus:item.integrityBoostBonus||0,
@@ -9075,7 +9129,7 @@ function resolveCombatBout(mode,opponent,moveId,probabilityOverride=null,session
   injuryBefore:item.injuryBefore===undefined?null:item.injuryBefore,injuryGain:item.injuryGain||0,injuryAfter:item.injuryAfter===undefined?null:item.injuryAfter})):[];
  const roundHealthDamage=roundSummary.reduce((sum,item)=>sum+Math.max(0,Number(item.healthDamage)||0),0);
  const roundInjuryGain=roundSummary.reduce((sum,item)=>sum+Math.max(0,Number(item.injuryGain)||0),0);
- c.bouts.push({age:state.age,mode,opponent:opponent.name,opponentStyle:opponent.style,gamePlan:session?normalizeCombatGamePlan(session.gamePlan):normalizeCombatGamePlan(c.gamePlan),integrityBoost:session&&session.integrityBoost===true,communityFighterId:session&&session.communityFighterId?session.communityFighterId:null,move:move.title,moves:roundSummary.map(item=>item.move),rounds:roundSummary,scoreline:session?{player:Math.round(session.playerScore),opponent:Math.round(session.opponentScore)}:null,won,probability,earnings,fanbaseGain:fanbaseResult.gain,fanbaseAfter:fanbaseResult.total,injury:c.injury,rank:c.rank,healthDamage:roundHealthDamage,roundInjuryGain,healthAfterBout:clamp(state.stats.health)});
+ c.bouts.push({age:state.age,mode,opponent:opponent.name,opponentStyle:opponent.style,gamePlan:session?normalizeCombatGamePlan(session.gamePlan):normalizeCombatGamePlan(c.gamePlan),integrityBoost:session&&session.integrityBoost===true,communityFighterId:session&&session.communityFighterId?session.communityFighterId:null,move:move.title,moves:roundSummary.map(item=>item.move),rounds:roundSummary,scoreline:session?{player:Math.round(session.playerScore),opponent:Math.round(session.opponentScore)}:null,won,titleDefenseResult,probability,earnings,fanbaseGain:fanbaseResult.gain,fanbaseAfter:fanbaseResult.total,injury:c.injury,rank:c.rank,healthDamage:roundHealthDamage,roundInjuryGain,healthAfterBout:clamp(state.stats.health)});
  if(c.bouts.length>30)c.bouts.shift();
  const record=state.specialCareer.record||(state.specialCareer.record={attempts:0,wins:0,losses:0,projects:0,totalEarnings:0,bestLevel:1});
  record.attempts=(record.attempts||0)+1;record.wins=(record.wins||0)+(won?1:0);record.losses=(record.losses||0)+(won?0:1);record.totalEarnings=(record.totalEarnings||0)+earnings;record.bestLevel=Math.max(record.bestLevel||1,state.specialCareer.level||1);
@@ -9128,8 +9182,9 @@ function combatChampionshipHistory(){
  const c=ensureCombatCareer();
  if(!c)return;
  const history=normalizeCombatChampionshipHistory(c.championshipHistory);
+ const defenses=normalizeCombatTitleDefenseHistory(c.titleDefenseHistory);
  const opts=history.slice().reverse().map((record,index)=>{
-  const title='بطل العالم · '+(history.length-index);
+  const title=(c.champion&&index===0?'اللقب الحالي · ':'تتويج سابق · ')+(history.length-index);
   const detail='العمر '+record.age+' · سنة المسيرة '+record.year+' · المنافس '+record.opponent+' · انتصارات الدوري '+record.leagueWins+' · نقاط الدوري '+record.leaguePoints;
   return choice('🏆',title,detail,()=>{closeModal();info('🏆','تفاصيل التتويج',detail+'.');});
  });
@@ -9139,8 +9194,18 @@ function combatChampionshipHistory(){
    legacyTitle?'الحفظ القديم يثبت حالة بطل العالم، لكنه لا يحتوي على تفاصيل التتويج. لم ننشئ تاريخًا تخمينيًا.':'يُسجل أول لقب عند الوصول إلى أعلى رتبة وتحقيق ثلاثة انتصارات في الدوري.',
    closeModal));
  }
+ defenses.slice(-12).reverse().forEach(record=>{
+  const defended=record.result==='defended';
+  const title=defended?'دفاع ناجح عن اللقب':'خسارة اللقب';
+  const detail='العمر '+record.age+' · سنة المسيرة '+record.year+' · المنافس '+record.opponent+' · نقاط الدوري '+record.leaguePoints;
+  opts.push(choice(defended?'🛡️':'⚠️',title,detail,()=>{closeModal();info(defended?'🛡️':'⚠️',title,detail+'.');}));
+ });
+ const defenseWins=defenses.filter(record=>record.result==='defended').length;
+ const defenseLosses=defenses.filter(record=>record.result==='lost').length;
+ const titleStatus=c.retired?(c.champion?'اعتزلت وأنت تحمل اللقب':'اعتزلت دون لقب حالي'):(c.champion?'تحمل اللقب حاليًا':'لا تحمل لقبًا حاليًا');
+ const summary='الألقاب المسجلة '+history.length+' · الدفاعات الناجحة '+defenseWins+' · خسائر اللقب '+defenseLosses+' · '+titleStatus+'.';
  opts.push(choice('↩️','رجوع لمسيرة القتال','',combatCareerMenu));
- modal('🏆','سجل الألقاب',history.length?'الألقاب المسجلة في هذه المسيرة.':'لا توجد تفاصيل تتويج مسجلة بعد.',opts);
+ modal('🏆','سجل الألقاب',summary,opts);
 }
 
 const filmGenreCatalog=[
