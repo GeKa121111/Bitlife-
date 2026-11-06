@@ -5916,14 +5916,13 @@ function advanceAge(){
 function fitTimeMachineSnapshots(history,limit,maxChars=300000){
  const source=Array.isArray(history)?history.filter(entry=>typeof entry==='string'&&entry.length>0):[];
  const entryLimit=Number.isFinite(Number(limit))?Math.max(1,Math.min(60,Math.floor(Number(limit)))):8;
- const charBudget=Number.isFinite(Number(maxChars))?Math.max(1,Math.floor(Number(maxChars))):300000;
- const selected=[];let usedChars=0,newestKept=false;
- // LocalStorage strings are UTF-16; cap the snapshot history conservatively instead of relying only on entry count.
+ const charBudget=Number.isFinite(Number(maxChars))?Math.max(2,Math.floor(Number(maxChars))):300000;
+ const selected=[];let usedChars=JSON.stringify(selected).length,newestKept=false;
+ // Measure the exact JSON array stored inside the life save, including quotes, escapes, commas and brackets.
  for(let index=source.length-1;index>=0&&selected.length<entryLimit;index--){
-  const size=source[index].length;
+  const candidate=[source[index],...selected],size=JSON.stringify(candidate).length;
   if(size>charBudget){if(index===source.length-1)continue;break;}
-  if(usedChars+size>charBudget)break;
-  selected.unshift(source[index]);usedChars+=size;
+  selected.unshift(source[index]);usedChars=size;
   if(index===source.length-1)newestKept=true;
  }
  return {snapshots:selected,usedChars,skippedNewest:source.length>0&&!newestKept,removedCount:source.length-selected.length};
