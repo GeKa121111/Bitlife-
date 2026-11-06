@@ -8473,6 +8473,58 @@ function combatCommunityRelationLabel(fighter){
  return 'زميل في المجتمع';
 }
 
+function combatCommunityContenderScore(fighter){
+ if(!fighter||typeof fighter!=='object'||Array.isArray(fighter))return 0;
+ const bounded=(value,fallback,min,max)=>{
+  const number=Number(value);
+  return Math.max(min,Math.min(max,Number.isFinite(number)?number:fallback));
+ };
+ const rating=bounded(fighter.rating,20,20,95);
+ const momentum=bounded(fighter.momentum,0,-5,5);
+ const respect=bounded(fighter.respect,50,0,100);
+ const tension=bounded(fighter.tension,0,100);
+ return bounded(Math.round(rating+momentum*1.5+(respect-tension)*.04),0,0,100);
+}
+function combatCommunityContenderBoard(community){
+ if(!Array.isArray(community))return [];
+ const bounded=(value,fallback,min,max)=>{
+  const number=Number(value);
+  return Math.max(min,Math.min(max,Number.isFinite(number)?number:fallback));
+ };
+ return community
+  .filter(fighter=>fighter&&typeof fighter==='object'&&!Array.isArray(fighter)&&fighter.retired!==true&&fighter.deceased!==true)
+  .map(fighter=>({fighter,score:combatCommunityContenderScore(fighter)}))
+  .sort((a,b)=>{
+   const scoreDifference=b.score-a.score;
+   if(scoreDifference)return scoreDifference;
+   const ratingDifference=bounded(b.fighter.rating,20,20,95)-bounded(a.fighter.rating,20,20,95);
+   if(ratingDifference)return ratingDifference;
+   const aId=String(a.fighter.id||''),bId=String(b.fighter.id||'');
+   return aId<bId?-1:aId>bId?1:0;
+  })
+  .map((entry,index)=>({position:index+1,fighter:entry.fighter,score:entry.score}));
+}
+function combatCommunityContenderMenu(){
+ if(!validState()||!state.specialCareer||state.specialCareer.id!=='fighter'){
+  info('🏅','مؤشر المواجهة','ابدأ مسيرة القتال أولًا لعرض المنافسين.');return;
+ }
+ const c=ensureCombatCareer();
+ const board=combatCommunityContenderBoard(c.community);
+ const archived=c.community.filter(fighter=>fighter&&(fighter.retired===true||fighter.deceased===true)).length;
+ const opts=board.map(entry=>{
+  const fighter=entry.fighter;
+  const rating=clamp(Number(fighter.rating)+(Number(fighter.momentum)||0),20,95);
+  return choice(entry.position===1?'🥇':'🥊',entry.position+'. '+fighter.name,
+   'مؤشر المواجهة '+entry.score+'/100 · التقييم الحالي '+rating+'/100 · '+combatCommunityFormLabel(fighter),
+   ()=>combatCommunityFighterMenu(fighter.id),'',entry.score);
+ });
+ if(!opts.length)opts.push(choice('📭','لا يوجد منافسون نشطون','كل ملفات المجتمع الحالية في الأرشيف أو لم ينضم منافسون بعد.',closeModal));
+ opts.push(choice('↩️','رجوع لمجتمع المقاتلين','',combatCommunityMenu));
+ const leading=board[0];
+ const summary=(leading?'أبرز منافس متاح: '+leading.fighter.name+' بمؤشر '+leading.score+'/100. ':'لا يوجد منافس نشط حاليًا. ')+
+  'المؤشر تقدير استكشافي يعتمد على التقييم والزخم والاحترام والتوتر، وليس نقاط دوري رسمية. '+archived+' مقاتلًا في الأرشيف.';
+ modal('🏅','مؤشر المواجهة',summary,opts);
+}
 function combatCommunityMenu(){
  if(!validState()||!state.specialCareer||state.specialCareer.id!=='fighter'){
   info('🤝','مجتمع المقاتلين','ابدأ مسيرة القتال أولًا لفتح شبكة المقاتلين.');return;
@@ -8483,15 +8535,18 @@ function combatCommunityMenu(){
  const retired=c.community.length-active.length-deceased;
  const allies=active.filter(fighter=>fighter.allied).length;
  const rivals=active.filter(fighter=>fighter.tension>=65).length;
- const opts=c.community.map(fighter=>{
-  const rating=clamp(fighter.rating+(Number(fighter.momentum)||0),20,95);
-  const isDeceased=fighter.deceased===true;
-  const isRetired=fighter.retired===true;
-  const status=isDeceased?'توفي في عمر '+fighter.deceasedAge+' سنة · ملف محفوظ للقراءة فقط':isRetired?'اعتزل في عمر '+fighter.retiredAge+' سنة · ملف محفوظ للقراءة فقط':'نشط · '+combatCommunityFormLabel(fighter);
-  return choice(isDeceased?'🕯️':isRetired?'🏁':fighter.emoji,fighter.name,
-   'التقييم '+rating+'/100 · '+combatDifficultyLabel(rating)+' · '+status+' · '+combatCommunityRelationLabel(fighter)+' · الاحترام '+fighter.respect+'% · التوتر '+fighter.tension+'%',
-   ()=>combatCommunityFighterMenu(fighter.id),'',fighter.respect);
- });
+ const opts=[
+  choice('🏅','مؤشر المواجهة','رتّب المنافسين النشطين حسب مؤشر القوة التقديري وافتح ملف أي منافس.',combatCommunityContenderMenu),
+  ...c.community.map(fighter=>{
+   const rating=clamp(fighter.rating+(Number(fighter.momentum)||0),20,95);
+   const isDeceased=fighter.deceased===true;
+   const isRetired=fighter.retired===true;
+   const status=isDeceased?'توفي في عمر '+fighter.deceasedAge+' سنة · ملف محفوظ للقراءة فقط':isRetired?'اعتزل في عمر '+fighter.retiredAge+' سنة · ملف محفوظ للقراءة فقط':'نشط · '+combatCommunityFormLabel(fighter);
+   return choice(isDeceased?'🕯️':isRetired?'🏁':fighter.emoji,fighter.name,
+    'التقييم '+rating+'/100 · '+combatDifficultyLabel(rating)+' · '+status+' · '+combatCommunityRelationLabel(fighter)+' · الاحترام '+fighter.respect+'% · التوتر '+fighter.tension+'%',
+    ()=>combatCommunityFighterMenu(fighter.id),'',fighter.respect);
+  })
+ ];
  opts.push(choice('↩️','رجوع لمسيرة القتال','',combatCareerMenu));
  modal('🤝','مجتمع المقاتلين',c.community.length+' مقاتلًا في السجل · '+active.length+' نشط · '+retired+' معتزل · '+deceased+' متوفى · '+allies+' حلفاء · '+rivals+' خصومات نشطة. تتغير المسيرة مع مرور السنوات.',opts);
 }
@@ -8521,6 +8576,15 @@ function combatCommunityFighterMenu(fighterId){
  const memoryNote=memoryBouts?'ذاكرة تكتيكية: جمع ملاحظات من '+memoryBouts+' مواجهة سابقة. '+scouting.message:'ذاكرة تكتيكية: لا توجد مواجهات سابقة كافية لتكوين نمط.';
  const canInteract=fighter.lastInteractionAge!==state.age;
  const contactNote=canInteract?'تفاعل اجتماعي واحد مع هذا المقاتل كل سنة.':'استخدمت تفاعلك الاجتماعي معه في هذه السنة؛ تقدر تتواصل من جديد بعد التقدم بالعمر.';
+ const leagueRequirementsMet=Number(c.streetWins)>=2&&Number(c.streetCred)>=20;
+ const leagueFundsReady=Number(state.bank)>=1500;
+ let leagueNote='مواجهة دوري مباشرة أمام هذا المنافس.';
+ if(c.injuryYears>0||c.injury>=65)leagueNote='تعافَ من الإصابة أولًا؛ لا يمكن بدء نزال أثناء فترة التعافي أو عند إصابة 65% فأكثر.';
+ else if(c.energy<25)leagueNote='تحتاج إلى طاقة 25% على الأقل قبل بدء النزال.';
+ else if(!leagueRequirementsMet)leagueNote='يفتح الدوري بعد فوزين في الشوارع ورصيد شارع 20 على الأقل.';
+ else if(!leagueFundsReady)leagueNote='تحتاج إلى 1500 من عملة اللعبة لرسوم نزال الدوري.';
+ else if(c.champion)leagueNote='أنت تحمل لقب العالم؛ الفوز يسجل دفاعًا ناجحًا والخسارة تعني فقدان اللقب.';
+ else leagueNote='النزال يضيف أو يخصم نقاط الدوري وقد يقربك من شروط المنافسة على اللقب.';
  const opts=[
   choice('🔎','قراءة المنافس','التقييم '+currentRating+'/100 · '+combatDifficultyLabel(currentRating)+' · الحالة التنافسية: '+combatCommunityFormLabel(fighter)+' · طابع القتال '+archetype.title+' · أسلوبه '+fighter.style+' · نقطة ضعفه '+fighter.weakTo+'. '+memoryNote,()=>{closeModal();info('📊','ملف '+fighter.name,'التقييم الحالي '+currentRating+'/100 · '+combatCommunityFormLabel(fighter)+' · الاحترام '+fighter.respect+'% · التوتر '+fighter.tension+'% · الحالة '+combatCommunityRelationLabel(fighter)+'. '+memoryNote+' آخر تواصل: '+(fighter.lastInteractionAge<0?'لم يحدث بعد':'عمر '+fighter.lastInteractionAge)+'.');}),
   choice('🧠','تقرير كشف الأسلوب',scouting.message+' · توزيع آخر '+scouting.total+' جولات: '+scouting.styleCounts.map(item=>item.style+' '+item.count).join('، '),()=>{closeModal();info('🧠','تقرير كشف الأسلوب',scouting.message+' · توزيع آخر '+scouting.total+' جولات: '+scouting.styleCounts.map(item=>item.style+' '+item.count).join('، ')+'.');}),
@@ -8528,6 +8592,7 @@ function combatCommunityFighterMenu(fighterId){
   choice('📣','استفزاز إعلامي',contactNote+' قد يحوّل المنافس إلى خصم دائم ويرفع شهرتك قليلًا.',()=>interactCombatFighter(fighter.id,'trash')),
   choice(fighter.allied?'🔓':'🤝',fighter.allied?'إنهاء التحالف':'عرض تحالف',fighter.allied?'إنهاء التعاون وفتح باب المنافسة من جديد.':'يتطلب احترامًا 55% على الأقل وتوترًا لا يتجاوز 45%.',()=>interactCombatFighter(fighter.id,fighter.allied?'break':'alliance')),
   choice('🥊','تحدي على الحلبة','ابدأ نزال شوارع أمام هذا المقاتل تحديدًا؛ النتيجة ستؤثر على علاقتكما.',()=>startCombatBout('street',fighter.id)),
+  choice('🏆','مواجهة دوري أمام المنافس',leagueNote,()=>startCombatBout('league',fighter.id)),
   ...(fighter.allied?[choice('🥋','تدريب مشترك','تدريب مع حليفك مقابل 800 من عملة اللعبة؛ يحسن التقنية والدفاع قليلًا.',()=>interactCombatFighter(fighter.id,'spar'),'800 '+state.place.unit)]:[]),
   choice('↩️','رجوع للمجتمع','',combatCommunityMenu)
  ];
