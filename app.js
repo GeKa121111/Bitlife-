@@ -10156,7 +10156,30 @@ function removeLifeFromCemeteryForRewind(lifeId){
  if(!validateCemeteryBackup(current))throw new Error('cemetery-invalid');
  const primaryRaw=localStorage.getItem(CEMETERY_KEY);
  const checkpoint={primaryRaw,backupRaw:localStorage.getItem(CEMETERY_BACKUP_KEY),changed:false};
- const next=normalizeCemetery(current.filter(item=>String(item.id)!==String(lifeId)));
+ let next=normalizeCemetery(current.filter(item=>String(item.id)!==String(lifeId)));
+ if(next.length===current.length&&state&&state.status==='متوفى'){
+  // Older archived lives may have received a generated cemetery ID before lifeId
+  // was added to saved lives. Use a strict, unique identity signature as fallback.
+  const assetValue=(Array.isArray(state.assets)?state.assets:[]).reduce((sum,item)=>sum+(Number(item&&item.value)||0),0);
+  const investmentValue=(Array.isArray(state.investments)?state.investments:[]).reduce((sum,item)=>sum+(Number(item&&item.value)||0),0);
+  const expectedNetWorth=Math.round((Number(state.bank)||0)+assetValue+investmentValue-(Number(state.debt)||0));
+  const expectedCountry=String(state.place&&state.place.country||'');
+  const expectedChildren=Array.isArray(state.children)?state.children.length:0;
+  const candidates=current.filter(item=>
+   String(item.name||'')===String(state.name||'')&&
+   Number(item.age)===Math.floor(Number(state.age)||0)&&
+   String(item.cause||'')===String(state.cause||'نهاية الرحلة')&&
+   Number(item.netWorth)===expectedNetWorth&&
+   String(item.country||'')===expectedCountry&&
+   Number(item.children)===expectedChildren
+  );
+  if(candidates.length===1){
+   const legacyId=String(candidates[0].id);
+   next=normalizeCemetery(current.filter(item=>String(item.id)!==legacyId));
+  }else if(candidates.length>1||state.cemeterySaved===true){
+   throw new Error('cemetery-legacy-life-match-ambiguous');
+  }
+ }
  if(!validateCemeteryBackup(next))throw new Error('cemetery-invalid');
  if(next.length===current.length)return checkpoint;
  if(primaryRaw===null)throw new Error('cemetery-primary-missing');
