@@ -204,7 +204,7 @@ test('سجل النتائج يحتفظ بآخر 12 موسمًا فقط', () => {
   assert.equal(career.communityLeague.history.at(-1).season, 15);
 });
 
-test('تقدم مجتمع المقاتلين يشغل الموسم تلقائيًا مرة واحدة عند نجاح التقدم السنوي', () => {
+test('تقدم مجتمع المقاتلين يشغل الموسم تلقائيًا مرة واحدة بعد اكتمال تحديث العمر', async () => {
   let canAdvance = true;
   const context = createContext({
     advanceCombatCommunity() {
@@ -216,14 +216,20 @@ test('تقدم مجتمع المقاتلين يشغل الموسم تلقائي�
   const career = makeCareer();
 
   assert.equal(context.advanceCombatCommunity(career), true);
+  context.state.age += 1;
+  await Promise.resolve();
   assert.equal(career.communityLeague.season, 1);
+  assert.equal(career.communityLeague.lastSimulatedAge, 25);
   assert.equal(context.advanceCombatCommunity(career), false);
   assert.equal(career.communityLeague.season, 1);
 
   context.state.age += 1;
   canAdvance = true;
   assert.equal(context.advanceCombatCommunity(career), true);
+  context.state.age += 1;
+  await Promise.resolve();
   assert.equal(career.communityLeague.season, 2);
+  assert.equal(career.communityLeague.lastSimulatedAge, 26);
 });
 
 test('زر التقدم بالعمر يشغل موسم المنافسين كمسار احتياطي بعد اكتمال تحديث السنة', async () => {
