@@ -225,7 +225,9 @@ test('لقطات الحفظ القديمة الكاملة بلا lifeId تظل �
   assert.equal(harness.context.state.age, 39);
   assert.equal(harness.context.state.lifeId, 'life-1',
     'a legacy snapshot without an optional life ID should inherit the current life identity');
-  assert.deepEqual(harness.context.state.log, [{ title: 'حدث من صيغة الحفظ القديمة' }]);
+  assert.equal(harness.context.state.log[0].title, 'حدث من صيغة الحفظ القديمة');
+  assert.equal(harness.context.state.log[1].title, 'رجوع بالزمن',
+    'the rewind event should be appended after the restored legacy log');
   assert.equal(harness.context.state.status, 'حي');
   assert.deepEqual(storedList(harness, 'cemetery'), [{ id: 'life-2', name: 'سليم', age: 76 }]);
   assert.deepEqual(storedList(harness, 'cemeteryBackup'), [{ id: 'life-2', name: 'سليم', age: 76 }]);
