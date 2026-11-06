@@ -108,7 +108,7 @@ function makeHarness(fetchImpl = async () => { throw new Error('offline'); }, ca
     ['hayah-shell-v168', new Map()],
     ['hayah-shell-v170', new Map()],
     ['hayah-shell-v173', new Map()],
-    ['hayah-shell-v175', new Map()],
+    ['hayah-shell-v174', new Map()],
     ['unrelated-cache', new Map()]
   ]);
   const cacheCalls = { added: [], addAllAttempts: [], deleted: [], skipped: 0, claimed: 0 };
