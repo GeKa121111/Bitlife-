@@ -210,23 +210,7 @@ async function run() {
     const origin = 'http://127.0.0.1:' + address.port;
     await page.goto(origin + '/', { waitUntil: 'domcontentloaded' });
     await page.locator('#characterName').waitFor();
-    const diarySearchToggle = page.getByRole('button', { name: 'بحث في يوميات الحياة' });
-    await diarySearchToggle.waitFor();
-    const savedLifeBeforeDiarySearch = await page.evaluate(() => localStorage.getItem('hekayat_hayah_save_v1'));
-    await diarySearchToggle.click();
-    const diarySearchInput = page.getByRole('searchbox', { name: 'ابحث في أحداث حياتك' });
-    await diarySearchInput.waitFor();
-    await diarySearchInput.fill('بداية اختبار المتصفح');
-    await page.waitForFunction(() => document.querySelectorAll('#lifeFeed .logcard:not([hidden])').length === 1);
-    assert.match(await page.locator('#lifeFeed .logcard:not([hidden])').first().textContent(), /بداية اختبار المتصفح/);
-    await page.locator('#diarySearchClear').click();
-    assert.equal(await page.locator('#lifeFeed .logcard:not([hidden])').count(), await page.locator('#lifeFeed .logcard').count(),
-      'clearing diary search should restore the complete visible life history');
-    await diarySearchToggle.click();
-    assert.equal(await page.locator('#diarySearchPanel').isVisible(), false);
-    assert.equal(await page.evaluate(() => localStorage.getItem('hekayat_hayah_save_v1')), savedLifeBeforeDiarySearch,
-      'searching the diary must not mutate the current life save');
-    await page.evaluate(() => { document.activeElement?.blur(); window.scrollTo(0, 0); });
+
     const touchTargetProbe = await page.evaluate(() => {
       const coarsePointer = matchMedia('(pointer: coarse)').matches
         || matchMedia('(any-pointer: coarse)').matches;
@@ -3042,6 +3026,22 @@ async function run() {
     assert.equal(await page.evaluate(() => localStorage.getItem('hekayat_hayah_save_v1')), saveBeforeLocalInspection,
       'a rejected bundle must leave the active game save untouched');
 
+    const diarySearchToggle = page.getByRole('button', { name: 'بحث في يوميات الحياة' });
+    await diarySearchToggle.waitFor();
+    const savedLifeBeforeDiarySearch = await page.evaluate(() => localStorage.getItem('hekayat_hayah_save_v1'));
+    await diarySearchToggle.click();
+    const diarySearchInput = page.getByRole('searchbox', { name: 'ابحث في أحداث حياتك' });
+    await diarySearchInput.waitFor();
+    await diarySearchInput.fill('بداية اختبار المتصفح');
+    await page.waitForFunction(() => document.querySelectorAll('#lifeFeed .logcard:not([hidden])').length === 1);
+    assert.match(await page.locator('#lifeFeed .logcard:not([hidden])').first().textContent(), /بداية اختبار المتصفح/);
+    await page.locator('#diarySearchClear').click();
+    assert.equal(await page.locator('#lifeFeed .logcard:not([hidden])').count(), await page.locator('#lifeFeed .logcard').count(),
+      'clearing diary search should restore the complete visible life history');
+    await diarySearchToggle.click();
+    assert.equal(await page.locator('#diarySearchPanel').isVisible(), false);
+    assert.equal(await page.evaluate(() => localStorage.getItem('hekayat_hayah_save_v1')), savedLifeBeforeDiarySearch,
+      'searching the diary must not mutate the current life save');
     assert.deepEqual(pageErrors, [], 'the browser run should complete without uncaught JavaScript errors');
 
     console.log('PASS: mobile layout, legacy v1 load, persistence, rewind, complete backup bundle export/import, auxiliary data restoration, JSON import, inheritance, insolvent estate, career promotion migration, annual supplier market, persistent competitor market, facilities and production capacity, researched and instinct product launches, product pricing, annual product sales, business reports, independent portfolio-company operations, and business credit accrual, repayment, persistence, sale settlement, unpaid-interest capitalization, underwater-sale protection, industry tax assessment, tax arrears, loss exemption, treasury-only tax payment, and annual tax reconciliation, fighter move mastery, one-use stamina recovery and legacy-save migration, fighter community relationships, friendly interactions, named rival bouts, and director actor auditions, persistent cast profiles, on-set conflict effects, and one-time film festival submissions with awards and duplicate protection.');
