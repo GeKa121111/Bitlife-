@@ -64,6 +64,7 @@
     const feed = documentRef.getElementById('lifeFeed');
     if (!heading || !feed || documentRef.getElementById('diarySearchToggle')) return null;
 
+    heading.classList.add('has-diary-search');
     const tools = documentRef.createElement('div');
     tools.className = 'diary-search-tools';
 
