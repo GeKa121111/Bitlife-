@@ -34,15 +34,36 @@ async function run() {
     const allFilter = page.getByRole('button', { name: 'كل الأحداث' });
     const negativeFilter = page.getByRole('button', { name: 'سلبية' });
     const specialFilter = page.getByRole('button', { name: 'مميزة' });
+    const oldestButton = page.getByRole('button', { name: 'الانتقال إلى أقدم حدث ظاهر' });
+    const newestButton = page.getByRole('button', { name: 'الانتقال إلى أحدث حدث ظاهر' });
     assert.equal(await allFilter.getAttribute('aria-pressed'), 'true');
+    assert.equal(await oldestButton.isDisabled(), false);
+    assert.equal(await newestButton.isDisabled(), false);
+    await page.locator('#lifeFeed .logcard').evaluateAll(cards => {
+      cards.forEach(card => {
+        card.scrollIntoView = () => { card.dataset.jumped = 'true'; };
+      });
+    });
+    await oldestButton.click();
+    assert.equal(await page.locator('#lifeFeed .logcard').nth(0).getAttribute('data-jumped'), 'true');
+    await newestButton.click();
+    assert.equal(await page.locator('#lifeFeed .logcard').nth(2).getAttribute('data-jumped'), 'true');
 
     await negativeFilter.click();
     await page.waitForFunction(() => document.querySelectorAll('#lifeFeed .logcard:not([hidden])').length === 1);
     assert.equal(await page.locator('#lifeFeed .logcard').nth(1).isVisible(), true);
     assert.equal(await negativeFilter.getAttribute('aria-pressed'), 'true');
+    await oldestButton.click();
+    assert.equal(await page.locator('#lifeFeed .logcard').nth(1).getAttribute('data-jumped'), 'true',
+      'the oldest jump should use the currently visible filtered event');
+    await newestButton.click();
+    assert.equal(await page.locator('#lifeFeed .logcard').nth(1).getAttribute('data-jumped'), 'true',
+      'the newest jump should use the currently visible filtered event');
 
     await input.fill('منحة');
     await page.waitForFunction(() => document.querySelectorAll('#lifeFeed .logcard:not([hidden])').length === 0);
+    assert.equal(await oldestButton.isDisabled(), true);
+    assert.equal(await newestButton.isDisabled(), true);
     assert.match(await page.getByRole('status').textContent(), /لا توجد أحداث مطابقة/);
 
     await allFilter.click();

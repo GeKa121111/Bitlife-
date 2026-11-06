@@ -57,6 +57,24 @@
     return { visibleCount, totalCount };
   }
 
+  function visibleCards(feed) {
+    if (!feed) return [];
+    const cards = typeof feed.querySelectorAll === 'function'
+      ? Array.from(feed.querySelectorAll('.logcard'))
+      : Array.from(feed.children || []).filter(child => child.classList?.contains('logcard'));
+    return cards.filter(card => !card.hidden);
+  }
+
+  function jumpToEdge(feed, edge) {
+    const cards = visibleCards(feed);
+    const target = edge === 'last' ? cards[cards.length - 1] : cards[0];
+    if (!target) return null;
+    if (typeof target.scrollIntoView === 'function') {
+      target.scrollIntoView({ behavior: 'auto', block: 'nearest' });
+    }
+    return target;
+  }
+
   function init() {
     const documentRef = root.document;
     if (!documentRef) return null;
@@ -120,12 +138,28 @@
       filterGroup.appendChild(button);
       return button;
     });
+    const jumpGroup = documentRef.createElement('div');
+    jumpGroup.className = 'diary-search-jump';
+    jumpGroup.setAttribute('role', 'group');
+    jumpGroup.setAttribute('aria-label', 'التنقل بين أحداث اليوميات');
+    const oldestButton = documentRef.createElement('button');
+    oldestButton.type = 'button';
+    oldestButton.className = 'diary-search-jump-button';
+    oldestButton.textContent = 'أقدم حدث ظاهر';
+    oldestButton.setAttribute('aria-label', 'الانتقال إلى أقدم حدث ظاهر');
+    const newestButton = documentRef.createElement('button');
+    newestButton.type = 'button';
+    newestButton.className = 'diary-search-jump-button';
+    newestButton.textContent = 'أحدث حدث ظاهر';
+    newestButton.setAttribute('aria-label', 'الانتقال إلى أحدث حدث ظاهر');
+    jumpGroup.append(oldestButton, newestButton);
+
     const status = documentRef.createElement('p');
     status.id = 'diarySearchStatus';
     status.className = 'diary-search-status';
     status.setAttribute('role', 'status');
     status.setAttribute('aria-live', 'polite');
-    panel.append(label, row, filterGroup, status);
+    panel.append(label, row, filterGroup, jumpGroup, status);
     heading.insertAdjacentElement('afterend', panel);
 
     const syncFilterButtons = () => {
@@ -133,8 +167,14 @@
         button.setAttribute('aria-pressed', String(button.dataset.tone === activeTone));
       });
     };
+    const syncJumpButtons = () => {
+      const hasVisibleEvents = visibleCards(feed).length > 0;
+      oldestButton.disabled = !hasVisibleEvents;
+      newestButton.disabled = !hasVisibleEvents;
+    };
     const update = () => {
       const result = filterFeed(feed, input.value, activeTone);
+      syncJumpButtons();
       const hasQuery = Boolean(normalizeText(input.value));
       const hasTone = activeTone !== 'all';
       clear.disabled = !hasQuery;
@@ -156,6 +196,7 @@
       activeTone = 'all';
       syncFilterButtons();
       filterFeed(feed, '', 'all');
+      syncJumpButtons();
       clear.disabled = true;
       status.textContent = '';
       toggle.focus();
@@ -165,6 +206,7 @@
       if (panel.hidden) {
         panel.hidden = false;
         toggle.setAttribute('aria-expanded', 'true');
+        update();
         status.textContent = 'اكتب كلمة أو اختر نوع الحدث.';
         input.focus();
       } else {
@@ -180,6 +222,18 @@
     filterButtons.forEach(button => {
       button.addEventListener('click', () => setTone(button.dataset.tone));
     });
+    const jump = edge => {
+      const target = jumpToEdge(feed, edge);
+      if (!target) {
+        status.textContent = 'لا توجد أحداث ظاهرة للانتقال إليها.';
+        return;
+      }
+      const title = target.querySelector?.('.logtitle')?.textContent || target.textContent || '';
+      const labelText = String(title).trim().replace(/\s+/g, ' ').slice(0, 90);
+      status.textContent = (edge === 'last' ? 'انتقلت إلى أحدث حدث ظاهر: ' : 'انتقلت إلى أقدم حدث ظاهر: ') + labelText;
+    };
+    oldestButton.addEventListener('click', () => jump('first'));
+    newestButton.addEventListener('click', () => jump('last'));
     input.addEventListener('keydown', event => {
       if (event.key !== 'Escape') return;
       event.preventDefault();
@@ -196,14 +250,16 @@
     let observer = null;
     if (typeof root.MutationObserver === 'function') {
       observer = new root.MutationObserver(() => {
-        if (!panel.hidden && (normalizeText(input.value) || activeTone !== 'all')) update();
+        if (!panel.hidden) update();
+        else syncJumpButtons();
       });
       observer.observe(feed, { childList: true, subtree: true });
     }
-    return { toggle, panel, input, clear, status, observer, filterGroup, filterButtons };
+    syncJumpButtons();
+    return { toggle, panel, input, clear, status, observer, filterGroup, filterButtons, jumpGroup, oldestButton, newestButton };
   }
 
-  root.HayahDiarySearch = Object.freeze({ normalizeText, filterFeed, init });
+  root.HayahDiarySearch = Object.freeze({ normalizeText, filterFeed, visibleCards, jumpToEdge, init });
   if (!root.document) return;
   if (root.document.readyState === 'loading') {
     root.document.addEventListener('DOMContentLoaded', init, { once: true });

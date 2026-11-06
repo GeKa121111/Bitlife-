@@ -147,3 +147,50 @@ test('المكوّن لا يقرأ الحفظ أو يكتب فيه ولا يرس
   assert.match(css, /\.diary-search-filters/);
   assert.match(css, /min-height:44px/);
 });
+
+test('التنقل يقفز إلى أقدم وأحدث حدث ظاهر فقط', () => {
+  const search = api();
+  const oldest = node('logcard good', 'حدث قديم');
+  const hidden = node('logcard bad', 'حدث مخفي', true);
+  const newest = node('logcard special', 'حدث حديث');
+  const feed = { children: [oldest, hidden, newest] };
+  const calls = [];
+  oldest.scrollIntoView = options => calls.push({ target: 'oldest', options });
+  newest.scrollIntoView = options => calls.push({ target: 'newest', options });
+
+  const visible = search.visibleCards(feed);
+  assert.equal(visible.length, 2);
+  assert.equal(visible[0], oldest);
+  assert.equal(visible[1], newest);
+  assert.equal(search.jumpToEdge(feed, 'first'), oldest);
+  assert.equal(search.jumpToEdge(feed, 'last'), newest);
+  assert.equal(calls.length, 2);
+  assert.equal(calls[0].target, 'oldest');
+  assert.equal(calls[0].options.behavior, 'auto');
+  assert.equal(calls[0].options.block, 'nearest');
+  assert.equal(calls[1].target, 'newest');
+  assert.equal(calls[1].options.behavior, 'auto');
+  assert.equal(calls[1].options.block, 'nearest');
+  assert.equal(hidden.hidden, true);
+});
+
+test('التنقل لا يحاول تمرير اليوميات عندما لا توجد أحداث ظاهرة', () => {
+  const search = api();
+  const hidden = node('logcard good', 'حدث مؤرشف', true);
+  const feed = { children: [hidden] };
+  assert.equal(search.visibleCards(feed).length, 0);
+  assert.equal(search.jumpToEdge(feed, 'first'), null);
+  assert.equal(search.jumpToEdge(feed, 'last'), null);
+});
+
+test('واجهة التنقل معلّمة لقارئات الشاشة ولا تمس التخزين', () => {
+  const source = fs.readFileSync(path.join(__dirname, '..', 'diary-search.js'), 'utf8');
+  const css = fs.readFileSync(path.join(__dirname, '..', 'diary-search.css'), 'utf8');
+  assert.match(source, /diary-search-jump/);
+  assert.match(source, /الانتقال إلى أقدم حدث ظاهر/);
+  assert.match(source, /الانتقال إلى أحدث حدث ظاهر/);
+  assert.match(source, /scrollIntoView/);
+  assert.match(css, /\.diary-search-jump-button/);
+  assert.match(css, /min-height:44px/);
+  assert.doesNotMatch(source, /localStorage|sessionStorage|fetch\s*\(/);
+});
