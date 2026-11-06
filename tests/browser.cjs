@@ -2784,7 +2784,7 @@ async function run() {
     await seasonMenuEntry.click();
     await page.waitForFunction(() => document.querySelector('#modalRoot .modaltitle')?.textContent.trim() === 'سجل مواسم المنافسين');
     assert.equal((await page.locator('#modalRoot .modaltitle').innerText()).trim(), 'سجل مواسم المنافسين');
-    assert.match(await page.locator('#modalRoot').innerText(), /كل منافس يواجه خصمين/,
+    assert.match(await page.locator('#modalRoot').innerText(), /يواجه كل منافس خصمين/,
       'the season screen should explain the bounded annual opponent schedule');
     await page.locator('#modalRoot .choice').filter({ hasText: 'رجوع إلى مجتمع المقاتلين' }).click();
     const ageBeforeCommunitySeason = await page.evaluate(() =>
