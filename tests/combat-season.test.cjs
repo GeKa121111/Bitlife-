@@ -8,6 +8,39 @@ const vm = require('node:vm');
 
 const source = fs.readFileSync(path.join(__dirname, '..', 'combat-season.js'), 'utf8');
 
+class FakeElement {
+  constructor(tagName = 'div') {
+    this.tagName = tagName;
+    this.children = [];
+    this.attributes = {};
+    this.listeners = {};
+    this.className = '';
+    this.textContent = '';
+    this.type = '';
+  }
+
+  setAttribute(name, value) {
+    this.attributes[name] = String(value);
+  }
+
+  appendChild(child) {
+    this.children.push(child);
+    child.parentElement = this;
+    return child;
+  }
+
+  addEventListener(type, callback) {
+    this.listeners[type] = callback;
+  }
+
+  querySelector(selector) {
+    if (selector === '[data-hayah-combat-season-entry]') {
+      return this.children.find(child => child.attributes['data-hayah-combat-season-entry']) || null;
+    }
+    return null;
+  }
+}
+
 function createContext(overrides = {}) {
   const context = vm.createContext({
     state: { age: 24, yearCount: 24, specialCareer: { id: 'fighter' } },
@@ -29,6 +62,14 @@ function createContext(overrides = {}) {
     advanceCombatCommunity() {
       return true;
     },
+    document: {
+      getElementById() {
+        return null;
+      },
+      createElement(tagName) {
+        return new FakeElement(tagName);
+      }
+    },
     ...overrides
   });
   context.window = context;
@@ -49,6 +90,19 @@ function makeCareer() {
       { id: 'deceased', name: 'متوفى', rating: 95, deceased: true }
     ]
   };
+}
+
+function makeCommunityModalRoot(titleText) {
+  const heading = { textContent: titleText };
+  const grid = new FakeElement('div');
+  const root = {
+    querySelector(selector) {
+      if (selector === '.modaltitle') return heading;
+      if (selector === '.choicegrid') return grid;
+      return null;
+    }
+  };
+  return { root, heading, grid };
 }
 
 test('الحفظ القديم بلا سجل مواسم يحصل على بنية اختيارية آمنة دون تغيير حقول الدوري أو اللقب', () => {
@@ -152,24 +206,58 @@ test('تقدم مجتمع المقاتلين يشغل الموسم تلقائي�
   assert.equal(career.communityLeague.season, 2);
 });
 
-test('قائمة مجتمع المقاتلين تعرض سجل المواسم ولا تغيّر القوائم الأخرى', () => {
+test('زر التقدم بالعمر يشغل موسم المنافسين كمسار احتياطي بعد اكتمال تحديث السنة', async () => {
+  const ageButton = new FakeElement('button');
+  const document = {
+    getElementById(id) {
+      return id === 'ageUpBtn' ? ageButton : null;
+    },
+    createElement(tagName) {
+      return new FakeElement(tagName);
+    }
+  };
+  const context = createContext({ document });
+  const career = makeCareer();
+  context.state.combatCareer = career;
+
+  context.state.age = 25;
+  ageButton.listeners.click();
+  await Promise.resolve();
+
+  assert.equal(career.communityLeague.season, 1);
+  ageButton.listeners.click();
+  await Promise.resolve();
+  assert.equal(career.communityLeague.season, 1);
+});
+
+test('مراقب واجهة المجتمع يضيف سجل المواسم مرة واحدة ويعرضه عند الضغط', () => {
+  const { root, heading, grid } = makeCommunityModalRoot('مجتمع المقاتلين');
   const context = createContext();
   context.career = makeCareer();
 
-  context.modal('🤝', 'مجتمع المقاتلين', 'ملخص المجتمع', []);
-  assert.equal(context.lastModal[3][0].title, 'سجل مواسم المنافسين');
-  context.lastModal[3][0].action();
+  assert.equal(context.HayahCombatSeason.injectMenuEntry(root), true);
+  assert.equal(context.HayahCombatSeason.injectMenuEntry(root), false);
+  assert.equal(grid.children.length, 1);
+
+  const entry = grid.children[0];
+  assert.equal(entry.className, 'choice');
+  assert.equal(entry.attributes['data-hayah-combat-season-entry'], 'true');
+  assert.equal(entry.attributes['aria-label'], 'سجل مواسم المنافسين');
+  assert.equal(entry.children[1].children[0].textContent, 'سجل مواسم المنافسين');
+  entry.listeners.click();
+
   assert.equal(context.lastModal[1], 'سجل مواسم المنافسين');
   assert.match(context.lastModal[2], /لم يبدأ موسم بعد/);
 
-  context.modal('ℹ️', 'معلومات عامة', 'نص', []);
-  assert.equal(context.lastModal[3].length, 0);
+  heading.textContent = 'معلومات عامة';
+  assert.equal(context.HayahCombatSeason.injectMenuEntry(root), false);
 });
 
 test('لوحة الموسم تعرض الترتيب وآخر متصدر وتوضح أن نقاطها لا تخص اللاعب', () => {
   const context = createContext();
-  context.career = makeCareer();
-  context.HayahCombatSeason.simulate(context.career);
+  const career = makeCareer();
+  context.career = career;
+  context.HayahCombatSeason.simulate(career);
 
   context.HayahCombatSeason.openMenu();
   assert.equal(context.lastModal[1], 'سجل مواسم المنافسين');
