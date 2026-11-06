@@ -186,5 +186,5 @@ test('واجهة التنقل معلّمة لقارئات الشاشة ولا ت
   assert.match(source, /scrollIntoView/);
   assert.match(css, /\.diary-search-jump-button/);
   assert.match(css, /min-height:44px/);
-  assert.doesNotMatch(source, /localStorage|sessionStorage|fetch\\s*\\(/);
+  assert.doesNotMatch(source, /localStorage|sessionStorage|fetch\s*\(/);
 });
