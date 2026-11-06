@@ -229,7 +229,7 @@
         return;
       }
       const title = target.querySelector?.('.logtitle')?.textContent || target.textContent || '';
-      const labelText = String(title).trim().replace(/\\s+/g, ' ').slice(0, 90);
+      const labelText = String(title).trim().replace(/\s+/g, ' ').slice(0, 90);
       status.textContent = (edge === 'last' ? 'انتقلت إلى أحدث حدث ظاهر: ' : 'انتقلت إلى أقدم حدث ظاهر: ') + labelText;
     };
     oldestButton.addEventListener('click', () => jump('first'));
