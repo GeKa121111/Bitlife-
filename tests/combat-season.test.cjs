@@ -226,7 +226,6 @@ test('تقدم مجتمع المقاتلين يشغل الموسم تلقائي�
   context.state.age += 1;
   canAdvance = true;
   assert.equal(context.advanceCombatCommunity(career), true);
-  context.state.age += 1;
   await Promise.resolve();
   assert.equal(career.communityLeague.season, 2);
   assert.equal(career.communityLeague.lastSimulatedAge, 26);
