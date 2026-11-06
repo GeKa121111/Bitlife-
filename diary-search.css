@@ -19,3 +19,20 @@ body.theme-gold .diary-search-toggle,body.theme-gold .diary-search-clear{color:#
 body.theme-gold .diary-search-panel label{color:#755617}
 @media(max-width:360px){.diary-search-toggle{padding-inline:8px}.diary-search-panel{padding-inline:10px}}
 @media(prefers-reduced-motion:reduce){.diary-search-panel *{scroll-behavior:auto!important;transition:none!important;animation:none!important}}
+
+/* Keep the fixed diary header geometry stable when the 44px search target is present. */
+#app > .story-heading.has-diary-search{
+  height:56px!important;
+  min-height:56px!important;
+  flex-basis:56px!important;
+  padding-block:6px!important;
+  box-sizing:border-box!important;
+}
+@media(max-width:450px){
+  #app > .story-heading.has-diary-search{
+    height:48px!important;
+    min-height:48px!important;
+    flex-basis:48px!important;
+    padding-block:2px!important;
+  }
+}
