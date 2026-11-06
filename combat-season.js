@@ -3,6 +3,7 @@
 
   const HISTORY_LIMIT = 12;
   const MAX_FIGHTERS = 20;
+  const MAX_SEASON_BOUTS = MAX_FIGHTERS;
 
   function boundedNumber(value, fallback, min, max) {
     const number = Number(value);
@@ -201,46 +202,63 @@
       });
     });
 
+    // Keep each rival's annual workload realistic: a rotating cycle gives
+    // every active fighter up to two distinct opponents, not 19 bouts in one year.
+    const schedule = fighters.slice().sort((a, b) => {
+      const aOrder = stableHash('season-order|' + season + '|' + a.id);
+      const bOrder = stableHash('season-order|' + season + '|' + b.id);
+      if (aOrder !== bOrder) return aOrder - bOrder;
+      return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
+    });
+    const pairings = schedule.length === 2
+      ? [[schedule[0], schedule[1]]]
+      : schedule.map((fighter, index) => [fighter, schedule[(index + 1) % schedule.length]]);
+    const matchups = [];
     let matches = 0;
-    for (let left = 0; left < fighters.length; left += 1) {
-      for (let right = left + 1; right < fighters.length; right += 1) {
-        const a = fighters[left];
-        const b = fighters[right];
-        const rowA = table.get(a.id);
-        const rowB = table.get(b.id);
-        const seed = season + '|' + a.id + '|' + b.id;
-        const isDraw = stableHash('draw|' + seed) % 19 === 0;
-        rowA.played += 1;
-        rowB.played += 1;
-        matches += 1;
 
-        if (isDraw) {
-          rowA.draws += 1;
-          rowB.draws += 1;
-          rowA.points += 1;
-          rowB.points += 1;
-          continue;
-        }
+    for (const pairing of pairings.slice(0, MAX_SEASON_BOUTS)) {
+      // Canonicalize each pair so a schedule rotation cannot change the
+      // deterministic winner merely by reversing the two fighter positions.
+      const orderedPair = pairing.slice().sort((a, b) =>
+        a.id < b.id ? -1 : a.id > b.id ? 1 : 0
+      );
+      const a = orderedPair[0];
+      const b = orderedPair[1];
+      const rowA = table.get(a.id);
+      const rowB = table.get(b.id);
+      const seed = season + '|' + a.id + '|' + b.id;
+      const isDraw = stableHash('draw|' + seed) % 19 === 0;
+      rowA.played += 1;
+      rowB.played += 1;
+      matches += 1;
+      matchups.push([a.id, b.id]);
 
-        const chanceA = boundedNumber(
-          50 + (fighterPower(a.fighter) - fighterPower(b.fighter)) * 2.2,
-          50,
-          10,
-          90
-        );
-        const roll = stableHash('winner|' + seed) % 100;
-        const aWon = roll < chanceA;
-        const winner = aWon ? a : b;
-        const loser = aWon ? b : a;
-        const winnerRow = aWon ? rowA : rowB;
-        const loserRow = aWon ? rowB : rowA;
-
-        winnerRow.wins += 1;
-        winnerRow.points += 3;
-        loserRow.losses += 1;
-        applySeasonForm(winner.fighter, 1, 1);
-        applySeasonForm(loser.fighter, -1, -1);
+      if (isDraw) {
+        rowA.draws += 1;
+        rowB.draws += 1;
+        rowA.points += 1;
+        rowB.points += 1;
+        continue;
       }
+
+      const chanceA = boundedNumber(
+        50 + (fighterPower(a.fighter) - fighterPower(b.fighter)) * 2.2,
+        50,
+        10,
+        90
+      );
+      const roll = stableHash('winner|' + seed) % 100;
+      const aWon = roll < chanceA;
+      const winner = aWon ? a : b;
+      const loser = aWon ? b : a;
+      const winnerRow = aWon ? rowA : rowB;
+      const loserRow = aWon ? rowB : rowA;
+
+      winnerRow.wins += 1;
+      winnerRow.points += 3;
+      loserRow.losses += 1;
+      applySeasonForm(winner.fighter, 1, 1);
+      applySeasonForm(loser.fighter, -1, -1);
     }
 
     const standings = Array.from(table.values()).sort((a, b) => {
@@ -275,7 +293,8 @@
       age,
       matches,
       standings: standings.map(row => Object.assign({}, row)),
-      leader: Object.assign({}, leader)
+      leader: Object.assign({}, leader),
+      matchups: matchups.map(pair => pair.slice())
     };
   }
 
@@ -347,9 +366,9 @@
       doc,
       '📘',
       'عن نظام المواسم',
-      'تُحاكى مواجهات المنافسين مرة واحدة لكل عمر، ولا تُحتسب ضمن سجل اللاعب أو دفاعاته عن اللقب.',
+      'يواجه كل منافس خصمين نشطين في الموسم عند توفر ثلاثة منافسين أو أكثر، ولا تُحتسب النتائج ضمن سجل اللاعب أو دفاعاته عن اللقب.',
       () => {
-        description.textContent = 'كل منافس نشط يواجه بقية المنافسين مرة واحدة في الموسم. الفوز 3 نقاط والتعادل نقطة والخسارة بلا نقاط. النتائج تخص مجتمع المنافسين ولا تغيّر لقب اللاعب.';
+        description.textContent = 'يواجه كل منافس خصمين نشطين في الموسم عند توفر ثلاثة منافسين أو أكثر، بحد أقصى 20 مواجهة للموسم. الفوز 3 نقاط والتعادل نقطة والخسارة بلا نقاط. النتائج تخص مجتمع المنافسين ولا تغيّر لقب اللاعب.';
       }
     );
     const back = createFallbackChoice(
@@ -395,11 +414,11 @@
         'متصدر الموسم: ' + (latest ? latest.leaderName : 'غير متاح') +
         (latest ? ' برصيد ' + latest.leaderPoints + ' نقطة.' : '.') +
         '\n\nترتيب المنافسين:\n' + (lines.length ? lines.join('\n') : 'لا توجد نتائج محفوظة.')
-      : 'لم يبدأ موسم بعد. تُحاكى مواجهات المنافسين تلقائيًا عند التقدم بالعمر داخل مسيرة القتال، بعد تحديث أعمار المجتمع.\n\nالنتائج تخص منافسي المجتمع فقط، ولا تضيف نقاطًا إلى مسيرة اللاعب أو تغيّر لقب العالم مباشرة.';
+      : 'لم يبدأ موسم بعد. تُحاكى مواجهات المنافسين تلقائيًا عند التقدم بالعمر داخل مسيرة القتال. يواجه كل منافس خصمين نشطين عند توفر ثلاثة منافسين أو أكثر، بحد أقصى 20 مواجهة في الموسم.\n\nالنتائج تخص منافسي المجتمع فقط، ولا تضيف نقاطًا إلى مسيرة اللاعب أو تغيّر لقب العالم مباشرة.';
 
     if (hasModalHelper() && hasChoiceHelper()) {
       const options = [
-        makeChoice('📘', 'عن نظام المواسم', 'يواجه كل منافس نشط بقية المنافسين مرة واحدة في الموسم. النتائج حتمية وقابلة لإعادة الاختبار، وتؤثر تدريجيًا في الزخم والاحترام.', () => {
+        makeChoice('📘', 'عن نظام المواسم', 'يواجه كل منافس خصمين نشطين في الموسم عند توفر ثلاثة منافسين أو أكثر. النتائج حتمية وقابلة لإعادة الاختبار، وتؤثر تدريجيًا في الزخم والاحترام.', () => {
           showInfo('📘', 'عن نظام المواسم', 'تُحاكى مواجهات المنافسين مرة واحدة لكل عمر عند تقدم الحياة. لا تُحتسب هذه النتائج ضمن سجل نزالات اللاعب أو دفاعاته عن لقب العالم.');
         }),
         makeChoice('↩️', 'رجوع إلى مجتمع المقاتلين', '', backToMenu)
