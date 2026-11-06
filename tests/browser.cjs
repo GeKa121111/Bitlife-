@@ -2944,7 +2944,7 @@ async function run() {
     const checkerReportText = await page.locator('#backupResult').innerText();
     assert.ok(checkerReportText.includes('اختبار فحص الحفظ'));
     assert.ok(checkerReportText.includes('حزمة حفظ حياة كاملة'));
-    assert.match(checkerReportText, /نقاط الرجوع بالزمن\\s+2/,
+    assert.match(checkerReportText, /نقاط الرجوع بالزمن\s+2/,
       'the preflight report should display the number of readable rewind points');
     assert.ok(checkerReportText.includes('طول سجل الرجوع'),
       'the preflight report should display serialized rewind-history size');
