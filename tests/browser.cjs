@@ -1358,11 +1358,36 @@ async function run() {
       const saved = JSON.parse(localStorage.getItem('hekayat_hayah_save_v1') || 'null');
       return saved && saved.age === 31;
     });
-    await page.waitForFunction(() => {
-      const feed = document.querySelector('#lifeFeed');
-      return feed && feed.scrollHeight > feed.clientHeight &&
-        feed.scrollHeight - feed.scrollTop - feed.clientHeight <= 8;
-    });
+    try {
+      await page.waitForFunction(() => {
+        const feed = document.querySelector('#lifeFeed');
+        return feed && feed.scrollHeight > feed.clientHeight &&
+          feed.scrollHeight - feed.scrollTop - feed.clientHeight <= 8;
+      });
+    } catch (error) {
+      const feedDiagnostics = await page.evaluate(() => {
+        const feed = document.querySelector('#lifeFeed');
+        const heading = document.querySelector('.story-heading');
+        const toggle = document.querySelector('#diarySearchToggle');
+        return {
+          feed: feed ? {
+            scrollTop: feed.scrollTop,
+            scrollHeight: feed.scrollHeight,
+            clientHeight: feed.clientHeight,
+            cardCount: feed.querySelectorAll('.logcard').length,
+            hiddenCards: feed.querySelectorAll('.logcard[hidden]').length
+          } : null,
+          headingHeight: heading?.getBoundingClientRect().height ?? null,
+          searchToggle: toggle ? {
+            width: toggle.getBoundingClientRect().width,
+            height: toggle.getBoundingClientRect().height
+          } : null,
+          searchPanelHidden: document.querySelector('#diarySearchPanel')?.hidden ?? null
+        };
+      });
+      console.error('Feed restoration diagnostics:', JSON.stringify(feedDiagnostics));
+      throw error;
+    }
     assert.ok((await page.locator('#characterName').innerText()).includes(seedSave.name), 'the player identity should persist after reload');
     const persistedProducts = await page.evaluate(() => {
       const saved = JSON.parse(localStorage.getItem('hekayat_hayah_save_v1') || 'null');
