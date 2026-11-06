@@ -68,7 +68,7 @@ test('الفاحص يوضح الفرق بين الحد الأساسي والحد
   const baseOverflow = inspectBackup(makeLife({
     timeMachineSnapshots: Array.from({ length: 9 }, (_, index) => 'snapshot-' + index)
   }));
-  assert.ok(baseOverflow.warnings.some(message => message.includes('الحد الأساسي (8)')));
+  assert.ok(baseOverflow.warnings.some(message => message.includes('الحد الأساسي (8 نقاط)')));
 
   const absoluteOverflow = inspectBackup(makeLife({
     timeMachineSnapshots: Array.from({ length: 61 }, (_, index) => 'snapshot-' + index)
