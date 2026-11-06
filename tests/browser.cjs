@@ -224,6 +224,7 @@ async function run() {
     assert.equal(await page.locator('#diarySearchPanel').isVisible(), false);
     assert.equal(await page.evaluate(() => localStorage.getItem('hekayat_hayah_save_v1')), savedLifeBeforeDiarySearch,
       'searching the diary must not mutate the current life save');
+    await page.evaluate(() => { document.activeElement?.blur(); window.scrollTo(0, 0); });
     const touchTargetProbe = await page.evaluate(() => {
       const coarsePointer = matchMedia('(pointer: coarse)').matches
         || matchMedia('(any-pointer: coarse)').matches;
