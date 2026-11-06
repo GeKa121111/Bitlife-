@@ -32,10 +32,16 @@ assert.match(deployWorkflow, /name:\s*github-pages-\$\{\{\s*github\.run_attempt\
   'Pages uploads should use a unique artifact name for each workflow attempt');
 assert.match(deployWorkflow, /artifact_name:\s*github-pages-\$\{\{\s*github\.run_attempt\s*\}\}/,
   'Pages deployment should select the artifact created by the current attempt');
-assert.match(deployWorkflow, /timeout:\s*900000/,
-  'Pages deployment should allow up to 15 minutes for a slow platform rollout');
+assert.match(deployWorkflow, /timeout:\s*600000/,
+  'Pages deployment should use the documented 10-minute backend timeout');
 assert.match(deployWorkflow, /timeout-minutes:\s*20/,
-  'the deployment job should outlive the Pages action timeout');
+  'the deployment job should leave runner time for setup and cleanup beyond the Pages action timeout');
+assert.match(deployWorkflow, /name: Verify published service worker version/,
+  'a successful Pages action must be followed by a live-site freshness check');
+assert.match(deployWorkflow, /expected_cache[\s\S]*actual_cache/,
+  'the freshness check should compare the published shell with the checked-out service worker');
+assert.match(deployWorkflow, /curl -fsS/,
+  'the freshness check should read the deployed service worker over HTTPS');
 assert.match(accessibilityCss, /@media \(pointer: coarse\), \(any-pointer: coarse\)/,
   'touch-first devices should receive enlarged compact-control targets');
 assert.match(accessibilityCss, /\.identity-info[\s\S]*?min-width: 44px/,
