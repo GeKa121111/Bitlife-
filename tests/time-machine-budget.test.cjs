@@ -36,12 +36,30 @@ test('الحد الأساسي يحتفظ بأحدث 8 نقاط، والذاكر�
 
 test('ميزانية الحجم تقلّص النقاط الأقدم وتحافظ على أحدث سلسلة متصلة', () => {
   const history = ['old-0000', 'old-1111', 'new-2222', 'new-3333'];
-  const result = fit(history, 60, 16);
+  const newest = history.slice(-2);
+  const budget = JSON.stringify(newest).length;
+  const result = fit(history, 60, budget);
 
-  assert.deepEqual(Array.from(result.snapshots), history.slice(-2));
-  assert.equal(result.usedChars, 16);
+  assert.deepEqual(Array.from(result.snapshots), newest);
+  assert.equal(result.usedChars, budget);
+  assert.equal(JSON.stringify(result.snapshots).length, budget);
   assert.equal(result.skippedNewest, false);
   assert.equal(result.removedCount, 2);
+});
+
+
+test('ميزانية التخزين تحسب JSON المتداخل بما فيه علامات الاقتباس والشرطة العكسية', () => {
+  const escapedSnapshot = '{"name":"مريم","note":"مسار\\\\ملف"}';
+  const newestSnapshot = 'نقطة حديثة';
+  const rawLength = escapedSnapshot.length + newestSnapshot.length;
+  const budget = rawLength + 1;
+  const result = fit([escapedSnapshot, newestSnapshot], 8, budget);
+
+  assert.deepEqual(Array.from(result.snapshots), [newestSnapshot]);
+  assert.equal(result.usedChars, JSON.stringify([newestSnapshot]).length);
+  assert.ok(JSON.stringify(result.snapshots).length <= budget);
+  assert.ok(JSON.stringify([escapedSnapshot, newestSnapshot]).length > budget,
+    'the escaped JSON representation must be larger than the raw character sum');
 });
 
 test('إذا تجاوزت نقطة واحدة الحد، تُتخطى مع الاحتفاظ بالنقاط الأقدم الصالحة', () => {
@@ -50,7 +68,7 @@ test('إذا تجاوزت نقطة واحدة الحد، تُتخطى مع ال�
 
   assert.deepEqual(Array.from(result.snapshots), ['older-2']);
   assert.equal(result.skippedNewest, true);
-  assert.equal(result.usedChars, 7);
+  assert.equal(result.usedChars, JSON.stringify(['older-2']).length);
 });
 
 test('المدخلات القديمة غير النصية لا تكسر السجل ولا يتم تعديل المصفوفة الأصلية', () => {
