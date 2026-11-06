@@ -369,7 +369,7 @@ test('التحقق يرفض حفظ v1 الذي يفتقد هوية الشخصي�
 test('الحفظ يحتفظ بنقطة استعادة محلية من آخر نسخة سليمة دون تغيير صيغة v1', () => {
   assert.match(app, /const BACKUP_KEY = 'hekayat_hayah_save_backup_v1';/);
   assert.match(app, /function isValidSaveData\(data\)/);
-  assert.match(app, /localStorage\.setItem\(BACKUP_KEY,previousRaw\)/);
+  assert.match(app, /localStorage\.setItem\(BACKUP_KEY,checkpointRaw\)/);
   assert.match(app, /previous\.lifeId!==state\.lifeId\|\|Number\(previous\.age\)!==Number\(state\.age\)/);
   assert.match(app, /saveRecovered=true/);
   assert.match(app, /localStorage\.setItem\(KEY,backupRaw\)/);
