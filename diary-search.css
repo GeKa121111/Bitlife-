@@ -9,7 +9,9 @@
 .diary-search-clear{flex:0 0 48px;min-width:48px;min-height:44px;border:1px solid var(--hayah-line,#dce9e4);border-radius:11px;background:var(--hayah-surface,#fff);color:var(--hayah-primary,#176b66);font-size:11px;font-weight:900}
 .diary-search-clear:disabled{opacity:.45}
 .diary-search-filters{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
-.diary-search-filter{min-height:44px;padding:7px 11px;border:1px solid var(--hayah-line,#dce9e4);border-radius:999px;background:var(--hayah-bg,#f7faf8);color:var(--hayah-muted,#60756e);font-size:11px;font-weight:900;cursor:pointer}
+.diary-search-filter{display:inline-flex;align-items:center;gap:6px;min-height:44px;padding:7px 11px;border:1px solid var(--hayah-line,#dce9e4);border-radius:999px;background:var(--hayah-bg,#f7faf8);color:var(--hayah-muted,#60756e);font-size:11px;font-weight:900;cursor:pointer}
+.diary-search-filter-count{display:inline-grid;place-items:center;min-width:18px;height:18px;padding:0 5px;border-radius:999px;background:rgba(0,0,0,.07);color:inherit;font-size:10px;font-variant-numeric:tabular-nums;line-height:1}
+.diary-search-filter[aria-pressed="true"] .diary-search-filter-count{background:rgba(255,255,255,.2);color:inherit}
 .diary-search-filter[aria-pressed="true"]{background:var(--hayah-primary,#176b66);border-color:var(--hayah-primary,#176b66);color:#fff}
 .diary-search-status{min-height:16px;margin:0;color:var(--hayah-muted,#60756e);font-size:10px;line-height:1.5}
 #lifeFeed .logcard[hidden],#lifeFeed .agegroup[hidden]{display:none!important}
