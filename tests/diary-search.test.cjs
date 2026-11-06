@@ -128,9 +128,34 @@ test('تصفية اليوميات حسب نوع الحدث تتكامل مع ا�
   assert.equal(age26.hidden, false);
 });
 
-test('واجهة التصفية تعرض أزرارًا معلّمة دلاليًا ولا تغيّر الحفظ', () => {
+test('عدادات أنواع الأحداث مستقلة عن البحث والتصفية وتحترم الإخفاء الأصلي', () => {
+  const search = api();
+  const goodOne = node('logcard good', 'ترقية مهنية');
+  const goodTwo = node('logcard good', 'منحة دراسية');
+  const bad = node('logcard bad', 'إصابة');
+  const special = node('logcard special', 'جائزة');
+  const neutral = node('logcard', 'زيارة عائلية');
+  const archived = node('logcard bad', 'حدث مؤرشف', true);
+  const feed = { children: [goodOne, goodTwo, bad, special, neutral, archived] };
+
+  search.filterFeed(feed, 'لا يوجد تطابق', 'bad');
+  assert.deepEqual(JSON.parse(JSON.stringify(search.countFeedByTone(feed))), {
+    all: 5, good: 2, bad: 1, special: 1
+  });
+
+  const appended = node('logcard special', 'تكريم جديد');
+  feed.children.push(appended);
+  assert.deepEqual(JSON.parse(JSON.stringify(search.countFeedByTone(feed))), {
+    all: 6, good: 2, bad: 1, special: 2
+  });
+  assert.equal(archived.hidden, true);
+});
+
+test('واجهة التصفية تعرض أعدادًا واضحة ومعلّمة دلاليًا ولا تغيّر الحفظ', () => {
   assert.match(source, /diarySearchFilters/);
   assert.match(source, /aria-pressed/);
+  assert.match(source, /diary-search-filter-count/);
+  assert.match(source, /countFeedByTone/);
   assert.match(source, /تصفية الأحداث حسب النوع/);
   assert.ok(source.includes('filterFeed(feed, input.value, activeTone)'));
   assert.match(css, /\.diary-search-filter\[aria-pressed="true"\]/);

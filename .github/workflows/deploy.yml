@@ -36,4 +36,27 @@ jobs:
         uses: actions/deploy-pages@v4
         with:
           artifact_name: github-pages-${{ github.run_attempt }}
-          timeout: 900000
+          timeout: 600000
+
+      - name: Verify published service worker version
+        env:
+          PAGE_URL: ${{ steps.deployment.outputs.page_url }}
+        run: |
+          set -euo pipefail
+          : "${PAGE_URL:?Missing GitHub Pages URL}"
+          expected_cache="$(sed -n "s/.*const CACHE_NAME = '\\([^']*\\)'.*/\\1/p" sw.js | head -n1)"
+          if [[ -z "$expected_cache" ]]; then
+            echo "Could not determine expected PWA cache name from sw.js" >&2
+            exit 1
+          fi
+          for attempt in $(seq 1 12); do
+            actual_cache="$(curl -fsS "${PAGE_URL%/}/sw.js" | sed -n "s/.*const CACHE_NAME = '\\([^']*\\)'.*/\\1/p" | head -n1 || true)"
+            if [[ "$actual_cache" == "$expected_cache" ]]; then
+              echo "Published service worker cache matches $expected_cache"
+              exit 0
+            fi
+            echo "Attempt $attempt: expected $expected_cache, received ${actual_cache:-no response}"
+            sleep 5
+          done
+          echo "GitHub Pages did not serve the expected service worker cache" >&2
+          exit 1

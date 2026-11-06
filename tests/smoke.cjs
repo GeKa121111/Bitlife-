@@ -32,10 +32,16 @@ assert.match(deployWorkflow, /name:\s*github-pages-\$\{\{\s*github\.run_attempt\
   'Pages uploads should use a unique artifact name for each workflow attempt');
 assert.match(deployWorkflow, /artifact_name:\s*github-pages-\$\{\{\s*github\.run_attempt\s*\}\}/,
   'Pages deployment should select the artifact created by the current attempt');
-assert.match(deployWorkflow, /timeout:\s*900000/,
-  'Pages deployment should allow up to 15 minutes for a slow platform rollout');
+assert.match(deployWorkflow, /timeout:\s*600000/,
+  'Pages deployment should use the documented 10-minute backend timeout');
 assert.match(deployWorkflow, /timeout-minutes:\s*20/,
-  'the deployment job should outlive the Pages action timeout');
+  'the deployment job should leave runner time for setup and cleanup beyond the Pages action timeout');
+assert.match(deployWorkflow, /name: Verify published service worker version/,
+  'a successful Pages action must be followed by a live-site freshness check');
+assert.match(deployWorkflow, /expected_cache[\s\S]*actual_cache/,
+  'the freshness check should compare the published shell with the checked-out service worker');
+assert.match(deployWorkflow, /curl -fsS/,
+  'the freshness check should read the deployed service worker over HTTPS');
 assert.match(accessibilityCss, /@media \(pointer: coarse\), \(any-pointer: coarse\)/,
   'touch-first devices should receive enlarged compact-control targets');
 assert.match(accessibilityCss, /\.identity-info[\s\S]*?min-width: 44px/,
@@ -225,7 +231,7 @@ assert.match(finalUi, /\.fill\s*\{[^}]*position:absolute[^}]*right:0/s, 'status 
 assert.match(finalUi, /\.statvalue\s*\{[^}]*position:absolute[^}]*z-index:1/s, 'status values should overlay the progress bars');
 assert.match(finalUi, /\.nav\{direction:ltr\}/, 'tab positions should follow the original left-to-right order');
 assert.match(finalUi, /\.fill\{left:0;right:auto\}/, 'progress fills should grow from the left edge like the reference');
-assert.match(serviceWorker, /hayah-shell-v182/, 'the app shell cache should refresh the new styles');
+assert.match(serviceWorker, /hayah-shell-v183/, 'the app shell cache should refresh the new styles');
 assert.match(app, /function siblingEmploymentDecision\(relative,profile,year,age\)/, 'sibling job events should be simulated deterministically');
 assert.match(app, /function schoolHub\(\)/);
 assert.match(app, /function maintainAsset\(index\)/);
@@ -606,7 +612,7 @@ assert.ok(app.includes('uiSettings.boosts'), 'recovery opportunities should be o
 assert.ok(app.includes('uiSettings.sound'));
 assert.ok(app.includes('uiSettings.haptics'));
 assert.ok(app.includes('uiSettings.reducedMotion'));
-assert.match(serviceWorker, /hayah-shell-v182/);
+assert.match(serviceWorker, /hayah-shell-v183/);
 assert.ok(app.includes('function formatStorageBytes(bytes)'));
 assert.ok(app.includes('function inspectStorageCapacity()'));
 assert.match(app, /فحص مساحة التخزين/);
@@ -628,13 +634,13 @@ assert.ok(app.includes("function advanceBusinessRivals(raw,business,industry,yea
 assert.ok(app.includes("function summarizeBusinessRivals(rivals,baselineCompetition,profile)"));
 assert.match(app, /marketRivalPlans/);
 assert.match(app, /الشركات المنافسة داخل المحاكاة/);
-assert.match(serviceWorker, /hayah-shell-v182/);
+assert.match(serviceWorker, /hayah-shell-v183/);
 
 assert.match(app, /function normalizeSocialFeed\(raw\)/, 'social audience feedback should be normalized for legacy saves');
 assert.match(app, /function socialAudienceFeedMenu\(platformId\)/, 'players should be able to review audience feedback');
 assert.match(app, /function offerSoundCloudTrackToLabel\(platformId='soundcloud'\)/, 'SoundCloud tracks should have a label-offer path');
 assert.match(app, /const KEY = 'hekayat_hayah_save_v1';/);
-assert.match(serviceWorker, /hayah-shell-v182/);
+assert.match(serviceWorker, /hayah-shell-v183/);
 
 assert.match(app, /function combatRoundEnergy\(currentEnergy,move,mode='street',reactionCost=0\)/);
 assert.match(app, /function combatDistanceEffects\(distance,move,opponentStyle,reactionId\)/);
@@ -725,7 +731,7 @@ assert.match(app, /function siblingPropertySaleDecision\(/);
 assert.match(app, /propertySaleDebtPaid/);
 assert.match(app, /function siblingPropertyAnnualUpkeep\(/);
 assert.match(app, /propertyExpensesAnnual/);
-assert.match(serviceWorker, /hayah-shell-v182/);
+assert.match(serviceWorker, /hayah-shell-v183/);
 
 assert.match(app, /function siblingRentalPurchaseDecision\(/, 'siblings should be able to acquire an independent rental property');
 assert.match(app, /function siblingRentalAnnualIncome\(/, 'rental income should model occupancy and collection rates deterministically');
@@ -766,7 +772,7 @@ assert.match(app, /function siblingEstateSettlement\(relative,profile,year\)/, '
 assert.match(app, /function siblingReleaseChildInheritance\(relative,child,year\)/, 'minor inheritance should be released when the child becomes an adult');
 assert.match(app, /assetTransferStatus/, 'property title transfer must remain explicit and auditable');
 assert.match(app, /function siblingEstatePlanMenu\(relative\)/, 'adult siblings should be able to record an estate plan');
-assert.match(serviceWorker, /hayah-shell-v182/, 'the PWA cache must be versioned with the estate update');
+assert.match(serviceWorker, /hayah-shell-v183/, 'the PWA cache must be versioned with the estate update');
 
 assert.match(app, /beneficiaryType:share\.kind/, 'surviving spouses should be recorded as estate beneficiaries');
 assert.match(app, /inheritanceCashBalance/, 'surviving spouse inheritance balances should be preserved');
@@ -851,7 +857,7 @@ assert.match(app, /function combatSponsorshipMenu\(\)/, 'fighters should be able
 assert.match(app, /function negotiateCombatSponsorship\(sponsorId\)/, 'fighter sponsorship negotiation should be available');
 assert.match(app, /function growCombatFanbase\(c,won,mode,fame,rank\)/, 'fight outcomes should change the fighter audience');
 assert.match(app, /settleCombatSponsorshipYear\(cc,state\.bank\)/, 'active sponsorships should settle once per game year');
-assert.match(serviceWorker, /hayah-shell-v182/, 'the new sponsorship UI and engine must be in the current PWA shell');
+assert.match(serviceWorker, /hayah-shell-v183/, 'the new sponsorship UI and engine must be in the current PWA shell');
 
 assert.ok(app.includes('function changeSiblingInvestmentRisk('), 'adult siblings should have a controlled investment-risk setting');
 assert.ok(app.includes('function siblingInvestmentRiskMenu('), 'the sibling financial profile should expose investment choices');
