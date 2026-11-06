@@ -318,6 +318,33 @@ async function run() {
         target.width + '×' + target.height);
     }
 
+    const modalTouchProbe = await page.evaluate(() => {
+      const root = document.querySelector('#modalRoot');
+      const fixture = document.createElement('div');
+      fixture.innerHTML = '<div class="modal"><div class="modalhead"><button class="closebtn" type="button" aria-label="إغلاق">×</button></div><div class="modalbody"><button class="smallbtn" type="button">إجراء ثانوي</button></div><div class="event-banner"><button class="closebtn" type="button" aria-label="إغلاق الحدث">×</button><span>عنوان حدث تجريبي</span></div></div>';
+      root.appendChild(fixture);
+      const measure = selector => {
+        const element = fixture.querySelector(selector);
+        const rect = element.getBoundingClientRect();
+        return { selector, width: rect.width, height: rect.height };
+      };
+      const result = {
+        modalClose: measure('.modalhead .closebtn'),
+        eventClose: measure('.event-banner .closebtn'),
+        secondaryAction: measure('.smallbtn'),
+        eventBannerHeight: fixture.querySelector('.event-banner').getBoundingClientRect().height
+      };
+      fixture.remove();
+      return result;
+    });
+    for (const target of [modalTouchProbe.modalClose, modalTouchProbe.eventClose, modalTouchProbe.secondaryAction]) {
+      assert.ok(target.width >= 44 && target.height >= 44,
+        target.selector + ' should expose at least a 44×44 CSS-pixel touch target; got ' +
+        target.width + '×' + target.height);
+    }
+    assert.ok(modalTouchProbe.eventBannerHeight >= 48,
+      'the event banner should provide enough height for its enlarged close control');
+
     const shownName = (await page.locator('#characterName').innerText()).trim();
     assert.ok(shownName.includes(seedSave.name), 'the legacy v1 save should render the seeded player');
 
