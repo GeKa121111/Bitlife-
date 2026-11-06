@@ -155,6 +155,49 @@ test('الموسم يحاكي كل مواجهة فريدة بين المنافس
     index === 0 || rows[index - 1].points >= row.points
   ));
   assert.ok(result.standings.every(row => row.id !== 'retired' && row.id !== 'deceased'));
+  assert.equal(new Set(result.matchups.map(pair => pair.slice().sort().join('|'))).size, 3,
+    'the three-fighter schedule should not repeat a matchup within the season');
+});
+
+test('الموسم يحد النزالات بمواجهتين لكل منافس ويغير خصومه بين المواسم', () => {
+  const context = createContext();
+  const career = makeCareer();
+  career.community = Array.from({ length: 20 }, (_, index) => ({
+    id: 'fighter-' + String(index).padStart(2, '0'),
+    name: 'مقاتل ' + (index + 1),
+    rating: 45 + (index % 40),
+    momentum: 0,
+    respect: 50,
+    tension: 10
+  }));
+
+  const first = context.HayahCombatSeason.simulate(career);
+  assert.equal(first.matches, 20);
+  assert.equal(first.matchups.length, 20);
+  assert.equal(new Set(first.matchups.map(pair => pair.slice().sort().join('|'))).size, 20,
+    'the season must not schedule the same pair twice');
+  assert.ok(first.standings.every(row => row.played === 2),
+    'each of the twenty active fighters should have exactly two bouts');
+  assert.ok(first.standings.every(row => row.wins + row.draws + row.losses === 2));
+
+  context.state.age += 1;
+  const second = context.HayahCombatSeason.simulate(career);
+  assert.ok(second);
+  assert.notDeepEqual(first.matchups, second.matchups,
+    'the deterministic opponent rotation should change in the next season');
+});
+
+test('موسم المنافسين يكتفي بنزال واحد إذا لم يوجد سوى مقاتلين اثنين', () => {
+  const context = createContext();
+  const career = makeCareer();
+  career.community = career.community.slice(0, 2);
+  const result = context.HayahCombatSeason.simulate(career);
+
+  assert.equal(result.matches, 1);
+  assert.deepEqual(
+    JSON.parse(JSON.stringify(result.standings.map(row => row.played))),
+    [1, 1]
+  );
 });
 
 test('نتائج الموسم حتمية لنفس العمر والبيانات ولا تستخدم عشوائية', () => {
