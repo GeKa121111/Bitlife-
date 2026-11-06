@@ -17,6 +17,7 @@ const routes = new Map([
   ['/pwa-update.css', 'pwa-update.css'],
   ['/pwa-update.js', 'pwa-update.js'],
   ['/app.js', 'app.js'],
+  ['/combat-season.js', 'combat-season.js'],
   ['/sw.js', 'sw.js'],
   ['/manifest.webmanifest', 'manifest.webmanifest'],
   ['/icon.svg', 'icon.svg'],
@@ -2778,6 +2779,12 @@ async function run() {
 
     await page.locator('.choice').filter({ hasText: 'إدارة مسيرة القتال' }).click();
     await page.locator('.choice').filter({ hasText: 'مجتمع المقاتلين' }).click();
+    const seasonMenuEntry = page.locator('.choice').filter({ hasText: 'سجل مواسم المنافسين' });
+    await seasonMenuEntry.waitFor();
+    await seasonMenuEntry.click();
+    await page.waitForFunction(() => document.querySelector('#modalRoot')?.textContent.includes('سجل مواسم المنافسين'));
+    assert.match(await page.locator('#modalRoot').innerText(), /سجل مواسم المنافسين/);
+    await page.locator('#modalRoot .choice').filter({ hasText: 'رجوع إلى مجتمع المقاتلين' }).click();
     await page.locator('.choice').filter({ hasText: 'آدم منصور' }).click();
     const communityBeforeChat = await page.evaluate(() => {
       const saved = JSON.parse(localStorage.getItem('hekayat_hayah_save_v1') || 'null');
