@@ -129,7 +129,7 @@
       errors.push('صيغة الملف غير معروفة. اختر حزمة hayah-backup أو ملف حياة قديمًا بإصدار بيانات 1.');
     }
 
-    const identity = life ? inspectLife(life, errors, warnings) : { name: null, age: null, version: null };
+    const identity = inspectLife(life, errors, warnings);
     const rewind = inspectRewindHistory(life, warnings);
     return {
       valid: errors.length === 0,
