@@ -1470,7 +1470,7 @@ test('مسيرة القتال تدير ثلاث جولات وتستعيد الن
   assert.ok(catalogStart >= 0 && catalogEnd > catalogStart, 'the combat move catalogue should remain available');
   const catalogText = app.slice(catalogStart, catalogEnd);
   const ids = catalogText.split("{id:'").slice(1).map(part => part.split("'")[0]);
-  assert.equal(ids.length, 40, 'the expanded move catalogue should contain forty distinct moves');
+  assert.equal(ids.length, 50, 'the expanded move catalogue should contain fifty distinct moves');
   assert.equal(new Set(ids).size, ids.length, 'every move should have a unique id');
   for (const id of ['low-kick', 'pivot-counter', 'shell-defense', 'burst-combo', 'last-round-read',
     'angle-pivot', 'low-line-kick', 'shoulder-shell', 'rhythm-barrage', 'champion-plan']) {
@@ -1970,14 +1970,14 @@ test('الواجهة الرئيسية منظمة وتعرض عناوين أحد�
 });
 
 
-test('كتالوج القتال يضم 40 حركة أصلية بمعرّفات وخصائص متسقة مع الرتب القديمة', () => {
+test('كتالوج القتال يضم 50 حركة أصلية بمعرّفات وخصائص متسقة مع الرتب القديمة', () => {
   const block = app.match(/const combatMoveCatalog=\[([\s\S]*?)\n\];/);
   assert.ok(block, 'combat move catalog should remain data-driven');
   const context = {};
   vm.runInNewContext('globalThis.moves = [' + block[1] + '];', context);
   const moves = Array.from(context.moves);
   const ids = moves.map(move => move.id);
-  assert.equal(moves.length, 40, 'the catalog should contain the original 20 plus 20 new moves');
+  assert.equal(moves.length, 50, 'the catalog should contain 40 existing moves plus 10 additional moves');
   assert.equal(new Set(ids).size, moves.length, 'every move id must be unique');
   const legacyIds = [
     'quick-jab','high-guard','footwork','counter-read','body-force',
@@ -1988,12 +1988,16 @@ test('كتالوج القتال يضم 40 حركة أصلية بمعرّفات �
   legacyIds.forEach(id => assert.ok(ids.includes(id), 'legacy move id must remain available: ' + id));
   const newIds = [
     'inside-slip','rear-angle-check','frame-wall','clinch-turn','overhand-arc',
-    'tempo-break','body-lock-shift','guard-split','last-minute-shell','champion-angle'
+    'tempo-break','body-lock-shift','guard-split','last-minute-shell','champion-angle',
+    'step-in-feint','shoulder-frame','wrist-turn','body-angle-shift','distance-check',
+    'forearm-wall','level-switch','counter-spiral','rhythm-cut','champion-lock'
   ];
   newIds.forEach(id => assert.ok(ids.includes(id), 'new move should be registered: ' + id));
   const rangeAwareIds = [
     'snap-teep','wrist-control','elbow-shell','double-level-change','angle-burst',
-    'corner-exit','counter-knee','pivot-throw','range-breaker','last-breath-shell'
+    'corner-exit','counter-knee','pivot-throw','range-breaker','last-breath-shell',
+    'step-in-feint','shoulder-frame','wrist-turn','body-angle-shift','distance-check',
+    'forearm-wall','level-switch','counter-spiral','rhythm-cut','champion-lock'
   ];
   rangeAwareIds.forEach(id => assert.ok(ids.includes(id), 'range-aware move should be registered: ' + id));
   for (const move of moves.filter(item => rangeAwareIds.includes(item.id))) {
