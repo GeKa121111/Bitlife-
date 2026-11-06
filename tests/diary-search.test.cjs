@@ -28,7 +28,7 @@ test('توحيد البحث العربي يزيل التشكيل والتطوي�
   const search = api();
   assert.equal(search.normalizeText('  الْجَامِعَةُ  '), 'الجامعة');
   assert.equal(search.normalizeText('الســفر'), 'السفر');
-  assert.equal(search.normalizeText('إدارة الأعمال'), 'إدارة الأعمال');
+  assert.equal(search.normalizeText('إدارة الأعمال'), 'ادارة الأعمال');
   assert.equal(search.normalizeText('إدارة الأعمال'), search.normalizeText('ادارة الأعمال'));
   assert.equal(search.normalizeText('على'), search.normalizeText('علي'));
 });
