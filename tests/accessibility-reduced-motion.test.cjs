@@ -40,15 +40,7 @@ const context = vm.createContext({
     setItem(key, value) { stored.set(key, String(value)); },
     getItem(key) { return stored.has(key) ? stored.get(key) : null; }
   },
-  SETTINGS_KEY: 'hayah_ui_settings_v1',
-  choice(icon, title, description, onSelect) { return { icon, title, description, onSelect }; },
-  modal(icon, title, description, options) { context.lastModal = { icon, title, description, options }; },
-  inspectStorageCapacityFromSettings() {},
-  requestStorageProtectionFromSettings() {},
-  perkOwned() { return false; },
-  premiumPerksMenu() {},
-  mainMenu() {},
-  renderStats() {}
+  SETTINGS_KEY: 'hayah_ui_settings_v1'
 });
 context.uiSettings = {
   theme: 'light',
@@ -64,8 +56,7 @@ vm.runInContext([
   functionSource('applyUiSettings'),
   functionSource('normalizeUiSettings'),
   functionSource('persistUiSettings'),
-  functionSource('settingsMenu'),
-  'globalThis.api = { normalize: normalizeUiSettings, apply: applyUiSettings, persist: persistUiSettings, open: settingsMenu };'
+  'globalThis.api = { normalize: normalizeUiSettings, apply: applyUiSettings, persist: persistUiSettings };'
 ].join(String.fromCharCode(10)), context, { filename: 'accessibility-reduced-motion.test.cjs' });
 
 test('الإعدادات القديمة تظل صالحة ويكون تقليل الحركة متوقفًا افتراضيًا', () => {
@@ -101,26 +92,23 @@ test('تطبيق التفضيل يضيف ويزيل طبقة تقليل الحر
   assert.equal(classes.has('theme-dark'), true);
 });
 
-test('قائمة الإعدادات تحفظ خيار تقليل الحركة منفصلًا عن ملف الحياة وتعيد ضبطه', () => {
-  context.uiSettings = context.api.normalize(null);
-  context.api.open();
+test('قائمة الإعدادات تعرض خيار تقليل الحركة وتحفظه في مفتاح الواجهة فقط', () => {
+  const menu = functionSource('settingsMenu');
+  assert.ok(menu.includes("choice(uiSettings.reducedMotion?'🧘':'🎞️'"));
+  assert.ok(menu.includes("uiSettings.reducedMotion?'تقليل الحركة: مفعّل':'تقليل الحركة: متوقف'"));
+  assert.ok(menu.includes('uiSettings.reducedMotion=!uiSettings.reducedMotion;persistUiSettings();settingsMenu();'));
+  assert.ok(menu.includes('reducedMotion:false'), 'resetting display settings should restore the default motion preference');
 
-  let options = context.lastModal.options;
-  const toggle = options.find(item => item.title === 'تقليل الحركة: متوقفة');
-  assert.ok(toggle, 'the settings menu should expose the manual reduced-motion option');
-  toggle.onSelect();
-
-  assert.equal(context.uiSettings.reducedMotion, true);
+  context.uiSettings = context.api.normalize({ reducedMotion: true });
+  context.api.persist();
   assert.equal(classes.has('reduce-motion'), true);
   assert.equal(JSON.parse(stored.get('hayah_ui_settings_v1')).reducedMotion, true);
   assert.deepEqual(Array.from(stored.keys()), ['hayah_ui_settings_v1']);
 
-  options = context.lastModal.options;
-  const reset = options.find(item => item.title === 'استعادة إعدادات العرض الافتراضية');
-  assert.ok(reset);
-  reset.onSelect();
-  assert.equal(context.uiSettings.reducedMotion, false);
+  context.uiSettings = context.api.normalize(null);
+  context.api.persist();
   assert.equal(classes.has('reduce-motion'), false);
+  assert.equal(JSON.parse(stored.get('hayah_ui_settings_v1')).reducedMotion, false);
 });
 
 test('التفضيل اليدوي وتفضيل نظام التشغيل يقللان الحركة غير الضرورية', () => {
