@@ -12,6 +12,8 @@ const routes = new Map([
   ['/index.html', 'index.html'],
   ['/style.css', 'style.css'],
   ['/accessibility.css', 'accessibility.css'],
+  ['/diary-search.css', 'diary-search.css'],
+  ['/diary-search.js', 'diary-search.js'],
   ['/app.js', 'app.js'],
   ['/sw.js', 'sw.js'],
   ['/manifest.webmanifest', 'manifest.webmanifest'],
@@ -206,6 +208,22 @@ async function run() {
     const origin = 'http://127.0.0.1:' + address.port;
     await page.goto(origin + '/', { waitUntil: 'domcontentloaded' });
     await page.locator('#characterName').waitFor();
+    const diarySearchToggle = page.getByRole('button', { name: 'بحث في يوميات الحياة' });
+    await diarySearchToggle.waitFor();
+    const savedLifeBeforeDiarySearch = await page.evaluate(() => localStorage.getItem('hekayat_hayah_save_v1'));
+    await diarySearchToggle.click();
+    const diarySearchInput = page.getByRole('searchbox', { name: 'ابحث في أحداث حياتك' });
+    await diarySearchInput.waitFor();
+    await diarySearchInput.fill('بداية اختبار المتصفح');
+    await page.waitForFunction(() => document.querySelectorAll('#lifeFeed .logcard:not([hidden])').length === 1);
+    assert.match(await page.locator('#lifeFeed .logcard:not([hidden])').first().textContent(), /بداية اختبار المتصفح/);
+    await page.locator('#diarySearchClear').click();
+    assert.equal(await page.locator('#lifeFeed .logcard:not([hidden])').count(), await page.locator('#lifeFeed .logcard').count(),
+      'clearing diary search should restore the complete visible life history');
+    await diarySearchToggle.click();
+    assert.equal(await page.locator('#diarySearchPanel').isVisible(), false);
+    assert.equal(await page.evaluate(() => localStorage.getItem('hekayat_hayah_save_v1')), savedLifeBeforeDiarySearch,
+      'searching the diary must not mutate the current life save');
     const touchTargetProbe = await page.evaluate(() => {
       const coarsePointer = matchMedia('(pointer: coarse)').matches
         || matchMedia('(any-pointer: coarse)').matches;
