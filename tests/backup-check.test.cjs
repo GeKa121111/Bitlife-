@@ -87,6 +87,22 @@ test('الفاحص يحذر من سجل يتجاوز ميزانية 300000 وح�
     'a large optional rewind history is a warning, not a reason to reject an otherwise valid save');
 });
 
+test('حزمة كاملة تفتقد الحياة لا تُعرض بالخطأ كنسخة صالحة', () => {
+  const report = inspectBackup(makePackage(null));
+
+  assert.equal(report.valid, false);
+  assert.ok(report.errors.some(message => message.includes('بيانات الحياة الأساسية')));
+});
+
+test('حقل سجل الرجوع غير المصفوفي يعطي تحذيرًا ولا يرفض حفظ v1 صالحًا', () => {
+  const report = inspectBackup(makeLife({ timeMachineSnapshots: { unexpected: true } }));
+
+  assert.equal(report.valid, true);
+  assert.equal(report.rewindSnapshotCount, 0);
+  assert.equal(report.rewindInvalidSnapshotCount, 1);
+  assert.ok(report.warnings.some(message => message.includes('ليس مصفوفة')));
+});
+
 test('حزمة hayah-backup الكاملة تعرض بيانات الرجوع مثل ملف الحياة المنفرد', () => {
   const life = makeLife({ timeMachineSnapshots: ['{"age":39}', '{"age":40}'] });
   const report = inspectBackup(makePackage(life));
