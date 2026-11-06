@@ -73,6 +73,8 @@ jobs:
         run: node --check tests/combat-community-contenders.test.cjs
       - name: Run contender scoring and named league challenge tests
         run: node --test tests/combat-community-contenders.test.cjs
+      - name: Check annual combat season module syntax
+        run: node --check combat-season.js
       - name: Check annual combat season regression test syntax
         run: node --check tests/combat-season.test.cjs
       - name: Run annual NPC combat community season tests
@@ -121,7 +123,7 @@ jobs:
         run: node --test tests/service-worker.test.cjs
       - name: Check spouse estate portfolio test syntax
         run: node --check tests/spouse-portfolio.test.cjs
-      - name: Run spouse estate portfolio tests
+      - name: Run spouse estate portfolio regression tests
         run: node --test tests/spouse-portfolio.test.cjs
       - name: Check inherited child property management test syntax
         run: node --check tests/child-property-management.test.cjs
