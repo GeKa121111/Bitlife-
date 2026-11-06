@@ -21,10 +21,19 @@ const context = vm.createContext({
   }
 });
 
+function functionSource(name) {
+  const start = app.indexOf('function ' + name + '(');
+  assert.notEqual(start, -1, 'expected function ' + name);
+  const end = app.indexOf('\nfunction ', start + 1);
+  assert.notEqual(end, -1, 'expected a following function after ' + name);
+  return app.slice(start, end);
+}
+
 vm.runInContext([
   app.slice(catalogStart, memoryStart),
   app.slice(memoryStart, communityEnd),
-  'globalThis.api = { normalizeMoves: normalizeCombatMoveMemory, normalizeCommunity: normalizeCombatCommunity, record: recordCombatRivalMoveMemory, effect: combatMoveLongTermEffect, summary: combatMoveMemorySummary, report: combatRivalScoutingReport, archetype: combatOpponentArchetype };'
+  functionSource('normalizePendingCombatBout'),
+  'globalThis.api = { normalizeMoves: normalizeCombatMoveMemory, normalizeCommunity: normalizeCombatCommunity, record: recordCombatRivalMoveMemory, effect: combatMoveLongTermEffect, summary: combatMoveMemorySummary, report: combatRivalScoutingReport, pending: normalizePendingCombatBout, archetype: combatOpponentArchetype };'
 ].join(String.fromCharCode(10)), context, { filename: 'combat-move-memory.test.cjs' });
 
 const api = context.api;
@@ -104,8 +113,34 @@ test('تطبيع المجتمع يحتفظ بذاكرة الحركات ويصف�
   assert.deepEqual(JSON.parse(JSON.stringify(fighter.moveMemory)), [moveId, 'low-kick']);
 });
 
+test('استكمال النزال المعلق يحتفظ بتفاصيل الذاكرة والحفظ القديم يبدأ بصفر', () => {
+  const pending = api.pending({
+    mode: 'street',
+    opponent: { name: 'منافس تجريبي', style: 'قوة', rating: 70 },
+    roundHistory: [{
+      actionId: moveId,
+      style: 'سرعة',
+      moveMemoryObservations: 4,
+      moveMemoryPenalty: 1,
+      opponentMemoryBonus: 1
+    }]
+  });
+  assert.equal(pending.roundHistory[0].moveMemoryObservations, 4);
+  assert.equal(pending.roundHistory[0].moveMemoryPenalty, 1);
+  assert.equal(pending.roundHistory[0].opponentMemoryBonus, 1);
+
+  const legacy = api.pending({
+    mode: 'street',
+    opponent: { name: 'منافس قديم', style: 'قوة', rating: 40 },
+    roundHistory: [{ actionId: moveId, style: 'سرعة' }]
+  });
+  assert.equal(legacy.roundHistory[0].moveMemoryObservations, 0);
+  assert.equal(legacy.roundHistory[0].moveMemoryPenalty, 0);
+  assert.equal(legacy.roundHistory[0].opponentMemoryBonus, 0);
+});
+
 test('الواجهة وحساب الجولة وسجل النزال موصولة بذاكرة المنافس طويلة المدى', () => {
-  assert.match(app, /combatMoveLongTermEffect\(opponent,rememberedRival&&rememberedRival\.moveMemory,move\.id/);
+  assert.match(app, /combatMoveAdaptationEffect\(opponent,session\.roundHistory,rememberedRival&&rememberedRival\.moveMemory,move\.id/);
   assert.match(app, /recordCombatRivalMoveMemory\(communityFighter,session&&session\.roundHistory\)/);
   assert.match(app, /moveMemoryObservations:moveMemoryEffect\.observations/);
   assert.match(app, /moveMemory:normalizeCombatMoveMemory\(item\.moveMemory\)/);
