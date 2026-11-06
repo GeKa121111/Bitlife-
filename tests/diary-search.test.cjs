@@ -158,7 +158,10 @@ test('التنقل يقفز إلى أقدم وأحدث حدث ظاهر فقط', 
   oldest.scrollIntoView = options => calls.push({ target: 'oldest', options });
   newest.scrollIntoView = options => calls.push({ target: 'newest', options });
 
-  assert.deepEqual(search.visibleCards(feed), [oldest, newest]);
+  const visible = search.visibleCards(feed);
+  assert.equal(visible.length, 2);
+  assert.equal(visible[0], oldest);
+  assert.equal(visible[1], newest);
   assert.equal(search.jumpToEdge(feed, 'first'), oldest);
   assert.equal(search.jumpToEdge(feed, 'last'), newest);
   assert.deepEqual(calls, [
@@ -172,7 +175,7 @@ test('التنقل لا يحاول تمرير اليوميات عندما لا �
   const search = api();
   const hidden = node('logcard good', 'حدث مؤرشف', true);
   const feed = { children: [hidden] };
-  assert.deepEqual(search.visibleCards(feed), []);
+  assert.equal(search.visibleCards(feed).length, 0);
   assert.equal(search.jumpToEdge(feed, 'first'), null);
   assert.equal(search.jumpToEdge(feed, 'last'), null);
 });
