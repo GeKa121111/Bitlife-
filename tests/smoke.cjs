@@ -21,11 +21,11 @@ assert.match(accessibilityCss, /@media \(pointer: coarse\), \(any-pointer: coars
   'touch-first devices should receive enlarged compact-control targets');
 assert.match(accessibilityCss, /\.identity-info[\s\S]*?min-width: 44px/,
   'the character information control should meet the touch target minimum');
-assert.match(accessibilityCss, /#modalRoot \.closebtn[\\s\\S]*?width: 44px !important/,
+assert.match(accessibilityCss, /#modalRoot \.closebtn[\s\S]*?width: 44px !important/,
   'modal close controls should meet the touch target minimum on touch devices');
-assert.match(accessibilityCss, /#modalRoot \.smallbtn[\\s\\S]*?min-height: 44px !important/,
+assert.match(accessibilityCss, /#modalRoot \.smallbtn[\s\S]*?min-height: 44px !important/,
   'secondary modal actions should meet the touch target minimum on touch devices');
-assert.match(accessibilityCss, /#modalRoot \.event-banner[\\s\\S]*?min-height: 48px/,
+assert.match(accessibilityCss, /#modalRoot \.event-banner[\s\S]*?min-height: 48px/,
   'event banners should make room for their enlarged close control');
 assert.equal(pwaManifest.lang, 'ar');
 assert.equal(pwaManifest.dir, 'rtl');
