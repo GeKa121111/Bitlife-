@@ -35,7 +35,7 @@ assert.ok(serviceWorker.includes("'./combat-season.js'"));
 assert.match(combatSeason, /function simulateCommunitySeason\(career\)/);
 assert.match(combatSeason, /global\.advanceCombatCommunity = function/);
 assert.doesNotMatch(combatSeason, /Math\.random\s*\(/, 'annual rival results must be deterministic');
-assert.match(browserTest, /\['\\/combat-season\\.js', 'combat-season\\.js'\]/, 'the mobile browser server must serve the new PWA module');
+assert.ok(browserTest.includes("['/combat-season.js', 'combat-season.js']"), 'the mobile browser server must serve the new PWA module');
 assert.match(browserTest, /سجل مواسم المنافسين/, 'the mobile browser test should open the annual season history UI');
 const deployWorkflow = fs.readFileSync('.github/workflows/deploy.yml', 'utf8');
 assert.match(deployWorkflow, /name:\s*github-pages-\$\{\{\s*github\.run_attempt\s*\}\}/,
