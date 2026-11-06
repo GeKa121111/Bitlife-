@@ -205,3 +205,28 @@ test('فشل حفظ الحياة بعد إزالة المقبرة يعيد ال�
   assert.equal(harness.context.calls.save, 1);
   assert.ok(harness.context.calls.info.length > 0);
 });
+
+
+test('لقطات الحفظ القديمة الكاملة بلا lifeId تظل قابلة للاستعادة وتُربط بالحياة الحالية', () => {
+  const harness = createHarness({ snapshotLifeId: null });
+  const legacySnapshot = {
+    version: 1,
+    name: 'مريم',
+    age: 39,
+    stats: { health: 82 },
+    log: [{ title: 'حدث من صيغة الحفظ القديمة' }],
+    status: 'حي',
+    accomplishments: []
+  };
+  harness.context.state.timeMachineSnapshots = [JSON.stringify(legacySnapshot)];
+
+  harness.context.rewindToSnapshot(0);
+
+  assert.equal(harness.context.state.age, 39);
+  assert.equal(harness.context.state.lifeId, 'life-1',
+    'a legacy snapshot without an optional life ID should inherit the current life identity');
+  assert.deepEqual(harness.context.state.log, [{ title: 'حدث من صيغة الحفظ القديمة' }]);
+  assert.equal(harness.context.state.status, 'حي');
+  assert.deepEqual(storedList(harness, 'cemetery'), [{ id: 'life-2', name: 'سليم', age: 76 }]);
+  assert.deepEqual(storedList(harness, 'cemeteryBackup'), [{ id: 'life-2', name: 'سليم', age: 76 }]);
+});
