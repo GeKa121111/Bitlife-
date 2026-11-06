@@ -387,7 +387,17 @@ const combatMoveCatalog=[
  {id:'counter-knee',title:'ركبة مضادة',style:'قوة',strongAgainst:'دفاع',power:65,rank:4,cost:19800,range:'close',energyCost:13,desc:'رد قوي في المسافة القريبة عندما يبالغ المنافس في حماية نفسه.'},
  {id:'pivot-throw',title:'إسقاط الارتكاز',style:'تقنية',strongAgainst:'قوة',power:67,rank:4,cost:22000,range:'close',energyCost:12,desc:'استخدم دوران الجسم وتحويل الوزن لإبطال اندفاع القوة.'},
  {id:'range-breaker',title:'كسر المسافة',style:'سرعة',strongAgainst:'دفاع',power:64,rank:4,cost:21500,range:'long',energyCost:9,desc:'افتح المسافة ثم غيّر الإيقاع حتى لا يستطيع الدفاع توقع خطوتك التالية.'},
- {id:'last-breath-shell',title:'حراسة النفس الأخير',style:'دفاع',strongAgainst:'تقنية',power:62,rank:4,cost:20500,range:'mid',energyCost:5,desc:'حافظ على توازنك في اللحظات الأخيرة وقلّل استنزاف الطاقة.'}
+ {id:'last-breath-shell',title:'حراسة النفس الأخير',style:'دفاع',strongAgainst:'تقنية',power:62,rank:4,cost:20500,range:'mid',energyCost:5,desc:'حافظ على توازنك في اللحظات الأخيرة وقلّل استنزاف الطاقة.'},
+ {id:'step-in-feint',title:'خداع الدخول',style:'سرعة',strongAgainst:'قوة',power:47,rank:1,cost:4600,range:'long',energyCost:8,desc:'أظهر خطوة دخول ثم غيّر الإيقاع قبل أن يستقر اندفاع المنافس.'},
+ {id:'shoulder-frame',title:'إطار الكتف',style:'دفاع',strongAgainst:'سرعة',power:48,rank:1,cost:4900,range:'mid',energyCost:6,desc:'استخدم وضعية ثابتة لتقليل مساحة اندفاع المنافس السريع.'},
+ {id:'wrist-turn',title:'لفّة المعصم',style:'تقنية',strongAgainst:'دفاع',power:50,rank:1,cost:5200,range:'close',energyCost:9,desc:'تحكم قريب يغيّر اتجاه الضغط ويفتح فرصة للخروج من الحراسة.'},
+ {id:'body-angle-shift',title:'تحويل زاوية الجذع',style:'قوة',strongAgainst:'دفاع',power:56,rank:2,cost:9800,range:'close',energyCost:12,desc:'حوّل وزن الجسم إلى هجمة قصيرة تستهدف ثبات الحراسة.'},
+ {id:'distance-check',title:'فحص المسافة',style:'سرعة',strongAgainst:'تقنية',power:54,rank:2,cost:9200,range:'long',energyCost:9,desc:'اختبر مدى المنافس بخطوة سريعة قبل الالتزام بهجمة كاملة.'},
+ {id:'forearm-wall',title:'حاجز الساعد',style:'دفاع',strongAgainst:'قوة',power:55,rank:2,cost:9400,range:'mid',energyCost:7,desc:'أنشئ حاجزًا متحركًا يمتص اندفاع القوة ويحافظ على المسافة.'},
+ {id:'level-switch',title:'تغيير المستوى',style:'تقنية',strongAgainst:'سرعة',power:62,rank:3,cost:14800,range:'close',energyCost:12,desc:'بدّل مستوى الحركة في توقيتين متتاليين لإرباك قراءة المنافس.'},
+ {id:'counter-spiral',title:'القوس المضاد',style:'قوة',strongAgainst:'تقنية',power:64,rank:3,cost:15600,range:'mid',energyCost:14,desc:'استقبل الهجمة بزاوية محسوبة ثم أعد الضغط من خط مختلف.'},
+ {id:'rhythm-cut',title:'قطع الإيقاع',style:'سرعة',strongAgainst:'دفاع',power:61,rank:3,cost:14400,range:'long',energyCost:10,desc:'غيّر توقيت الدخول والخروج حتى لا يستقر المنافس على إيقاع دفاعي.'},
+ {id:'champion-lock',title:'قفل الزاوية',style:'قوة',strongAgainst:'دفاع',power:69,rank:4,cost:22800,range:'close',energyCost:15,desc:'حركة متقدمة تضيق زاوية الحركة وتحوّل السيطرة إلى ضغط حاسم.'}
 ];
 const combatTacticCatalog=[
  {id:'tactic-guard',title:'حراسة متحركة',style:'دفاع',strongAgainst:'قوة',power:31,energyCost:5,desc:'خفّف الاندفاع وحافظ على توازنك في الجولة.'},
