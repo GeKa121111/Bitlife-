@@ -7,10 +7,11 @@ const path = require('node:path');
 const vm = require('node:vm');
 
 const app = fs.readFileSync(path.join(__dirname, '..', 'app.js'), 'utf8');
+const catalogStart = app.indexOf('const combatMoveCatalog=');
 const communityStart = app.indexOf('const combatCommunityProfiles=');
 const communityEnd = app.indexOf('function combatRoundEnergy(', communityStart);
-assert.ok(communityStart >= 0 && communityEnd > communityStart,
-  'combat community profiles and legacy normalization must remain available');
+assert.ok(catalogStart >= 0 && communityStart > catalogStart && communityEnd > communityStart,
+  'combat catalogs, community profiles, and legacy normalization must remain available');
 
 function functionSource(name) {
   const start = app.indexOf('function ' + name + '(');
@@ -20,7 +21,7 @@ function functionSource(name) {
   return app.slice(start, end);
 }
 
-const communitySource = app.slice(communityStart, communityEnd);
+const communitySource = app.slice(catalogStart, communityEnd);
 const progressionSource = functionSource('advanceCombatCommunity');
 const interactionSource = functionSource('interactCombatFighter');
 const notices = [];
