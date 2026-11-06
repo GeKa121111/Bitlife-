@@ -65,6 +65,26 @@
     return cards.filter(card => !card.hidden);
   }
 
+  function countFeedByTone(feed) {
+    const counts = { all: 0, good: 0, bad: 0, special: 0 };
+    if (!feed) return counts;
+    const cards = typeof feed.querySelectorAll === 'function'
+      ? Array.from(feed.querySelectorAll('.logcard'))
+      : Array.from(feed.children || []).filter(child => child.classList?.contains('logcard'));
+
+    for (const card of cards) {
+      const wasOriginallyHidden = originalHidden.has(card)
+        ? originalHidden.get(card)
+        : Boolean(card.hidden);
+      if (wasOriginallyHidden) continue;
+      counts.all += 1;
+      for (const tone of ['good', 'bad', 'special']) {
+        if (card.classList?.contains(tone)) counts[tone] += 1;
+      }
+    }
+    return counts;
+  }
+
   function jumpToEdge(feed, edge) {
     const cards = visibleCards(feed);
     const target = edge === 'last' ? cards[cards.length - 1] : cards[0];
@@ -122,18 +142,28 @@
     row.append(input, clear);
 
     const toneLabels = { all: 'كل الأنواع', good: 'إيجابية', bad: 'سلبية', special: 'مميزة' };
+    const filterButtonLabels = { all: 'كل الأحداث', good: 'إيجابية', bad: 'سلبية', special: 'مميزة' };
     let activeTone = 'all';
     const filterGroup = documentRef.createElement('div');
     filterGroup.id = 'diarySearchFilters';
     filterGroup.className = 'diary-search-filters';
     filterGroup.setAttribute('role', 'group');
     filterGroup.setAttribute('aria-label', 'تصفية الأحداث حسب النوع');
+    const filterCountNodes = new Map();
     const filterButtons = ['all', 'good', 'bad', 'special'].map(tone => {
       const button = documentRef.createElement('button');
       button.type = 'button';
       button.className = 'diary-search-filter';
       button.dataset.tone = tone;
-      button.textContent = tone === 'all' ? 'كل الأحداث' : toneLabels[tone];
+      const labelNode = documentRef.createElement('span');
+      labelNode.textContent = filterButtonLabels[tone];
+      const countNode = documentRef.createElement('span');
+      countNode.className = 'diary-search-filter-count';
+      countNode.setAttribute('aria-hidden', 'true');
+      countNode.textContent = '0';
+      filterCountNodes.set(tone, countNode);
+      button.append(labelNode, countNode);
+      button.setAttribute('aria-label', filterButtonLabels[tone] + '، 0 حدثًا');
       button.setAttribute('aria-pressed', String(tone === activeTone));
       filterGroup.appendChild(button);
       return button;
@@ -167,6 +197,15 @@
         button.setAttribute('aria-pressed', String(button.dataset.tone === activeTone));
       });
     };
+    const syncFilterCounts = () => {
+      const counts = countFeedByTone(feed);
+      filterButtons.forEach(button => {
+        const tone = button.dataset.tone;
+        const count = counts[tone] || 0;
+        filterCountNodes.get(tone).textContent = String(count);
+        button.setAttribute('aria-label', filterButtonLabels[tone] + '، ' + count + ' حدثًا');
+      });
+    };
     const syncJumpButtons = () => {
       const hasVisibleEvents = visibleCards(feed).length > 0;
       oldestButton.disabled = !hasVisibleEvents;
@@ -174,6 +213,7 @@
     };
     const update = () => {
       const result = filterFeed(feed, input.value, activeTone);
+      syncFilterCounts();
       syncJumpButtons();
       const hasQuery = Boolean(normalizeText(input.value));
       const hasTone = activeTone !== 'all';
@@ -259,7 +299,7 @@
     return { toggle, panel, input, clear, status, observer, filterGroup, filterButtons, jumpGroup, oldestButton, newestButton };
   }
 
-  root.HayahDiarySearch = Object.freeze({ normalizeText, filterFeed, visibleCards, jumpToEdge, init });
+  root.HayahDiarySearch = Object.freeze({ normalizeText, filterFeed, visibleCards, countFeedByTone, jumpToEdge, init });
   if (!root.document) return;
   if (root.document.readyState === 'loading') {
     root.document.addEventListener('DOMContentLoaded', init, { once: true });
