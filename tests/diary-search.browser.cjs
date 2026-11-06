@@ -33,7 +33,12 @@ async function run() {
     await filterGroup.waitFor();
     const allFilter = page.getByRole('button', { name: 'كل الأحداث' });
     const negativeFilter = page.getByRole('button', { name: 'سلبية' });
-    const specialFilter = page.getByRole('button', { name: 'مميزة' });
+    const specialFilter = page.getByRole('button', { name: /مميزة/ });
+    const filterCount = tone => page.locator('[data-tone="' + tone + '"] .diary-search-filter-count').textContent();
+    assert.equal(await filterCount('all'), '3');
+    assert.equal(await filterCount('good'), '1');
+    assert.equal(await filterCount('bad'), '1');
+    assert.equal(await filterCount('special'), '1');
     const oldestButton = page.getByRole('button', { name: 'الانتقال إلى أقدم حدث ظاهر' });
     const newestButton = page.getByRole('button', { name: 'الانتقال إلى أحدث حدث ظاهر' });
     assert.equal(await allFilter.getAttribute('aria-pressed'), 'true');
@@ -52,6 +57,9 @@ async function run() {
     await negativeFilter.click();
     await page.waitForFunction(() => document.querySelectorAll('#lifeFeed .logcard:not([hidden])').length === 1);
     assert.equal(await page.locator('#lifeFeed .logcard').nth(1).isVisible(), true);
+    assert.equal(await filterCount('all'), '3', 'category totals must not shrink with the active filter');
+    assert.equal(await filterCount('good'), '1');
+    assert.equal(await filterCount('bad'), '1');
     assert.equal(await negativeFilter.getAttribute('aria-pressed'), 'true');
     await oldestButton.click();
     assert.equal(await page.locator('#lifeFeed .logcard').nth(1).getAttribute('data-jumped'), 'true',
@@ -115,6 +123,9 @@ async function run() {
     });
     await page.waitForFunction(() => document.querySelectorAll('#lifeFeed .logcard:not([hidden])').length === 1);
     assert.match(await page.getByRole('status').textContent(), /تم العثور على 1 من 4/);
+    await page.waitForFunction(() => document.querySelector('[data-tone="all"] .diary-search-filter-count')?.textContent === '4');
+    assert.equal(await filterCount('good'), '2', 'new diary events should refresh the positive-event count');
+    assert.equal(await filterCount('special'), '1');
 
     await input.press('Escape');
     assert.equal(await input.inputValue(), '');
