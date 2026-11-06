@@ -8482,7 +8482,7 @@ function combatCommunityContenderScore(fighter){
  const rating=bounded(fighter.rating,20,20,95);
  const momentum=bounded(fighter.momentum,0,-5,5);
  const respect=bounded(fighter.respect,50,0,100);
- const tension=bounded(fighter.tension,0,100);
+ const tension=bounded(fighter.tension,0,0,100);
  return bounded(Math.round(rating+momentum*1.5+(respect-tension)*.04),0,0,100);
 }
 function combatCommunityContenderBoard(community){
