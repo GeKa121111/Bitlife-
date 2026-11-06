@@ -16,7 +16,7 @@ assert.match(index, /href="diary-search\.css"/);
 assert.match(index, /href="pwa-update.css"/);
 assert.ok(index.indexOf('pwa-update.js') < index.indexOf('app.js'), 'the update listener must load before the app registers its service worker');
 assert.match(index, /src="app.js"/);
-assert.match(index, /src="combat-season\\.js"/);
+assert.match(index, /src="combat-season\.js"/);
 assert.ok(index.indexOf('app.js') < index.indexOf('combat-season.js') && index.indexOf('combat-season.js') < index.indexOf('diary-search.js'), 'combat season hooks must load after the life engine and before diary enhancements');
 assert.match(index, /src="diary-search\.js"/);
 assert.ok(index.indexOf("app.js") < index.indexOf("diary-search.js"), "diary search must initialize after the life engine");
@@ -31,9 +31,9 @@ assert.doesNotMatch(diarySearch, /localStorage|sessionStorage|fetch\s*\(/, 'diar
 assert.ok(serviceWorker.includes("'./diary-search.css'"));
 assert.ok(serviceWorker.includes("'./diary-search.js'"));
 assert.ok(serviceWorker.includes("'./combat-season.js'"));
-assert.match(combatSeason, /function simulateCommunitySeason\\(career\\)/);
-assert.match(combatSeason, /global\\.advanceCombatCommunity = function/);
-assert.doesNotMatch(combatSeason, /Math\\.random\\s*\\(/, 'annual rival results must be deterministic');
+assert.match(combatSeason, /function simulateCommunitySeason\(career\)/);
+assert.match(combatSeason, /global\.advanceCombatCommunity = function/);
+assert.doesNotMatch(combatSeason, /Math\.random\s*\(/, 'annual rival results must be deterministic');
 const deployWorkflow = fs.readFileSync('.github/workflows/deploy.yml', 'utf8');
 assert.match(deployWorkflow, /name:\s*github-pages-\$\{\{\s*github\.run_attempt\s*\}\}/,
   'Pages uploads should use a unique artifact name for each workflow attempt');
