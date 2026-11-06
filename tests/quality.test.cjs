@@ -512,7 +512,7 @@ test('النسخة الاحتياطية الكاملة تجمع الحياة و�
   const settingsContext = { raw: { theme: 'gold', textScale: 'large', sound: true, haptics: false, boosts: false, extra: true } };
   vm.runInNewContext(settingsSource + '\nglobalThis.normalized=normalizeUiSettings(raw);', settingsContext);
   assert.deepEqual(JSON.parse(JSON.stringify(settingsContext.normalized)),
-    { theme: 'gold', textScale: 'large', sound: true, haptics: false, boosts: false, combatTimingAssist: false },
+    { theme: 'gold', textScale: 'large', sound: true, haptics: false, boosts: false, combatTimingAssist: false, reducedMotion: false },
     'settings import should retain supported choices and discard unknown fields');
 
   const perksSource = functionSource('defaultPermanentPerks', 'loadPermanentPerks');
@@ -1355,7 +1355,7 @@ test('اختبارات Node دون DOM كامل لا تتطلب querySelector م
 
 
 test('إعدادات الصوت والاهتزاز ومساعدة القتال مستقلة عن حفظ الحياة', () => {
-  assert.ok(app.includes("let uiSettings={theme:'light',textScale:'normal',sound:false,haptics:false,boosts:true,combatTimingAssist:false}"));
+  assert.ok(app.includes("let uiSettings={theme:'light',textScale:'normal',sound:false,haptics:false,boosts:true,combatTimingAssist:false,reducedMotion:false}"));
   assert.ok(app.includes("function playUiFeedback(kind='tap')"));
   assert.ok(app.includes("typeof navigator.vibrate==='function'"));
   assert.ok(app.includes("window.AudioContext||window.webkitAudioContext"));
@@ -1363,6 +1363,8 @@ test('إعدادات الصوت والاهتزاز ومساعدة القتال �
   assert.ok(app.includes("haptics:typeof raw.haptics==='boolean'?raw.haptics:defaults.haptics"));
   assert.ok(app.includes("choice(uiSettings.sound?'🔊':'🔇'"));
   assert.ok(app.includes("choice(uiSettings.haptics?'📳':'📴'"));
+  assert.ok(app.includes("choice(uiSettings.reducedMotion?'🧘':'🎞️'"));
+  assert.ok(app.includes("reducedMotion:typeof raw.reducedMotion==='boolean'?raw.reducedMotion:defaults.reducedMotion"));
   assert.ok(app.includes("localStorage.setItem(SETTINGS_KEY,JSON.stringify(uiSettings))"));
   assert.match(read('sw.js'), /hayah-shell-v178/);
 });
