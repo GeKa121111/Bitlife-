@@ -362,7 +362,8 @@ test('واجهة الموسم تعمل حتى إذا لم تكن دوال الن
   const back = findChoiceByTitle(root, 'رجوع إلى مجتمع المقاتلين');
   assert.ok(back);
   back.listeners.click();
-  assert.equal(root.innerHTML, 'community-menu-markup');
+  assert.equal(context.communityMenuOpened, true,
+    'the fallback back action should reopen the real community menu instead of restoring inert markup');
 });
 
 test('تطبيع سجل الموسم يحد القيم ويحذف السجلات غير الصالحة', () => {
