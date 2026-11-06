@@ -8,6 +8,9 @@
   'use strict';
 
   const MAX_FILE_BYTES = 15 * 1024 * 1024;
+  const MAX_REWIND_SNAPSHOT_CHARS = 300000;
+  const BASE_REWIND_SNAPSHOT_LIMIT = 8;
+  const MAX_REWIND_SNAPSHOT_LIMIT = 60;
 
   function isRecord(value) {
     if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
@@ -55,6 +58,36 @@
       version: life.version
     };
   }
+  function inspectRewindHistory(life, warnings) {
+    const raw = isRecord(life) ? life.timeMachineSnapshots : undefined;
+    if (raw === undefined || raw === null) {
+      return { count: 0, serializedChars: 0, invalidCount: 0 };
+    }
+    if (!Array.isArray(raw)) {
+      warnings.push('حقل نقاط الرجوع موجود لكنه ليس مصفوفة؛ قد يتجاهله المحرك عند الاستيراد.');
+      return { count: 0, serializedChars: 0, invalidCount: 1 };
+    }
+
+    // The game stores rewind snapshots as JSON strings and filters empty/non-string entries.
+    const snapshots = raw.filter(snapshot => typeof snapshot === 'string' && snapshot.length > 0);
+    const invalidCount = raw.length - snapshots.length;
+    if (invalidCount > 0) {
+      warnings.push('يوجد ' + invalidCount + ' مدخل غير نصي أو فارغ في سجل الرجوع؛ قد يتجاهلها المحرك.');
+    }
+
+    const serializedChars = snapshots.length ? JSON.stringify(snapshots).length : 0;
+    if (snapshots.length > MAX_REWIND_SNAPSHOT_LIMIT) {
+      warnings.push('يتجاوز سجل الرجوع الحد الأقصى المدعوم (' + MAX_REWIND_SNAPSHOT_LIMIT + ' نقطة)؛ قد تُستبعد نقاط أقدم عند التطبيع.');
+    } else if (snapshots.length > BASE_REWIND_SNAPSHOT_LIMIT) {
+      warnings.push('يتجاوز سجل الرجوع الحد الأساسي (' + BASE_REWIND_SNAPSHOT_LIMIT + ' نقاط)؛ قد تسمح ميزة الذاكرة الموسعة بالاحتفاظ بما يصل إلى ' + MAX_REWIND_SNAPSHOT_LIMIT + ' نقطة.');
+    }
+    if (serializedChars > MAX_REWIND_SNAPSHOT_CHARS) {
+      warnings.push('يتجاوز سجل الرجوع ميزانية التخزين البالغة ' + MAX_REWIND_SNAPSHOT_CHARS + ' وحدة نصية؛ قد يستبعد المحرك بعض اللقطات لتقليل الحجم.');
+    }
+
+    return { count: snapshots.length, serializedChars, invalidCount };
+  }
+
   function inspectBackup(data) {
     const errors = [];
     const warnings = [];
@@ -96,13 +129,17 @@
       errors.push('صيغة الملف غير معروفة. اختر حزمة hayah-backup أو ملف حياة قديمًا بإصدار بيانات 1.');
     }
 
-    const identity = life ? inspectLife(life, errors, warnings) : { name: null, age: null, version: null };
+    const identity = inspectLife(life, errors, warnings);
+    const rewind = inspectRewindHistory(life, warnings);
     return {
       valid: errors.length === 0,
       format,
       name: identity.name,
       age: identity.age,
       lifeVersion: identity.version,
+      rewindSnapshotCount: rewind.count,
+      rewindSnapshotChars: rewind.serializedChars,
+      rewindInvalidSnapshotCount: rewind.invalidCount,
       cemeteryCount,
       hasSettings,
       hasPerks,
@@ -173,6 +210,9 @@
         ['الشخصية', report.name || 'غير متاحة'],
         ['العمر بعد التطبيع', report.age === null ? 'غير متاح' : report.age + ' سنة'],
         ['إصدار بيانات الحياة', report.lifeVersion === null ? 'غير متاح' : report.lifeVersion],
+        ['نقاط الرجوع بالزمن', report.rewindSnapshotCount],
+        ['طول سجل الرجوع', report.rewindSnapshotChars ? report.rewindSnapshotChars + ' وحدة نصية' : 'لا توجد نقاط محفوظة'],
+        ['مدخلات رجوع مستبعدة', report.rewindInvalidSnapshotCount],
         ['الحيوات السابقة', report.cemeteryCount === null ? 'غير مشمولة' : report.cemeteryCount],
         ['إعدادات العرض', report.hasSettings ? 'مرفقة' : 'غير مرفقة'],
         ['المزايا الدائمة', report.hasPerks ? 'مرفقة' : 'غير مرفقة']
@@ -269,5 +309,5 @@
     });
   }
 
-  return { MAX_FILE_BYTES, inspectBackup, formatBytes, mount };
+  return { MAX_FILE_BYTES, MAX_REWIND_SNAPSHOT_CHARS, inspectRewindHistory, inspectBackup, formatBytes, mount };
 });

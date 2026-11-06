@@ -2930,7 +2930,7 @@ async function run() {
     const checkerBundle = {
       format: 'hayah-backup',
       backupVersion: 1,
-      life: { version: 1, lifeId: 909, name: 'اختبار فحص الحفظ', age: 45, stats: {}, log: [], family: [], place: {} },
+      life: { version: 1, lifeId: 909, name: 'اختبار فحص الحفظ', age: 45, stats: {}, log: [], family: [], place: {}, timeMachineSnapshots: ['{"age":43}', '{"age":44}'] },
       cemetery: [{ id: 'older-life', name: 'حياة سابقة' }],
       settings: { textScale: 'normal' },
       perks: { owned: {} }
@@ -2944,8 +2944,23 @@ async function run() {
     const checkerReportText = await page.locator('#backupResult').innerText();
     assert.ok(checkerReportText.includes('اختبار فحص الحفظ'));
     assert.ok(checkerReportText.includes('حزمة حفظ حياة كاملة'));
+    assert.match(checkerReportText, /نقاط الرجوع بالزمن\s+2/,
+      'the preflight report should display the number of readable rewind points');
+    assert.ok(checkerReportText.includes('طول سجل الرجوع'),
+      'the preflight report should display serialized rewind-history size');
     assert.equal(await page.evaluate(() => localStorage.getItem('hekayat_hayah_save_v1')), saveBeforeLocalInspection,
       'checking a portable bundle must not change the active game save');
+
+    await page.locator('#backupFile').setInputFiles({
+      name: 'hayah-invalid-life.json',
+      mimeType: 'application/json',
+      buffer: Buffer.from(JSON.stringify({ ...checkerBundle, life: null }))
+    });
+    await page.getByText('لن يجتاز الملف شروط الاستيراد الأساسية', { exact: true }).waitFor();
+    assert.ok((await page.locator('#backupResult').innerText()).includes('بيانات الحياة الأساسية'),
+      'a full package without its life object must not be reported as valid');
+    assert.equal(await page.evaluate(() => localStorage.getItem('hekayat_hayah_save_v1')), saveBeforeLocalInspection,
+      'a package missing life data must leave the active game save untouched');
 
     await page.locator('#backupFile').setInputFiles({
       name: 'hayah-invalid-cemetery.json',
