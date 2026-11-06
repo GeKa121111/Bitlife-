@@ -10171,7 +10171,9 @@ function removeLifeFromCemeteryForRewind(lifeId){
    String(item.cause||'')===String(state.cause||'نهاية الرحلة')&&
    Number(item.netWorth)===expectedNetWorth&&
    String(item.country||'')===expectedCountry&&
-   Number(item.children)===expectedChildren
+   Number(item.children)===expectedChildren&&
+   String(item.ribbon||'')===String(lifeRibbon())&&
+   JSON.stringify(item.accomplishments||[])===JSON.stringify((Array.isArray(state.accomplishments)?state.accomplishments:[]).slice(0,40))
   );
   if(candidates.length===1){
    const legacyId=String(candidates[0].id);
