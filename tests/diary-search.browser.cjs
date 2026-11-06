@@ -15,7 +15,7 @@ async function run() {
         <article class="logcard"><strong class="logtitle">منحة دراسية</strong><p class="logtext">حصلت على فرصة لإكمال الجامعة.</p></article>
         <article class="logcard"><strong class="logtitle">رحلة عائلية</strong><p class="logtext">سافرت الأسرة إلى الإسكندرية.</p></article>
         <div class="agegroup"><span>العمر 26</span></div>
-        <article class="logcard"><strong class="logtitle">بداية العمل</strong><p class="logtext">بدأت أول وظيفة بدوام كامل.</p></article>
+        <article class="logcard"><strong class="logtitle">بداية العمل</strong><p class="logtext">بدأت إدارة أول وظيفة بدوام كامل.</p></article>
       </main>
     </body></html>`);
     await page.addStyleTag({ path: path.join(__dirname, '..', 'diary-search.css') });
@@ -36,6 +36,11 @@ async function run() {
     assert.equal(await page.locator('#lifeFeed .agegroup').nth(0).isVisible(), true);
     assert.equal(await page.locator('#lifeFeed .agegroup').nth(1).isVisible(), false);
     assert.match(await page.getByRole('status').textContent(), /تم العثور على 1 من 3/);
+
+    await input.fill('ادارة');
+    await page.waitForFunction(() => document.querySelectorAll('#lifeFeed .logcard:not([hidden])').length === 1);
+    assert.equal(await page.locator('#lifeFeed .logcard').nth(2).isVisible(), true,
+      'Arabic alef variants should match the same diary term');
 
     await input.fill('العمر 25');
     await page.waitForFunction(() => document.querySelectorAll('#lifeFeed .logcard:not([hidden])').length === 2);
@@ -68,6 +73,29 @@ async function run() {
     assert.equal(await page.locator('#diarySearchPanel').isVisible(), false);
     assert.equal(await toggle.getAttribute('aria-expanded'), 'false');
     assert.equal(await toggle.evaluate(element => document.activeElement === element), true);
+
+    await toggle.click();
+    await input.waitFor();
+    await input.focus();
+    await page.evaluate(() => document.getElementById('diarySearchToggle').click());
+    assert.equal(await page.locator('#diarySearchPanel').isVisible(), false);
+    assert.equal(await toggle.evaluate(element => document.activeElement === element), true,
+      'closing the search panel should restore focus to its toggle');
+
+    await page.setViewportSize({ width: 320, height: 720 });
+    const targets = await page.evaluate(() => {
+      const toggleRect = document.getElementById('diarySearchToggle').getBoundingClientRect();
+      return {
+        documentWidth: document.documentElement.scrollWidth,
+        viewportWidth: document.documentElement.clientWidth,
+        toggleWidth: toggleRect.width,
+        toggleHeight: toggleRect.height
+      };
+    });
+    assert.ok(targets.toggleWidth >= 44 && targets.toggleHeight >= 44,
+      'the search control should retain a comfortable touch target on 320px screens');
+    assert.ok(targets.documentWidth <= targets.viewportWidth,
+      'the diary search control should not introduce horizontal overflow on narrow screens');
 
     console.log('Diary search browser checks passed.');
   } finally {
