@@ -298,6 +298,23 @@
     };
   }
 
+  function simulateAndPersistCommunitySeason(career) {
+    const result = simulateCommunitySeason(career);
+    if (!result) return result;
+
+    // advanceAge() saves synchronously before queued microtasks run.
+    // Persist the season after it mutates the NPC community.
+    try {
+      const persist = typeof global.save === 'function'
+        ? global.save
+        : (typeof save === 'function' ? save : null);
+      if (persist) persist();
+    } catch (error) {
+      // The game's save routine reports storage failures through its own status UI.
+    }
+    return result;
+  }
+
   function createFallbackChoice(doc, iconText, titleText, descriptionText, action) {
     const button = doc.createElement('button');
     button.type = 'button';
@@ -505,7 +522,7 @@
         if (age < 0 || age === observedAge) return;
         observedAge = age;
         const current = gameState();
-        if (current && current.combatCareer) simulateCommunitySeason(current.combatCareer);
+        if (current && current.combatCareer) simulateAndPersistCommunitySeason(current.combatCareer);
       };
       if (typeof global.queueMicrotask === 'function') global.queueMicrotask(afterAgeChange);
       else Promise.resolve().then(afterAgeChange);
@@ -520,7 +537,7 @@
         const targetCareer = career || (
           typeof global.ensureCombatCareer === 'function' ? global.ensureCombatCareer() : null
         );
-        const simulateAfterAnnualProgress = () => simulateCommunitySeason(targetCareer);
+        const simulateAfterAnnualProgress = () => simulateAndPersistCommunitySeason(targetCareer);
         if (typeof global.queueMicrotask === 'function') global.queueMicrotask(simulateAfterAnnualProgress);
         else Promise.resolve().then(simulateAfterAnnualProgress);
       }
