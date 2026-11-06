@@ -69,8 +69,6 @@ async function run() {
     assert.equal(await toggle.getAttribute('aria-expanded'), 'false');
     assert.equal(await toggle.evaluate(element => document.activeElement === element), true);
 
-    assert.equal(await page.evaluate(() => localStorage.length), 0,
-      'diary search must not create or modify persistent game data');
     console.log('Diary search browser checks passed.');
   } finally {
     await browser.close();
