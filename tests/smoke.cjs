@@ -34,6 +34,8 @@ assert.ok(serviceWorker.includes("'./diary-search.js'"));
 assert.ok(serviceWorker.includes("'./combat-season.js'"));
 assert.match(combatSeason, /function simulateCommunitySeason\(career\)/);
 assert.match(combatSeason, /global\.advanceCombatCommunity = function/);
+assert.match(combatSeason, /function injectSeasonMenuEntry\(root\)/);
+assert.match(combatSeason, /function installAgeButtonFallback\(\)/);
 assert.doesNotMatch(combatSeason, /Math\.random\s*\(/, 'annual rival results must be deterministic');
 assert.ok(browserTest.includes("['/combat-season.js', 'combat-season.js']"), 'the mobile browser server must serve the new PWA module');
 assert.match(browserTest, /سجل مواسم المنافسين/, 'the mobile browser test should open the annual season history UI');
