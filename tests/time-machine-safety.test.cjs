@@ -232,3 +232,36 @@ test('لقطات الحفظ القديمة الكاملة بلا lifeId تظل �
   assert.deepEqual(storedList(harness, 'cemetery'), [{ id: 'life-2', name: 'سليم', age: 76 }]);
   assert.deepEqual(storedList(harness, 'cemeteryBackup'), [{ id: 'life-2', name: 'سليم', age: 76 }]);
 });
+
+
+test('أرشيف وفاة قديم بمعرّف بديل يُزال فقط عند تطابق بصمة الحياة كاملة', () => {
+  const harness = createHarness({ snapshotLifeId: null });
+  const current = harness.context.state;
+  current.lifeId = 'migrated-life-id';
+  current.place = { country: 'مصر' };
+  current.bank = 100;
+  current.assets = [];
+  current.investments = [];
+  current.debt = 0;
+  current.children = [];
+  current.cemeterySaved = true;
+
+  const archived = storedList(harness, 'cemetery');
+  archived[0] = {
+    ...archived[0],
+    id: 'life-legacy-timestamp',
+    cause: 'سبب طبيعي',
+    netWorth: 100,
+    country: 'مصر',
+    children: 0
+  };
+  harness.values.set('cemetery', JSON.stringify(archived));
+  harness.values.set('cemeteryBackup', JSON.stringify(archived));
+
+  harness.context.rewindToSnapshot(0);
+
+  assert.equal(harness.context.state.age, 39);
+  assert.equal(harness.context.state.status, 'حي');
+  assert.deepEqual(storedList(harness, 'cemetery'), [{ id: 'life-2', name: 'سليم', age: 76 }]);
+  assert.deepEqual(storedList(harness, 'cemeteryBackup'), [{ id: 'life-2', name: 'سليم', age: 76 }]);
+});
