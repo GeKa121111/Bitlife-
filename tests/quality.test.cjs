@@ -3765,7 +3765,7 @@ test('منافسو القتال لهم شخصيات تكتيكية حتمية و
   assert.ok(context.legacy.read.includes('سجل الجولات غير مكتمل'));
   assert.equal(context.roundTwo,'تقنية');
   assert.equal(context.fallback.id,'balanced');
-  assert.ok(app.includes('combatOpponentIntent(opponent,round,session.lastStyle,session.roundHistory,session.communityFighterId,rememberedRival?rememberedRival.styleMemory:[])'));
+  assert.ok(app.includes('combatOpponentIntent(opponent,round,session.lastStyle,session.roundHistory,session.communityFighterId,rememberedRival?rememberedRival.styleMemory:[],rememberedRival?rememberedRival.moveMemory:[])'));
   assert.ok(app.includes('طابع المنافس'));
   const pendingSource=app.slice(app.indexOf('function normalizePendingCombatBout('),app.indexOf('function combatDifficultyLabel('));
   assert.ok(!pendingSource.includes('archetype'),'archetypes must not add pending-save fields');

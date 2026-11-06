@@ -812,7 +812,7 @@ assert.equal(Object.keys(firstInstallListeners).length, 0, 'first-time installat
 assert.equal(firstInstallNotices, 0);
 
 assert.ok(app.includes("function combatOpponentArchetype(opponent,opponentId=''"));
-assert.ok(app.includes("combatOpponentIntent(opponent,round,session.lastStyle,session.roundHistory,session.communityFighterId,rememberedRival?rememberedRival.styleMemory:[])"));
+assert.ok(app.includes("combatOpponentIntent(opponent,round,session.lastStyle,session.roundHistory,session.communityFighterId,rememberedRival?rememberedRival.styleMemory:[],rememberedRival?rememberedRival.moveMemory:[])"));
 assert.ok(app.includes('طابع القتال'));
 
 assert.match(app, /function normalizeCombatChampionshipHistory\(/, 'legacy fighter saves should normalize an optional championship history');
