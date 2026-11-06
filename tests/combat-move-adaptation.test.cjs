@@ -101,5 +101,5 @@ test('حساب الجولة والواجهة وسجل النزال تستخدم 
   assert.match(app, /distanceResult\.opponentBonus\+moveRepetition\.opponentBonus/);
   assert.match(app, /moveRepetitionCount:moveRepetition\.repeats/);
   assert.match(app, /moveRepetitionPenalty:item\.moveRepetitionPenalty\|\|0/);
-  assert.match(app, /تكرار الحركة نفسها يمنح المنافس أفضلية محدودة/);
+  assert.match(app, /تكرار الأسلوب أو الحركة نفسها يسهّل قراءة خطتك/);
 });
