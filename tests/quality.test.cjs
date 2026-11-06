@@ -4162,6 +4162,6 @@ test('البحث في يوميات الحياة يدعم النص العربي �
   assert.match(search, /aria-controls/);
   assert.match(search, /aria-live/);
   assert.match(search, /MutationObserver/);
-  assert.doesNotMatch(search, /localStorage|sessionStorage|fetch\\s*\\(|XMLHttpRequest/);
+  assert.doesNotMatch(search, /localStorage|sessionStorage|fetch\s*\(|XMLHttpRequest/);
   assert.match(searchCss, /prefers-reduced-motion/);
 });
