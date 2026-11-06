@@ -94,6 +94,16 @@
     return null;
   }
 
+  function hasModalHelper() {
+    if (typeof global.modal === 'function') return true;
+    return typeof modal === 'function';
+  }
+
+  function hasChoiceHelper() {
+    if (typeof global.choice === 'function') return true;
+    return typeof choice === 'function';
+  }
+
   function makeChoice(icon, title, description, action) {
     if (typeof global.choice === 'function') return global.choice(icon, title, description, action);
     if (typeof choice === 'function') return choice(icon, title, description, action);
@@ -269,6 +279,95 @@
     };
   }
 
+  function createFallbackChoice(doc, iconText, titleText, descriptionText, action) {
+    const button = doc.createElement('button');
+    button.type = 'button';
+    button.className = 'choice';
+    const icon = doc.createElement('span');
+    icon.className = 'choiceico';
+    icon.textContent = iconText;
+    const copy = doc.createElement('span');
+    copy.className = 'ctext';
+    const title = doc.createElement('span');
+    title.className = 'ctitle';
+    title.textContent = titleText;
+    const description = doc.createElement('span');
+    description.className = 'cdesc';
+    description.textContent = descriptionText;
+    copy.appendChild(title);
+    copy.appendChild(description);
+    button.appendChild(icon);
+    button.appendChild(copy);
+    button.addEventListener('click', action);
+    return button;
+  }
+
+  function renderFallbackSeasonModal(summary) {
+    const doc = global.document;
+    const root = doc && typeof doc.getElementById === 'function' ? doc.getElementById('modalRoot') : null;
+    if (!root || typeof doc.createElement !== 'function') return;
+
+    const previousMarkup = root.innerHTML;
+    root.innerHTML = '';
+    const overlay = doc.createElement('div');
+    overlay.className = 'overlay';
+    const panel = doc.createElement('section');
+    panel.className = 'modal';
+    panel.setAttribute('role', 'dialog');
+    panel.setAttribute('aria-modal', 'true');
+
+    const header = doc.createElement('div');
+    header.className = 'modalhead';
+    const icon = doc.createElement('div');
+    icon.className = 'modalicon';
+    icon.textContent = '🏆';
+    const heading = doc.createElement('div');
+    heading.className = 'modaltitle';
+    heading.textContent = 'سجل مواسم المنافسين';
+    const close = doc.createElement('button');
+    close.type = 'button';
+    close.className = 'closebtn';
+    close.setAttribute('aria-label', 'العودة إلى مجتمع المقاتلين');
+    close.textContent = '×';
+    close.addEventListener('click', () => { root.innerHTML = previousMarkup; });
+    header.appendChild(icon);
+    header.appendChild(heading);
+    header.appendChild(close);
+
+    const body = doc.createElement('div');
+    body.className = 'modalbody';
+    const description = doc.createElement('p');
+    description.className = 'desc';
+    description.textContent = summary;
+    body.appendChild(description);
+
+    const grid = doc.createElement('div');
+    grid.className = 'choicegrid';
+    const about = createFallbackChoice(
+      doc,
+      '📘',
+      'عن نظام المواسم',
+      'تُحاكى مواجهات المنافسين مرة واحدة لكل عمر، ولا تُحتسب ضمن سجل اللاعب أو دفاعاته عن اللقب.',
+      () => {
+        description.textContent = 'كل منافس نشط يواجه بقية المنافسين مرة واحدة في الموسم. الفوز 3 نقاط والتعادل نقطة والخسارة بلا نقاط. النتائج تخص مجتمع المنافسين ولا تغيّر لقب اللاعب.';
+      }
+    );
+    const back = createFallbackChoice(
+      doc,
+      '↩️',
+      'رجوع إلى مجتمع المقاتلين',
+      '',
+      () => { root.innerHTML = previousMarkup; }
+    );
+    grid.appendChild(about);
+    grid.appendChild(back);
+    body.appendChild(grid);
+    panel.appendChild(header);
+    panel.appendChild(body);
+    overlay.appendChild(panel);
+    root.appendChild(overlay);
+  }
+
   function openCommunitySeasonMenu() {
     const getCareer = getEnsureCombatCareer();
     if (!getCareer) return;
@@ -290,22 +389,33 @@
         '\n\nترتيب المنافسين:\n' + (lines.length ? lines.join('\n') : 'لا توجد نتائج محفوظة.')
       : 'لم يبدأ موسم بعد. تُحاكى مواجهات المنافسين تلقائيًا عند التقدم بالعمر داخل مسيرة القتال، بعد تحديث أعمار المجتمع.\n\nالنتائج تخص منافسي المجتمع فقط، ولا تضيف نقاطًا إلى مسيرة اللاعب أو تغيّر لقب العالم مباشرة.';
 
-    const options = [
-      makeChoice('📘', 'عن نظام المواسم', 'يواجه كل منافس نشط بقية المنافسين مرة واحدة في الموسم. النتائج حتمية وقابلة لإعادة الاختبار، وتؤثر تدريجيًا في الزخم والاحترام.', () => {
-        showInfo('📘', 'عن نظام المواسم', 'تُحاكى مواجهات المنافسين مرة واحدة لكل عمر عند تقدم الحياة. لا تُحتسب هذه النتائج ضمن سجل نزالات اللاعب أو دفاعاته عن لقب العالم.');
-      }),
-      makeChoice('↩️', 'رجوع إلى مجتمع المقاتلين', '', returnToCommunityMenu)
-    ];
+    if (hasModalHelper() && hasChoiceHelper()) {
+      const options = [
+        makeChoice('📘', 'عن نظام المواسم', 'يواجه كل منافس نشط بقية المنافسين مرة واحدة في الموسم. النتائج حتمية وقابلة لإعادة الاختبار، وتؤثر تدريجيًا في الزخم والاحترام.', () => {
+          showInfo('📘', 'عن نظام المواسم', 'تُحاكى مواجهات المنافسين مرة واحدة لكل عمر عند تقدم الحياة. لا تُحتسب هذه النتائج ضمن سجل نزالات اللاعب أو دفاعاته عن لقب العالم.');
+        }),
+        makeChoice('↩️', 'رجوع إلى مجتمع المقاتلين', '', returnToCommunityMenu)
+      ];
+      showModal('🏆', 'سجل مواسم المنافسين', summary, options);
+      return;
+    }
 
-    showModal('🏆', 'سجل مواسم المنافسين', summary, options);
+    renderFallbackSeasonModal(summary);
   }
 
   function injectSeasonMenuEntry(root) {
     if (!root || typeof root.querySelector !== 'function' || !global.document) return false;
     const heading = root.querySelector('.modaltitle');
-    if (!heading || String(heading.textContent || '').trim() !== 'مجتمع المقاتلين') return false;
-    const grid = root.querySelector('.choicegrid');
-    if (!grid || typeof grid.appendChild !== 'function') return false;
+    if (!heading || !String(heading.textContent || '').includes('مجتمع المقاتلين')) return false;
+    let grid = root.querySelector('.choicegrid');
+    if (!grid) {
+      const body = root.querySelector('.modalbody');
+      if (!body || typeof body.appendChild !== 'function') return false;
+      grid = global.document.createElement('div');
+      grid.className = 'choicegrid';
+      body.appendChild(grid);
+    }
+    if (typeof grid.appendChild !== 'function') return false;
     if (typeof grid.querySelector === 'function' && grid.querySelector('[data-hayah-combat-season-entry]')) return false;
 
     const button = global.document.createElement('button');
@@ -317,7 +427,6 @@
     const icon = global.document.createElement('span');
     icon.className = 'choiceico';
     icon.textContent = '🏆';
-
     const copy = global.document.createElement('span');
     copy.className = 'ctext';
     const title = global.document.createElement('span');
@@ -341,10 +450,19 @@
     const root = global.document.getElementById('modalRoot');
     if (!root) return;
     injectSeasonMenuEntry(root);
-    if (typeof global.MutationObserver !== 'function') return;
-    const observer = new global.MutationObserver(() => injectSeasonMenuEntry(root));
-    observer.observe(root, { childList: true, subtree: true });
-    global.__hayahCombatSeasonMenuObserver = observer;
+    if (typeof global.MutationObserver === 'function') {
+      const observer = new global.MutationObserver(() => injectSeasonMenuEntry(root));
+      observer.observe(root, { childList: true, subtree: true });
+      global.__hayahCombatSeasonMenuObserver = observer;
+    }
+    const originalCommunityMenu = global.combatCommunityMenu;
+    if (typeof originalCommunityMenu === 'function') {
+      global.combatCommunityMenu = function () {
+        const result = originalCommunityMenu.apply(this, arguments);
+        injectSeasonMenuEntry(root);
+        return result;
+      };
+    }
   }
 
   function installAgeButtonFallback() {
