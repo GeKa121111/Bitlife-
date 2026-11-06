@@ -18,9 +18,9 @@ const serviceWorker = fs.readFileSync('sw.js', 'utf8');
 const pwaUpdate = fs.readFileSync('pwa-update.js', 'utf8');
 const pwaUpdateCss = fs.readFileSync('pwa-update.css', 'utf8');
 const deployWorkflow = fs.readFileSync('.github/workflows/deploy.yml', 'utf8');
-assert.match(deployWorkflow, /name:\\s*github-pages-\\$\\{\\{\\s*github\\.run_attempt\\s*\\}\\}/,
+assert.match(deployWorkflow, /name:\s*github-pages-\$\{\{\s*github\.run_attempt\s*\}\}/,
   'Pages uploads should use a unique artifact name for each workflow attempt');
-assert.match(deployWorkflow, /artifact_name:\\s*github-pages-\\$\\{\\{\\s*github\\.run_attempt\\s*\\}\\}/,
+assert.match(deployWorkflow, /artifact_name:\s*github-pages-\$\{\{\s*github\.run_attempt\s*\}\}/,
   'Pages deployment should select the artifact created by the current attempt');
 assert.match(accessibilityCss, /@media \(pointer: coarse\), \(any-pointer: coarse\)/,
   'touch-first devices should receive enlarged compact-control targets');
