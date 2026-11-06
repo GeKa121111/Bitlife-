@@ -52,11 +52,14 @@ assert.match(app, /dailyChallenges:null/, 'older saves should migrate to the dai
 assert.match(app, /function timeMachineMenu\(\)/, 'the player should be able to review yearly rewind snapshots');
 assert.match(app, /const parsed=JSON\.parse\(history\[index\]\),snap=parsed&&parsed\.snapshotVersion===1\?parsed\.state:parsed/, 'rewind menu should support both compact and legacy snapshots');
 assert.match(app, /function rewindToSnapshot\(index\)/, 'time rewind should restore a selected prior state');
+assert.match(app, /function removeLifeFromCemeteryForRewind\(lifeId\)/, 'death rewind should update the cemetery archive');
+assert.match(app, /function restoreCemeteryAfterFailedRewind\(checkpoint\)/, 'failed rewind should restore the cemetery archive and its backup');
 assert.match(app, /timeMachineSnapshots:\[\]/, 'new lives should initialize the time-machine history');
 assert.match(app, /const checkpoint=\{snapshotVersion:1,logLength,state:snapshot\};if\(logSnapshot\)checkpoint\.logSnapshot=logSnapshot;\s*state\.timeMachineSnapshots\.push\(JSON\.stringify\(checkpoint\)\)/, 'each age-up should preserve a compact rewind point and an exact log checkpoint near the rolling-log cap');
 assert.match(app, /const logSnapshot=logLength>=280&&Array\.isArray\(state\.log\)\?JSON\.parse\(JSON\.stringify\(state\.log\)\):null/, 'rewind should checkpoint the full log before later events can trim it');
 assert.match(app, /delete snapshot\.log/, 'rewind snapshots should omit duplicated event logs');
-assert.match(app, /restored\.log=Array\.isArray\(parsedSnapshot\.logSnapshot\)\?parsedSnapshot\.logSnapshot:\(Array\.isArray\(state\.log\)\?state\.log\.slice\(0,Math\.max\(0,Number\(parsedSnapshot\.logLength\)\|\|0\)\):\[\]\)/, 'rewind should prefer the exact saved log and retain fallback support for older snapshots');
+assert.match(app, /const safeLogLength=Number\.isFinite\(logLength\)\?Math\.max\(0,Math\.floor\(logLength\)\):0/, 'rewind should clamp legacy log lengths to a safe non-negative integer');
+assert.match(app, /restored\.log=Array\.isArray\(parsedSnapshot\.logSnapshot\)\?parsedSnapshot\.logSnapshot:\(Array\.isArray\(state\.log\)\?state\.log\.slice\(0,safeLogLength\):\[\]\)/, 'rewind should prefer the exact saved log and retain safe fallback support for older snapshots');
 assert.match(app, /else\{restored=parsedSnapshot;\}/, 'legacy raw snapshots should remain readable');
 assert.match(app, /timeMachineDeathBtn/, 'the end-of-life panel should offer a rewind path when available');
 assert.match(app, /function editCharacterTraits\(\)/, 'player traits editor should exist');
@@ -197,7 +200,7 @@ assert.match(finalUi, /\.fill\s*\{[^}]*position:absolute[^}]*right:0/s, 'status 
 assert.match(finalUi, /\.statvalue\s*\{[^}]*position:absolute[^}]*z-index:1/s, 'status values should overlay the progress bars');
 assert.match(finalUi, /\.nav\{direction:ltr\}/, 'tab positions should follow the original left-to-right order');
 assert.match(finalUi, /\.fill\{left:0;right:auto\}/, 'progress fills should grow from the left edge like the reference');
-assert.match(serviceWorker, /hayah-shell-v167/, 'the app shell cache should refresh the new styles');
+assert.match(serviceWorker, /hayah-shell-v168/, 'the app shell cache should refresh the new styles');
 assert.match(app, /function siblingEmploymentDecision\(relative,profile,year,age\)/, 'sibling job events should be simulated deterministically');
 assert.match(app, /function schoolHub\(\)/);
 assert.match(app, /function maintainAsset\(index\)/);
@@ -577,7 +580,7 @@ assert.ok(app.includes('boostUsedAge:null'), 'new lives should initialize the op
 assert.ok(app.includes('uiSettings.boosts'), 'recovery opportunities should be optional in settings');
 assert.ok(app.includes('uiSettings.sound'));
 assert.ok(app.includes('uiSettings.haptics'));
-assert.match(serviceWorker, /hayah-shell-v167/);
+assert.match(serviceWorker, /hayah-shell-v168/);
 assert.ok(app.includes('function formatStorageBytes(bytes)'));
 assert.ok(app.includes('function inspectStorageCapacity()'));
 assert.match(app, /فحص مساحة التخزين/);
@@ -599,13 +602,13 @@ assert.ok(app.includes("function advanceBusinessRivals(raw,business,industry,yea
 assert.ok(app.includes("function summarizeBusinessRivals(rivals,baselineCompetition,profile)"));
 assert.match(app, /marketRivalPlans/);
 assert.match(app, /الشركات المنافسة داخل المحاكاة/);
-assert.match(serviceWorker, /hayah-shell-v167/);
+assert.match(serviceWorker, /hayah-shell-v168/);
 
 assert.match(app, /function normalizeSocialFeed\(raw\)/, 'social audience feedback should be normalized for legacy saves');
 assert.match(app, /function socialAudienceFeedMenu\(platformId\)/, 'players should be able to review audience feedback');
 assert.match(app, /function offerSoundCloudTrackToLabel\(platformId='soundcloud'\)/, 'SoundCloud tracks should have a label-offer path');
 assert.match(app, /const KEY = 'hekayat_hayah_save_v1';/);
-assert.match(serviceWorker, /hayah-shell-v167/);
+assert.match(serviceWorker, /hayah-shell-v168/);
 
 assert.match(app, /function combatRoundEnergy\(currentEnergy,move,mode='street',reactionCost=0\)/);
 assert.match(app, /function combatDistanceEffects\(distance,move,opponentStyle,reactionId\)/);
@@ -695,7 +698,7 @@ assert.match(app, /function siblingPropertySaleDecision\(/);
 assert.match(app, /propertySaleDebtPaid/);
 assert.match(app, /function siblingPropertyAnnualUpkeep\(/);
 assert.match(app, /propertyExpensesAnnual/);
-assert.match(serviceWorker, /hayah-shell-v167/);
+assert.match(serviceWorker, /hayah-shell-v168/);
 
 assert.match(app, /function siblingRentalPurchaseDecision\(/, 'siblings should be able to acquire an independent rental property');
 assert.match(app, /function siblingRentalAnnualIncome\(/, 'rental income should model occupancy and collection rates deterministically');
@@ -736,7 +739,7 @@ assert.match(app, /function siblingEstateSettlement\(relative,profile,year\)/, '
 assert.match(app, /function siblingReleaseChildInheritance\(relative,child,year\)/, 'minor inheritance should be released when the child becomes an adult');
 assert.match(app, /assetTransferStatus/, 'property title transfer must remain explicit and auditable');
 assert.match(app, /function siblingEstatePlanMenu\(relative\)/, 'adult siblings should be able to record an estate plan');
-assert.match(serviceWorker, /hayah-shell-v167/, 'the PWA cache must be versioned with the estate update');
+assert.match(serviceWorker, /hayah-shell-v168/, 'the PWA cache must be versioned with the estate update');
 
 assert.match(app, /beneficiaryType:share\.kind/, 'surviving spouses should be recorded as estate beneficiaries');
 assert.match(app, /inheritanceCashBalance/, 'surviving spouse inheritance balances should be preserved');
@@ -821,7 +824,7 @@ assert.match(app, /function combatSponsorshipMenu\(\)/, 'fighters should be able
 assert.match(app, /function negotiateCombatSponsorship\(sponsorId\)/, 'fighter sponsorship negotiation should be available');
 assert.match(app, /function growCombatFanbase\(c,won,mode,fame,rank\)/, 'fight outcomes should change the fighter audience');
 assert.match(app, /settleCombatSponsorshipYear\(cc,state\.bank\)/, 'active sponsorships should settle once per game year');
-assert.match(serviceWorker, /hayah-shell-v167/, 'the new sponsorship UI and engine must be in the current PWA shell');
+assert.match(serviceWorker, /hayah-shell-v168/, 'the new sponsorship UI and engine must be in the current PWA shell');
 
 assert.ok(app.includes('function changeSiblingInvestmentRisk('), 'adult siblings should have a controlled investment-risk setting');
 assert.ok(app.includes('function siblingInvestmentRiskMenu('), 'the sibling financial profile should expose investment choices');

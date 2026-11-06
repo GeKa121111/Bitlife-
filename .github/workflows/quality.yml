@@ -99,6 +99,10 @@ jobs:
         run: node --check tests/child-property-management.test.cjs
       - name: Run inherited child property management tests
         run: node --test tests/child-property-management.test.cjs
+      - name: Check time-machine safety test syntax
+        run: node --check tests/time-machine-safety.test.cjs
+      - name: Run time-machine and cemetery consistency tests
+        run: node --test tests/time-machine-safety.test.cjs
       - name: Install Playwright and Chromium
         run: |
           npm install --no-save --package-lock=false playwright@1.64.1

@@ -10135,20 +10135,131 @@ function timeMachineMenu(){
  opts.push(choice('↩️','رجوع','العودة للحياة الحالية دون تغيير.',()=>{closeModal();if(isDead)death(state.cause||'نهاية رحلة الحياة');}));
  modal('⏳','الرجوع بالزمن',perkOwned('expandedTime')?'ذاكرة الزمن الموسّعة تحفظ حتى 60 نقطة سنوية على هذا الجهاز، بحد آمن لحجم الحفظ.':'تقدر ترجع لواحدة من آخر 8 نقاط حفظ سنوية. افتح ذاكرة الزمن الموسّعة لزيادة العدد إلى 60.',opts);
 }
+
+function restoreRewindStorageValue(key,raw){
+ if(localStorage.getItem(key)===raw)return true;
+ if(raw===null)localStorage.removeItem(key);else localStorage.setItem(key,raw);
+ if(localStorage.getItem(key)!==raw)throw new Error('rewind-storage-restore-failed');
+ return true;
+}
+function restoreCemeteryAfterFailedRewind(checkpoint){
+ if(!checkpoint)return false;
+ try{
+  restoreRewindStorageValue(CEMETERY_KEY,checkpoint.primaryRaw);
+  restoreRewindStorageValue(CEMETERY_BACKUP_KEY,checkpoint.backupRaw);
+  return true;
+ }catch(e){return false;}
+}
+function removeLifeFromCemeteryForRewind(lifeId){
+ if(lifeId===null||lifeId===undefined||String(lifeId).trim()==='')throw new Error('cemetery-life-id-missing');
+ const current=normalizeCemetery(readCemeteryForBackup());
+ if(!validateCemeteryBackup(current))throw new Error('cemetery-invalid');
+ const primaryRaw=localStorage.getItem(CEMETERY_KEY);
+ const checkpoint={primaryRaw,backupRaw:localStorage.getItem(CEMETERY_BACKUP_KEY),changed:false};
+ let next=normalizeCemetery(current.filter(item=>String(item.id)!==String(lifeId)));
+ if(next.length===current.length&&state&&state.status==='متوفى'){
+  // Older archived lives may have received a generated cemetery ID before lifeId
+  // was added to saved lives. Use a strict, unique identity signature as fallback.
+  const assetValue=(Array.isArray(state.assets)?state.assets:[]).reduce((sum,item)=>sum+(Number(item&&item.value)||0),0);
+  const investmentValue=(Array.isArray(state.investments)?state.investments:[]).reduce((sum,item)=>sum+(Number(item&&item.value)||0),0);
+  const expectedNetWorth=Math.round((Number(state.bank)||0)+assetValue+investmentValue-(Number(state.debt)||0));
+  const expectedCountry=String(state.place&&state.place.country||'');
+  const expectedChildren=Array.isArray(state.children)?state.children.length:0;
+  const candidates=current.filter(item=>
+   String(item.name||'')===String(state.name||'')&&
+   Number(item.age)===Math.floor(Number(state.age)||0)&&
+   String(item.cause||'')===String(state.cause||'نهاية الرحلة')&&
+   Number(item.netWorth)===expectedNetWorth&&
+   String(item.country||'')===expectedCountry&&
+   Number(item.children)===expectedChildren&&
+   String(item.ribbon||'')===String(lifeRibbon())&&
+   JSON.stringify(item.accomplishments||[])===JSON.stringify((Array.isArray(state.accomplishments)?state.accomplishments:[]).slice(0,40))
+  );
+  if(candidates.length===1){
+   const legacyId=String(candidates[0].id);
+   next=normalizeCemetery(current.filter(item=>String(item.id)!==legacyId));
+  }else if(candidates.length>1||state.cemeterySaved===true){
+   throw new Error('cemetery-legacy-life-match-ambiguous');
+  }
+ }
+ if(!validateCemeteryBackup(next))throw new Error('cemetery-invalid');
+ if(next.length===current.length)return checkpoint;
+ if(primaryRaw===null)throw new Error('cemetery-primary-missing');
+ const currentSerialized=JSON.stringify(current);
+ persistCemeteryBackup(current);
+ if(localStorage.getItem(CEMETERY_BACKUP_KEY)!==currentSerialized)throw new Error('cemetery-backup-sync-failed');
+ checkpoint.backupRaw=localStorage.getItem(CEMETERY_BACKUP_KEY);
+ const nextSerialized=JSON.stringify(next);
+ try{
+  localStorage.setItem(CEMETERY_KEY,nextSerialized);
+  if(localStorage.getItem(CEMETERY_KEY)!==nextSerialized)throw new Error('cemetery-primary-write-failed');
+  persistCemeteryBackup(next);
+  if(localStorage.getItem(CEMETERY_BACKUP_KEY)!==nextSerialized)throw new Error('cemetery-backup-write-failed');
+  checkpoint.changed=true;
+  return checkpoint;
+ }catch(e){
+  if(!restoreCemeteryAfterFailedRewind(checkpoint))throw new Error('cemetery-rewind-rollback-failed');
+  throw new Error('cemetery-rewind-write-failed');
+ }
+}
+
+
 function rewindToSnapshot(index){
  const history=Array.isArray(state.timeMachineSnapshots)?state.timeMachineSnapshots:[];
  if(index<0||index>=history.length){closeModal();info('⏳','نقطة الحفظ غير متاحة','اختار سنة ظاهرة في القائمة.');return;}
- const wasDead=state.status==='متوفى',currentAge=state.age,lifeId=state.lifeId;
+ const wasDead=state.status==='متوفى',currentAge=state.age,currentLifeId=state.lifeId;
  let restored,parsedSnapshot;
- try{parsedSnapshot=JSON.parse(history[index]);if(parsedSnapshot&&parsedSnapshot.snapshotVersion===1&&parsedSnapshot.state&&typeof parsedSnapshot.state==='object'){restored=parsedSnapshot.state;restored.log=Array.isArray(parsedSnapshot.logSnapshot)?parsedSnapshot.logSnapshot:(Array.isArray(state.log)?state.log.slice(0,Math.max(0,Number(parsedSnapshot.logLength)||0)):[]);}else{restored=parsedSnapshot;}}catch(e){closeModal();info('⚠️','تعذر الرجوع','نقطة الحفظ دي غير صالحة.');return;}
+ try{
+  parsedSnapshot=JSON.parse(history[index]);
+  if(parsedSnapshot&&parsedSnapshot.snapshotVersion===1&&parsedSnapshot.state&&typeof parsedSnapshot.state==='object'){
+   restored=parsedSnapshot.state;
+   const logLength=Number(parsedSnapshot.logLength);
+   const safeLogLength=Number.isFinite(logLength)?Math.max(0,Math.floor(logLength)):0;
+   restored.log=Array.isArray(parsedSnapshot.logSnapshot)?parsedSnapshot.logSnapshot:(Array.isArray(state.log)?state.log.slice(0,safeLogLength):[]);
+  }else{restored=parsedSnapshot;}
+ }catch(e){closeModal();info('⚠️','تعذر الرجوع','نقطة الحفظ دي غير صالحة.');return;}
+ const restoredAge=Number(restored&&restored.age),activeAge=Number(currentAge);
+ const restoredLifeId=restored&&restored.lifeId;
+ const hasRestoredLifeId=restoredLifeId!==undefined&&restoredLifeId!==null&&String(restoredLifeId).trim()!=='';
+ const hasCurrentLifeId=currentLifeId!==undefined&&currentLifeId!==null&&String(currentLifeId).trim()!=='';
+ if(!isValidSaveData(restored)||!Number.isFinite(restoredAge)||!Number.isFinite(activeAge)||restoredAge>=activeAge||restored.status==='متوفى'||(hasRestoredLifeId&&hasCurrentLifeId&&String(restoredLifeId)!==String(currentLifeId))){
+  closeModal();info('⚠️','نقطة الحفظ غير صالحة','النقطة لا تنتمي للحياة الحالية أو لا تمثل سنة أقدم.');return;
+ }
+ const lifeId=hasCurrentLifeId?currentLifeId:(hasRestoredLifeId?restoredLifeId:null);
+ if(!hasRestoredLifeId&&lifeId!==null)restored.lifeId=lifeId;
+ let previousLifeRaw,previousBackupRaw;
+ try{previousLifeRaw=localStorage.getItem(KEY);previousBackupRaw=localStorage.getItem(BACKUP_KEY);}
+ catch(e){closeModal();info('⚠️','تعذر قراءة الحفظ','لم يتم تنفيذ الرجوع لأن حالة الحفظ الحالية لا يمكن تأمينها.');return;}
+ const previousState=state,previousDead=dead;
+ let cemeteryCheckpoint=null;
  if(wasDead){
-  try{const list=JSON.parse(localStorage.getItem(CEMETERY_KEY)||'[]');localStorage.setItem(CEMETERY_KEY,JSON.stringify(list.filter(item=>item.id!==lifeId)));}catch(e){}
+  try{cemeteryCheckpoint=removeLifeFromCemeteryForRewind(lifeId);}
+  catch(e){closeModal();info('⚠️','تعذر تحديث المقبرة','لم يتم الرجوع؛ سجل الحياة ونسخته الاحتياطية لم يتغيرا. راجع مساحة التخزين ثم حاول مرة أخرى.');return;}
  }
  restored.timeMachineSnapshots=history.slice(0,index);
  restored.status='حي';restored.cause=null;restored.cemeterySaved=false;
  state=restored;dead=false;ensureGamingTalent();closeModal();
  log('⏳','رجوع بالزمن','رجعت من عمر '+currentAge+' إلى عمر '+state.age+'. مسار الحياة اتراجع، وتقدر تختار قرارات مختلفة من هنا.','special');
- achievement('استخدمت الرجوع بالزمن');save();render();
+ achievement('استخدمت الرجوع بالزمن');
+ let rewindSaved=save();
+ if(rewindSaved){
+  try{
+   const activeSaveRaw=localStorage.getItem(KEY);
+   if(!activeSaveRaw)throw new Error('rewind-save-missing');
+   localStorage.setItem(BACKUP_KEY,activeSaveRaw);
+   if(localStorage.getItem(BACKUP_KEY)!==activeSaveRaw)throw new Error('rewind-backup-write-unverified');
+  }catch(e){rewindSaved=false;}
+ }
+ if(!rewindSaved){
+  state=previousState;dead=previousDead;
+  let rollbackOk=true;
+  try{restoreRewindStorageValue(KEY,previousLifeRaw);restoreRewindStorageValue(BACKUP_KEY,previousBackupRaw);}catch(e){rollbackOk=false;}
+  if(wasDead&&!restoreCemeteryAfterFailedRewind(cemeteryCheckpoint))rollbackOk=false;
+  render();
+  info('⚠️','تعذر حفظ الرجوع',rollbackOk?'لم يتم إكمال الرجوع، وتمت إعادة الحياة والمقبرة إلى حالتهما السابقة. حاول بعد التأكد من مساحة التخزين.':'تعذر تأكيد استعادة كل نسخ الحفظ والمقبرة. صدّر نسخة احتياطية خارجية قبل أي محاولة أخرى.');
+  return;
+ }
+ render();
  info('⏳','تم الرجوع بالزمن','تم استرجاع الحياة عند عمر '+state.age+' سنة، مع استعادة حالة الشخصية في ذلك الوقت.');
 }
 
