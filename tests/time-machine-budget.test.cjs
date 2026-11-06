@@ -142,3 +142,12 @@ test('نسخة الحفظ الاحتياطية القديمة تُقلّص سج�
   assert.equal(primary.age, 42);
   assert.deepEqual(primary.timeMachineSnapshots, ['current-snapshot']);
 });
+
+
+test('الحد الأدنى للميزانية يغطي تمثيل المصفوفة الفارغة دون تجاوزه', () => {
+  const result = fit([], 8, 1);
+
+  assert.deepEqual(Array.from(result.snapshots), []);
+  assert.equal(result.usedChars, 2);
+  assert.equal(JSON.stringify(result.snapshots).length, 2);
+});
