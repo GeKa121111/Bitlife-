@@ -52,11 +52,14 @@ assert.match(app, /dailyChallenges:null/, 'older saves should migrate to the dai
 assert.match(app, /function timeMachineMenu\(\)/, 'the player should be able to review yearly rewind snapshots');
 assert.match(app, /const parsed=JSON\.parse\(history\[index\]\),snap=parsed&&parsed\.snapshotVersion===1\?parsed\.state:parsed/, 'rewind menu should support both compact and legacy snapshots');
 assert.match(app, /function rewindToSnapshot\(index\)/, 'time rewind should restore a selected prior state');
+assert.match(app, /function removeLifeFromCemeteryForRewind\(lifeId\)/, 'death rewind should update the cemetery archive');
+assert.match(app, /function restoreCemeteryAfterFailedRewind\(checkpoint\)/, 'failed rewind should restore the cemetery archive and its backup');
 assert.match(app, /timeMachineSnapshots:\[\]/, 'new lives should initialize the time-machine history');
 assert.match(app, /const checkpoint=\{snapshotVersion:1,logLength,state:snapshot\};if\(logSnapshot\)checkpoint\.logSnapshot=logSnapshot;\s*state\.timeMachineSnapshots\.push\(JSON\.stringify\(checkpoint\)\)/, 'each age-up should preserve a compact rewind point and an exact log checkpoint near the rolling-log cap');
 assert.match(app, /const logSnapshot=logLength>=280&&Array\.isArray\(state\.log\)\?JSON\.parse\(JSON\.stringify\(state\.log\)\):null/, 'rewind should checkpoint the full log before later events can trim it');
 assert.match(app, /delete snapshot\.log/, 'rewind snapshots should omit duplicated event logs');
-assert.match(app, /restored\.log=Array\.isArray\(parsedSnapshot\.logSnapshot\)\?parsedSnapshot\.logSnapshot:\(Array\.isArray\(state\.log\)\?state\.log\.slice\(0,Math\.max\(0,Number\(parsedSnapshot\.logLength\)\|\|0\)\):\[\]\)/, 'rewind should prefer the exact saved log and retain fallback support for older snapshots');
+assert.match(app, /const safeLogLength=Number\.isFinite\(logLength\)\?Math\.max\(0,Math\.floor\(logLength\)\):0/, 'rewind should clamp legacy log lengths to a safe non-negative integer');
+assert.match(app, /restored\.log=Array\.isArray\(parsedSnapshot\.logSnapshot\)\?parsedSnapshot\.logSnapshot:\(Array\.isArray\(state\.log\)\?state\.log\.slice\(0,safeLogLength\):\[\]\)/, 'rewind should prefer the exact saved log and retain safe fallback support for older snapshots');
 assert.match(app, /else\{restored=parsedSnapshot;\}/, 'legacy raw snapshots should remain readable');
 assert.match(app, /timeMachineDeathBtn/, 'the end-of-life panel should offer a rewind path when available');
 assert.match(app, /function editCharacterTraits\(\)/, 'player traits editor should exist');
