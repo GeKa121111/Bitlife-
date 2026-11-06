@@ -466,6 +466,12 @@ function normalizeCombatStyleMemory(raw){
  if(!Array.isArray(raw))return [];
  return raw.filter(style=>combatMemoryStyles.includes(style)).slice(-8);
 }
+function normalizeCombatMoveMemory(raw){
+ if(!Array.isArray(raw))return [];
+ const catalog=(typeof combatMoveCatalog!=='undefined'?combatMoveCatalog:[]).concat(typeof combatTacticCatalog!=='undefined'?combatTacticCatalog:[]);
+ const validIds=new Set(catalog.map(item=>item&&item.id).filter(id=>typeof id==='string'));
+ return raw.filter(id=>typeof id==='string'&&id.length<=48&&(!validIds.size||validIds.has(id))).slice(-12);
+}
 function combatRivalDeathAge(profile){
  const id=String(profile&&profile.id||'rival');
  let hash=0;
@@ -510,6 +516,7 @@ function normalizeCombatCommunity(raw,currentYear=0){
    lastProgressYear:bounded(item.lastProgressYear,safeYear,-1,safeYear),
    lastAction:['friendly','trash','alliance','break','spar'].includes(item.lastAction)?item.lastAction:'',
    styleMemory:normalizeCombatStyleMemory(item.styleMemory),
+   moveMemory:normalizeCombatMoveMemory(item.moveMemory),
    memoryBouts:bounded(item.memoryBouts,0,0,10000)
   };
  });
@@ -590,6 +597,41 @@ function combatOpponentArchetype(opponent,opponentId=''){
  for(let index=0;index<identity.length;index++)hash=(hash*31+identity.charCodeAt(index))%2147483647;
  return profiles[hash%profiles.length];
 }
+function combatMoveLongTermEffect(opponent,rawMemory,actionId,opponentId=''){
+ const id=typeof actionId==='string'?actionId.trim().slice(0,48):'';
+ if(!id)return {observations:0,playerPenalty:0,opponentBonus:0};
+ const memory=normalizeCombatMoveMemory(rawMemory);
+ const observations=memory.filter(item=>item===id).length;
+ const archetype=combatOpponentArchetype(opponent,opponentId);
+ const rating=Number(opponent&&opponent.rating);
+ const awareness=Number.isFinite(rating)?Math.max(0,Math.min(100,rating)):0;
+ const threshold=archetype.id==='stubborn'?4:3;
+ const level=awareness<45?0:observations>=threshold+2?2:observations>=threshold?1:0;
+ return {observations,playerPenalty:level,opponentBonus:level};
+}
+function combatMoveMemorySummary(fighter){
+ const memory=normalizeCombatMoveMemory(fighter&&fighter.moveMemory),counts=Object.create(null);
+ memory.forEach(id=>{counts[id]=(counts[id]||0)+1;});
+ let actionId='',observations=0;
+ Object.keys(counts).forEach(id=>{if(counts[id]>observations){actionId=id;observations=counts[id];}});
+ const catalog=(typeof combatMoveCatalog!=='undefined'?combatMoveCatalog:[]).concat(typeof combatTacticCatalog!=='undefined'?combatTacticCatalog:[]);
+ const move=catalog.find(item=>item.id===actionId);
+ return {actionId,observations,title:move?move.title:actionId};
+}
+function combatMoveAdaptationEffect(opponent,roundHistory,rawMemory,actionId,opponentId=''){
+ const repetition=combatMoveRepetitionEffect(roundHistory,actionId);
+ const memory=combatMoveLongTermEffect(opponent,rawMemory,actionId,opponentId);
+ return {
+  repeats:repetition.repeats,
+  observations:memory.observations,
+  moveRepetitionPenalty:repetition.playerPenalty,
+  opponentRepetitionBonus:repetition.opponentBonus,
+  moveMemoryPenalty:memory.playerPenalty,
+  opponentMemoryBonus:memory.opponentBonus,
+  playerPenalty:Math.min(3,repetition.playerPenalty+memory.playerPenalty),
+  opponentBonus:Math.min(3,repetition.opponentBonus+memory.opponentBonus)
+ };
+}
 function recordCombatRivalStyleMemory(fighter,roundHistory){
  if(!fighter||typeof fighter!=='object'||Array.isArray(fighter))return {added:0,total:0,bouts:0};
  const current=normalizeCombatStyleMemory(fighter.styleMemory);
@@ -600,6 +642,15 @@ function recordCombatRivalStyleMemory(fighter,roundHistory){
  fighter.styleMemory=normalizeCombatStyleMemory(current.concat(observed));
  fighter.memoryBouts=Math.min(10000,fighter.memoryBouts+1);
  return {added:observed.length,total:fighter.styleMemory.length,bouts:fighter.memoryBouts};
+}
+function recordCombatRivalMoveMemory(fighter,roundHistory){
+ if(!fighter||typeof fighter!=='object'||Array.isArray(fighter))return {added:0,total:0};
+ const current=normalizeCombatMoveMemory(fighter.moveMemory);
+ const observed=Array.isArray(roundHistory)?roundHistory.slice(0,3).map(item=>item&&item.actionId).filter(id=>typeof id==='string'&&normalizeCombatMoveMemory([id]).length===1):[];
+ fighter.moveMemory=current;
+ if(observed.length!==3)return {added:0,total:current.length};
+ fighter.moveMemory=normalizeCombatMoveMemory(current.concat(observed));
+ return {added:observed.length,total:fighter.moveMemory.length};
 }
 function combatOpponentMemoryInsight(opponent,rawMemory=[],opponentId=''){
  const memory=normalizeCombatStyleMemory(rawMemory),counts=Object.create(null);
@@ -630,12 +681,14 @@ function combatRivalScoutingReport(fighter){
  const rating=clamp((Number.isFinite(ratingBase)?ratingBase:20)+(Number.isFinite(momentum)?momentum:0),20,95);
  const insight=combatOpponentMemoryInsight({rating},memory,fighter&&fighter.id||'');
  const total=memory.length;
+ const moveMemory=combatMoveMemorySummary(fighter);
  let message;
  if(total<3)message='العينة المسجلة غير كافية بعد؛ أكمل مواجهات أكثر قبل الحكم على أسلوبك.';
  else if(!insight.dominant)message='أساليبك متنوعة؛ لم يثبت وجود نمط واحد يستطيع المنافس استغلاله.';
  else if(!insight.counterStyle)message='لاحظ المنافس تكرار أسلوب '+insight.observedStyle+'، لكن مستوى قراءته لا يكفي لتجهيز مضاد ثابت.';
  else message='رصد المنافس تكرار أسلوب '+insight.observedStyle+' ('+insight.repeated+' من '+total+' جولات مسجلة)، وقد يواجهه بأسلوب '+insight.counterStyle+'. نوّع اختياراتك لتفادي القراءة.';
- return {observedStyle:insight.observedStyle||'',repeated:insight.repeated,runnerUp:insight.runnerUp,total,counterStyle:insight.counterStyle,dominant:insight.dominant===true,styleCounts,message};
+ if(moveMemory.observations>=3)message+=' كما رصد تكرار حركة '+moveMemory.title+' في '+moveMemory.observations+' جولات من مواجهاتكما السابقة.';
+ return {observedStyle:insight.observedStyle||'',repeated:insight.repeated,runnerUp:insight.runnerUp,total,counterStyle:insight.counterStyle,dominant:insight.dominant===true,styleCounts,moveMemory,message};
 }
 function combatOpponentStyleForRound(opponent,round,lastPlayerStyle,roundHistory=[],opponentId='',longTermHistory=[]){
  const baseStyles=['قوة','سرعة','دفاع','تقنية'];
@@ -784,6 +837,9 @@ function normalizePendingCombatBout(raw){
    moveRepetitionCount:Math.round(finite(item.moveRepetitionCount,0,0,2)),
    moveRepetitionPenalty:Math.round(finite(item.moveRepetitionPenalty,0,0,2)),
    opponentAdaptationBonus:Math.round(finite(item.opponentAdaptationBonus,0,0,2)),
+   moveMemoryObservations:Math.round(finite(item.moveMemoryObservations,0,0,12)),
+   moveMemoryPenalty:Math.round(finite(item.moveMemoryPenalty,0,0,2)),
+   opponentMemoryBonus:Math.round(finite(item.opponentMemoryBonus,0,0,2)),
    distanceBefore:recordedDistance(item.distanceBefore),
    moveRange:recordedDistance(item.moveRange),
    distancePlayerBonus:Math.round(finite(item.distancePlayerBonus,0,-3,4)),
@@ -8823,9 +8879,9 @@ function combatBoutRoundMenu(){
   const advantage=move.strongAgainst===intent.style?' ميزة مباشرة ضد أسلوب الجولة.':move.style===opponent.weakTo?' أسلوبك يستغل نقطة ضعف المنافس.':'';
   const varietyModifier=combatStyleVarietyModifier(session.roundHistory,move.style);
   const varietyHint=varietyModifier>0?' · تنويع الأسلوب +'+varietyModifier+' نقاط':varietyModifier<0?' · تكرار الأسلوب -'+Math.abs(varietyModifier)+' نقاط':'';
-  const repetition=combatMoveRepetitionEffect(session.roundHistory,move.id);
-  const repetitionHint=repetition.repeats>0?' · المنافس بدأ يتوقع تكرار الحركة: -'+repetition.playerPenalty+' نقطة لك و+'+repetition.opponentBonus+' له.':'';
-  return choice('🥋',move.title,'مدى الحركة '+combatDistanceLabel(combatMoveRange(move))+' · المسافة الحالية '+combatDistanceLabel(session.distance)+' · أسلوب '+move.style+' · قوي أمام '+move.strongAgainst+' · القوة '+move.power+'. الإتقان '+combatMoveMasteryLabel(uses)+' · مكافأة '+masteryBonus+' نقاط. '+advantage+varietyHint+repetitionHint,()=>resolveCombatRound(move.id),'',move.power+masteryBonus);
+  const adaptation=combatMoveAdaptationEffect(opponent,session.roundHistory,rememberedRival&&rememberedRival.moveMemory,move.id,session.communityFighterId);
+  const adaptationHint=adaptation.playerPenalty>0?' · قراءة المنافس: -'+adaptation.playerPenalty+' نقطة لك و+'+adaptation.opponentBonus+' له ('+adaptation.repeats+' تكرارات داخل النزال و'+adaptation.observations+' استخدامات سابقة).':'';
+  return choice('🥋',move.title,'مدى الحركة '+combatDistanceLabel(combatMoveRange(move))+' · المسافة الحالية '+combatDistanceLabel(session.distance)+' · أسلوب '+move.style+' · قوي أمام '+move.strongAgainst+' · القوة '+move.power+'. الإتقان '+combatMoveMasteryLabel(uses)+' · مكافأة '+masteryBonus+' نقاط. '+advantage+varietyHint+adaptationHint,()=>resolveCombatRound(move.id),'',move.power+masteryBonus);
  }).filter(Boolean);
  const recoveryUsed=session.roundHistory.some(item=>item.actionId==='tactic-breathe');
  combatTacticCatalog.forEach(tactic=>{
@@ -8833,10 +8889,10 @@ function combatBoutRoundMenu(){
   const advantage=tactic.strongAgainst===intent.style?' ميزة مباشرة ضد أسلوب الجولة.':tactic.style===opponent.weakTo?' يستغل نقطة ضعف المنافس.':'';
   const varietyModifier=combatStyleVarietyModifier(session.roundHistory,tactic.style);
   const varietyHint=varietyModifier>0?' · تنويع الأسلوب +'+varietyModifier+' نقاط':varietyModifier<0?' · تكرار الأسلوب -'+Math.abs(varietyModifier)+' نقاط':'';
-  const repetition=combatMoveRepetitionEffect(session.roundHistory,tactic.id);
-  const repetitionHint=repetition.repeats>0?' · المنافس بدأ يتوقع تكرار التكتيك: -'+repetition.playerPenalty+' نقطة لك و+'+repetition.opponentBonus+' له.':'';
+  const adaptation=combatMoveAdaptationEffect(opponent,session.roundHistory,rememberedRival&&rememberedRival.moveMemory,tactic.id,session.communityFighterId);
+  const adaptationHint=adaptation.playerPenalty>0?' · قراءة المنافس: -'+adaptation.playerPenalty+' نقطة لك و+'+adaptation.opponentBonus+' له ('+adaptation.repeats+' تكرارات داخل النزال و'+adaptation.observations+' استخدامات سابقة).':'';
   const recoveryNote=tactic.energyRecovery?' · استعادة '+tactic.energyRecovery+' طاقة مرة واحدة في النزال.':'';
-  opts.push(choice('🎯',tactic.title,tactic.desc+' · المدى '+combatDistanceLabel(combatMoveRange(tactic))+' · المسافة الحالية '+combatDistanceLabel(session.distance)+' · الأسلوب '+tactic.style+' · القوة '+tactic.power+'.'+advantage+varietyHint+repetitionHint+recoveryNote,()=>resolveCombatRound(tactic.id),'',tactic.power));
+  opts.push(choice('🎯',tactic.title,tactic.desc+' · المدى '+combatDistanceLabel(combatMoveRange(tactic))+' · المسافة الحالية '+combatDistanceLabel(session.distance)+' · الأسلوب '+tactic.style+' · القوة '+tactic.power+'.'+advantage+varietyHint+adaptationHint+recoveryNote,()=>resolveCombatRound(tactic.id),'',tactic.power));
  });
  opts.unshift({icon:'🛡️',title:'رد فعلك: '+reaction.title+' · '+reaction.quality,desc:'إشارة المنافس: '+intent.title+' · مكافأة الجولة '+reaction.playerBonus+' · تكلفة الرد '+reaction.energyCost+' طاقة.',disabled:true});
  opts.unshift({icon:'📊',title:'الجولة '+round+' من 3',desc:'المنافس: '+opponent.name+' · طابعه: '+intent.archetypeTitle+' · خطة الركن: '+gamePlan.title+' · الأسلوب المتوقع: '+intent.style+' · المسافة الحالية: '+combatDistanceLabel(session.distance)+' · '+combatDifficultyLabel(opponent.rating)+' · الطاقة '+c.energy+'%.',progress:opponent.rating,disabled:true});
@@ -8889,11 +8945,15 @@ function resolveCombatRound(actionId){
  const agePenalty=state.age>38?(state.age-38)*.8:0;
  const energyFactor=.62+c.energy/263;
  const styleVarietyModifier=combatStyleVarietyModifier(session.roundHistory,move.style);
- const moveRepetition=combatMoveRepetitionEffect(session.roundHistory,move.id);
  const communityFighter=session.communityFighterId?c.community.find(fighter=>fighter.id===session.communityFighterId):null;
+ const moveAdaptation=combatMoveAdaptationEffect(opponent,session.roundHistory,communityFighter&&communityFighter.moveMemory,move.id,session.communityFighterId);
+ const moveRepetition={repeats:moveAdaptation.repeats,playerPenalty:moveAdaptation.moveRepetitionPenalty,opponentBonus:moveAdaptation.opponentRepetitionBonus};
+ const moveMemoryEffect={observations:moveAdaptation.observations,playerPenalty:moveAdaptation.moveMemoryPenalty,opponentBonus:moveAdaptation.opponentMemoryBonus};
+ const playerAdaptationPenalty=moveAdaptation.playerPenalty;
+ const opponentAdaptationBonus=moveAdaptation.opponentBonus;
  const communityAdjustment=communityFighter?clamp(Math.round((communityFighter.respect-communityFighter.tension)/25),-4,4):0;
- const playerScore=(c.technique*.19+c.power*.18+c.speed*.16+c.defense*.13+c.stamina*.10+state.stats.health*.10+(state.specialCareer.level||1)*.8+move.power*.12+coachBonus-c.injury*.16-agePenalty)*energyFactor+counterBonus+styleVarietyModifier-moveRepetition.playerPenalty+communityAdjustment+masteryBonus+reaction.playerBonus+reactionTiming.bonus+distanceResult.playerBonus+planEffect.scoreBonus+integrityBoostBonus;
- const opponentScore=opponent.rating+(Math.random()*12-6)+(round-1)*1.2+reaction.opponentBonus+distanceResult.opponentBonus+moveRepetition.opponentBonus;
+ const playerScore=(c.technique*.19+c.power*.18+c.speed*.16+c.defense*.13+c.stamina*.10+state.stats.health*.10+(state.specialCareer.level||1)*.8+move.power*.12+coachBonus-c.injury*.16-agePenalty)*energyFactor+counterBonus+styleVarietyModifier-playerAdaptationPenalty+communityAdjustment+masteryBonus+reaction.playerBonus+reactionTiming.bonus+distanceResult.playerBonus+planEffect.scoreBonus+integrityBoostBonus;
+ const opponentScore=opponent.rating+(Math.random()*12-6)+(round-1)*1.2+reaction.opponentBonus+distanceResult.opponentBonus+opponentAdaptationBonus;
  const healthBefore=clamp(state.stats.health),injuryBefore=clamp(c.injury);
  const impact=combatRoundImpact(opponent.rating,c.defense,reaction.quality,reactionTiming.bonus);
  const appliedHealthDamage=Math.min(healthBefore,impact.healthDamage);
@@ -8906,7 +8966,7 @@ function resolveCombatRound(actionId){
  const nextMasteryUses=learnedMove?Math.min(100,masteryUses+1):masteryUses;
  if(learnedMove)c.moveMastery[move.id]=nextMasteryUses;
  session.playerScore+=playerScore;session.opponentScore+=opponentScore;
- session.roundHistory.push({round,actionId:move.id,actionTitle:move.title,style:move.style,gamePlan:planId,gamePlanBonus:planEffect.scoreBonus,styleVarietyModifier,moveRepetitionCount:moveRepetition.repeats,moveRepetitionPenalty:moveRepetition.playerPenalty,opponentAdaptationBonus:moveRepetition.opponentBonus,distanceBefore:distanceResult.before,moveRange:distanceResult.range,distancePlayerBonus:distanceResult.playerBonus,distanceOpponentBonus:distanceResult.opponentBonus,distanceAfter:distanceResult.after,opponentStyle,playerScore,opponentScore,masteryLevel,masteryBonus,masteryUses:nextMasteryUses,integrityBoostBonus,
+ session.roundHistory.push({round,actionId:move.id,actionTitle:move.title,style:move.style,gamePlan:planId,gamePlanBonus:planEffect.scoreBonus,styleVarietyModifier,moveRepetitionCount:moveRepetition.repeats,moveRepetitionPenalty:moveRepetition.playerPenalty,opponentAdaptationBonus:moveRepetition.opponentBonus,moveMemoryObservations:moveMemoryEffect.observations,moveMemoryPenalty:moveMemoryEffect.playerPenalty,opponentMemoryBonus:moveMemoryEffect.opponentBonus,distanceBefore:distanceResult.before,moveRange:distanceResult.range,distancePlayerBonus:distanceResult.playerBonus,distanceOpponentBonus:distanceResult.opponentBonus,distanceAfter:distanceResult.after,opponentStyle,playerScore,opponentScore,masteryLevel,masteryBonus,masteryUses:nextMasteryUses,integrityBoostBonus,
   intentStyle:intent.style,intentTitle:intent.title,reactionId:reaction.id,reactionTitle:reaction.title,reactionQuality:reaction.quality,
   reactionPlayerBonus:reaction.playerBonus,reactionOpponentBonus:reaction.opponentBonus,reactionCost:energyResult.reactionCost,
   reactionTimeMs:reactionTiming.elapsedMs,reactionTimingBonus:reactionTiming.bonus,reactionTimingAssist:session.reactionTimingAssist===true,
@@ -8915,9 +8975,9 @@ function resolveCombatRound(actionId){
   injuryBefore,injuryGain:appliedInjuryGain,injuryAfter:c.injury});
  session.lastStyle=move.style;session.lastMoveId=move.id;session.distance=distanceResult.after;
  const styleVarietyNote=styleVarietyModifier>0?' · تنويع الأسلوب +'+styleVarietyModifier+' نقاط':styleVarietyModifier<0?' · تكرار الأسلوب -'+Math.abs(styleVarietyModifier)+' نقاط':'';
- const repetitionNote=moveRepetition.repeats>0?' · قرأ المنافس تكرار الحركة: خصم '+moveRepetition.playerPenalty+' نقطة ومنح نفسه '+moveRepetition.opponentBonus+' نقطة.':'';
+ const adaptationNote=moveAdaptation.playerPenalty>0?' · قراءة المنافس: خصم '+moveAdaptation.playerPenalty+' نقطة ومنح المنافس '+moveAdaptation.opponentBonus+' نقطة ('+moveAdaptation.repeats+' تكرارات داخل النزال و'+moveAdaptation.observations+' استخدامات سابقة).':'';
  const distanceNote=' · المسافة '+combatDistanceLabel(distanceResult.before)+' · مدى الحركة '+combatDistanceLabel(distanceResult.range)+' · أفضلية المسافة '+(distanceResult.playerBonus>=0?'+':'')+distanceResult.playerBonus+' · المسافة التالية '+combatDistanceLabel(distanceResult.after);
- log('🥊','انتهت الجولة '+round,move.title+' · إشارة المنافس '+intent.title+' · طابع المنافس '+intent.archetypeTitle+' · '+intent.read+' · خطة الركن '+gamePlanTitleForLog(planId)+' ('+(planEffect.scoreBonus>=0?'+':'')+planEffect.scoreBonus+' نقاط) · ردك '+reaction.title+' ('+reaction.quality+') · توقيت الاستجابة '+reactionTiming.label+(reactionTiming.bonus?' +'+reactionTiming.bonus+' نقاط':'')+styleVarietyNote+repetitionNote+distanceNote+' · نقاط الجولة '+Math.round(playerScore)+' مقابل '+Math.round(opponentScore)+' · الطاقة المتبقية '+c.energy+'% · الصحة -'+appliedHealthDamage+'%'+(appliedInjuryGain?' · إصابة +'+appliedInjuryGain+'%':'')+'.'+(energyResult.energyRecovery?' · استعدت '+energyResult.energyRecovery+' طاقة.':''),'');
+ log('🥊','انتهت الجولة '+round,move.title+' · إشارة المنافس '+intent.title+' · طابع المنافس '+intent.archetypeTitle+' · '+intent.read+' · خطة الركن '+gamePlanTitleForLog(planId)+' ('+(planEffect.scoreBonus>=0?'+':'')+planEffect.scoreBonus+' نقاط) · ردك '+reaction.title+' ('+reaction.quality+') · توقيت الاستجابة '+reactionTiming.label+(reactionTiming.bonus?' +'+reactionTiming.bonus+' نقاط':'')+styleVarietyNote+adaptationNote+distanceNote+' · نقاط الجولة '+Math.round(playerScore)+' مقابل '+Math.round(opponentScore)+' · الطاقة المتبقية '+c.energy+'% · الصحة -'+appliedHealthDamage+'%'+(appliedInjuryGain?' · إصابة +'+appliedInjuryGain+'%':'')+'.'+(energyResult.energyRecovery?' · استعدت '+energyResult.energyRecovery+' طاقة.':''),'');
  if(learnedMove&&combatMoveMasteryLevel(nextMasteryUses)>masteryLevel){
   log('🥋','تطور إتقان الحركة','وصلت إلى مستوى '+combatMoveMasteryLabel(nextMasteryUses)+' في '+move.title+'. أصبحت تضيف '+combatMoveMasteryBonus(nextMasteryUses)+' نقاط إلى أدائك عند استخدامها.','good');
   achievement('إتقان حركة قتالية: '+move.title+' · '+combatMoveMasteryLabel(nextMasteryUses));
@@ -8978,10 +9038,12 @@ function resolveCombatBout(mode,opponent,moveId,probabilityOverride=null,session
  }
  const memoryResult=communityFighter?recordCombatRivalStyleMemory(communityFighter,session&&session.roundHistory):{added:0,total:0,bouts:0};
  if(memoryResult.added>0)detail+=' احتفظ '+communityFighter.name+' بملاحظات تكتيكية عن أساليبك بعد هذه المواجهة.';
+ const moveMemoryResult=communityFighter?recordCombatRivalMoveMemory(communityFighter,session&&session.roundHistory):{added:0,total:0};
+ if(moveMemoryResult.added>0)detail+=' حفظ المنافس سجل الحركات التي استخدمتها ليقرأ تكرارها في مواجهاتكما القادمة.';
  c.rank=c.leaguePoints>=150?4:c.leaguePoints>=100?3:c.leaguePoints>=60?2:c.leaguePoints>=25?1:0;
  const fanbaseResult=growCombatFanbase(c,won,mode,state.fame,c.rank);
  if(fanbaseResult.gain>0)detail+=' زاد جمهورك بمقدار '+fmt(fanbaseResult.gain)+' متابع، وأصبح إجمالي جمهورك '+fmt(fanbaseResult.total)+'.';
- const roundSummary=session?session.roundHistory.map(item=>({round:item.round,move:item.actionTitle,style:item.style,gamePlan:normalizeCombatGamePlan(item.gamePlan||session.gamePlan),gamePlanBonus:item.gamePlanBonus||0,styleVarietyModifier:item.styleVarietyModifier||0,moveRepetitionCount:item.moveRepetitionCount||0,moveRepetitionPenalty:item.moveRepetitionPenalty||0,opponentAdaptationBonus:item.opponentAdaptationBonus||0,distanceBefore:['close','mid','long'].includes(item.distanceBefore)?item.distanceBefore:null,moveRange:['close','mid','long'].includes(item.moveRange)?item.moveRange:null,distancePlayerBonus:item.distancePlayerBonus||0,distanceOpponentBonus:item.distanceOpponentBonus||0,distanceAfter:['close','mid','long'].includes(item.distanceAfter)?item.distanceAfter:null,opponentStyle:item.opponentStyle,playerScore:Math.round(item.playerScore),opponentScore:Math.round(item.opponentScore),masteryLevel:item.masteryLevel||0,masteryBonus:item.masteryBonus||0,masteryUses:item.masteryUses||0,integrityBoostBonus:item.integrityBoostBonus||0,
+ const roundSummary=session?session.roundHistory.map(item=>({round:item.round,move:item.actionTitle,style:item.style,gamePlan:normalizeCombatGamePlan(item.gamePlan||session.gamePlan),gamePlanBonus:item.gamePlanBonus||0,styleVarietyModifier:item.styleVarietyModifier||0,moveRepetitionCount:item.moveRepetitionCount||0,moveRepetitionPenalty:item.moveRepetitionPenalty||0,opponentAdaptationBonus:item.opponentAdaptationBonus||0,moveMemoryObservations:item.moveMemoryObservations||0,moveMemoryPenalty:item.moveMemoryPenalty||0,opponentMemoryBonus:item.opponentMemoryBonus||0,distanceBefore:['close','mid','long'].includes(item.distanceBefore)?item.distanceBefore:null,moveRange:['close','mid','long'].includes(item.moveRange)?item.moveRange:null,distancePlayerBonus:item.distancePlayerBonus||0,distanceOpponentBonus:item.distanceOpponentBonus||0,distanceAfter:['close','mid','long'].includes(item.distanceAfter)?item.distanceAfter:null,opponentStyle:item.opponentStyle,playerScore:Math.round(item.playerScore),opponentScore:Math.round(item.opponentScore),masteryLevel:item.masteryLevel||0,masteryBonus:item.masteryBonus||0,masteryUses:item.masteryUses||0,integrityBoostBonus:item.integrityBoostBonus||0,
   intentStyle:item.intentStyle||item.opponentStyle,intentTitle:item.intentTitle||'',reactionId:item.reactionId||'',reactionTitle:item.reactionTitle||'',reactionQuality:item.reactionQuality||'',reactionCost:item.reactionCost===undefined?null:item.reactionCost,
   reactionTimeMs:item.reactionTimeMs===undefined?null:item.reactionTimeMs,reactionTimingBonus:item.reactionTimingBonus||0,reactionTimingAssist:item.reactionTimingAssist===true,
   energyBefore:item.energyBefore===undefined?null:item.energyBefore,energyCost:item.energyCost===undefined?null:item.energyCost,energyRecovery:item.energyRecovery===undefined?null:item.energyRecovery,energyAfter:item.energyAfter===undefined?null:item.energyAfter,

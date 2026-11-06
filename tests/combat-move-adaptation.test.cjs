@@ -94,12 +94,13 @@ test('استكمال النزال المحفوظ يحتفظ بتفاصيل ال�
   assert.equal(legacy.roundHistory[0].opponentAdaptationBonus, 0);
 });
 
-test('حساب الجولة والواجهة وسجل النزال تستخدم قاعدة التكيف نفسها', () => {
-  assert.match(app, /combatMoveRepetitionEffect\(session\.roundHistory,move\.id\)/);
-  assert.match(app, /combatMoveRepetitionEffect\(session\.roundHistory,tactic\.id\)/);
-  assert.match(app, /styleVarietyModifier-moveRepetition\.playerPenalty/);
-  assert.match(app, /distanceResult\.opponentBonus\+moveRepetition\.opponentBonus/);
+test('حساب الجولة والواجهة وسجل النزال تستخدم قاعدة التكيف الموحّدة نفسها', () => {
+  assert.match(app, /combatMoveAdaptationEffect\(opponent,session\.roundHistory,rememberedRival&&rememberedRival\.moveMemory,move\.id/);
+  assert.match(app, /combatMoveAdaptationEffect\(opponent,session\.roundHistory,rememberedRival&&rememberedRival\.moveMemory,tactic\.id/);
+  assert.match(app, /styleVarietyModifier-playerAdaptationPenalty/);
+  assert.match(app, /distanceResult\.opponentBonus\+opponentAdaptationBonus/);
   assert.match(app, /moveRepetitionCount:moveRepetition\.repeats/);
+  assert.match(app, /moveMemoryObservations:moveMemoryEffect\.observations/);
   assert.match(app, /moveRepetitionPenalty:item\.moveRepetitionPenalty\|\|0/);
   assert.match(app, /تكرار الأسلوب أو الحركة نفسها يسهّل قراءة خطتك/);
 });

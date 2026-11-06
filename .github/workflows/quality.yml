@@ -53,6 +53,10 @@ jobs:
         run: node --check tests/combat-move-adaptation.test.cjs
       - name: Run repeated-move adaptation regression tests
         run: node --test tests/combat-move-adaptation.test.cjs
+      - name: Check persistent rival move-memory test syntax
+        run: node --check tests/combat-move-memory.test.cjs
+      - name: Run persistent rival move-memory regression tests
+        run: node --test tests/combat-move-memory.test.cjs
       - name: Check combat balance regression test syntax
         run: node --check tests/combat-balance.test.cjs
       - name: Run deterministic combat strategy balance matrix
