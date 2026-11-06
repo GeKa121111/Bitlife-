@@ -468,8 +468,9 @@ function normalizeCombatStyleMemory(raw){
 }
 function normalizeCombatMoveMemory(raw){
  if(!Array.isArray(raw))return [];
- const validIds=new Set(combatMoveCatalog.concat(combatTacticCatalog).map(item=>item&&item.id).filter(id=>typeof id==='string'));
- return raw.filter(id=>typeof id==='string'&&validIds.has(id)).slice(-12);
+ const catalog=(typeof combatMoveCatalog!=='undefined'?combatMoveCatalog:[]).concat(typeof combatTacticCatalog!=='undefined'?combatTacticCatalog:[]);
+ const validIds=new Set(catalog.map(item=>item&&item.id).filter(id=>typeof id==='string'));
+ return raw.filter(id=>typeof id==='string'&&id.length<=48&&(!validIds.size||validIds.has(id))).slice(-12);
 }
 function combatRivalDeathAge(profile){
  const id=String(profile&&profile.id||'rival');
@@ -613,7 +614,8 @@ function combatMoveMemorySummary(fighter){
  memory.forEach(id=>{counts[id]=(counts[id]||0)+1;});
  let actionId='',observations=0;
  Object.keys(counts).forEach(id=>{if(counts[id]>observations){actionId=id;observations=counts[id];}});
- const move=combatMoveCatalog.concat(combatTacticCatalog).find(item=>item.id===actionId);
+ const catalog=(typeof combatMoveCatalog!=='undefined'?combatMoveCatalog:[]).concat(typeof combatTacticCatalog!=='undefined'?combatTacticCatalog:[]);
+ const move=catalog.find(item=>item.id===actionId);
  return {actionId,observations,title:move?move.title:actionId};
 }
 function combatMoveAdaptationEffect(opponent,roundHistory,rawMemory,actionId,opponentId=''){
