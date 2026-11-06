@@ -18,6 +18,7 @@ function functionSource(name, nextName) {
 
 const executable = [
   functionSource('isValidSaveData', 'save'),
+  functionSource('lifeRibbon', 'newLifeSetup'),
   functionSource('restoreRewindStorageValue', 'restoreCemeteryAfterFailedRewind'),
   functionSource('restoreCemeteryAfterFailedRewind', 'removeLifeFromCemeteryForRewind'),
   functionSource('removeLifeFromCemeteryForRewind', 'rewindToSnapshot'),
@@ -253,7 +254,9 @@ test('أرشيف وفاة قديم بمعرّف بديل يُزال فقط عن�
     cause: 'سبب طبيعي',
     netWorth: 100,
     country: 'مصر',
-    children: 0
+    children: 0,
+    ribbon: 'حياة عادية',
+    accomplishments: []
   };
   harness.values.set('cemetery', JSON.stringify(archived));
   harness.values.set('cemeteryBackup', JSON.stringify(archived));
@@ -264,4 +267,43 @@ test('أرشيف وفاة قديم بمعرّف بديل يُزال فقط عن�
   assert.equal(harness.context.state.status, 'حي');
   assert.deepEqual(storedList(harness, 'cemetery'), [{ id: 'life-2', name: 'سليم', age: 76 }]);
   assert.deepEqual(storedList(harness, 'cemeteryBackup'), [{ id: 'life-2', name: 'سليم', age: 76 }]);
+});
+
+
+test('المطابقة القديمة الغامضة توقف الرجوع ولا تحذف أي سجل', () => {
+  const harness = createHarness({ snapshotLifeId: null });
+  const current = harness.context.state;
+  current.lifeId = 'migrated-life-id';
+  current.place = { country: 'مصر' };
+  current.bank = 100;
+  current.assets = [];
+  current.investments = [];
+  current.debt = 0;
+  current.children = [];
+  current.cemeterySaved = true;
+
+  const archived = storedList(harness, 'cemetery');
+  const legacy = {
+    ...archived[0],
+    id: 'life-legacy-a',
+    cause: 'سبب طبيعي',
+    netWorth: 100,
+    country: 'مصر',
+    children: 0,
+    ribbon: 'حياة عادية',
+    accomplishments: []
+  };
+  archived[0] = legacy;
+  archived.push({ ...legacy, id: 'life-legacy-b' });
+  harness.values.set('cemetery', JSON.stringify(archived));
+  harness.values.set('cemeteryBackup', JSON.stringify(archived));
+  const originalState = current;
+
+  harness.context.rewindToSnapshot(0);
+
+  assert.equal(harness.context.state, originalState);
+  assert.equal(harness.context.state.status, 'متوفى');
+  assert.deepEqual(storedList(harness, 'cemetery'), archived);
+  assert.deepEqual(storedList(harness, 'cemeteryBackup'), archived);
+  assert.equal(harness.context.calls.save, 0);
 });
