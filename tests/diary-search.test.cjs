@@ -90,10 +90,60 @@ test('مسح البحث يعيد إظهار العناصر ويحتفظ بحال
   assert.equal(originallyHidden.hidden, true);
 });
 
+test('تصفية اليوميات حسب نوع الحدث تتكامل مع البحث وتحافظ على العناصر المخفية أصلًا', () => {
+  const search = api();
+  const age25 = node('agegroup', 'العمر 25');
+  const positive = node('logcard good', 'التحاق بالجامعة');
+  const negative = node('logcard bad', 'إصابة أثناء السفر');
+  const special = node('logcard special', 'جائزة التميز');
+  const archived = node('logcard bad', 'سجل مؤرشف', true);
+  const age26 = node('agegroup', 'العمر 26');
+  const work = node('logcard good', 'بداية العمل');
+  const feed = { children: [age25, positive, negative, special, archived, age26, work] };
+
+  const positives = search.filterFeed(feed, '', 'good');
+  assert.deepEqual(JSON.parse(JSON.stringify(positives)), { visibleCount: 2, totalCount: 5 });
+  assert.equal(positive.hidden, false);
+  assert.equal(work.hidden, false);
+  assert.equal(negative.hidden, true);
+  assert.equal(special.hidden, true);
+  assert.equal(archived.hidden, true);
+  assert.equal(age25.hidden, false);
+  assert.equal(age26.hidden, false);
+
+  const combined = search.filterFeed(feed, 'جامعة', 'bad');
+  assert.deepEqual(JSON.parse(JSON.stringify(combined)), { visibleCount: 0, totalCount: 5 });
+  assert.equal(age25.hidden, true);
+  assert.equal(age26.hidden, true);
+
+  const negatives = search.filterFeed(feed, '', 'bad');
+  assert.deepEqual(JSON.parse(JSON.stringify(negatives)), { visibleCount: 1, totalCount: 5 });
+  assert.equal(negative.hidden, false);
+  assert.equal(archived.hidden, true);
+
+  const all = search.filterFeed(feed, '', 'all');
+  assert.deepEqual(JSON.parse(JSON.stringify(all)), { visibleCount: 4, totalCount: 5 });
+  assert.equal(archived.hidden, true, 'an event hidden before filtering must remain hidden');
+  assert.equal(age25.hidden, false);
+  assert.equal(age26.hidden, false);
+});
+
+test('واجهة التصفية تعرض أزرارًا معلّمة دلاليًا ولا تغيّر الحفظ', () => {
+  assert.match(source, /diarySearchFilters/);
+  assert.match(source, /aria-pressed/);
+  assert.match(source, /تصفية الأحداث حسب النوع/);
+  assert.ok(source.includes('filterFeed(feed, input.value, activeTone)'));
+  assert.match(css, /\.diary-search-filter\[aria-pressed="true"\]/);
+  assert.doesNotMatch(source, /localStorage|sessionStorage|fetch\s*\(/,
+    'the diary filter must not access storage or the network');
+});
+
 test('المكوّن لا يقرأ الحفظ أو يكتب فيه ولا يرسل بيانات إلى الشبكة', () => {
   assert.doesNotMatch(source, /localStorage|sessionStorage|fetch\s*\(|XMLHttpRequest|sendBeacon/);
   assert.match(source, /aria-live/);
   assert.match(source, /MutationObserver/);
   assert.match(css, /#lifeFeed \.logcard\[hidden\]/);
   assert.match(css, /prefers-reduced-motion/);
+  assert.match(css, /\.diary-search-filters/);
+  assert.match(css, /min-height:44px/);
 });
