@@ -230,7 +230,7 @@ let state, dead=false, logBatchDepth=0, logBatchDirty=false, saveRecovered=false
 let renderedLogSnapshot=null, renderedFeedElement=null;
 let activeDialogKeyHandler=null, modalReturnFocus=null;
 let managedCompanyId = null;
-let uiSettings={theme:'light',textScale:'normal',sound:false,haptics:false,boosts:true,combatTimingAssist:false};
+let uiSettings={theme:'light',textScale:'normal',sound:false,haptics:false,boosts:true,combatTimingAssist:false,reducedMotion:false};
 const STAT_BOOST_CATALOG={
  happiness:{label:'السعادة',icon:'🌿',free:{title:'وقت مع شخص قريب',cost:0,gain:7,description:'خصص وقتًا لشخص ترتاح له، حتى لو بمكالمة قصيرة.'},paid:{title:'خروجة تغيّر الجو',cost:500,gain:12,description:'نشاط ترفيهي بسيط يساعدك تفصل عن الضغط.'}},
  health:{label:'الصحة',icon:'🩺',free:{title:'راحة وتعافٍ',cost:0,gain:5,description:'خفف المجهود وخد وقتًا كافيًا للراحة.'},paid:{title:'فحص طبي',cost:1200,gain:13,description:'اطمئن على حالتك من خلال زيارة طبية داخل اللعبة.'}},
@@ -11224,12 +11224,12 @@ function startAsChild(index){
 }
 function applyUiSettings(){
  const body=document.body;
- if(body&&body.classList){body.classList.toggle('theme-dark',uiSettings.theme==='dark');body.classList.toggle('theme-gold',uiSettings.theme==='gold');body.classList.toggle('text-large',uiSettings.textScale==='large');}
+ if(body&&body.classList){body.classList.toggle('theme-dark',uiSettings.theme==='dark');body.classList.toggle('theme-gold',uiSettings.theme==='gold');body.classList.toggle('text-large',uiSettings.textScale==='large');body.classList.toggle('reduce-motion',uiSettings.reducedMotion===true);}
  if(typeof document.querySelector==='function'){const themeMeta=document.querySelector('meta[name="theme-color"]');if(themeMeta)themeMeta.setAttribute('content',uiSettings.theme==='dark'?'#17232c':uiSettings.theme==='gold'?'#c3982a':'#075b9b');}
 }
 
 function normalizeUiSettings(raw){
- const defaults={theme:'light',textScale:'normal',sound:false,haptics:false,boosts:true,combatTimingAssist:false};
+ const defaults={theme:'light',textScale:'normal',sound:false,haptics:false,boosts:true,combatTimingAssist:false,reducedMotion:false};
  if(!raw||typeof raw!=='object'||Array.isArray(raw))return defaults;
  return {
   theme:['dark','light','gold'].includes(raw.theme)?raw.theme:defaults.theme,
@@ -11237,7 +11237,8 @@ function normalizeUiSettings(raw){
   sound:typeof raw.sound==='boolean'?raw.sound:defaults.sound,
   haptics:typeof raw.haptics==='boolean'?raw.haptics:defaults.haptics,
   boosts:typeof raw.boosts==='boolean'?raw.boosts:defaults.boosts,
-  combatTimingAssist:typeof raw.combatTimingAssist==='boolean'?raw.combatTimingAssist:defaults.combatTimingAssist
+  combatTimingAssist:typeof raw.combatTimingAssist==='boolean'?raw.combatTimingAssist:defaults.combatTimingAssist,
+  reducedMotion:typeof raw.reducedMotion==='boolean'?raw.reducedMotion:defaults.reducedMotion
  };
 }
 function loadUiSettings(){
@@ -11351,11 +11352,12 @@ function settingsMenu(){
   choice('🛡️','حماية بيانات الحفظ','اطلب من المتصفح تقليل احتمال حذف بيانات اللعبة تلقائيًا. لا تمنع المسح اليدوي ولا تغني عن نسخة خارجية.',()=>requestStorageProtectionFromSettings()),
   choice(uiSettings.theme==='dark'?'☀️':'🌙',uiSettings.theme==='dark'?'تفعيل الوضع الفاتح':'تفعيل الوضع الداكن','المظهر الحالي: '+(uiSettings.theme==='dark'?'داكن':uiSettings.theme==='gold'?'ذهبي':'فاتح')+'.',()=>{uiSettings.theme=uiSettings.theme==='dark'?'light':'dark';persistUiSettings();settingsMenu();}),
   choice('🔤',uiSettings.textScale==='large'?'حجم النص: كبير':'حجم النص: عادي','كبّر نص سجل الأحداث والقرارات لسهولة القراءة.',()=>{uiSettings.textScale=uiSettings.textScale==='large'?'normal':'large';persistUiSettings();settingsMenu();}),
+  choice(uiSettings.reducedMotion?'🧘':'🎞️',uiSettings.reducedMotion?'تقليل الحركة: مفعّل':'تقليل الحركة: متوقف','قلّل حركات البطاقات والانتقالات غير الضرورية. يظل تفضيل تقليل الحركة في إعدادات جهازك محترمًا دائمًا.',()=>{uiSettings.reducedMotion=!uiSettings.reducedMotion;persistUiSettings();settingsMenu();}),
   choice(uiSettings.sound?'🔊':'🔇',uiSettings.sound?'الأصوات: مفعّلة':'الأصوات: متوقفة','نغمة قصيرة أصلية عند اختيار قرار أو التقدم سنة. لا تعمل إلا بعد تفعيلها.',()=>{uiSettings.sound=!uiSettings.sound;persistUiSettings();settingsMenu();}),
   choice(uiSettings.haptics?'📳':'📴',uiSettings.haptics?'الاهتزاز: مفعّل':'الاهتزاز: متوقف','اهتزاز خفيف عند القرارات والتقدم سنة، إذا كان المتصفح والجهاز يدعمانه.',()=>{uiSettings.haptics=!uiSettings.haptics;persistUiSettings();settingsMenu();}),
   choice(uiSettings.combatTimingAssist?'🧭':'⏱️',uiSettings.combatTimingAssist?'مساعدة توقيت القتال: مفعّلة':'مساعدة توقيت القتال: متوقفة','عند التفعيل لا تحتاج إلى استجابة سريعة؛ تحصل على مكافأة توقيت ثابتة قدرها 4 نقاط. يطبق الاختيار من الجولة التالية.',()=>{uiSettings.combatTimingAssist=!uiSettings.combatTimingAssist;persistUiSettings();settingsMenu();}),
   choice(uiSettings.boosts?'✨':'▫️',uiSettings.boosts?'فرص تحسين الإحصاءات: مفعّلة':'فرص تحسين الإحصاءات: متوقفة','تظهر فرصة واحدة في السنة عند انخفاض أحد الإحصاءات الأساسية، مع اختيار مجاني أو مدفوع.',()=>{uiSettings.boosts=!uiSettings.boosts;persistUiSettings();renderStats();settingsMenu();}),
-  choice('↩️','استعادة إعدادات العرض الافتراضية','العودة للوضع الفاتح وحجم النص العادي وإيقاف الصوت والاهتزاز.',()=>{uiSettings={theme:'light',textScale:'normal',sound:false,haptics:false,boosts:true,combatTimingAssist:false};persistUiSettings();renderStats();settingsMenu();})
+  choice('↩️','استعادة إعدادات العرض الافتراضية','العودة للوضع الفاتح وحجم النص العادي وإيقاف الصوت والاهتزاز وإعادة تفضيل الحركة للوضع الافتراضي.',()=>{uiSettings={theme:'light',textScale:'normal',sound:false,haptics:false,boosts:true,combatTimingAssist:false,reducedMotion:false};persistUiSettings();renderStats();settingsMenu();})
  ];
  if(perkOwned('goldTheme'))opts.push(choice(uiSettings.theme==='gold'?'⭐':'🌟',uiSettings.theme==='gold'?'إيقاف الطابع الذهبي':'تفعيل الطابع الذهبي','هوية لونية ذهبية أصلية للعبة حياة.',()=>togglePremiumPerk('goldTheme')));
  else opts.push(choice('⭐','الطابع الذهبي','افتحه من متجر مزايا حياة لتفعيله من هنا.',premiumPerksMenu));

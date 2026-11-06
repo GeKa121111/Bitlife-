@@ -737,6 +737,23 @@ async function run() {
     const enabledSensorySettings = await page.evaluate(() => JSON.parse(localStorage.getItem('hayah_ui_settings_v1') || '{}'));
     assert.equal(enabledSensorySettings.sound, true, 'sound setting should persist when enabled');
     assert.equal(enabledSensorySettings.haptics, true, 'haptics setting should persist when enabled');
+    const lifeSaveBeforeMotionToggle = await page.evaluate(() => localStorage.getItem('hekayat_hayah_save_v1'));
+    await page.locator('.choice').filter({ hasText: 'تقليل الحركة: متوقف' }).click();
+    const reducedMotionEnabled = await page.evaluate(() => ({
+      setting: JSON.parse(localStorage.getItem('hayah_ui_settings_v1') || '{}').reducedMotion,
+      bodyClass: document.body.classList.contains('reduce-motion'),
+      lifeSave: localStorage.getItem('hekayat_hayah_save_v1')
+    }));
+    assert.equal(reducedMotionEnabled.setting, true, 'manual reduced motion should persist in UI settings');
+    assert.equal(reducedMotionEnabled.bodyClass, true, 'manual reduced motion should be applied to the page');
+    assert.equal(reducedMotionEnabled.lifeSave, lifeSaveBeforeMotionToggle, 'changing motion preference must not rewrite the life save');
+    await page.locator('.choice').filter({ hasText: 'تقليل الحركة: مفعّل' }).click();
+    const reducedMotionDisabled = await page.evaluate(() => ({
+      setting: JSON.parse(localStorage.getItem('hayah_ui_settings_v1') || '{}').reducedMotion,
+      bodyClass: document.body.classList.contains('reduce-motion')
+    }));
+    assert.equal(reducedMotionDisabled.setting, false, 'manual reduced motion should be reversible');
+    assert.equal(reducedMotionDisabled.bodyClass, false, 'the reduced-motion class should be removed when disabled');
     await page.locator('.choice').filter({ hasText: 'مساعدة توقيت القتال: متوقفة' }).click();
     const enabledCombatAssist = await page.evaluate(() => JSON.parse(localStorage.getItem('hayah_ui_settings_v1') || '{}'));
     assert.equal(enabledCombatAssist.combatTimingAssist, true, 'combat timing assistance should persist independently of the life save');

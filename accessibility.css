@@ -150,3 +150,16 @@ body.text-large #modalRoot .primarybtn {
   min-height: 50px !important;
   font-size: 15px !important;
 }
+
+
+/* User-controlled reduced-motion preference; the operating-system preference is also respected in style.css. */
+body.reduce-motion *,
+body.reduce-motion *::before,
+body.reduce-motion *::after {
+  animation-duration: .01ms !important;
+  animation-iteration-count: 1 !important;
+  animation-delay: 0ms !important;
+  transition-duration: .01ms !important;
+  transition-delay: 0ms !important;
+  scroll-behavior: auto !important;
+}
