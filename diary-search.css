@@ -1,5 +1,5 @@
 .diary-search-tools{display:flex;align-items:center;flex:0 0 auto;gap:6px}
-.diary-search-toggle{min-width:44px;min-height:36px;padding:6px 10px;border:1px solid var(--hayah-line,#dce9e4);border-radius:10px;background:var(--hayah-surface,#fff);color:var(--hayah-primary,#176b66);font-size:11px;font-weight:900}
+.diary-search-toggle{min-width:44px;min-height:44px;padding:6px 10px;border:1px solid var(--hayah-line,#dce9e4);border-radius:10px;background:var(--hayah-surface,#fff);color:var(--hayah-primary,#176b66);font-size:11px;font-weight:900}
 .diary-search-toggle:focus-visible,.diary-search-clear:focus-visible,#diarySearchInput:focus-visible{outline:3px solid var(--hayah-focus-ring,#e5b34b);outline-offset:2px}
 .diary-search-panel{display:flex;flex-direction:column;gap:7px;padding:10px 14px;background:var(--hayah-surface,#fff);border-bottom:1px solid var(--hayah-line,#dce9e4);color:var(--hayah-text,#203640)}
 .diary-search-panel[hidden]{display:none!important}
