@@ -6,6 +6,8 @@
     .normalize('NFKC')
     .replace(/[\u0610-\u061A\u064B-\u065F\u0670\u06D6-\u06ED]/g, '')
     .replace(/\u0640/g, '')
+    .replace(/[\u0622\u0623\u0625\u0671]/g, '\u0627')
+    .replace(/\u0649/g, '\u064a')
     .toLocaleLowerCase('ar')
     .trim();
 
@@ -127,6 +129,7 @@
       filterFeed(feed, '');
       clear.disabled = true;
       status.textContent = '';
+      toggle.focus();
     };
 
     toggle.addEventListener('click', () => {
@@ -153,7 +156,6 @@
         update();
       } else {
         close();
-        toggle.focus();
       }
     });
 
