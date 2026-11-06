@@ -12,6 +12,10 @@ const routes = new Map([
   ['/index.html', 'index.html'],
   ['/style.css', 'style.css'],
   ['/accessibility.css', 'accessibility.css'],
+  ['/diary-search.css', 'diary-search.css'],
+  ['/diary-search.js', 'diary-search.js'],
+  ['/pwa-update.css', 'pwa-update.css'],
+  ['/pwa-update.js', 'pwa-update.js'],
   ['/app.js', 'app.js'],
   ['/sw.js', 'sw.js'],
   ['/manifest.webmanifest', 'manifest.webmanifest'],
@@ -206,6 +210,7 @@ async function run() {
     const origin = 'http://127.0.0.1:' + address.port;
     await page.goto(origin + '/', { waitUntil: 'domcontentloaded' });
     await page.locator('#characterName').waitFor();
+
     const touchTargetProbe = await page.evaluate(() => {
       const coarsePointer = matchMedia('(pointer: coarse)').matches
         || matchMedia('(any-pointer: coarse)').matches;
@@ -1353,11 +1358,36 @@ async function run() {
       const saved = JSON.parse(localStorage.getItem('hekayat_hayah_save_v1') || 'null');
       return saved && saved.age === 31;
     });
-    await page.waitForFunction(() => {
-      const feed = document.querySelector('#lifeFeed');
-      return feed && feed.scrollHeight > feed.clientHeight &&
-        feed.scrollHeight - feed.scrollTop - feed.clientHeight <= 8;
-    });
+    try {
+      await page.waitForFunction(() => {
+        const feed = document.querySelector('#lifeFeed');
+        return feed && feed.scrollHeight > feed.clientHeight &&
+          feed.scrollHeight - feed.scrollTop - feed.clientHeight <= 8;
+      });
+    } catch (error) {
+      const feedDiagnostics = await page.evaluate(() => {
+        const feed = document.querySelector('#lifeFeed');
+        const heading = document.querySelector('.story-heading');
+        const toggle = document.querySelector('#diarySearchToggle');
+        return {
+          feed: feed ? {
+            scrollTop: feed.scrollTop,
+            scrollHeight: feed.scrollHeight,
+            clientHeight: feed.clientHeight,
+            cardCount: feed.querySelectorAll('.logcard').length,
+            hiddenCards: feed.querySelectorAll('.logcard[hidden]').length
+          } : null,
+          headingHeight: heading?.getBoundingClientRect().height ?? null,
+          searchToggle: toggle ? {
+            width: toggle.getBoundingClientRect().width,
+            height: toggle.getBoundingClientRect().height
+          } : null,
+          searchPanelHidden: document.querySelector('#diarySearchPanel')?.hidden ?? null
+        };
+      });
+      console.error('Feed restoration diagnostics:', JSON.stringify(feedDiagnostics));
+      throw error;
+    }
     assert.ok((await page.locator('#characterName').innerText()).includes(seedSave.name), 'the player identity should persist after reload');
     const persistedProducts = await page.evaluate(() => {
       const saved = JSON.parse(localStorage.getItem('hekayat_hayah_save_v1') || 'null');
@@ -2969,6 +2999,39 @@ async function run() {
     await page.evaluate(original => localStorage.setItem('hekayat_hayah_save_v1', original), originalBoostSave);
     await page.reload({ waitUntil: 'domcontentloaded' });
 
+    const diarySearchToggle = page.getByRole('button', { name: 'بحث في يوميات الحياة' });
+    await diarySearchToggle.waitFor();
+    const savedLifeBeforeDiarySearch = await page.evaluate(() => localStorage.getItem('hekayat_hayah_save_v1'));
+    await page.locator('#lifeFeed').evaluate(feed => {
+      const match = document.createElement('article');
+      match.className = 'logcard';
+      match.dataset.diarySearchProbe = 'match';
+      match.textContent = 'حدث اختبار يوميات فريد';
+      const miss = document.createElement('article');
+      miss.className = 'logcard';
+      miss.dataset.diarySearchProbe = 'miss';
+      miss.textContent = 'حدث آخر لا يطابق العبارة';
+      feed.append(match, miss);
+    });
+    await diarySearchToggle.click();
+    const diarySearchInput = page.getByRole('searchbox', { name: 'ابحث في أحداث حياتك' });
+    await diarySearchInput.waitFor();
+    await diarySearchInput.fill('اختبار يوميات فريد');
+    await page.waitForFunction(() => {
+      const match = document.querySelector('[data-diary-search-probe="match"]');
+      const miss = document.querySelector('[data-diary-search-probe="miss"]');
+      return !!match && !match.hidden && !!miss && miss.hidden;
+    });
+    assert.equal(await page.locator('[data-diary-search-probe="match"]').isVisible(), true);
+    assert.equal(await page.locator('[data-diary-search-probe="miss"]').isVisible(), false);
+    await page.locator('#diarySearchClear').click();
+    assert.equal(await page.locator('[data-diary-search-probe]').evaluateAll(nodes => nodes.every(node => !node.hidden)), true,
+      'clearing diary search should restore both matching and non-matching events');
+    await page.locator('[data-diary-search-probe]').evaluateAll(nodes => nodes.forEach(node => node.remove()));
+    await diarySearchToggle.click();
+    assert.equal(await page.locator('#diarySearchPanel').isVisible(), false);
+    assert.equal(await page.evaluate(() => localStorage.getItem('hekayat_hayah_save_v1')), savedLifeBeforeDiarySearch,
+      'searching the diary must not mutate the current life save');
     await page.goto(origin + '/backup-check.html', { waitUntil: 'domcontentloaded' });
     const saveBeforeLocalInspection = await page.evaluate(() => localStorage.getItem('hekayat_hayah_save_v1'));
     const makeCheckerSnapshot = age => JSON.stringify({ snapshotVersion: 1, logLength: 0, state: { version: 1, lifeId: 909, name: 'اختبار فحص الحفظ', age, stats: {}, status: 'حي' } });

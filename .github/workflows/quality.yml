@@ -131,6 +131,10 @@ jobs:
         run: node --check tests/accessibility-reduced-motion.test.cjs
       - name: Run reduced-motion accessibility preference tests
         run: node --test tests/accessibility-reduced-motion.test.cjs
+      - name: Check Arabic diary search test syntax
+        run: node --check tests/diary-search.test.cjs
+      - name: Run Arabic diary search logic tests
+        run: node --test tests/diary-search.test.cjs
       - name: Install Playwright and Chromium
         run: |
           npm install --no-save --package-lock=false playwright@1.64.1
@@ -141,3 +145,7 @@ jobs:
         run: node tests/browser.cjs
       - name: Run expanded large-text accessibility browser checks
         run: node tests/accessibility-large-text.browser.cjs
+      - name: Check diary search browser test syntax
+        run: node --check tests/diary-search.browser.cjs
+      - name: Run searchable diary browser checks
+        run: node tests/diary-search.browser.cjs
