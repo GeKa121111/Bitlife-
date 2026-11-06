@@ -10146,7 +10146,7 @@ function timeMachineMenu(){
   closeModal();info('⏳','الرجوع بالزمن','الميزة بتظهر بعد ما تتقدم سنة واحدة على الأقل في الحياة.');return;
  }
  const isDead=state.status==='متوفى',history=state.timeMachineSnapshots,opts=[];
- const expanded=perkOwned('expandedTime'),historyLimit=expanded?60:8;
+ const expanded=perkOwned('expandedTime');
  const historyDescription=(expanded?'ذاكرة الزمن الموسّعة تتيح حتى 60 نقطة سنوية.':'الذاكرة الأساسية تتيح حتى 8 نقاط سنوية.')+' المتاح حاليًا '+history.length+' نقطة. للحفاظ على مساحة الحفظ، يُقلّص السجل من الأقدم عند الحاجة، وقد لا تُضاف نقطة جديدة إذا تجاوز حجمها الحد الآمن التقريبي.';
  for(let index=history.length-1;index>=0;index--){
   try{
