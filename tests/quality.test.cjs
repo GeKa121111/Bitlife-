@@ -1532,12 +1532,12 @@ test('مسيرة القتال تدير ثلاث جولات وتستعيد الن
   assert.match(resolveRoundSource, /counterBonus\+styleVarietyModifier-playerAdaptationPenalty\+communityAdjustment/);
   assert.match(resolveRoundSource, /const moveAdaptation=combatMoveAdaptationEffect\(opponent,session\.roundHistory/);
   assert.match(resolveRoundSource, /styleVarietyModifier,/);
-  assert.match(resolveRoundSource, /combatOpponentIntent\(opponent,round,session\.lastStyle,session\.roundHistory,session\.communityFighterId,rememberedRival\?rememberedRival\.styleMemory:\[\]\)/);
+  assert.match(resolveRoundSource, /combatOpponentIntent\(opponent,round,session\.lastStyle,session\.roundHistory,session\.communityFighterId,rememberedRival\?rememberedRival\.styleMemory:\[\],rememberedRival\?rememberedRival\.moveMemory:\[\]\)/);
   assert.match(resolveRoundSource, /intent\.read/);
   const roundMenuSource = functionSource('combatBoutRoundMenu', 'chooseCombatReaction');
   assert.match(roundMenuSource, /combatStyleVarietyModifier\(session\.roundHistory,move\.style\)/);
   assert.match(roundMenuSource, /تنويع الأسلوب/);
-  assert.match(roundMenuSource, /combatOpponentIntent\(opponent,round,session\.lastStyle,session\.roundHistory,session\.communityFighterId,rememberedRival\?rememberedRival\.styleMemory:\[\]\)/);
+  assert.match(roundMenuSource, /combatOpponentIntent\(opponent,round,session\.lastStyle,session\.roundHistory,session\.communityFighterId,rememberedRival\?rememberedRival\.styleMemory:\[\],rememberedRival\?rememberedRival\.moveMemory:\[\]\)/);
   assert.match(roundMenuSource, /intent\.read/);
 
 
