@@ -70,6 +70,10 @@ function createContext(overrides = {}) {
     advanceCombatCommunity() {
       return true;
     },
+    save() {
+      context.saveCalls = (context.saveCalls || 0) + 1;
+      return true;
+    },
     document: {
       getElementById() {
         return null;
@@ -263,8 +267,10 @@ test('تقدم مجتمع المقاتلين يشغل الموسم تلقائي�
   await Promise.resolve();
   assert.equal(career.communityLeague.season, 1);
   assert.equal(career.communityLeague.lastSimulatedAge, 25);
+  assert.equal(context.saveCalls, 1, 'the season result must be persisted after the annual community update');
   assert.equal(context.advanceCombatCommunity(career), false);
   assert.equal(career.communityLeague.season, 1);
+  assert.equal(context.saveCalls, 1, 'a duplicate same-age callback must not write another season save');
 
   context.state.age += 1;
   canAdvance = true;
@@ -272,6 +278,7 @@ test('تقدم مجتمع المقاتلين يشغل الموسم تلقائي�
   await Promise.resolve();
   assert.equal(career.communityLeague.season, 2);
   assert.equal(career.communityLeague.lastSimulatedAge, 26);
+  assert.equal(context.saveCalls, 2);
 });
 
 test('زر التقدم بالعمر يشغل موسم المنافسين كمسار احتياطي بعد اكتمال تحديث السنة', async () => {
@@ -293,9 +300,11 @@ test('زر التقدم بالعمر يشغل موسم المنافسين كمس
   await Promise.resolve();
 
   assert.equal(career.communityLeague.season, 1);
+  assert.equal(context.saveCalls, 1, 'the age-button fallback must persist the newly simulated season');
   ageButton.listeners.click();
   await Promise.resolve();
   assert.equal(career.communityLeague.season, 1);
+  assert.equal(context.saveCalls, 1, 'the fallback must not save a duplicate season in the same age');
 });
 
 test('مراقب واجهة المجتمع يضيف سجل المواسم مرة واحدة ويعرضه عند الضغط', () => {
