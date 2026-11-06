@@ -91,7 +91,8 @@ test('التقدم بالعمر يطبق ميزانية التخزين، وال�
   assert.match(app, /const KEY = 'hekayat_hayah_save_v1';/);
   assert.match(app, /const BACKUP_KEY = 'hekayat_hayah_save_backup_v1';/);
 });
-\n
+
+
 test('نسخة الحفظ الاحتياطية القديمة تُقلّص سجل الرجوع قبل كتابتها دون تغيير بقية الحياة', () => {
   const oldHistory = Array.from({ length: 8 }, (_, index) =>
     JSON.stringify({ age: index + 1, payload: 'x'.repeat(50000) }));
@@ -128,7 +129,7 @@ test('نسخة الحفظ الاحتياطية القديمة تُقلّص سج�
     perkOwned() { return false; },
     $() { return { textContent: '' }; }
   };
-  vm.runInNewContext(helperSource + '\\n' + saveSource + '\\nglobalThis.runSave = save;', context);
+  vm.runInNewContext(helperSource + '\n' + saveSource + '\nglobalThis.runSave = save;', context);
 
   assert.equal(context.runSave(), true);
   const backup = JSON.parse(values.get('life-backup'));
