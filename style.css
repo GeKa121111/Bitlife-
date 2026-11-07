@@ -2926,7 +2926,7 @@ body.text-large #modalRoot .choice .cdesc{font-size:13px!important;line-height:1
  #app>.topbar,#app>.hero,#app>.story-heading,#app>.feed,#app>.bottom-dock,#app>.bottom-dock>.nav,#app>.bottom-dock>.stats,#modalRoot .modal,#modalRoot .modalhead,#modalRoot .drawer-body,#modalRoot .event-summary,#modalRoot .event-body{forced-color-adjust:auto!important;background:Canvas!important;color:CanvasText!important;border-color:CanvasText!important;box-shadow:none!important}
  #app .name,#app .story-heading h1,#app .wealthlabel,#app .wealthnum,#app .logtitle,#app .logtext,#app .statlabel,#app .statvalue,#app .navbtn,#modalRoot .modaltitle,#modalRoot .desc,#modalRoot .choice .ctitle{color:CanvasText!important}
  #app .navbtn.active{background:Highlight!important;color:HighlightText!important;outline:1px solid HighlightText!important;outline-offset:-2px!important}
- #app .agebtn{background:Highlight!important;color:HighlightText!important;border:2px solid HighlightText!important;box-shadow:none!important}
+ #app .agebtn{forced-color-adjust:none!important;background:Highlight!important;color:HighlightText!important;border:2px solid HighlightText!important;box-shadow:none!important}
  #modalRoot .choice{background:Canvas!important;color:CanvasText!important;border:1px solid ButtonText!important}
  #modalRoot button:focus-visible,#app button:focus-visible{outline:2px solid Highlight!important;outline-offset:2px!important}
 }
