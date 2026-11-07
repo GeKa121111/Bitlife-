@@ -905,5 +905,5 @@ assert.match(finalUi, /#modalRoot \.event-modal \.choice\{[\s\S]*?background:var
 assert.match(finalUi, /#modalRoot \.modalhead,#modalRoot \.drawer-head/);
 assert.match(finalUi, /#modalRoot \.event-modal \.event-banner \.closebtn[\s\S]*?min-height:44px!important/);
 assert.match(finalUi, /@media \(forced-colors: active\)/);
-assert.match(finalUi, /background:ButtonText!important/);
+assert.match(finalUi, /background:Highlight!important/);
 assert.match(finalUi, /color:HighlightText!important/);
