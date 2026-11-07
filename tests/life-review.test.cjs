@@ -109,5 +109,5 @@ test('القيم المالية غير الرقمية لا تفسد الحساب
   assert.equal(summary.assetsValue, 1000);
   assert.equal(summary.investmentsValue, 0);
   assert.equal(summary.netWorth, 1000);
-  assert.match(formatMoney(1200, 'ج.م'), /ج\\.م/);
+  assert.ok(formatMoney(1200, 'ج.م').endsWith('ج.م'));
 });
