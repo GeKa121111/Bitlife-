@@ -2811,6 +2811,12 @@ async function run() {
       'a persisted annual season should not exceed twenty NPC bouts');
     assert.ok(persistedCommunitySeason.league.standings.every(row => row.played <= 2),
       'a rival should not be scheduled for more than two bouts in one season');
+
+    // Aging closes the combat-community dialog; reopen the live menus before continuing the social-interaction flow.
+    await page.locator('[data-panel="career"]').click();
+    await page.locator('.choice').filter({ hasText: 'المهن الخاصة والشهرة' }).click();
+    await page.locator('.choice').filter({ hasText: 'إدارة مسيرة القتال' }).click();
+    await page.locator('.choice').filter({ hasText: 'مجتمع المقاتلين' }).click();
     await page.locator('.choice').filter({ hasText: 'آدم منصور' }).click();
     const communityBeforeChat = await page.evaluate(() => {
       const saved = JSON.parse(localStorage.getItem('hekayat_hayah_save_v1') || 'null');
