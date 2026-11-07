@@ -6,6 +6,7 @@
   const MAX_SEASON_BOUTS = MAX_FIGHTERS;
   const CAREER_RECORD_LIMIT = 40;
   const MAX_IMPORTED_CAREER_RECORDS = 500;
+  const MAX_IMPORTED_HISTORY_RECORDS = 500;
   const PLAYOFF_QUALIFIER_LIMIT = 4;
   const PLAYOFF_MATCH_LIMIT = 3;
 
@@ -271,6 +272,41 @@
     return 'أرشيف آخر ' + recent.length + ' موسمًا محفوظًا (الأحدث أولًا):\n\n' + lines.join('\n\n');
   }
 
+  function normalizeCommunityHistory(history) {
+    const entries = (Array.isArray(history) ? history : [])
+      .slice(-MAX_IMPORTED_HISTORY_RECORDS)
+      .map((item, index) => {
+        if (!item || typeof item !== 'object' || Array.isArray(item)) return null;
+        const topThree = Array.isArray(item.topThree)
+          ? item.topThree.slice(0, 3).map((entry, rowIndex) => normalizeStanding(entry, rowIndex)).filter(Boolean)
+          : [];
+        return {
+          index,
+          entry: {
+            season: boundedInteger(item.season, 0, 0, 1000000),
+            age: boundedInteger(item.age, 0, 0, 150),
+            matches: boundedInteger(item.matches, 0, 0, 190),
+            leaderId: safeId(item.leaderId),
+            leaderName: safeName(item.leaderName, 'لم يُحسم'),
+            leaderPoints: boundedInteger(item.leaderPoints, 0, 0, 1000000),
+            topThree,
+            risingStar: normalizeRisingStar(item.risingStar),
+            playoffs: normalizePlayoffSummary(item.playoffs)
+          }
+        };
+      })
+      .filter(Boolean);
+
+    // Imported backups can contain out-of-order season rows. Restore a stable
+    // chronological order before retaining the latest bounded history window.
+    entries.sort((a, b) =>
+      a.entry.season - b.entry.season ||
+      a.entry.age - b.entry.age ||
+      a.index - b.index
+    );
+    return entries.slice(-HISTORY_LIMIT).map(item => item.entry);
+  }
+
   function normalizeCommunityLeague(value) {
     const source = value && typeof value === 'object' && !Array.isArray(value) ? value : {};
     const standings = Array.isArray(source.standings)
@@ -291,25 +327,7 @@
           })
       ).slice(0, CAREER_RECORD_LIMIT)
       : [];
-    const history = Array.isArray(source.history)
-      ? source.history.slice(-HISTORY_LIMIT).map(item => {
-        if (!item || typeof item !== 'object' || Array.isArray(item)) return null;
-        const topThree = Array.isArray(item.topThree)
-          ? item.topThree.slice(0, 3).map((entry, index) => normalizeStanding(entry, index)).filter(Boolean)
-          : [];
-        return {
-          season: boundedInteger(item.season, 0, 0, 1000000),
-          age: boundedInteger(item.age, 0, 0, 150),
-          matches: boundedInteger(item.matches, 0, 0, 190),
-          leaderId: safeId(item.leaderId),
-          leaderName: safeName(item.leaderName, 'لم يُحسم'),
-          leaderPoints: boundedInteger(item.leaderPoints, 0, 0, 1000000),
-          topThree,
-          risingStar: normalizeRisingStar(item.risingStar),
-          playoffs: normalizePlayoffSummary(item.playoffs)
-        };
-      }).filter(Boolean)
-      : [];
+    const history = normalizeCommunityHistory(source.history);
 
     return {
       season: boundedInteger(source.season, 0, 0, 1000000),
