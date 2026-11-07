@@ -7,6 +7,8 @@ const path = require('node:path');
 const { chromium } = require('playwright');
 
 const root = path.resolve(__dirname, '..');
+const visualArtifactsDir = path.join(root, 'test-results', 'hayah-identity');
+fs.mkdirSync(visualArtifactsDir, { recursive: true });
 const routes = new Map([
   ['/', 'index.html'],
   ['/index.html', 'index.html'],
@@ -620,6 +622,26 @@ async function run() {
         assert.ok(target.left >= -1 && target.right <= width + 1,
           selector + ' should remain inside the ' + width + 'px viewport');
       }
+    }
+    for (const viewport of [
+      { width: 320, height: 844 },
+      { width: 390, height: 844 },
+      { width: 710, height: 1100 }
+    ]) {
+      await page.setViewportSize({ width: viewport.width, height: viewport.height });
+      await page.waitForTimeout(50);
+      const identityProbe = await page.evaluate(() => ({
+        header: getComputedStyle(document.querySelector('#app > .topbar')).backgroundColor,
+        mark: getComputedStyle(document.querySelector('#app .brand-symbol')).backgroundColor,
+        appWidth: document.querySelector('#app').getBoundingClientRect().width
+      }));
+      assert.equal(identityProbe.header, 'rgb(18, 59, 58)', 'the shell should use Hayah deep jade');
+      assert.equal(identityProbe.mark, 'rgb(192, 108, 79)', 'the brand mark should use Hayah clay');
+      assert.ok(identityProbe.appWidth <= viewport.width + 1, viewport.width + 'px capture should fit the viewport');
+      await page.screenshot({
+        path: path.join(visualArtifactsDir, 'hayah-identity-' + viewport.width + '.png'),
+        fullPage: false
+      });
     }
     await page.setViewportSize({ width: 390, height: 844 });
     await page.waitForTimeout(40);
