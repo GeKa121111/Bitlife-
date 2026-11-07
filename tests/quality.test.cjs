@@ -2986,7 +2986,7 @@ test('تكبير النص وتقليل الحركة يظلان مدعومين ف
   assert.match(accessibleUi, /body\.text-large #modalRoot \.choice \.cdesc\{font-size:13px!important/);
   assert.match(accessibleUi, /body\.text-large #app \.sectiontitle\{font-size:16px!important/);
   assert.match(accessibleUi, /body\.text-large #app \.navbtn/);
-  assert.match(accessibleUi, /@media\(prefers-reduced-motion:reduce\)/);
+  assert.match(accessibleUi, /@media\s*\(prefers-reduced-motion:\s*reduce\)/);
   assert.match(accessibleUi, /animation:none!important/);
   assert.match(accessibleUi, /transition:none!important/);
   assert.match(accessibleUi, /animation-duration:\.01ms!important/);
