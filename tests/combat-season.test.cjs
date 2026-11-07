@@ -1032,7 +1032,7 @@ test('سجل جوائز المواسم يوضح غياب الجوائز في ا�
   };
   const description = findDescription(root);
   assert.ok(description);
-  assert.match(description.textContent, /المواسم القديمة/);
+  assert.match(description.textContent, /أقدم من إضافة الجائزة/);
   assert.match(description.textContent, /لم يحقق أي منافس تحسنًا إيجابيًا/);
   assert.match(description.textContent, /لن تُنشأ نتائج بأثر رجعي/);
 });
