@@ -137,6 +137,8 @@ test('الحفظ القديم بلا سجل مواسم يحصل على بنية 
   assert.ok(result);
   assert.equal(career.communityLeague.season, 1);
   assert.equal(career.communityLeague.history.length, 1);
+  assert.equal(career.communityLeague.records.length, 3);
+  assert.ok(career.communityLeague.records.every(record => record.seasons === 1));
   assert.equal(career.leagueWins, 7);
   assert.equal(career.leaguePoints, 90);
   assert.equal(career.champion, true);
@@ -359,11 +361,57 @@ test('واجهة الموسم تعمل حتى إذا لم تكن دوال الن
 
   context.HayahCombatSeason.openMenu();
   assert.equal(root.children.length, 1);
+  const careerChoice = findChoiceByTitle(root, 'سجل المسيرة التاريخي');
+  assert.ok(careerChoice);
+  careerChoice.listeners.click();
+  const careerDescription = (function find(node) {
+    if (!node) return null;
+    if (node.className === 'desc') return node;
+    for (const child of node.children || []) { const found = find(child); if (found) return found; }
+    return null;
+  })(root);
+  assert.match(careerDescription.textContent, /لا توجد أرقام مسيرة/);
   const back = findChoiceByTitle(root, 'رجوع إلى مجتمع المقاتلين');
   assert.ok(back);
   back.listeners.click();
   assert.equal(context.communityMenuOpened, true,
     'the fallback back action should reopen the real community menu instead of restoring inert markup');
+});
+
+test('سجل المسيرة التراكمي يستمر بعد انتهاء أرشيف المواسم ولا يتكرر في العمر نفسه', () => {
+  const context = createContext();
+  const career = makeCareer();
+  for (let age = 20; age < 35; age += 1) { context.state.age = age; assert.ok(context.HayahCombatSeason.simulate(career)); }
+  const records = career.communityLeague.records;
+  assert.equal(career.communityLeague.season, 15);
+  assert.equal(career.communityLeague.history.length, 12);
+  assert.equal(records.length, 3);
+  assert.ok(records.every(record => record.seasons === 15));
+  assert.ok(records.every(record => record.played === 30));
+  assert.ok(records.every(record => record.wins + record.draws + record.losses === 30));
+  assert.equal(records.reduce((total, record) => total + record.titles, 0), 15);
+  const before = JSON.parse(JSON.stringify(records));
+  assert.equal(context.HayahCombatSeason.simulate(career), null);
+  assert.deepEqual(JSON.parse(JSON.stringify(career.communityLeague.records)), before);
+  career.community = career.community.filter(fighter => fighter.id !== 'rival-c');
+  context.state.age += 1;
+  assert.ok(context.HayahCombatSeason.simulate(career));
+  assert.ok(career.communityLeague.records.some(record => record.id === 'rival-c'),
+    'a removed or retired rival keeps their historical career record');
+});
+
+test('واجهة سجل المسيرة تعرض الأرقام التراكمية وتفصلها عن لقب العالم', () => {
+  const context = createContext();
+  const career = makeCareer();
+  context.career = career;
+  context.HayahCombatSeason.simulate(career);
+  context.HayahCombatSeason.openMenu();
+  const recordBook = context.lastModal[3].find(option => option.title === 'سجل المسيرة التاريخي');
+  assert.ok(recordBook);
+  recordBook.action();
+  assert.equal(context.lastInfo[1], 'سجل المسيرة التاريخي');
+  assert.match(context.lastInfo[2], /لقب موسم/);
+  assert.match(context.lastInfo[2], /ليس سجل لقب العالم/);
 });
 
 test('تطبيع سجل الموسم يحد القيم ويحذف السجلات غير الصالحة', () => {
@@ -377,6 +425,7 @@ test('تطبيع سجل الموسم يحد القيم ويحذف السجلات
       { id: 'valid', position: 999, points: -1, played: 999, wins: 999, rating: 999 },
       { id: '', name: 'بلا معرّف' }
     ],
+    records: [null, { id: 'recorded', seasons: -5, played: 9999999, wins: 9999999, titles: 9999999, bestPosition: 999, points: 9999999999 }, { id: '', name: 'بلا معرّف' }],
     history: Array.from({ length: 15 }, (_, index) => ({
       season: index + 1,
       age: 200,
@@ -396,6 +445,11 @@ test('تطبيع سجل الموسم يحد القيم ويحذف السجلات
   assert.equal(normalized.standings[0].points, 0);
   assert.equal(normalized.standings[0].played, 20);
   assert.equal(normalized.standings[0].rating, 95);
+  assert.equal(normalized.records.length, 1);
+  assert.equal(normalized.records[0].seasons, 0);
+  assert.equal(normalized.records[0].played, 1000000);
+  assert.equal(normalized.records[0].bestPosition, 20);
+  assert.equal(normalized.records[0].titles, 1000000);
   assert.equal(normalized.history.length, 12);
   assert.equal(normalized.history[0].season, 4);
   assert.equal(normalized.history.at(-1).age, 150);

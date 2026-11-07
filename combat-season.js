@@ -4,6 +4,7 @@
   const HISTORY_LIMIT = 12;
   const MAX_FIGHTERS = 20;
   const MAX_SEASON_BOUTS = MAX_FIGHTERS;
+  const CAREER_RECORD_LIMIT = 40;
 
   function boundedNumber(value, fallback, min, max) {
     const number = Number(value);
@@ -40,10 +41,86 @@
     };
   }
 
+  function normalizeCareerRecord(item) {
+    if (!item || typeof item !== 'object' || Array.isArray(item)) return null;
+    const id = safeId(item.id);
+    if (!id) return null;
+    return {
+      id,
+      name: safeName(item.name, 'منافس'),
+      seasons: boundedInteger(item.seasons, 0, 0, 1000000),
+      played: boundedInteger(item.played, 0, 0, 1000000),
+      wins: boundedInteger(item.wins, 0, 0, 1000000),
+      draws: boundedInteger(item.draws, 0, 0, 1000000),
+      losses: boundedInteger(item.losses, 0, 0, 1000000),
+      points: boundedInteger(item.points, 0, 0, 1000000000),
+      titles: boundedInteger(item.titles, 0, 0, 1000000),
+      bestPosition: boundedInteger(item.bestPosition, MAX_FIGHTERS, 1, MAX_FIGHTERS),
+      lastSeason: boundedInteger(item.lastSeason, 0, 0, 1000000),
+      lastAge: boundedInteger(item.lastAge, 0, 0, 150)
+    };
+  }
+
+  function sortCommunityCareerRecords(records) {
+    return (Array.isArray(records) ? records : []).slice().sort((a, b) => {
+      if (b.titles !== a.titles) return b.titles - a.titles;
+      if (b.points !== a.points) return b.points - a.points;
+      if (b.wins !== a.wins) return b.wins - a.wins;
+      if (a.bestPosition !== b.bestPosition) return a.bestPosition - b.bestPosition;
+      return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
+    });
+  }
+
+  function updateCommunityCareerRecords(league, standings, season, age) {
+    const records = new Map((Array.isArray(league.records) ? league.records : [])
+      .map(record => [record.id, Object.assign({}, record)]));
+    standings.forEach(row => {
+      const record = records.get(row.id) || {
+        id: row.id, name: row.name, seasons: 0, played: 0, wins: 0, draws: 0,
+        losses: 0, points: 0, titles: 0, bestPosition: MAX_FIGHTERS, lastSeason: 0, lastAge: 0
+      };
+      record.name = safeName(row.name, record.name || 'منافس');
+      record.seasons = boundedInteger(record.seasons + 1, 0, 0, 1000000);
+      record.played = boundedInteger(record.played + row.played, 0, 0, 1000000);
+      record.wins = boundedInteger(record.wins + row.wins, 0, 0, 1000000);
+      record.draws = boundedInteger(record.draws + row.draws, 0, 0, 1000000);
+      record.losses = boundedInteger(record.losses + row.losses, 0, 0, 1000000);
+      record.points = boundedInteger(record.points + row.points, 0, 0, 1000000000);
+      record.titles = boundedInteger(record.titles + (row.position === 1 ? 1 : 0), 0, 0, 1000000);
+      record.bestPosition = Math.min(
+        boundedInteger(record.bestPosition, MAX_FIGHTERS, 1, MAX_FIGHTERS),
+        boundedInteger(row.position, MAX_FIGHTERS, 1, MAX_FIGHTERS)
+      );
+      record.lastSeason = boundedInteger(season, 0, 0, 1000000);
+      record.lastAge = boundedInteger(age, 0, 0, 150);
+      records.set(row.id, record);
+    });
+    league.records = sortCommunityCareerRecords(Array.from(records.values())).slice(0, CAREER_RECORD_LIMIT);
+  }
+
+  function communityCareerRecordSummary(records) {
+    const leaders = sortCommunityCareerRecords(records).slice(0, 10);
+    if (!leaders.length) return 'لا توجد أرقام مسيرة محفوظة بعد. ستظهر هنا نتائج المنافسين التراكمية بعد أول موسم مكتمل.';
+    const lines = leaders.map((record, index) =>
+      (index + 1) + '. ' + record.name + ' — ' + record.titles + ' لقب موسم · ' +
+      record.wins + ' فوز · ' + record.draws + ' تعادل · ' + record.losses +
+      ' خسارة · ' + record.played + ' نزال · أفضل مركز ' + record.bestPosition
+    );
+    return 'السجل التراكمي لمنافسي المجتمع، وليس سجل لقب العالم الخاص باللاعب.\n\n' + lines.join('\n');
+  }
+
   function normalizeCommunityLeague(value) {
     const source = value && typeof value === 'object' && !Array.isArray(value) ? value : {};
     const standings = Array.isArray(source.standings)
       ? source.standings.slice(0, MAX_FIGHTERS).map(normalizeStanding).filter(Boolean)
+      : [];
+    const recordIds = new Set();
+    const records = Array.isArray(source.records)
+      ? source.records.slice(-CAREER_RECORD_LIMIT).map(normalizeCareerRecord).filter(record => {
+        if (!record || recordIds.has(record.id)) return false;
+        recordIds.add(record.id);
+        return true;
+      })
       : [];
     const history = Array.isArray(source.history)
       ? source.history.slice(-HISTORY_LIMIT).map(item => {
@@ -68,7 +145,8 @@
       lastSimulatedAge: boundedInteger(source.lastSimulatedAge, -1, -1, 150),
       matchesLastSeason: boundedInteger(source.matchesLastSeason, 0, 0, 190),
       standings,
-      history
+      history,
+      records
     };
   }
 
@@ -279,6 +357,8 @@
       return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
     }).map((row, index) => Object.assign({}, row, { position: index + 1 }));
 
+    updateCommunityCareerRecords(league, standings, season, age);
+
     const leader = standings[0];
     const topThree = standings.slice(0, 3).map(row => Object.assign({}, row));
     const historyEntry = {
@@ -352,7 +432,7 @@
     return button;
   }
 
-  function renderFallbackSeasonModal(summary, onBack) {
+  function renderFallbackSeasonModal(summary, careerSummary, onBack) {
     const doc = global.document;
     const root = doc && typeof doc.getElementById === 'function' ? doc.getElementById('modalRoot') : null;
     if (!root || typeof doc.createElement !== 'function') return;
@@ -406,6 +486,13 @@
         description.textContent = 'يواجه كل منافس خصمين نشطين في الموسم عند توفر ثلاثة منافسين أو أكثر، بحد أقصى 20 مواجهة للموسم. الفوز 3 نقاط والتعادل نقطة والخسارة بلا نقاط. النتائج تخص مجتمع المنافسين ولا تغيّر لقب اللاعب.';
       }
     );
+    const career = createFallbackChoice(
+      doc,
+      '📚',
+      'سجل المسيرة التاريخي',
+      'اعرض الانتصارات والألقاب والأرقام التراكمية للمنافسين.',
+      () => { description.textContent = careerSummary; }
+    );
     const back = createFallbackChoice(
       doc,
       '↩️',
@@ -414,6 +501,7 @@
       returnToPrevious
     );
     grid.appendChild(about);
+    grid.appendChild(career);
     grid.appendChild(back);
     body.appendChild(grid);
     panel.appendChild(header);
@@ -440,6 +528,7 @@
     const league = normalizeCommunityLeague(career.communityLeague);
     career.communityLeague = league;
 
+    const careerSummary = communityCareerRecordSummary(league.records);
     const lines = league.standings.slice(0, 10).map(row =>
       row.position + '. ' + row.name + ' — ' + row.points + ' نقطة · ' +
       row.wins + ' فوز · ' + row.draws + ' تعادل · ' + row.losses + ' خسارة'
@@ -458,13 +547,16 @@
         makeChoice('📘', 'عن نظام المواسم', 'يواجه كل منافس خصمين نشطين في الموسم عند توفر ثلاثة منافسين أو أكثر. النتائج حتمية وقابلة لإعادة الاختبار، وتؤثر تدريجيًا في الزخم والاحترام.', () => {
           showInfo('📘', 'عن نظام المواسم', 'تُحاكى مواجهات المنافسين مرة واحدة لكل عمر عند تقدم الحياة. لا تُحتسب هذه النتائج ضمن سجل نزالات اللاعب أو دفاعاته عن لقب العالم.');
         }),
+        makeChoice('📚', 'سجل المسيرة التاريخي', 'أرقام تراكمية للمواسم والانتصارات والألقاب وأفضل مركز لكل منافس.', () => {
+          showInfo('📚', 'سجل المسيرة التاريخي', careerSummary);
+        }),
         makeChoice('↩️', 'رجوع إلى مجتمع المقاتلين', '', backToMenu)
       ];
       showModal('🏆', 'سجل مواسم المنافسين', summary, options);
       return;
     }
 
-    renderFallbackSeasonModal(summary, backToMenu);
+    renderFallbackSeasonModal(summary, careerSummary, backToMenu);
   }
 
   function injectSeasonMenuEntry(root) {
