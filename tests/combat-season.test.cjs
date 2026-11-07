@@ -308,6 +308,67 @@ test('الحفظ القديم بلا بيانات تصفيات يظل صالحً
   assert.equal(normalized.history[0].playoffs, null);
 });
 
+test('تطبيع التصفيات يرفض البذور أو المواجهات أو النهائي غير المتسق', () => {
+  const context = createContext();
+  const career = makeCareer();
+  career.community.push({ id: 'rival-d', name: 'منافس د', rating: 82, momentum: 1, respect: 60, tension: 20 });
+  const result = context.HayahCombatSeason.simulate(career);
+  const valid = JSON.parse(JSON.stringify(result.playoffs));
+  const normalizeHistory = playoffs => context.HayahCombatSeason.normalize({
+    history: [{
+      season: 1,
+      age: 25,
+      matches: 23,
+      leaderId: 'rival-a',
+      leaderName: 'منافس أ',
+      leaderPoints: 10,
+      topThree: [],
+      playoffs
+    }]
+  }).history[0].playoffs;
+
+  assert.ok(normalizeHistory(valid), 'the generated seeded bracket should remain valid');
+
+  const wrongPairings = JSON.parse(JSON.stringify(valid));
+  const [first, second, third, fourth] = wrongPairings.qualifiers;
+  Object.assign(wrongPairings.matches[0], {
+    aId: first.id, aName: first.name, bId: second.id, bName: second.name,
+    winnerId: first.id, winnerName: first.name
+  });
+  Object.assign(wrongPairings.matches[1], {
+    aId: third.id, aName: third.name, bId: fourth.id, bName: fourth.name,
+    winnerId: third.id, winnerName: third.name
+  });
+  Object.assign(wrongPairings.matches[2], {
+    aId: first.id, aName: first.name, bId: third.id, bName: third.name,
+    winnerId: first.id, winnerName: first.name
+  });
+  wrongPairings.championId = first.id;
+  wrongPairings.championName = first.name;
+  assert.equal(normalizeHistory(wrongPairings), null,
+    'an imported bracket must not silently replace the 1-vs-4 and 2-vs-3 seeded pairings');
+
+  const duplicateSeeds = JSON.parse(JSON.stringify(valid));
+  duplicateSeeds.qualifiers[1].seed = duplicateSeeds.qualifiers[0].seed;
+  assert.equal(normalizeHistory(duplicateSeeds), null,
+    'qualifier seeds must be unique and in their recorded order');
+
+  const invalidFinal = JSON.parse(JSON.stringify(valid));
+  const semifinalWinners = new Set(invalidFinal.matches.slice(0, 2).map(match => match.winnerId));
+  const nonFinalist = invalidFinal.qualifiers.find(qualifier => !semifinalWinners.has(qualifier.id));
+  const finalist = invalidFinal.matches[0].winnerId;
+  const finalistName = invalidFinal.qualifiers.find(qualifier => qualifier.id === finalist).name;
+  Object.assign(invalidFinal.matches[2], {
+    aId: finalist, aName: finalistName,
+    bId: nonFinalist.id, bName: nonFinalist.name,
+    winnerId: finalist, winnerName: finalistName
+  });
+  invalidFinal.championId = finalist;
+  invalidFinal.championName = finalistName;
+  assert.equal(normalizeHistory(invalidFinal), null,
+    'the final must contain both semifinal winners, not an eliminated qualifier');
+});
+
 test('سجل النتائج يحتفظ بآخر 12 موسمًا فقط', () => {
   const context = createContext();
   const career = makeCareer();
