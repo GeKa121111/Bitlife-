@@ -246,7 +246,7 @@ test('أفضل أربعة يتأهلون إلى نصف النهائي والنه
   assert.ok(result.playoffs);
   assert.deepEqual(JSON.parse(JSON.stringify(result.playoffs.qualifiers.map(item => item.seed))), [1, 2, 3, 4]);
   assert.equal(result.playoffs.matches.length, 3);
-  assert.deepEqual(result.playoffs.matches.map(match => match.round), ['semi-final', 'semi-final', 'final']);
+  assert.deepEqual(JSON.parse(JSON.stringify(result.playoffs.matches.map(match => match.round))), ['semi-final', 'semi-final', 'final']);
   assert.equal(result.playoffs.matches[2].winnerId, result.playoffs.championId);
   assert.ok(result.playoffs.qualifiers.every(item => ['rival-a', 'rival-b', 'rival-c', 'rival-d'].includes(item.id)));
   const records = career.communityLeague.records;
@@ -257,6 +257,20 @@ test('أفضل أربعة يتأهلون إلى نصف النهائي والنه
   assert.equal(career.leagueWins, 7);
   assert.equal(career.leaguePoints, 90);
   assert.equal(career.champion, true);
+
+  assert.deepEqual(
+    JSON.parse(JSON.stringify(result.playoffs.qualifiers.map(item => item.id))),
+    JSON.parse(JSON.stringify(result.standings.slice(0, 4).map(item => item.id)))
+  );
+  const normalized = context.HayahCombatSeason.normalize(career.communityLeague);
+  assert.deepEqual(
+    JSON.parse(JSON.stringify(normalized.history[0].playoffs)),
+    JSON.parse(JSON.stringify(result.playoffs))
+  );
+  const recordsBeforeRepeat = JSON.stringify(career.communityLeague.records);
+  assert.equal(context.HayahCombatSeason.simulate(career), null);
+  assert.equal(JSON.stringify(career.communityLeague.records), recordsBeforeRepeat,
+    'same-age replay must not award duplicate playoff appearances or titles');
 });
 
 test('لا تُقام تصفيات إذا كان عدد المنافسين النشطين أقل من أربعة', () => {
