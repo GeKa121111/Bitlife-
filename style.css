@@ -2902,7 +2902,7 @@ body.text-large #app .navbtn,body.text-large #app .statlabel{font-size:11px!impo
 body.text-large #modalRoot .choice .ctitle{font-size:15px!important;line-height:1.6!important}
 body.text-large #modalRoot .choice .cdesc{font-size:13px!important;line-height:1.7!important}
 @media(max-width:380px){
- #app .topbar{grid-template-columns:36px minmax(0,1fr) auto!important;gap:5px!important;padding-inline:8px!important}
+ #app .topbar{grid-template-columns:44px minmax(0,1fr) auto!important;gap:5px!important;padding-inline:8px!important}
  #app .brandlogo{font-size:15px!important;gap:6px!important}#app .brandlogo .brand-symbol{width:29px!important;height:29px!important;font-size:17px!important}
  #app .brandlogo strong{font-size:16px!important}#app .top-actions{gap:4px!important}
  #app .hero{min-height:76px!important;padding:8px 9px!important;gap:7px!important}#app .avatar{width:44px!important;height:44px!important;flex-basis:44px!important}
