@@ -5897,7 +5897,7 @@ function advanceAge(){
   const playerCareerActive=!!(state.specialCareer&&state.specialCareer.id==='fighter'&&cc.retired!==true);
   if(playerCareerActive)cc.energy=100;
   advanceCombatCommunityWorld(cc);
-  if(window.HayahCombatSeason&&typeof window.HayahCombatSeason.simulate==='function')window.HayahCombatSeason.simulate(cc);
+  if(typeof window!=='undefined'&&window.HayahCombatSeason&&typeof window.HayahCombatSeason.simulate==='function')window.HayahCombatSeason.simulate(cc);
   if(cc.retired!==true&&cc.dopingSuspensionYears>0&&advanceCombatSuspensionYear(cc)===0)log('🔓','انتهاء الإيقاف الرياضي','انتهت مدة الإيقاف الرياضي ويمكنك العودة إلى المنافسات.','good');
   if(playerCareerActive&&cc.coach&&cc.coach.yearsLeft>0){
    const annualCost=cc.coach.annualCost||0;
@@ -12881,7 +12881,7 @@ function init(){
  if(state){dead=state.status==='متوفى';render();if(saveRecovered)$('saveStatus').textContent='↺ نسخة مستردة';if(dead)death(state.cause||'نهاية رحلة الحياة');}
  else{state=newLife();log('👶','أول يوم في الدنيا','اتولدت في '+state.place.city+'، '+state.place.country+'. أهلك '+state.family[0].name+' و'+state.family[1].name+' بيبدأوا معاك أول فصل في الحكاية.','special');log('🏡','البيت والعيلة','أبوك '+state.family[0].name+' شخص '+state.family[0].personality+'، وأمك '+state.family[1].name+' شخصيتها '+state.family[1].personality+'. دي أول شبكة أمان ليك.');achievement('بدأت رحلة الحياة');render();newLifeSetup();}
 }
-window.HayahCombatSeasonHost=Object.freeze({
+if(typeof window!=='undefined')window.HayahCombatSeasonHost=Object.freeze({
  getState:()=>state,
  ensureCombatCareer:()=>ensureCombatCareer(),
  save:()=>save(),
