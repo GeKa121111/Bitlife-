@@ -406,3 +406,59 @@ test('نظام المواسم لا يكتب مباشرة إلى localStorage و�
   assert.match(source, /communityLeague/);
   assert.doesNotMatch(source, /hekayat_hayah_save_v1\s*=/);
 });
+
+test('تكامل الجسر يقرأ حالة الحياة الخاصة ويفتح قائمة المجتمع ويحفظ الموسم', async () => {
+  const career = makeCareer();
+  const bridgedState = { age: 24, yearCount: 24, combatCareer: career };
+  const root = new FakeElement('div');
+  const host = {
+    getState() { return bridgedState; },
+    ensureCombatCareer() { return career; },
+    save() { host.saveCalls += 1; return true; },
+    openCommunityMenu() { host.communityMenuOpened = true; },
+    saveCalls: 0,
+    communityMenuOpened: false
+  };
+  const context = createContext({
+    state: undefined,
+    ensureCombatCareer: undefined,
+    combatCommunityMenu: undefined,
+    modal: undefined,
+    choice: undefined,
+    HayahCombatSeasonHost: host,
+    document: {
+      getElementById(id) { return id === 'modalRoot' ? root : null; },
+      createElement(tagName) { return new FakeElement(tagName); }
+    }
+  });
+
+  context.HayahCombatSeason.openMenu();
+  const heading = (function find(node) {
+    if (!node) return null;
+    if (node.className === 'modaltitle') return node;
+    for (const child of node.children || []) {
+      const found = find(child);
+      if (found) return found;
+    }
+    return null;
+  })(root);
+  assert.equal(heading && heading.textContent, 'سجل مواسم المنافسين',
+    'the menu must use the private app state through the explicit host bridge');
+
+  const back = findChoiceByTitle(root, 'رجوع إلى مجتمع المقاتلين');
+  assert.ok(back);
+  back.listeners.click();
+  assert.equal(host.communityMenuOpened, true,
+    'the back action must call the app-owned community menu through the bridge');
+
+  bridgedState.age = 25;
+  const ageButton = new FakeElement('button');
+  context.document.getElementById = id => id === 'ageUpBtn' ? ageButton : id === 'modalRoot' ? root : null;
+  // The fallback listener is installed once when the module loads; trigger it with a real age transition.
+  ageButton.listeners.click?.();
+  await Promise.resolve();
+  assert.equal(career.communityLeague.season, 1);
+  assert.equal(host.saveCalls, 1,
+    'the host save bridge must persist a season when the age-button fallback is used');
+});
+
