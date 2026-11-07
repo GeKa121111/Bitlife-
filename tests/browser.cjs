@@ -2816,11 +2816,27 @@ async function run() {
     // Wait for the deterministic test event, close it, and wait until it no longer blocks navigation.
     const ageEventOverlay = page.locator('#modalRoot #overlay.event-overlay');
     await ageEventOverlay.waitFor({ state: 'visible', timeout: 5000 });
-    // The backdrop and event card are sibling nodes under modalRoot; query the card's
-    // close control from the root rather than scoping it to the backdrop.
-    const ageEventClose = page.locator('#modalRoot .event-banner .closebtn').first();
-    await ageEventClose.waitFor({ state: 'visible' });
-    await ageEventClose.click();
+    // Event layouts can place the card outside the backdrop and may expose a generic
+    // close control or a neutral continue action. Inspect only visible controls.
+    const visibleEventControls = await page.locator('#modalRoot button:visible').evaluateAll(nodes =>
+      nodes.map(node => ({
+        label: (node.getAttribute('aria-label') || node.textContent || '').trim(),
+        className: String(node.className || '')
+      }))
+    );
+    console.log('AGE-UP EVENT CONTROLS ' + JSON.stringify(visibleEventControls));
+    const ageEventClose = page.locator('#modalRoot .closebtn:visible').first();
+    if (await ageEventClose.count()) {
+      await ageEventClose.click();
+    } else {
+      const neutralContinue = page.locator('#modalRoot button:visible').filter({
+        hasText: /متابعة|موافق|إغلاق|حسنًا|استمرار|التالي/
+      }).first();
+      await neutralContinue.waitFor({ state: 'visible', timeout: 5000 }).catch(() => {
+        throw new Error('No visible event dismissal control: ' + JSON.stringify(visibleEventControls));
+      });
+      await neutralContinue.click();
+    }
     await ageEventOverlay.waitFor({ state: 'hidden' });
 
     // Aging closes the combat-community dialog; reopen the live menus before continuing the social-interaction flow.
