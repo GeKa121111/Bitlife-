@@ -902,7 +902,7 @@ assert.ok(serviceWorker.includes('APP_SHELL.find(url => new URL(url).pathname ==
 // Hayah v195 identity regression: jade, linen, clay, and accessible dialog surfaces.
 assert.match(finalUi, /#modalRoot \.event-modal\{[\s\S]*?border-top:6px solid var\(--hayah-accent\)!important/);
 assert.match(finalUi, /#modalRoot \.event-modal \.choice\{[\s\S]*?background:var\(--hayah-primary\)!important/);
-assert.match(finalUi, /#modalRoot \.drawer-head, #modalRoot \.modalhead/);
+assert.match(finalUi, /#modalRoot \.modalhead,#modalRoot \.drawer-head/);
 assert.match(finalUi, /#modalRoot \.event-modal \.event-banner \.closebtn[\s\S]*?min-height:44px!important/);
 assert.match(finalUi, /@media \(forced-colors: active\)/);
 assert.match(finalUi, /background:ButtonText!important/);
