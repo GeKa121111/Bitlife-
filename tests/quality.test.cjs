@@ -2980,15 +2980,15 @@ test('مؤشر لوحة المفاتيح واضح ومتوافق مع ألوان
   assert.match(focusUi, /outline-offset:3px/);
 });
 
-test('تكبير النص يشمل الاختيارات والوصف وأدوات القوائم، وتقليل الحركة يوقف الانتقالات العامة', () => {
-  const accessibleUi = css.slice(css.lastIndexOf('/* v121: extend the readable-text preference'));
-  assert.match(accessibleUi, /body\.text-large \.choice \.ctitle\{font-size:14px!important/);
-  assert.match(accessibleUi, /body\.text-large \.choice \.cdesc/);
-  assert.match(accessibleUi, /body\.text-large \.sectiontitle/);
-  assert.match(accessibleUi, /body\.text-large \.navbtn/);
+test('تكبير النص وتقليل الحركة يظلان مدعومين في نظام الهوية الجديد', () => {
+  const accessibleUi = css.slice(css.lastIndexOf('/* v195: Hayah visual identity system'));
+  assert.match(accessibleUi, /body\.text-large #modalRoot \.choice \.ctitle\{font-size:15px!important/);
+  assert.match(accessibleUi, /body\.text-large #modalRoot \.choice \.cdesc\{font-size:13px!important/);
+  assert.match(accessibleUi, /body\.text-large #app \.sectiontitle\{font-size:16px!important/);
+  assert.match(accessibleUi, /body\.text-large #app \.navbtn/);
   assert.match(accessibleUi, /@media\(prefers-reduced-motion:reduce\)/);
-  assert.match(accessibleUi, /animation:none!important/);
-  assert.match(accessibleUi, /transition:none!important/);
+  assert.match(accessibleUi, /animation-duration:\.01ms!important/);
+  assert.match(accessibleUi, /transition-duration:\.01ms!important/);
   assert.match(read('sw.js'), /hayah-shell-v195/);
 });
 
