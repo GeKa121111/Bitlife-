@@ -74,6 +74,11 @@
 
   function gameState() {
     try {
+      const host = global.HayahCombatSeasonHost;
+      if (host && typeof host.getState === 'function') {
+        const bridged = host.getState();
+        if (bridged && typeof bridged === 'object') return bridged;
+      }
       if (typeof state !== 'undefined' && state && typeof state === 'object') return state;
     } catch (error) {
       // The app may not have initialized its life state yet.
@@ -90,6 +95,10 @@
   }
 
   function getEnsureCombatCareer() {
+    const host = global.HayahCombatSeasonHost;
+    if (host && typeof host.ensureCombatCareer === 'function') {
+      return () => host.ensureCombatCareer();
+    }
     if (typeof global.ensureCombatCareer === 'function') return global.ensureCombatCareer;
     if (typeof ensureCombatCareer === 'function') return ensureCombatCareer;
     return null;
@@ -124,6 +133,8 @@
   }
 
   function returnToCommunityMenu() {
+    const host = global.HayahCombatSeasonHost;
+    if (host && typeof host.openCommunityMenu === 'function') return host.openCommunityMenu();
     if (typeof global.combatCommunityMenu === 'function') return global.combatCommunityMenu();
     if (typeof combatCommunityMenu === 'function') return combatCommunityMenu();
     return undefined;
@@ -305,9 +316,12 @@
     // advanceAge() saves synchronously before queued microtasks run.
     // Persist the season after it mutates the NPC community.
     try {
-      const persist = typeof global.save === 'function'
-        ? global.save
-        : (typeof save === 'function' ? save : null);
+      const host = global.HayahCombatSeasonHost;
+      const persist = host && typeof host.save === 'function'
+        ? () => host.save()
+        : (typeof global.save === 'function'
+          ? global.save
+          : (typeof save === 'function' ? save : null));
       if (persist) persist();
     } catch (error) {
       // The game's save routine reports storage failures through its own status UI.
