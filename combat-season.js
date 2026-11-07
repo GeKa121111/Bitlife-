@@ -452,6 +452,18 @@
       ? [[schedule[0], schedule[1]]]
       : schedule.map((fighter, index) => [fighter, schedule[(index + 1) % schedule.length]]);
     const matchups = [];
+    const headToHead = new Map();
+    const recordHeadToHead = (fighterId, opponentId, points, wins) => {
+      let opponents = headToHead.get(fighterId);
+      if (!opponents) {
+        opponents = new Map();
+        headToHead.set(fighterId, opponents);
+      }
+      const record = opponents.get(opponentId) || { points: 0, wins: 0 };
+      record.points += points;
+      record.wins += wins;
+      opponents.set(opponentId, record);
+    };
     let matches = 0;
 
     for (const pairing of pairings.slice(0, MAX_SEASON_BOUTS)) {
@@ -476,6 +488,8 @@
         rowB.draws += 1;
         rowA.points += 1;
         rowB.points += 1;
+        recordHeadToHead(a.id, b.id, 1, 0);
+        recordHeadToHead(b.id, a.id, 1, 0);
         continue;
       }
 
@@ -495,16 +509,49 @@
       winnerRow.wins += 1;
       winnerRow.points += 3;
       loserRow.losses += 1;
+      recordHeadToHead(winner.id, loser.id, 3, 1);
+      recordHeadToHead(loser.id, winner.id, 0, 0);
       applySeasonForm(winner.fighter, 1, 1);
       applySeasonForm(loser.fighter, -1, -1);
     }
 
-    const standings = Array.from(table.values()).sort((a, b) => {
-      if (b.points !== a.points) return b.points - a.points;
-      if (b.wins !== a.wins) return b.wins - a.wins;
-      if (b.rating !== a.rating) return b.rating - a.rating;
-      return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
-    }).map((row, index) => Object.assign({}, row, { position: index + 1 }));
+    // Resolve ties on overall points and wins with a mini-table among the
+    // tied rivals. Rating and stable ID remain the final deterministic fallbacks.
+    const standingGroups = new Map();
+    table.forEach(row => {
+      const key = row.points + '|' + row.wins;
+      if (!standingGroups.has(key)) standingGroups.set(key, []);
+      standingGroups.get(key).push(row);
+    });
+    const orderedGroups = Array.from(standingGroups.values()).sort((a, b) => {
+      if (b[0].points !== a[0].points) return b[0].points - a[0].points;
+      return b[0].wins - a[0].wins;
+    });
+    const rankedRows = [];
+    orderedGroups.forEach(group => {
+      const groupIds = new Set(group.map(row => row.id));
+      const miniTable = new Map(group.map(row => [row.id, { points: 0, wins: 0 }]));
+      group.forEach(row => {
+        const opponents = headToHead.get(row.id);
+        if (!opponents) return;
+        opponents.forEach((record, opponentId) => {
+          if (!groupIds.has(opponentId)) return;
+          const summary = miniTable.get(row.id);
+          summary.points += record.points;
+          summary.wins += record.wins;
+        });
+      });
+      group.sort((a, b) => {
+        const aDirect = miniTable.get(a.id);
+        const bDirect = miniTable.get(b.id);
+        if (bDirect.points !== aDirect.points) return bDirect.points - aDirect.points;
+        if (bDirect.wins !== aDirect.wins) return bDirect.wins - aDirect.wins;
+        if (b.rating !== a.rating) return b.rating - a.rating;
+        return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
+      });
+      rankedRows.push(...group);
+    });
+    const standings = rankedRows.map((row, index) => Object.assign({}, row, { position: index + 1 }));
 
     const playoffs = simulateCommunityPlayoffs(standings, fighters, season);
     updateCommunityCareerRecords(league, standings, season, age, playoffs);
@@ -633,9 +680,9 @@
       doc,
       '📘',
       'عن نظام المواسم',
-      'يواجه كل منافس خصمين نشطين في الدوري التمهيدي عند توفر ثلاثة منافسين أو أكثر، ثم يتأهل أفضل أربعة إلى نصف النهائي والنهائي إذا اكتمل العدد. لا تُحتسب نتائج المجتمع ضمن سجل اللاعب أو دفاعاته عن اللقب.',
+      'يواجه كل منافس خصمين نشطين في الدوري التمهيدي عند توفر ثلاثة منافسين أو أكثر، ثم يتأهل أفضل أربعة إلى نصف النهائي والنهائي إذا اكتمل العدد. عند تساوي النقاط والانتصارات تُحسم المراكز بالمواجهات المباشرة داخل مجموعة المتساوين ثم التقييم. لا تُحتسب نتائج المجتمع ضمن سجل اللاعب أو دفاعاته عن اللقب.',
       () => {
-        description.textContent = 'يواجه كل منافس خصمين نشطين في الدوري التمهيدي عند توفر ثلاثة منافسين أو أكثر، بحد أقصى 20 مواجهة تمهيدية. يتأهل أفضل أربعة إلى نصف النهائي والنهائي عند اكتمال العدد. الفوز 3 نقاط والتعادل نقطة والخسارة بلا نقاط، ولا تغيّر نتائج المجتمع لقب اللاعب.';
+        description.textContent = 'يواجه كل منافس خصمين نشطين في الدوري التمهيدي عند توفر ثلاثة منافسين أو أكثر، بحد أقصى 20 مواجهة تمهيدية. يتأهل أفضل أربعة إلى نصف النهائي والنهائي عند اكتمال العدد. الفوز 3 نقاط والتعادل نقطة والخسارة بلا نقاط. عند تساوي النقاط والانتصارات تُحتسب نقاط المواجهات المباشرة داخل مجموعة المتساوين، ثم التقييم. لا تغيّر نتائج المجتمع لقب اللاعب.';
       }
     );
     const career = createFallbackChoice(
@@ -689,18 +736,19 @@
     const playoffLine = latest && latest.playoffs
       ? '\nبطل تصفيات الموسم: ' + latest.playoffs.championName + ' بعد ثلاث مواجهات إقصائية.'
       : '\nلم تُقم تصفيات هذا الموسم لعدم اكتمال أربعة منافسين مؤهلين.';
+    const tieBreakLine = '\nفض التعادل: المواجهات المباشرة داخل مجموعة المتساوين، ثم التقييم، ثم المعرّف.';
     const summary = league.season
       ? 'آخر موسم: ' + league.season + ' · العمر عند المحاكاة: ' + league.lastSimulatedAge +
         ' · مواجهات الدوري التمهيدي: ' + league.matchesLastSeason + '.\n' +
         'متصدر الموسم: ' + (latest ? latest.leaderName : 'غير متاح') +
-        (latest ? ' برصيد ' + latest.leaderPoints + ' نقطة.' : '.') + playoffLine +
+        (latest ? ' برصيد ' + latest.leaderPoints + ' نقطة.' : '.') + playoffLine + tieBreakLine +
         '\n\nترتيب المنافسين:\n' + (lines.length ? lines.join('\n') : 'لا توجد نتائج محفوظة.')
-      : 'لم يبدأ موسم بعد. تُحاكى مواجهات المنافسين تلقائيًا عند التقدم بالعمر داخل مسيرة القتال. يواجه كل منافس خصمين نشطين عند توفر ثلاثة منافسين أو أكثر، بحد أقصى 20 مواجهة تمهيدية، ثم ثلاث مواجهات إقصائية لأفضل أربعة منافسين عند اكتمال العدد.\n\nالنتائج تخص منافسي المجتمع فقط، ولا تضيف نقاطًا إلى مسيرة اللاعب أو تغيّر لقب العالم مباشرة.';
+      : 'لم يبدأ موسم بعد. تُحاكى مواجهات المنافسين تلقائيًا عند التقدم بالعمر داخل مسيرة القتال. يواجه كل منافس خصمين نشطين عند توفر ثلاثة منافسين أو أكثر، بحد أقصى 20 مواجهة تمهيدية، ثم ثلاث مواجهات إقصائية لأفضل أربعة منافسين عند اكتمال العدد.\n\nالنتائج تخص منافسي المجتمع فقط، ولا تضيف نقاطًا إلى مسيرة اللاعب أو تغيّر لقب العالم مباشرة.\n\n' + tieBreakLine.slice(1);
 
     if (hasModalHelper() && hasChoiceHelper()) {
       const options = [
-        makeChoice('📘', 'عن نظام المواسم', 'يواجه كل منافس خصمين نشطين في الدوري التمهيدي عند توفر ثلاثة منافسين أو أكثر. يتأهل أفضل أربعة إلى نصف النهائي والنهائي، والنتائج حتمية وتؤثر تدريجيًا في الزخم والاحترام.', () => {
-          showInfo('📘', 'عن نظام المواسم', 'تُحاكى مواجهات الدوري التمهيدي مرة واحدة لكل عمر. عند وجود أربعة منافسين مؤهلين، يتأهل أفضل أربعة إلى نصف النهائي والنهائي. لا تُحتسب هذه النتائج ضمن سجل نزالات اللاعب أو دفاعاته عن لقب العالم.');
+        makeChoice('📘', 'عن نظام المواسم', 'يواجه كل منافس خصمين نشطين في الدوري التمهيدي عند توفر ثلاثة منافسين أو أكثر. يتأهل أفضل أربعة إلى نصف النهائي والنهائي، والنتائج حتمية وتؤثر تدريجيًا في الزخم والاحترام. عند تساوي النقاط والانتصارات تُحسم المراكز بالمواجهات المباشرة ثم التقييم.', () => {
+          showInfo('📘', 'عن نظام المواسم', 'تُحاكى مواجهات الدوري التمهيدي مرة واحدة لكل عمر. عند وجود أربعة منافسين مؤهلين، يتأهل أفضل أربعة إلى نصف النهائي والنهائي. عند تساوي النقاط والانتصارات تُحتسب المواجهات المباشرة داخل مجموعة المتساوين قبل التقييم. لا تُحتسب هذه النتائج ضمن سجل نزالات اللاعب أو دفاعاته عن لقب العالم.');
         }),
         makeChoice('📚', 'سجل المسيرة التاريخي', 'أرقام تراكمية للمواسم والتصفيات والانتصارات والألقاب وأفضل مركز لكل منافس.', () => {
           showInfo('📚', 'سجل المسيرة التاريخي', careerSummary);

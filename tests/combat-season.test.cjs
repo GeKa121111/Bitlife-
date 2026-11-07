@@ -707,3 +707,47 @@ test('تطبيع أسماء التصفيات يربط كل اسم بمعرّف �
   assert.equal(semifinal.winnerName, namesById.get(semifinal.winnerId));
   assert.equal(normalized.championName, namesById.get(normalized.championId));
 });
+
+
+test('الترتيب يحسم تعادل النقاط والانتصارات بالمواجهات المباشرة قبل تقييم المنافس', () => {
+  const context = createContext();
+  const career = makeCareer();
+  career.community = [
+    'rival-01',
+    'rival-02',
+    'rival-03',
+    'rival-04',
+    'rival-06'
+  ].map(id => ({
+    id,
+    name: id,
+    rating: 50,
+    momentum: 0,
+    respect: 50,
+    tension: 0
+  }));
+
+  const result = context.HayahCombatSeason.simulate(career);
+  const byId = new Map(result.standings.map(row => [row.id, row]));
+
+  assert.equal(result.matches, 5);
+  assert.deepEqual(
+    JSON.parse(JSON.stringify(result.standings.map(row => row.id))),
+    ['rival-03', 'rival-04', 'rival-06', 'rival-01', 'rival-02']
+  );
+  assert.equal(byId.get('rival-01').points, 3);
+  assert.equal(byId.get('rival-04').points, 3);
+  assert.equal(byId.get('rival-06').points, 3);
+  assert.equal(byId.get('rival-01').wins, 1);
+  assert.equal(byId.get('rival-04').wins, 1);
+  assert.equal(byId.get('rival-06').wins, 1);
+  assert.ok(byId.get('rival-04').position < byId.get('rival-01').position,
+    'the direct win should place rival-04 above a tied rival with fewer head-to-head points');
+  assert.ok(byId.get('rival-06').position < byId.get('rival-01').position,
+    'the direct win should place rival-06 above a tied rival with fewer head-to-head points');
+
+  context.career = career;
+  context.HayahCombatSeason.openMenu();
+  assert.match(context.lastModal[2], /المواجهات المباشرة/,
+    'the season screen should explain its tie-break rule');
+});
