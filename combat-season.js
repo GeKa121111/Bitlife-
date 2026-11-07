@@ -49,6 +49,11 @@
     if (!item || typeof item !== 'object' || Array.isArray(item)) return null;
     const id = safeId(item.id);
     if (!id) return null;
+    const titleStreak = boundedInteger(item.titleStreak, 0, 0, 1000000);
+    const bestTitleStreak = Math.max(
+      titleStreak,
+      boundedInteger(item.bestTitleStreak, 0, 0, 1000000)
+    );
     return {
       id,
       name: safeName(item.name, 'منافس'),
@@ -59,6 +64,8 @@
       losses: boundedInteger(item.losses, 0, 0, 1000000),
       points: boundedInteger(item.points, 0, 0, 1000000000),
       titles: boundedInteger(item.titles, 0, 0, 1000000),
+      titleStreak,
+      bestTitleStreak,
       playoffAppearances: boundedInteger(item.playoffAppearances, 0, 0, 1000000),
       playoffWins: boundedInteger(item.playoffWins, 0, 0, 1000000),
       playoffTitles: boundedInteger(item.playoffTitles, 0, 0, 1000000),
@@ -169,7 +176,8 @@
       const record = records.get(row.id) || {
         id: row.id, name: row.name, seasons: 0, played: 0, wins: 0, draws: 0,
         losses: 0, points: 0, titles: 0, playoffAppearances: 0, playoffWins: 0,
-        playoffTitles: 0, bestPosition: MAX_FIGHTERS, lastSeason: 0, lastAge: 0
+        playoffTitles: 0, titleStreak: 0, bestTitleStreak: 0,
+        bestPosition: MAX_FIGHTERS, lastSeason: 0, lastAge: 0
       };
       record.name = safeName(row.name, record.name || 'منافس');
       record.seasons = boundedInteger(record.seasons + 1, 0, 0, 1000000);
@@ -185,6 +193,15 @@
       record.bestPosition = Math.min(
         boundedInteger(record.bestPosition, MAX_FIGHTERS, 1, MAX_FIGHTERS),
         boundedInteger(row.position, MAX_FIGHTERS, 1, MAX_FIGHTERS)
+      );
+      const previousSeason = boundedInteger(record.lastSeason, 0, 0, 1000000);
+      const previousTitleStreak = boundedInteger(record.titleStreak, 0, 0, 1000000);
+      record.titleStreak = row.position === 1
+        ? (previousSeason === season - 1 ? previousTitleStreak + 1 : 1)
+        : 0;
+      record.bestTitleStreak = Math.max(
+        boundedInteger(record.bestTitleStreak, 0, 0, 1000000),
+        record.titleStreak
       );
       record.lastSeason = boundedInteger(season, 0, 0, 1000000);
       record.lastAge = boundedInteger(age, 0, 0, 150);
@@ -210,6 +227,7 @@
     if (!leaders.length) return 'لا توجد أرقام مسيرة محفوظة بعد. ستظهر هنا نتائج المنافسين التراكمية بعد أول موسم مكتمل.';
     const lines = leaders.map((record, index) =>
       (index + 1) + '. ' + record.name + ' — ' + record.titles + ' لقب موسم · ' +
+      'سلسلة ألقاب الدوري: ' + record.titleStreak + ' متتالية (أفضل سلسلة: ' + record.bestTitleStreak + ') · ' +
       record.playoffTitles + ' لقب تصفيات · ' + record.playoffWins + ' فوز إقصائي · ' +
       record.playoffAppearances + ' مشاركة تصفيات · ' + record.wins + ' فوز · ' + record.draws +
       ' تعادل · ' + record.losses + ' خسارة · ' + record.played + ' نزال · أفضل مركز ' + record.bestPosition
