@@ -921,3 +921,19 @@ assert.match(finalUi, /#modalRoot \.event-modal \.event-banner \.closebtn[\s\S]*
 assert.match(finalUi, /@media \(forced-colors: active\)/);
 assert.match(finalUi, /background:Highlight!important/);
 assert.match(finalUi, /color:HighlightText!important/);
+
+
+// Hayah v199 life review: the end-of-life review button opens a local, read-only report.
+const lifeReviewCss = fs.readFileSync('life-review.css', 'utf8');
+const lifeReview = fs.readFileSync('life-review.js', 'utf8');
+assert.match(index, /href="life-review\.css"/);
+assert.match(index, /src="life-review\.js"/);
+assert.ok(index.indexOf('app.js') < index.indexOf('life-review.js'),
+  'the life review hook must load after the life engine creates the end-of-life summary');
+assert.match(lifeReviewCss, /life-review-panel/);
+assert.match(lifeReview, /function summarizeLife\(state, cemeteryEntries\)/);
+assert.match(lifeReview, /getItem\(key\)/);
+assert.doesNotMatch(lifeReview, /setItem\s*\(|fetch\s*\(/,
+  'the life review report must remain local and read-only');
+assert.ok(serviceWorker.includes("'./life-review.css'"));
+assert.ok(serviceWorker.includes("'./life-review.js'"));
