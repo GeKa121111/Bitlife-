@@ -3949,7 +3949,7 @@ test('إعداد توجه استثمار الأشقاء يحافظ على الح
 
 
 
-test('فاحص الحفظ يلغي القراءة السابقة ويتجاهل النتائج المتأخرة بعد اختيار ملف أحدث أو المسح', () => {
+test('فاحص الحفظ يلغي القراءة السابقة ويتجاهل النتائج المتأخرة بعد اختيار ملف أحدث أو المسح', async () => {
   const checker = require('../backup-check.js');
   class FakeNode {
     constructor() {
@@ -3998,7 +3998,6 @@ test('فاحص الحفظ يلغي القراءة السابقة ويتجاهل 
     version: 1, lifeId: age, name, age, stats: {}, log: [], family: [], place: {}
   });
   const reportText = () => result.textContent;
-
   input.listeners.change({ target: { files: [makeFile('قديم.json')] } });
   const staleReader = readers[0];
   input.listeners.change({ target: { files: [makeFile('أحدث.json')] } });
@@ -4006,11 +4005,11 @@ test('فاحص الحفظ يلغي القراءة السابقة ويتجاهل 
   assert.equal(staleReader.aborted, true, 'choosing a new file should abort the previous read');
 
   staleReader.result = makeLife('شخصية قديمة', 20);
-  staleReader.onload();
+  await staleReader.onload();
   assert.equal(result.children.length, 0, 'a late result from the previous file must not replace the current inspection');
 
   currentReader.result = makeLife('الشخصية الأحدث', 21);
-  currentReader.onload();
+  await currentReader.onload();
   assert.match(reportText(), /الشخصية الأحدث/);
   assert.doesNotMatch(reportText(), /شخصية قديمة/);
 
@@ -4019,7 +4018,7 @@ test('فاحص الحفظ يلغي القراءة السابقة ويتجاهل 
   clear.listeners.click();
   assert.equal(clearedReader.aborted, true, 'clearing the report should cancel a pending read');
   clearedReader.result = makeLife('نتيجة بعد المسح', 22);
-  clearedReader.onload();
+  await clearedReader.onload();
   assert.match(reportText(), /لم يتم اختيار ملف بعد/);
   assert.doesNotMatch(reportText(), /نتيجة بعد المسح/);
 });
