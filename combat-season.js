@@ -216,6 +216,28 @@
     return 'السجل التراكمي لمنافسي المجتمع، وليس سجل لقب العالم الخاص باللاعب.\n\n' + lines.join('\n');
   }
 
+  function communitySeasonAwardsSummary(history) {
+    const recent = (Array.isArray(history) ? history : [])
+      .slice(-HISTORY_LIMIT)
+      .slice()
+      .reverse();
+    const lines = recent.map(item => {
+      if (!item || typeof item !== 'object' || Array.isArray(item)) return null;
+      const award = normalizeRisingStar(item.risingStar);
+      if (!award) return null;
+      const season = boundedInteger(item.season, 0, 0, 1000000);
+      const age = boundedInteger(item.age, 0, 0, 150);
+      return 'الموسم ' + season + ' · العمر ' + age + ': ' + award.name +
+        ' — أكبر تحسن +' + award.change.toFixed(2) +
+        ' نقطة مؤشر، المركز ' + award.position + '.';
+    }).filter(Boolean);
+    if (!lines.length) {
+      return 'لا توجد جوائز تحسن محفوظة بعد. المواسم القديمة التي سبقت إضافة الجائزة لا تحتوي على سجل لها، ولن تُنشأ لها نتائج بأثر رجعي.';
+    }
+    return 'سجل أصحاب أكبر تحسن في مؤشر الأداء خلال آخر ' +
+      Math.min(recent.length, HISTORY_LIMIT) + ' موسمًا محفوظًا (الأحدث أولًا):\n\n' + lines.join('\n');
+  }
+
   function normalizeCommunityLeague(value) {
     const source = value && typeof value === 'object' && !Array.isArray(value) ? value : {};
     const standings = Array.isArray(source.standings)
@@ -675,7 +697,7 @@
     return button;
   }
 
-  function renderFallbackSeasonModal(summary, careerSummary, onBack, challenge) {
+  function renderFallbackSeasonModal(summary, careerSummary, awardsSummary, onBack, challenge) {
     const doc = global.document;
     const root = doc && typeof doc.getElementById === 'function' ? doc.getElementById('modalRoot') : null;
     if (!root || typeof doc.createElement !== 'function') return;
@@ -736,6 +758,13 @@
       'اعرض الانتصارات والألقاب والأرقام التراكمية للمنافسين.',
       () => { description.textContent = careerSummary; }
     );
+    const awards = createFallbackChoice(
+      doc,
+      '🏅',
+      'سجل جوائز المواسم',
+      'راجع أصحاب أكبر تحسن في مؤشر الأداء عبر المواسم الأخيرة.',
+      () => { description.textContent = awardsSummary; }
+    );
     const back = createFallbackChoice(
       doc,
       '↩️',
@@ -748,6 +777,7 @@
     }
     grid.appendChild(about);
     grid.appendChild(career);
+    grid.appendChild(awards);
     grid.appendChild(back);
     body.appendChild(grid);
     panel.appendChild(header);
@@ -819,6 +849,7 @@
     career.communityLeague = league;
 
     const careerSummary = communityCareerRecordSummary(league.records);
+    const awardsSummary = communitySeasonAwardsSummary(league.history);
     const lines = league.standings.slice(0, 10).map(row =>
       row.position + '. ' + row.name + ' — ' + row.points + ' نقطة · ' +
       row.wins + ' فوز · ' + row.draws + ' تعادل · ' + row.losses + ' خسارة'
@@ -864,13 +895,16 @@
         makeChoice('📚', 'سجل المسيرة التاريخي', 'أرقام تراكمية للمواسم والتصفيات والانتصارات والألقاب وأفضل مركز لكل منافس.', () => {
           showInfo('📚', 'سجل المسيرة التاريخي', careerSummary);
         }),
+        makeChoice('🏅', 'سجل جوائز المواسم', 'راجع أصحاب أكبر تحسن في مؤشر الأداء عبر المواسم الأخيرة.', () => {
+          showInfo('🏅', 'سجل جوائز المواسم', awardsSummary);
+        }),
         makeChoice('↩️', 'رجوع إلى مجتمع المقاتلين', '', backToMenu)
       );
       showModal('🏆', 'سجل مواسم المنافسين', summary, options);
       return;
     }
 
-    renderFallbackSeasonModal(summary, careerSummary, backToMenu, challenge);
+    renderFallbackSeasonModal(summary, careerSummary, awardsSummary, backToMenu, challenge);
   }
 
   function injectSeasonMenuEntry(root) {
