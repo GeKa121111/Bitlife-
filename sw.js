@@ -1,6 +1,6 @@
 'use strict';
 
-const CACHE_NAME = 'hayah-shell-v195';
+const CACHE_NAME = 'hayah-shell-v196';
 const APP_SHELL = [
   './index.html',
   './style.css',
