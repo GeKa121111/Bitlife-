@@ -43,7 +43,13 @@
       entries.push({ entity, title, id: rawId || key });
     };
 
-    add(state.business, 'المشروع الرئيسي', 0);
+    const primary = state.business;
+    if (isRecord(primary) && (primary.id || primary.assetId || primary.title || Array.isArray(primary.financialHistory))) {
+      add(primary, 'المشروع الرئيسي', 0);
+    } else if (Array.isArray(state.assets)) {
+      const legacyBusinessAsset = state.assets.find(asset => isRecord(asset) && asset.kind === 'business' && asset.companyPortfolio !== true);
+      if (legacyBusinessAsset) add(legacyBusinessAsset, 'المشروع الرئيسي', 0);
+    }
     (Array.isArray(state.companies) ? state.companies : []).forEach((company, index) => {
       add(company, 'شركة ' + (index + 1), index + 1);
     });
@@ -249,8 +255,10 @@
       const totals = doc.createElement('div');
       totals.className = 'business-insights-summary';
       createMetric(doc, totals, 'عدد الأنشطة', formatNumber(summary.businessCount));
-      createMetric(doc, totals, 'إيرادات آخر سنة', formatMoney(summary.totalRevenue, state.place && state.place.unit));
-      createMetric(doc, totals, 'صافي نتيجة آخر سنة', formatMoney(summary.totalProfit, state.place && state.place.unit), summary.totalProfit < 0 ? 'business-insights-negative' : 'business-insights-metric-value');
+      createMetric(doc, totals, 'إيرادات أحدث التقارير', formatMoney(summary.totalRevenue, state.place && state.place.unit));
+      createMetric(doc, totals, 'صافي أحدث التقارير', formatMoney(summary.totalProfit, state.place && state.place.unit), summary.totalProfit < 0 ? 'business-insights-negative' : 'business-insights-metric-value');
+      createMetric(doc, totals, 'التزامات ضريبية', formatMoney(summary.taxLiability, state.place && state.place.unit));
+      createMetric(doc, totals, 'تمويل قائم', formatMoney(summary.loanBalance, state.place && state.place.unit));
       createMetric(doc, totals, 'أنشطة سجلت خسارة', formatNumber(summary.lossCount));
       body.appendChild(totals);
 
