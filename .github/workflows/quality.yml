@@ -157,6 +157,12 @@ jobs:
         run: node --check tests/promo-localization.test.cjs
       - name: Run Arabic pack offer localization tests
         run: node --test tests/promo-localization.test.cjs
+      - name: Check life review module syntax
+        run: node --check life-review.js
+      - name: Check life review unit test syntax
+        run: node --check tests/life-review.test.cjs
+      - name: Run read-only life review regression tests
+        run: node --test tests/life-review.test.cjs
       - name: Install Playwright and Chromium
         run: |
           npm install --no-save --package-lock=false playwright@1.64.1
@@ -165,6 +171,10 @@ jobs:
         run: node --check tests/accessibility-large-text.browser.cjs
       - name: Run mobile browser end-to-end tests
         run: node tests/browser.cjs
+      - name: Check life review browser test syntax
+        run: node --check tests/life-review.browser.cjs
+      - name: Run end-of-life report browser checks
+        run: node tests/life-review.browser.cjs
       - name: Upload Hayah visual identity screenshots
         if: always()
         uses: actions/upload-artifact@v4
