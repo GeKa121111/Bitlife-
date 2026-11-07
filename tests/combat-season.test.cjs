@@ -751,3 +751,107 @@ test('الترتيب يحسم تعادل النقاط والانتصارات ب�
   assert.match(context.lastModal[2], /المواجهات المباشرة/,
     'the season screen should explain its tie-break rule');
 });
+
+
+test('بطل التصفيات يصبح خصمًا اختياريًا في نزال الدوري ولا يبدأ النزال عند فتح السجل', () => {
+  const context = createContext();
+  const career = makeCareer();
+  career.community.push({ id: 'rival-d', name: 'منافس د', rating: 82, momentum: 1, respect: 60, tension: 20 });
+  context.career = career;
+  const result = context.HayahCombatSeason.simulate(career);
+  const champion = career.community.find(fighter => fighter.id === result.playoffs.championId);
+  assert.ok(champion);
+
+  let startedBout = null;
+  context.HayahCombatSeasonHost = {
+    startCommunityBout(mode, fighterId) {
+      startedBout = { mode, fighterId };
+      return true;
+    }
+  };
+
+  const pointsBefore = career.leaguePoints;
+  const titleBefore = career.champion;
+  context.HayahCombatSeason.openMenu();
+  const option = context.lastModal[3].find(item => item.title === 'دفاع عن لقب العالم أمام بطل التصفيات');
+
+  assert.ok(option, 'a current world champion should see the playoff winner as a title-defense opponent');
+  assert.match(option.description, /نزال دوري مباشر/);
+  assert.match(context.lastModal[2], /لا يبدأ النزال تلقائيًا/);
+  assert.equal(startedBout, null, 'opening the season report must not start a fight');
+  option.action();
+  assert.deepEqual(startedBout, { mode: 'league', fighterId: champion.id });
+  assert.equal(career.leaguePoints, pointsBefore, 'opening the challenge must not change league points');
+  assert.equal(career.champion, titleBefore, 'opening the challenge must not change title ownership');
+});
+
+test('غير حامل اللقب يرى مواجهة ترتيبية مع بطل التصفيات بدل وصفها كدفاع عن اللقب', () => {
+  const context = createContext();
+  const career = makeCareer();
+  career.champion = false;
+  career.community.push({ id: 'rival-d', name: 'منافس د', rating: 82, momentum: 1, respect: 60, tension: 20 });
+  context.career = career;
+  context.HayahCombatSeason.simulate(career);
+  context.HayahCombatSeason.openMenu();
+
+  const option = context.lastModal[3].find(item => item.title === 'مواجهة بطل التصفيات');
+  assert.ok(option);
+  assert.match(option.description, /الفوز يضيف نقاطًا للدوري/);
+  assert.equal(context.lastModal[3].some(item => item.title === 'دفاع عن لقب العالم أمام بطل التصفيات'), false);
+});
+
+test('بطل التصفيات المعتزل أو المتوفى لا يظهر كخصم قابل للتحدي', () => {
+  for (const status of ['retired', 'deceased']) {
+    const context = createContext();
+    const career = makeCareer();
+    career.community.push({ id: 'rival-d', name: 'منافس د', rating: 82, momentum: 1, respect: 60, tension: 20 });
+    context.career = career;
+    const result = context.HayahCombatSeason.simulate(career);
+    const champion = career.community.find(fighter => fighter.id === result.playoffs.championId);
+    champion[status] = true;
+
+    context.HayahCombatSeason.openMenu();
+    assert.equal(context.lastModal[3].some(item => item.title === 'دفاع عن لقب العالم أمام بطل التصفيات'), false);
+    assert.match(context.lastModal[2], /لم يعد متاحًا للمواجهة/);
+  }
+});
+
+test('واجهة الاحتياط تعرض زر مواجهة بطل التصفيات وتحافظ على اختيار اللاعب الصريح', () => {
+  const root = new FakeElement('div');
+  const context = createContext({
+    modal: undefined,
+    choice: undefined,
+    document: {
+      getElementById(id) { return id === 'modalRoot' ? root : null; },
+      createElement(tagName) { return new FakeElement(tagName); }
+    }
+  });
+  const career = makeCareer();
+  career.community.push({ id: 'rival-d', name: 'منافس د', rating: 82, momentum: 1, respect: 60, tension: 20 });
+  context.career = career;
+  const result = context.HayahCombatSeason.simulate(career);
+  let startedBout = null;
+  context.HayahCombatSeasonHost = {
+    startCommunityBout(mode, fighterId) { startedBout = { mode, fighterId }; }
+  };
+
+  context.HayahCombatSeason.openMenu();
+  const option = findChoiceByTitle(root, 'دفاع عن لقب العالم أمام بطل التصفيات');
+  assert.ok(option);
+  assert.equal(startedBout, null);
+  option.listeners.click();
+  assert.deepEqual(startedBout, { mode: 'league', fighterId: result.playoffs.championId });
+});
+
+test('الحفظ القديم بلا تصفيات لا يعرض مرشحًا وهميًا أو يغيّر لقب اللاعب', () => {
+  const context = createContext();
+  const career = makeCareer();
+  context.career = career;
+  const result = context.HayahCombatSeason.simulate(career);
+  assert.equal(result.playoffs, null);
+  const before = { champion: career.champion, leaguePoints: career.leaguePoints };
+  context.HayahCombatSeason.openMenu();
+  assert.equal(context.lastModal[3].some(item => item.title === 'دفاع عن لقب العالم أمام بطل التصفيات'), false);
+  assert.equal(career.champion, before.champion);
+  assert.equal(career.leaguePoints, before.leaguePoints);
+});
