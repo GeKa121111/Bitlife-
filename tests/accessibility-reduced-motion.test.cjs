@@ -84,7 +84,17 @@ test('تطبيق التفضيل يضيف ويزيل طبقة تقليل الحر
   assert.equal(classes.has('reduce-motion'), true);
   assert.equal(classes.has('theme-dark'), true);
   assert.equal(classes.has('text-large'), true);
-  assert.equal(themeMeta.value, '#17232c');
+  assert.equal(themeMeta.value, '#111d1c');
+
+  context.uiSettings.theme = 'gold';
+  context.api.apply();
+  assert.equal(themeMeta.value, '#b86b4a', 'the browser theme color should follow the original Hayah gold theme');
+  assert.equal(classes.has('theme-gold'), true);
+  assert.equal(classes.has('theme-dark'), false);
+
+  context.uiSettings.theme = 'dark';
+  context.api.apply();
+  assert.equal(classes.has('theme-dark'), true);
 
   context.uiSettings.reducedMotion = false;
   context.api.apply();
