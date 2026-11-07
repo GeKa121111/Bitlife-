@@ -939,7 +939,7 @@ assert.ok(serviceWorker.includes("'./life-review.css'"));
 assert.ok(serviceWorker.includes("'./life-review.js'"));
 assert.ok(browserTest.includes("['/life-review.js', 'life-review.js']"), 'the mobile browser server must serve the life review module');
 
-assert.match(app, /startCommunityBout:\\(mode,fighterId\\)=>startCombatBout\\(mode,fighterId\\)/,
+assert.ok(app.includes('startCommunityBout:(mode,fighterId)=>startCombatBout(mode,fighterId)'),
   'the season module must use the app-owned bridge to start an official league bout');
 assert.match(combatSeason, /دفاع عن لقب العالم أمام بطل التصفيات/,
   'the latest playoff champion should be offered as an optional title-defense opponent');
