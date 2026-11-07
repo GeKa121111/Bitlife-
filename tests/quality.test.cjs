@@ -4077,7 +4077,7 @@ test('أداة فحص الحفظ تقرأ الحزم والملفات القدي
   assert.match(source, /function compareSha256Fingerprints/);
   assert.match(source, /fingerprint-copy/);
   assert.match(source, /fingerprint-compare/);
-  assert.match(page, /\\.fingerprint-tools/);
+  assert.match(page, /\.fingerprint-tools/);
   assert.match(page, /lang="ar" dir="rtl"/);
   assert.match(page, /role="status" aria-live="polite"/);
   assert.match(page, /backup-check\.js/);
