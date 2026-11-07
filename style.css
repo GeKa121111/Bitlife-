@@ -174,7 +174,7 @@ input:focus,select:focus,textarea:focus{border-color:#76b6d7}
 @media(prefers-reduced-motion:reduce){
   *,*:before,*:after{animation-duration:.01ms!important;transition-duration:.01ms!important;scroll-behavior:auto!important}
 }
-/* Five-zone BitLife-inspired mobile frame */
+/* Earlier prototype styling retained for compatibility; v195 defines the active Hayah visual identity. */
 :root{--brand:#E53935;--brand-dark:#B71C1C;--ink:#263238;--green:#43A047;--green-dark:#2E7D32;--page:#F8FAFC}
 html,body{height:100%;min-height:0;overflow:hidden;background:#eef2f4}
 body{align-items:stretch}
@@ -517,7 +517,7 @@ body{overflow:hidden;background:#edf1f4}
   box-shadow:none;
   z-index:20;
 }
-/* In the reference layout, life stats sit immediately above the bottom tabs. */
+/* Earlier prototype styling retained for compatibility; v195 defines the active Hayah visual identity. */
 .stats{
   order:0;
   display:flex;
@@ -626,7 +626,7 @@ body.theme-dark .agebtn{border-color:#17232c}
 }
 
 
-/* Refined BitLife-inspired mobile hierarchy; preserve Hayah's identity and save data. */
+/* Earlier prototype styling retained for compatibility; v195 defines the active Hayah visual identity. */
 :root{--life-nav:#ffffff;--life-nav-active:#fff0ee;--life-tab-text:#788790;--life-stat-bg:#ffffff;--life-stat-text:#536a77}
 .bottom-dock{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:450px;display:flex;flex-direction:column;padding:0 0 calc(5px + env(safe-area-inset-bottom));background:#fff;border-top:1px solid #e4eaed;box-shadow:0 -7px 24px #1e34420d}
 .stats{order:0;display:grid;grid-template-columns:1fr 1fr;gap:8px 13px;padding:9px 12px 10px;background:#fff;border:0}
@@ -658,8 +658,8 @@ body.theme-dark .statlabel{color:#dce6ec}
   --life-tab-text:#788790;
   --life-stat-bg:#ffffff;
   --life-stat-text:#455a64;
-  --bitlife-red:#e53935;
-  --bitlife-green:#43a047;
+  --hayah-prototype-primary:#e53935;
+  --hayah-prototype-success:#43a047;
 }
 html,body{height:100%;min-height:0}
 body{align-items:stretch;justify-content:center;overflow:hidden;background:#eef1f3}
@@ -671,7 +671,7 @@ body{align-items:stretch;justify-content:center;overflow:hidden;background:#eef1
 .topbar{
   height:54px;min-height:54px;flex:0 0 54px;padding:0 8px;
   display:grid;grid-template-columns:36px minmax(0,1fr) 104px;gap:5px;
-  position:relative;top:auto;z-index:10;background:var(--bitlife-red);
+  position:relative;top:auto;z-index:10;background:var(--hayah-prototype-primary);
   border:0;box-shadow:none;border-radius:0;
 }
 .menu-trigger,.header-action{
@@ -808,7 +808,7 @@ body{align-items:stretch;justify-content:center;overflow:hidden;background:#eef1
 }
 @media(prefers-reduced-motion:reduce){.agebtn,.fill,.modal,.logcard{animation:none!important;transition:none!important}}
 
-/* Keep the existing dark-mode and large-text preferences functional after layout overrides. */
+/* Earlier prototype styling retained for compatibility; v195 defines the active Hayah visual identity. */
 body.theme-dark .app,body.theme-dark .feed,body.theme-dark .logcard,body.theme-dark .logcard.good,body.theme-dark .logcard.bad,body.theme-dark .logcard.special{background:#17232c}
 body.theme-dark .hero{background:#20313b;border-color:#354651}
 body.theme-dark .name,body.theme-dark .logtitle,body.theme-dark .logtext,body.theme-dark .logcard.special .logtext{color:#dce6ec}
@@ -832,7 +832,7 @@ body.text-large .statvalue{font-size:10px}
 body.text-large .navbtn{font-size:11px}
 
 
-/* BitLife reference layout pass 2: blue tab strip above the life meters. */
+/* Earlier prototype styling retained for compatibility; v195 defines the active Hayah visual identity. */
 :root{
   --life-nav:#0667a9;
   --life-nav-active:#07558c;
@@ -848,7 +848,7 @@ body.text-large .navbtn{font-size:11px}
   background:#fff;border:0;border-top:1px solid #d7e0e6;
   box-shadow:0 -2px 7px #1833480d;z-index:20;
 }
-/* The original layout has the five action tabs above the four status bars. */
+/* Hayah places the five primary actions above the status meters. */
 .nav{
   order:0;height:76px;min-height:76px;flex:0 0 76px;
   display:grid;grid-template-columns:1fr 1fr 82px 1fr 1fr;
@@ -984,7 +984,7 @@ body{overflow:hidden;align-items:stretch;justify-content:center;background:#edf0
 .top-actions .header-action{width:32px;height:32px;flex:0 0 32px}
 .topbar #saveStatus,.topbar #heirloomBtn{position:absolute!important}
 
-/* Keep the original character node for game logic, but use a compact inline flag/name like the reference. */
+/* Earlier prototype styling retained for compatibility; v195 defines the active Hayah visual identity. */
 .hero{
   position:relative;height:68px;min-height:68px;flex:0 0 68px;
   display:flex;flex-direction:row;direction:ltr;align-items:center;justify-content:space-between;
@@ -1056,7 +1056,7 @@ body{overflow:hidden;align-items:stretch;justify-content:center;background:#edf0
 .logcard.special .logtext{color:#5f6f78}
 .empty{border:0;border-radius:0;padding:20px 8px;margin:0;text-align:center;background:#fff;color:#657680;line-height:1.7}
 
-/* Match the classic five-item bottom dock: life stage, assets, age, relationships, activities. */
+/* Hayah five-item dock: life stage, assets, age, relationships, and activities. */
 .bottom-dock{
   position:fixed;left:50%;right:auto;bottom:0;inset:auto auto 0 50%;
   transform:translateX(-50%);z-index:40;width:100%;max-width:450px;margin:0;
@@ -1215,8 +1215,7 @@ body.theme-gold .logcard.special{background:#fff8dc;border-color:#e2cd86}
 body.theme-gold .sectiontitle:before{background:#c09522}
 
 
-/* Reference-led mobile UI refresh for Hayah: blue list pages, gray section bands,
-   black status header, green age button and stacked stat bars. */
+/* Earlier prototype styling retained for compatibility; v195 defines the active Hayah visual identity. */
 :root{
   --brand:#050505;
   --brand-dark:#000;
@@ -1422,8 +1421,8 @@ body.theme-dark .statlabel,body.theme-dark .statvalue{color:#175b91}
 
 
 
-/* BitLife reference pass - Oct 2026 */
-/* The reference screen uses a black masthead, pale character strip, plain age log, and bold blue decisions. */
+/* Earlier prototype styling retained for compatibility; v195 defines the active Hayah visual identity. */
+/* Earlier prototype styling retained for compatibility; v195 defines the active Hayah visual identity. */
 :root{
   --brand:#087dcc;
   --brand-dark:#0564a7;
@@ -1748,7 +1747,7 @@ body.theme-dark .statlabel,body.theme-dark .statvalue{color:#175b91}
 
 
 
-/* Reference pass 2: category-specific prompts, form fields, and result notices. */
+/* Earlier prototype styling retained for compatibility; v195 defines the active Hayah visual identity. */
 .event-question{
   margin:2px 0 0!important;
   grid-column:1/-1!important;
@@ -1898,7 +1897,7 @@ body.theme-dark .statlabel,body.theme-dark .statvalue{color:#175b91}
 }
 
 
-/* Reference UI continuation: store rows, inactive social channels, and a dedicated expansion offer. */
+/* Earlier prototype styling retained for compatibility; v195 defines the active Hayah visual identity. */
 .drawer-action-banner{
   width:100%!important;min-height:92px!important;
   display:flex!important;align-items:center!important;justify-content:center!important;
@@ -1996,7 +1995,7 @@ body.theme-dark .statlabel,body.theme-dark .statvalue{color:#175b91}
 }
 
 
-/* Reference-led School screen */
+/* Earlier prototype styling retained for compatibility; v195 defines the active Hayah visual identity. */
 .school-screen .drawer-head{height:58px!important;min-height:58px!important;background:#075b9a!important}
 .school-screen .drawer-body .desc{display:none!important}
 .school-screen .drawer-body .choice{min-height:78px!important;padding:12px 15px!important;gap:13px!important;background:#fff!important;border-bottom:1px solid #aeb9c3!important}
@@ -2009,7 +2008,7 @@ body.theme-dark .statlabel,body.theme-dark .statvalue{color:#175b91}
 .school-screen .drawer-body .choice .choice-progress{width:min(54%,190px)!important;height:8px!important;margin-top:4px!important;border-radius:0!important;background:#d8e0e5!important}
 .school-screen .drawer-body .choice .choice-progress span{border-radius:0!important;background:#239642!important}
 .school-screen .list-section{min-height:28px!important;padding:4px 10px!important;background:#7d7f82!important;color:#fff!important;font-size:13px!important;line-height:20px!important;text-align:center!important;font-weight:950!important}
-/* Job pack offer: navy expansion panel, blue Boss Mode panel and bordered green CTA. */
+/* Career offer panels use the Hayah surface and action hierarchy. */
 .job-pack-offer-overlay{position:fixed!important;inset:0!important;z-index:1100!important;display:flex!important;align-items:center!important;justify-content:center!important;padding:calc(22px + env(safe-area-inset-top)) 10px calc(14px + env(safe-area-inset-bottom))!important;background:rgba(2,10,20,.88)!important;backdrop-filter:blur(2px)!important}
 .job-pack-stage{width:min(100%,410px)!important;max-height:91dvh!important;overflow-y:auto!important;display:flex!important;flex-direction:column!important;gap:13px!important;padding:0 0 10px!important;border:0!important;background:transparent!important;scrollbar-width:thin}
 .job-pack-close{position:fixed!important;left:16px!important;top:calc(12px + env(safe-area-inset-top))!important;z-index:1101!important;width:43px!important;height:43px!important;border:2px solid #fff!important;border-radius:50%!important;background:#080d14!important;color:#fff!important;font-size:29px!important;line-height:1!important}
@@ -2054,11 +2053,11 @@ body.theme-dark .statlabel,body.theme-dark .statvalue{color:#175b91}
  .job-pack-buy{min-height:60px!important}.job-pack-buy span{font-size:20px!important}
 }
 
-/* School reference detail: Class popularity is orange; University grades remain green. */
+/* Earlier prototype styling retained for compatibility; v195 defines the active Hayah visual identity. */
 .school-screen .drawer-body .choicegrid > button.choice:nth-of-type(4) .choice-progress span{background:#f57c00!important}
 
 
-/* Activities list inspired by the supplied BitLife screen */
+/* Earlier prototype styling retained for compatibility; v195 defines the active Hayah visual identity. */
 .activities-screen .drawer-head{height:58px!important;min-height:58px!important;background:#075b9a!important}
 .activities-screen .drawer-body{padding:0!important;background:#e4e9f0!important}
 .activities-screen .drawer-body .desc{display:none!important}
@@ -2622,7 +2621,7 @@ body.theme-gold .statboost-btn{background:#f7edcf;color:#89631a;border-color:#c8
 }
 
 
-/* v121: extend the readable-text preference across decisions and supporting UI. */
+/* Earlier prototype styling retained for compatibility; v195 defines the active Hayah visual identity. */
 body.text-large .choice .ctitle{font-size:14px!important;line-height:1.55!important}
 body.text-large .choice .cdesc,
 body.text-large .desc,
@@ -2642,7 +2641,7 @@ body.text-large .statlabel,
 body.text-large .statvalue,
 body.text-large .navbtn{font-size:11px!important}
 
-/* Respect the operating system's reduced-motion preference throughout the interface. */
+/* Earlier prototype styling retained for compatibility; v195 defines the active Hayah visual identity. */
 @media(prefers-reduced-motion:reduce){
   *,*::before,*::after{
     animation:none!important;
@@ -2783,330 +2782,149 @@ body.theme-gold{--hayah-focus-ring:#76520f}
   }
 }
 
-
-/* v160 — match the supplied BitLife gameplay screenshots while keeping Hayah Arabic RTL. */
+/* v195: Hayah visual identity system — jade, linen, and warm clay. */
 :root{
-  --brand:#075b9b;
-  --brand-dark:#064a80;
-  --brand-soft:#e8f2fa;
-  --ink:#174e7d;
-  --text:#344b60;
-  --muted:#78899a;
-  --line:#d7dce2;
-  --paper:#ffffff;
-  --page:#f2f4f6;
-  --blue:#0b63a5;
-  --blue-dark:#094f86;
-  --green:#259a49;
-  --green-dark:#187c39;
-  --gold:#efbd39;
-  --red:#c83c33;
+ --hayah-primary:#0f766e;--hayah-primary-deep:#123b3a;--hayah-accent:#c06c4f;
+ --hayah-bg:#f6f2ea;--hayah-surface:#fffefa;--hayah-surface-soft:#f2eae0;
+ --hayah-line:#e4d8c9;--hayah-text:#243a37;--hayah-navy:#243a37;--hayah-muted:#667873;
+ --hayah-track:#e2e8de;--hayah-success:#2f805b;--hayah-danger:#a84b49;--hayah-focus-ring:#0b625d;
+ --brand:#0f766e;--brand-dark:#123b3a;--brand-soft:#f2eae0;--ink:#243a37;--text:#405b55;
+ --muted:#667873;--line:#e4d8c9;--paper:#fffefa;--page:#f6f2ea;--blue:#0f766e;
+ --blue-dark:#123b3a;--green:#2f805b;--green-dark:#216444;--gold:#c06c4f;--red:#a84b49;
 }
-html,body{background:#f2f4f6}
-#app{max-width:450px}
-#app .topbar{
-  background:#064f86;
-  color:#fff;
-  min-height:58px;
-  box-shadow:0 2px 5px #062d4b26;
-}
-#app .menu-trigger,#app .header-action{
-  border-color:#ffffff55;
-  background:#ffffff16;
-  color:#fff;
-  border-radius:50%;
-}
-#app .brandlogo,#app .brandlogo strong{color:#fff}
-#app .brand-symbol{
-  color:#075b9b;
-  background:#fff;
-  border-radius:50%;
-}
-#app .top-actions .member-btn{
-  border:1px solid #ffffff55;
-  background:#ffffff12;
-  color:#fff;
-}
-#app .hero{
-  padding:9px 12px;
-  background:#edf0f4;
-  border:0;
-  border-bottom:1px solid #cbd3dc;
-  border-radius:0;
-  box-shadow:none;
-}
-#app .profile{gap:9px}
-#app .avatar{
-  width:50px;height:50px;flex:0 0 50px;
-  border-radius:50%;
-  background:#dfe9f3;
-  border:1px solid #cad8e5;
-  box-shadow:none;
-}
-#app .avatar .flag{left:-3px;bottom:-3px}
-#app .name{color:#075a9b;font-size:15px;font-weight:950}
-#app .subline{color:#58728a}
-#app .tag{border-radius:4px;background:#fff;border-color:#d6dde5}
-#app .wealth{
-  padding:0 2px;min-width:90px;max-width:145px;
-  border:0;border-radius:0;background:transparent;box-shadow:none;
-}
-#app .wealthnum{color:#075b9b;font-size:18px}
-#app .wealthlabel{color:#52728b;font-weight:750}
-#app .wealthsmall{color:#7890a2}
-#app .story-heading{
-  min-height:48px!important;
-  padding:7px 13px!important;
-  background:#075b9b!important;
-  border:0!important;
-  color:#fff!important;
-}
-#app .story-heading .story-eyebrow{display:none!important}
-#app .story-heading h1{
-  color:#fff!important;font-size:15px!important;font-weight:1000!important;
-}
-#app .story-year{
-  border:0!important;border-radius:5px!important;
-  background:#fff!important;color:#075b9b!important;font-size:10px!important;
-}
-#app .feed{background:#fff!important;padding:5px 13px 20px!important}
-#app .agegroup{
-  color:#075b9b!important;font-size:12px!important;
-  padding:10px 0 4px!important;margin:0!important;
-}
-#app .agegroup:after{background:#dce2e8!important}
-#app .logcard,#app .logcard.good,#app .logcard.bad,#app .logcard.special{
-  display:flex;gap:7px;padding:9px 2px;margin:0;
-  border:0;border-bottom:1px solid #e2e6eb;border-radius:0;
-  background:#fff;box-shadow:none;
-}
-#app .logicon{
-  flex:0 0 25px;width:25px;height:25px;
-  border-radius:0;background:transparent;font-size:17px;
-}
-#app .logcontent{padding-top:1px}
-#app .logtitle{
-  margin:0 0 3px;color:#174e7d;font-size:12px;font-weight:950;
-}
-#app .logtext{color:#344b60;font-size:12px;line-height:1.6}
-#app .logcard.good .logtitle,#app .logcard.bad .logtitle,#app .logcard.special .logtitle{color:#174e7d}
-#app .stats{
-  padding:8px 12px 9px!important;background:#fff!important;border:0!important;
-}
-#app .statlabel{color:#49657d!important}
-#app .statvalue{color:#174e7d!important}
-#app .track{height:7px!important;background:#dfe5ea!important;border-radius:2px!important}
-#app .fill{
-  background:linear-gradient(90deg,#169447,#38b95c)!important;
-  border-radius:2px!important;
-}
-#app .nav{background:#fff!important;border-top:1px solid #dce2e8!important}
-#app .navbtn{color:#75889a!important}
-#app .navbtn.active{color:#075b9b!important;background:#e9f2fa!important}
-#app .agebtn{
-  background:#259a49!important;border-color:#fff!important;
-  box-shadow:0 0 0 1px #16833c,0 4px 10px #16833c26!important;
-}
-#app .sectionhead{background:#fff}
-#app .sectiontitle{color:#075b9b}
-#app .sectiontitle:before{background:#075b9b}
-
-/* Full-height category pages: blue title band and simple white rows. */
-#modalRoot .drawer-overlay{
-  inset:calc(122px + env(safe-area-inset-top)) auto 0;
-  left:calc(50% - min(225px,50vw));
-  right:calc(50% - min(225px,50vw));
-  padding:0;background:rgba(0,0,0,.42);
-  align-items:stretch;justify-content:center;
-}
-#modalRoot .modal.drawer{
-  width:100%;max-width:450px;height:100%;max-height:none;
-  border:0;border-radius:0;box-shadow:none;
-}
-#modalRoot .drawer-head{
-  height:56px;min-height:56px;background:#075b9b;padding:7px 12px;
-}
-#modalRoot .drawer-head .modalicon{
-  background:#ffffff20;color:#fff;border-radius:50%;border:1px solid #ffffff50;
-}
-#modalRoot .drawer-head .modaltitle{
-  color:#fff;text-align:center;font-size:15px;font-weight:1000;letter-spacing:.3px;
-}
-#modalRoot .drawer-body{background:#fff;padding:0 12px 20px}
-#modalRoot .drawer-body .desc{
-  padding:12px 2px;margin:0;color:#526a80;border-bottom:1px solid #dce2e8;
-}
-#modalRoot .drawer-body .choicegrid{gap:0}
-#modalRoot .drawer-body .choice{
-  min-height:64px;padding:10px 3px;
-  border:0;border-bottom:1px solid #d8dfe6;border-radius:0;
-  background:#fff;color:#174e7d;
-}
-#modalRoot .drawer-body .choice:active,#modalRoot .drawer-body .choice:hover{
-  background:#f1f6fb;border-color:#cbd9e6;
-}
-#modalRoot .drawer-body .choice .ctitle{
-  color:#075b9b;font-size:14px;font-weight:950;
-}
-#modalRoot .drawer-body .choice .cdesc{
-  color:#72869a;font-size:11px;line-height:1.5;
-}
-#modalRoot .drawer-body .choice .choice-chevron,
-#modalRoot .drawer-body .choice .choice-dots{color:#426e90}
-#modalRoot .list-section{
-  min-height:28px;padding:4px 10px;background:#7d8084;
-  color:#fff;text-align:center;font-size:12px;font-weight:950;line-height:20px;
-}
-
-/* Centered event card: red/orange frame, category ribbon and blue choices. */
-#modalRoot .event-overlay{
-  inset:0;align-items:center!important;justify-content:center;
-  padding:calc(14px + env(safe-area-inset-top)) 12px calc(14px + env(safe-area-inset-bottom));
-  background:rgba(5,14,24,.68);backdrop-filter:blur(2px);
-}
-#modalRoot .event-modal{
-  width:100%;max-width:450px;max-height:calc(100dvh - 30px);
-  overflow-y:auto;border:5px solid #e84a24;border-radius:24px;
-  background:#fff;box-shadow:0 18px 54px #0007;
-}
-#modalRoot .event-modal .event-banner{
-  min-height:50px;padding:10px 42px 10px 14px;
-  justify-content:flex-end;text-align:right;color:#fff;
-  font-size:14px;font-style:italic;font-weight:900;
-  background:linear-gradient(100deg,#fff 0%,#fff3ed 42%,#e84a24 100%);
-}
-#modalRoot .event-modal.banner-success .event-banner{
-  background:linear-gradient(100deg,#fff 0%,#f0f8f0 42%,#328b48 100%);
-}
-#modalRoot .event-modal.banner-danger .event-banner{
-  background:linear-gradient(100deg,#fff 0%,#fff0f0 42%,#c93632 100%);
-}
-#modalRoot .event-modal.banner-special .event-banner{
-  background:linear-gradient(100deg,#fff 0%,#f6efff 42%,#783db4 100%);
-}
-#modalRoot .event-modal .event-banner .closebtn{
-  left:5px;top:7px;width:32px;height:32px;
-  border:0;border-radius:50%;background:#d94325;color:#fff;font-size:22px;
-}
-#modalRoot .event-modal .event-summary{padding:13px 18px 6px;background:#fff}
-#modalRoot .event-modal .event-icon{
-  width:auto;height:auto;margin:1px auto 7px;
-  border-radius:0;background:transparent;font-size:27px;
-}
-#modalRoot .event-modal .event-title{
-  margin:2px 0 10px;color:#3a0d19;font-size:21px;
-  line-height:1.25;font-weight:1000;
-}
-#modalRoot .event-modal .event-summary .desc{
-  margin:0 0 9px;color:#2d2529;font-size:14px;line-height:1.55;
-}
-#modalRoot .event-modal .event-question{
-  margin:10px 0 2px;color:#3d2630;font-size:15px;font-weight:850;
-}
-#modalRoot .event-modal .event-body{padding:9px 20px 18px;background:#fff}
-#modalRoot .event-modal .choicegrid{gap:10px}
-#modalRoot .event-modal .choice{
-  min-height:48px;margin:0;padding:11px 12px;
-  border:0;border-radius:8px;background:#087fca;color:#fff;
-  box-shadow:0 4px 0 #aeb6bd;font-size:14px;font-weight:800;
-}
-#modalRoot .event-modal .choice:active,#modalRoot .event-modal .choice:hover{
-  background:#066eaf;border-color:transparent;transform:translateY(1px);
-}
-#modalRoot .event-modal .choice .choiceico{display:none}
-#modalRoot .event-modal .choice .ctitle{color:#fff;font-size:14px;font-weight:800}
-#modalRoot .event-modal .choice .cdesc{color:#e5f4ff;font-size:11px}
-#modalRoot .event-modal .choice .price{color:#fff;background:#ffffff24}
-#modalRoot .event-modal .surprise-choice{
-  display:flex;align-items:center;justify-content:center;gap:8px;
-  margin:14px auto 0;border:0;padding:4px 8px;
-  color:#286a9a;background:transparent;font-size:14px;text-decoration:underline;
-}
-#modalRoot .notice-modal{border-color:#e84a24!important;border-radius:24px!important}
+html,body{background:var(--hayah-bg)!important;color:var(--hayah-text)}
+body{overflow:hidden!important;justify-content:center!important;align-items:stretch!important}
+#app{width:100%!important;max-width:540px!important;height:100dvh!important;min-height:0!important;border-inline:1px solid var(--hayah-line)!important;background:var(--hayah-surface)!important;box-shadow:0 10px 40px rgba(36,58,55,.08)!important}
+#app>.topbar{background:var(--hayah-primary-deep)!important;color:#fff!important;border:0!important;border-bottom:1px solid #ffffff20!important;box-shadow:0 3px 12px rgba(18,59,58,.12)!important}
+#app .menu-trigger,#app .header-action{border:1px solid #ffffff50!important;border-radius:12px!important;background:#ffffff12!important;color:#fff!important}
+#app .brandlogo,#app .brandlogo strong{color:#fff!important;text-decoration:none!important}
+#app .brandlogo .brand-symbol{border:0!important;border-radius:11px!important;background:var(--hayah-accent)!important;color:var(--hayah-primary-deep)!important;box-shadow:none!important}
+#app .top-actions .member-btn{border:1px solid #ffffff55!important;border-radius:11px!important;background:var(--hayah-surface-soft)!important;color:var(--hayah-primary-deep)!important}
+#app .top-actions .member-btn span{color:var(--hayah-muted)!important}
+#app .top-actions .member-btn b{color:var(--hayah-primary)!important}
+#app .hero{background:var(--hayah-surface-soft)!important;border:0!important;border-bottom:1px solid var(--hayah-line)!important}
+#app .avatar{background:var(--hayah-surface)!important;border-color:var(--hayah-line)!important}
+#app .name{color:var(--hayah-text)!important;text-decoration:none!important}
+#app .identity-info{background:var(--hayah-primary)!important;color:#fff!important;border:0!important}
+#app .identity-role,#app .identity-role .role-tag,#app .identity-meta{color:var(--hayah-muted)!important}
+#app .wealth{background:transparent!important;border-color:var(--hayah-line)!important;box-shadow:none!important}
+#app .wealthnum{color:var(--hayah-success)!important}
+#app .wealthnum.negative{color:var(--hayah-danger)!important}
+#app .wealthlabel,#app .wealthsmall{color:var(--hayah-muted)!important}
+#app .story-heading{background:var(--hayah-surface)!important;border-bottom:1px solid var(--hayah-line)!important}
+#app .story-eyebrow{color:var(--hayah-primary)!important}
+#app .story-heading h1{color:var(--hayah-text)!important}
+#app .story-year{background:var(--hayah-surface-soft)!important;border:1px solid var(--hayah-line)!important;color:var(--hayah-primary-deep)!important}
+#app .feed{background:var(--hayah-bg)!important;scrollbar-color:#c8d5ca transparent!important}
+#app .feed::-webkit-scrollbar-thumb{background:#c8d5ca!important}
+#app .agegroup{color:var(--hayah-primary)!important}
+#app .agegroup:after{background:var(--hayah-line)!important}
+#app .agegroup span{padding:4px 9px!important;border-radius:99px!important;background:var(--hayah-surface-soft)!important;color:var(--hayah-primary-deep)!important}
+#app .logcard,#app .logcard.good,#app .logcard.bad,#app .logcard.special{display:flex!important;align-items:flex-start!important;gap:10px!important;width:100%!important;margin:0 0 8px!important;padding:11px!important;border:1px solid var(--hayah-line)!important;border-right:3px solid var(--hayah-accent)!important;border-radius:14px!important;background:var(--hayah-surface)!important;box-shadow:0 2px 8px rgba(36,58,55,.045)!important;animation:rise .16s ease both!important}
+#app .logicon{display:grid!important;place-items:center!important;flex:0 0 34px!important;width:34px!important;height:34px!important;border:0!important;border-radius:11px!important;background:var(--hayah-surface-soft)!important;color:var(--hayah-primary)!important}
+#app .logcontent{display:block!important;flex:1!important;min-width:0!important}
+#app .logtitle{color:var(--hayah-text)!important;font-size:12px!important;font-weight:950!important}
+#app .logtext{color:var(--hayah-muted)!important;font-size:12px!important;line-height:1.7!important}
+#app .logcard.good{border-color:#d7e9dc!important;border-right-color:var(--hayah-success)!important;background:#fbfefb!important}
+#app .logcard.good .logicon{background:#e8f3e9!important;color:var(--hayah-success)!important}
+#app .logcard.good .logtitle{color:var(--hayah-success)!important}
+#app .logcard.bad{border-color:#ecd9d5!important;border-right-color:var(--hayah-danger)!important;background:#fffaf8!important}
+#app .logcard.bad .logicon{background:#f7e9e5!important;color:var(--hayah-danger)!important}
+#app .logcard.bad .logtitle{color:var(--hayah-danger)!important}
+#app .logcard.special{border-color:#ead9cc!important;border-right-color:var(--hayah-accent)!important;background:#fffdf9!important}
+#app .logcard.special .logicon{background:#f5e8df!important;color:var(--hayah-accent)!important}
+#app .logcard.special .logtitle{color:#8c503d!important}
+#app .empty{border:1px dashed var(--hayah-line)!important;border-radius:15px!important;background:var(--hayah-surface)!important;color:var(--hayah-muted)!important}
+#app .bottom-dock{background:var(--hayah-surface)!important;border:0!important;border-top:1px solid var(--hayah-line)!important;box-shadow:0 -5px 18px rgba(36,58,55,.055)!important}
+#app .nav{order:0!important;direction:ltr!important;background:var(--hayah-surface)!important;border:0!important;border-top:1px solid var(--hayah-line)!important;grid-template-columns:1fr 1fr 1.15fr 1fr 1fr!important}
+#app .navbtn{color:var(--hayah-muted)!important;border:0!important;border-radius:12px!important;background:transparent!important;font-weight:850!important}
+#app .navbtn .navico{display:grid!important;place-items:center!important;width:34px!important;height:34px!important;border:1px solid var(--hayah-line)!important;border-radius:11px!important;background:var(--hayah-surface-soft)!important;color:var(--hayah-primary)!important;box-shadow:none!important;filter:none!important}
+#app .navbtn.active{color:var(--hayah-primary-deep)!important;background:var(--hayah-surface-soft)!important;box-shadow:inset 0 0 0 1px var(--hayah-line)!important}
+#app .navbtn.active .navico{background:var(--hayah-primary)!important;border-color:var(--hayah-primary)!important;color:#fff!important}
+#app .stats{order:1!important;display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:8px 12px!important;background:var(--hayah-surface)!important;border:0!important;border-top:1px solid var(--hayah-line)!important;padding:9px 13px 10px!important}
+#app .statrow{display:grid!important;grid-template-columns:72px minmax(0,1fr)!important;align-items:center!important;gap:7px!important;height:auto!important;min-height:17px!important}
+#app .statlabel{color:var(--hayah-muted)!important;font-size:9px!important;font-weight:850!important}
+#app .track{position:relative!important;display:block!important;width:100%!important;height:9px!important;border-radius:99px!important;overflow:hidden!important;background:var(--hayah-track)!important}
+#app .fill{position:absolute!important;top:0!important;bottom:0!important;left:0!important;right:auto!important;height:100%!important;border-radius:99px!important;background:linear-gradient(90deg,var(--hayah-primary),var(--hayah-success))!important}
+#app .statvalue{position:absolute!important;inset:0!important;z-index:1!important;display:flex!important;align-items:center!important;justify-content:center!important;color:var(--hayah-text)!important;font-size:8px!important;font-weight:950!important}
+#app .agebtn{width:64px!important;height:64px!important;min-width:64px!important;flex:0 0 64px!important;margin:-14px auto 0!important;border:4px solid var(--hayah-surface)!important;border-radius:50%!important;background:var(--hayah-primary)!important;color:#fff!important;box-shadow:0 0 0 2px var(--hayah-accent),0 4px 12px rgba(15,118,110,.22)!important}
+#app .sectiontitle{color:var(--hayah-text)!important}
+#app .sectiontitle:before{background:var(--hayah-accent)!important}
+#modalRoot .modal{border:1px solid var(--hayah-line)!important;border-radius:20px!important;background:var(--hayah-surface)!important;color:var(--hayah-text)!important;box-shadow:0 18px 52px rgba(18,59,58,.2)!important}
+#modalRoot .modalhead,#modalRoot .drawer-head{background:var(--hayah-primary-deep)!important;border-bottom:1px solid #ffffff20!important}
+#modalRoot .modalhead .modaltitle,#modalRoot .drawer-head .modaltitle{color:#fff!important}
+#modalRoot .modalicon{background:var(--hayah-accent)!important;color:var(--hayah-primary-deep)!important}
+#modalRoot .drawer-head .closebtn{width:44px!important;min-width:44px!important;height:44px!important;min-height:44px!important;border:1px solid #ffffff55!important;border-radius:12px!important;background:#ffffff12!important;color:#fff!important}
+#modalRoot .drawer-body{background:var(--hayah-bg)!important}
+#modalRoot .desc,#modalRoot .muted{color:var(--hayah-muted)!important}
+#modalRoot .drawer-body .choice,#modalRoot .choice{min-height:56px!important;padding:11px 12px!important;border:1px solid var(--hayah-line)!important;border-radius:13px!important;background:var(--hayah-surface)!important;color:var(--hayah-text)!important;text-align:right!important}
+#modalRoot .drawer-body .choice:hover,#modalRoot .drawer-body .choice:active,#modalRoot .choice:hover,#modalRoot .choice:active{background:var(--hayah-surface-soft)!important;border-color:#d7b9a8!important}
+#modalRoot .choice .choiceico{display:grid!important;place-items:center!important;border-radius:11px!important;background:var(--hayah-surface-soft)!important;color:var(--hayah-primary)!important}
+#modalRoot .choice .ctitle{color:var(--hayah-text)!important}
+#modalRoot .choice .cdesc{color:var(--hayah-muted)!important}
+#modalRoot .choice .price{background:#e8f2e8!important;color:var(--hayah-success)!important;border-radius:8px!important}
+#modalRoot .list-section{min-height:30px!important;padding:6px 10px!important;margin:12px 0 5px!important;border-radius:9px!important;background:var(--hayah-surface-soft)!important;color:var(--hayah-primary-deep)!important;text-align:right!important}
+#modalRoot .listitem,#modalRoot .summarycell{border:1px solid var(--hayah-line)!important;border-radius:13px!important;background:var(--hayah-surface)!important;color:var(--hayah-text)!important}
+#modalRoot .pill,#modalRoot .tag{border:1px solid var(--hayah-line)!important;border-radius:9px!important;background:var(--hayah-surface-soft)!important;color:var(--hayah-text)!important}
+#modalRoot input,#modalRoot select,#modalRoot textarea{border:1px solid var(--hayah-line)!important;border-radius:11px!important;background:var(--hayah-surface)!important;color:var(--hayah-text)!important}
+#modalRoot .smallbtn{min-height:44px!important;border:1px solid var(--hayah-line)!important;border-radius:11px!important;background:var(--hayah-surface-soft)!important;color:var(--hayah-primary-deep)!important}
+#modalRoot .primarybtn{min-height:48px!important;border:0!important;border-radius:12px!important;background:var(--hayah-primary)!important;color:#fff!important}
+#modalRoot .event-overlay{inset:0!important;align-items:center!important;justify-content:center!important;padding:calc(14px + env(safe-area-inset-top)) 12px calc(14px + env(safe-area-inset-bottom))!important;background:rgba(18,35,32,.66)!important;backdrop-filter:blur(4px)!important}
+#modalRoot .event-modal{width:100%!important;max-width:460px!important;max-height:calc(100dvh - 28px)!important;overflow-y:auto!important;border:1px solid var(--hayah-line)!important;border-top:6px solid var(--hayah-accent)!important;border-radius:22px!important;background:var(--hayah-surface)!important}
+#modalRoot .event-modal::before{display:none!important;content:none!important;height:0!important}
+#modalRoot .event-modal .event-banner{position:relative!important;display:flex!important;align-items:center!important;justify-content:flex-start!important;min-height:56px!important;padding:9px 62px 9px 16px!important;border:0!important;border-radius:16px 16px 0 0!important;background:linear-gradient(115deg,var(--hayah-primary-deep),var(--hayah-primary))!important;color:#fff!important;font-size:13px!important;font-style:normal!important;font-weight:950!important;text-align:right!important;direction:rtl!important}
+#modalRoot .event-modal.banner-success .event-banner{background:linear-gradient(115deg,#1f6247,#2f805b)!important}
+#modalRoot .event-modal.banner-danger .event-banner{background:linear-gradient(115deg,#783b39,#a84b49)!important}
+#modalRoot .event-modal.banner-special .event-banner{background:linear-gradient(115deg,#654334,#c06c4f)!important}
+#modalRoot .event-modal .event-banner .closebtn{position:absolute!important;top:6px!important;right:6px!important;bottom:auto!important;left:auto!important;z-index:2!important;width:44px!important;min-width:44px!important;height:44px!important;min-height:44px!important;display:grid!important;place-items:center!important;border:1px solid #ffffff65!important;border-radius:12px!important;background:#ffffff18!important;color:#fff!important;font-size:22px!important}
+#modalRoot .event-modal .event-summary{padding:16px 18px 9px!important;background:var(--hayah-surface-soft)!important}
+#modalRoot .event-modal .event-icon{display:grid!important;place-items:center!important;width:46px!important;height:46px!important;margin:0 auto 8px!important;border-radius:14px!important;background:#eadbd0!important;color:var(--hayah-primary-deep)!important;font-size:25px!important}
+#modalRoot .event-modal .event-title{margin:2px 0 8px!important;color:var(--hayah-text)!important;font-size:20px!important;line-height:1.3!important;font-weight:1000!important}
+#modalRoot .event-modal .event-summary .desc{margin:0 0 8px!important;color:var(--hayah-muted)!important;font-size:13px!important;line-height:1.7!important}
+#modalRoot .event-modal .event-body{padding:12px 16px 17px!important;background:var(--hayah-surface)!important}
+#modalRoot .event-modal .choicegrid{display:grid!important;gap:8px!important}
+#modalRoot .event-modal .choice{min-height:48px!important;margin:0!important;padding:11px 13px!important;border:0!important;border-radius:12px!important;background:var(--hayah-primary)!important;color:#fff!important}
+#modalRoot .event-modal .choice:hover,#modalRoot .event-modal .choice:active{background:var(--hayah-primary-deep)!important}
+#modalRoot .event-modal .choice .ctitle{color:#fff!important;font-size:13px!important;font-weight:900!important}
+#modalRoot .event-modal .choice .cdesc{color:#e7f4ef!important;font-size:11px!important}
+#modalRoot .event-modal .surprise-choice{min-height:44px!important;margin:10px auto 0!important;padding:5px 10px!important;border:1px solid var(--hayah-line)!important;border-radius:10px!important;background:var(--hayah-surface-soft)!important;color:var(--hayah-primary-deep)!important}
+#app button:focus-visible,#app a[href]:focus-visible,#modalRoot button:focus-visible,#modalRoot input:focus-visible,#modalRoot select:focus-visible,#modalRoot textarea:focus-visible,#modalRoot a[href]:focus-visible{outline:3px solid var(--hayah-focus-ring)!important;outline-offset:3px!important}
+body.theme-dark{--hayah-primary:#4fb7aa;--hayah-primary-deep:#102b2b;--hayah-accent:#d6a07c;--hayah-bg:#111d1c;--hayah-surface:#1a2a28;--hayah-surface-soft:#203531;--hayah-line:#38504a;--hayah-text:#e5efeb;--hayah-navy:#e5efeb;--hayah-muted:#afc2bb;--hayah-track:#3a5149;--hayah-success:#70c69b;--hayah-danger:#ff9a91;--hayah-focus-ring:#a9ead8}
+body.theme-gold{--hayah-primary:#806026;--hayah-primary-deep:#493817;--hayah-accent:#b86b4a;--hayah-bg:#f7f0e1;--hayah-surface:#fffdf6;--hayah-surface-soft:#f2e8d1;--hayah-line:#e5d5b3;--hayah-text:#493b20;--hayah-navy:#493b20;--hayah-muted:#7e704f;--hayah-track:#e7ddc4;--hayah-success:#587a48;--hayah-danger:#a74d43;--hayah-focus-ring:#6d4d19}
+body.theme-dark #app .bottom-dock,body.theme-dark #app .nav,body.theme-dark #app .stats{background:var(--hayah-surface)!important;border-color:var(--hayah-line)!important}
+body.theme-dark #app .logcard,body.theme-dark #app .modal{background:var(--hayah-surface)!important}
+body.theme-dark #modalRoot .event-modal .choice{background:var(--hayah-primary)!important;color:#fff!important}
+body.text-large #app .logtitle{font-size:14px!important;line-height:1.6!important}
+body.text-large #app .logtext{font-size:14px!important;line-height:1.85!important}
+body.text-large #app .navbtn,body.text-large #app .statlabel{font-size:11px!important}
+body.text-large #modalRoot .choice .ctitle{font-size:15px!important;line-height:1.6!important}
+body.text-large #modalRoot .choice .cdesc{font-size:13px!important;line-height:1.7!important}
 @media(max-width:380px){
-  #app .topbar{gap:5px;padding-inline:8px}
-  #app .brandlogo strong{font-size:19px}
-  #app .hero{padding-inline:8px;gap:5px}
-  #app .avatar{width:44px;height:44px;flex-basis:44px}
-  #app .name{font-size:13px}
-  #app .wealth{min-width:82px}
-  #app .wealthnum{font-size:15px}
-  #modalRoot .event-modal .event-summary{padding:10px 12px 4px}
-  #modalRoot .event-modal .event-title{font-size:19px}
-  #modalRoot .event-modal .event-body{padding:7px 12px 14px}
-  #modalRoot .event-modal .choice{min-height:44px}
+ #app .topbar{grid-template-columns:36px minmax(0,1fr) auto!important;gap:5px!important;padding-inline:8px!important}
+ #app .brandlogo{font-size:15px!important;gap:6px!important}#app .brandlogo .brand-symbol{width:29px!important;height:29px!important;font-size:17px!important}
+ #app .brandlogo strong{font-size:16px!important}#app .top-actions{gap:4px!important}
+ #app .hero{min-height:76px!important;padding:8px 9px!important;gap:7px!important}#app .avatar{width:44px!important;height:44px!important;flex-basis:44px!important}
+ #app .name{font-size:13px!important}#app .identity-meta{font-size:8px!important;gap:5px!important}
+ #app .wealth{min-width:92px!important;padding-right:8px!important}#app .wealthnum{font-size:14px!important}
+ #app .story-heading{min-height:52px!important;padding-inline:11px!important}#app .story-heading h1{font-size:13px!important}
+ #app .story-year{font-size:8px!important;padding:5px 7px!important}#app .feed{padding-inline:9px!important}
+ #app .logcard,#app .logcard.good,#app .logcard.bad,#app .logcard.special{padding:9px!important;gap:8px!important}
+ #app .logicon{width:29px!important;height:29px!important;flex-basis:29px!important;font-size:16px!important}
+ #app .stats{gap:7px 8px!important;padding:8px 9px!important}#app .statrow{grid-template-columns:58px minmax(0,1fr)!important;gap:5px!important}
+ #app .statlabel{font-size:8px!important}#app .nav{height:62px!important;min-height:62px!important;flex-basis:62px!important;padding-inline:3px!important}
+ #app .navbtn{font-size:8px!important;min-height:50px!important}#app .navbtn .navico{width:30px!important;height:30px!important;flex-basis:30px!important;font-size:17px!important}
+ #app .agebtn{width:57px!important;height:57px!important;min-width:57px!important;flex-basis:57px!important;margin-top:-13px!important}
+ #app .drawer-overlay{inset:calc(58px + 76px + 52px + env(safe-area-inset-top)) 0 0!important;left:0!important;right:0!important}
 }
-@media(prefers-reduced-motion:reduce){#modalRoot .event-modal{animation:none}}
-
-
-/* Last-mile polish from the supplied screen captures and forced-colors regression. */
-#modalRoot .drawer-head .modalicon{display:none}
-#modalRoot .drawer-head .modaltitle{
-  flex:1;text-align:center;margin-inline:auto;
-}
-#modalRoot .drawer-head .closebtn{
-  width:38px;height:38px;flex:0 0 38px;
-  display:grid;place-items:center;
-  border:2px solid #ffffff;border-radius:50%;
-  background:transparent;color:transparent;font-size:0;
-}
-#modalRoot .drawer-head .closebtn::before{
-  content:"‹";display:block;color:#fff;
-  font-family:Arial,sans-serif;font-size:30px;line-height:1;
-  transform:translateY(-1px);
-}
-#modalRoot .event-modal::before{
-  content:"";display:block;height:44px;background:#fff;
-}
-#modalRoot .event-modal .event-summary{padding-top:26px}
-#modalRoot .event-modal .event-banner .closebtn{
-  position:fixed;left:auto;right:9px;top:auto;
-  bottom:calc(10px + env(safe-area-inset-bottom));
-  z-index:100;width:40px;height:40px;
-  border:2px solid #ffe34b;border-radius:50%;
-  background:#d71920;color:#ffe34b;font-size:25px;
-  display:grid;place-items:center;
-}
+@media(max-height:680px){#app .nav{height:63px!important;min-height:63px!important;flex-basis:63px!important}#app .stats{padding-top:5px!important;padding-bottom:5px!important;gap:3px!important}#app .statrow{min-height:13px!important}#app .track{height:8px!important}#app .agebtn{width:60px!important;height:60px!important;min-width:60px!important;flex-basis:60px!important}}
+@media(pointer:coarse),(any-pointer:coarse){#app .menu-trigger,#app .header-action,#app .member-btn,#app .identity-info,#app .agebtn,#modalRoot .closebtn,#modalRoot .smallbtn,#modalRoot .primarybtn{min-width:44px!important;min-height:44px!important}}
+@media(prefers-reduced-motion:reduce){#app *,#app *::before,#app *::after,#modalRoot *,#modalRoot *::before,#modalRoot *::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;scroll-behavior:auto!important}}
+@media(prefers-contrast:more) and (forced-colors:none){:root{--hayah-text:#1b302c;--hayah-muted:#40564f;--hayah-line:#7d9188;--hayah-focus-ring:#0b625d}body.theme-dark{--hayah-text:#f2f7f4;--hayah-muted:#d5e2dc;--hayah-line:#9bb0a8;--hayah-focus-ring:#fff}#app .logcard,#app .wealth,#modalRoot .choice,#modalRoot input,#modalRoot select,#modalRoot textarea{border-width:2px!important}#app .navbtn.active{text-decoration:underline!important;text-underline-offset:3px!important}}
 @media (forced-colors: active){
-  #app > .topbar,
-  #app > .hero,
-  #app > .story-heading,
-  #app > .feed,
-  #app > .bottom-dock,
-  #app > .bottom-dock > .nav,
-  #app > .bottom-dock > .stats{
-    background:Canvas!important;color:CanvasText!important;
-    border-color:CanvasText!important;box-shadow:none!important;
-  }
-  #app .name,#app .story-heading h1,#app .wealthlabel,#app .wealthnum,
-  #app .logtitle,#app .logtext,#app .statlabel,#app .statvalue,
-  #app .navbtn{color:CanvasText!important}
-  #app .navbtn.active{
-    background:Highlight!important;color:HighlightText!important;
-    outline:1px solid HighlightText;outline-offset:-2px;
-  }
-  #app .agebtn{
-    background:Highlight!important;color:HighlightText!important;
-    border:2px solid ButtonText!important;box-shadow:none!important;
-  }
-}
-
-/* The primary year button uses system colors in Windows/high-contrast mode. */
-@media (forced-colors: active){
-  #app .agebtn{
-    background:ButtonText!important;
-    color:HighlightText!important;
-    border:2px solid HighlightText!important;
-    box-shadow:none!important;
-  }
-}
-
-@media (forced-colors: active){
-  #app .agebtn{
-    forced-color-adjust:none!important;
-    background:#075b9b!important;
-    color:#fff!important;
-    border:2px solid #fff!important;
-    box-shadow:none!important;
-  }
+ #app>.topbar,#app>.hero,#app>.story-heading,#app>.feed,#app>.bottom-dock,#app>.bottom-dock>.nav,#app>.bottom-dock>.stats,#modalRoot .modal,#modalRoot .modalhead,#modalRoot .drawer-body,#modalRoot .event-summary,#modalRoot .event-body{forced-color-adjust:auto!important;background:Canvas!important;color:CanvasText!important;border-color:CanvasText!important;box-shadow:none!important}
+ #app .name,#app .story-heading h1,#app .wealthlabel,#app .wealthnum,#app .logtitle,#app .logtext,#app .statlabel,#app .statvalue,#app .navbtn,#modalRoot .modaltitle,#modalRoot .desc,#modalRoot .choice .ctitle{color:CanvasText!important}
+ #app .navbtn.active{background:Highlight!important;color:HighlightText!important;outline:1px solid HighlightText!important;outline-offset:-2px!important}
+ #app .agebtn{background:ButtonText!important;color:HighlightText!important;border:2px solid HighlightText!important;box-shadow:none!important}
+ #modalRoot .choice{background:Canvas!important;color:CanvasText!important;border:1px solid ButtonText!important}
+ #modalRoot button:focus-visible,#app button:focus-visible{outline:2px solid Highlight!important;outline-offset:2px!important}
 }
