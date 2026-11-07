@@ -78,7 +78,7 @@ test('الحفظ غير الصالح لا ينتج تقريرًا مضللًا',
   assert.equal(summarizeLife(null, []), null);
   assert.equal(summarizeLife({ version: 2, name: 'غير مدعوم', age: 30 }, []), null);
   assert.equal(summarizeLife({ version: 1, name: 'عمر غير صالح', age: 151 }, []), null);
-  assert.equal(summarizeLife({ version: 1, name: 'اسم مفقود', age: 20 }, []), null);
+  assert.equal(summarizeLife({ version: 1, age: 20 }, []), null);
 });
 
 test('المحطات محدودة وتُعرض الأحدث أولًا مع إزالة التكرار', () => {
