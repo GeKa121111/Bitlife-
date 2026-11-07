@@ -292,13 +292,15 @@
     const dialog = doc && doc.getElementById ? doc.getElementById('deathDialog') : null;
     if (!dialog || dialog.getAttribute('data-life-review-open') === 'true') return false;
 
-    const storage = host && host.localStorage;
+    let storage = null;
+    try { storage = host && host.localStorage; } catch { storage = null; }
     const state = readJson(storage, SAVE_KEY);
     const cemetery = readJson(storage, CEMETERY_KEY) || readJson(storage, CEMETERY_BACKUP_KEY);
     const summary = summarizeLife(state, cemetery);
     const originalNodes = Array.from(dialog.childNodes);
     const originalLabel = dialog.getAttribute('aria-labelledby');
     const originalDescription = dialog.getAttribute('aria-describedby');
+    const originalOpenValue = dialog.getAttribute('data-life-review-open');
     const hadLabel = originalLabel !== null;
     const hadDescription = originalDescription !== null;
     let closed = false;
@@ -308,7 +310,8 @@
       if (closed) return;
       closed = true;
       dialog.replaceChildren(...originalNodes);
-      dialog.removeAttribute('data-life-review-open');
+      if (originalOpenValue !== null) dialog.setAttribute('data-life-review-open', originalOpenValue);
+      else dialog.removeAttribute('data-life-review-open');
       if (hadLabel) dialog.setAttribute('aria-labelledby', originalLabel);
       else dialog.removeAttribute('aria-labelledby');
       if (hadDescription) dialog.setAttribute('aria-describedby', originalDescription);
