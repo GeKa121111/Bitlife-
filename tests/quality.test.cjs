@@ -738,7 +738,7 @@ test('هوية حياة البصرية تستخدم نظام ألوان عربي
 
 test('تخطيط الهاتف وإمكانية الوصول ما زالا موجودين', () => {
   assert.match(css, /@media\(max-width:380px\)/);
-  assert.match(css, /@media\(prefers-reduced-motion:reduce\)/);
+  assert.match(css, /@media\s*\(prefers-reduced-motion:\s*reduce\)/);
   assert.match(css, /button:focus-visible/);
   assert.match(css, /\.brand-symbol\{/);
 });
