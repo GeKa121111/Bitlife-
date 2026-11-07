@@ -106,7 +106,7 @@ function createServer() {
         opened: !!panel,
         title: title && title.textContent,
         containsCareer: reportText.includes('مهندس'),
-        containsNetWorth: reportText.includes('240,000') || reportText.includes('٢٤٠٬٠٠٠') || reportText.includes('240000'),
+        containsNetWorth: reportText.includes('220,000') || reportText.includes('٢٢٠٬٠٠٠') || reportText.includes('220000'),
         imageCount,
         restored: dialog.contains(reviewButton),
         restoredLabel: dialog.getAttribute('aria-labelledby'),
