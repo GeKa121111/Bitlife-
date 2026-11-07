@@ -430,7 +430,9 @@
     const modalRoot = global.document && global.document.getElementById('modalRoot');
     const previousCommunityMarkup = modalRoot ? modalRoot.innerHTML : '';
     const backToMenu = () => {
-      if (typeof global.combatCommunityMenu === 'function' || typeof combatCommunityMenu === 'function') {
+      const host = global.HayahCombatSeasonHost;
+      if ((host && typeof host.openCommunityMenu === 'function') ||
+          typeof global.combatCommunityMenu === 'function' || typeof combatCommunityMenu === 'function') {
         return returnToCommunityMenu();
       }
       if (modalRoot) modalRoot.innerHTML = previousCommunityMarkup;
