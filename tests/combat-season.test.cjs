@@ -606,7 +606,7 @@ test('تطبيع سجل الموسم يحد القيم ويحذف السجلات
       { id: 'valid', position: 999, points: -1, played: 999, wins: 999, rating: 999 },
       { id: '', name: 'بلا معرّف' }
     ],
-    records: [null, { id: 'recorded', seasons: -5, played: 9999999, wins: 9999999, titles: 9999999, bestPosition: 999, points: 9999999999 }, { id: '', name: 'بلا معرّف' }],
+    records: [null, { id: 'recorded', seasons: -5, played: 9999999, wins: 9999999, titles: 9999999, titleStreak: 9999999, bestTitleStreak: -1, bestPosition: 999, points: 9999999999 }, { id: '', name: 'بلا معرّف' }],
     history: Array.from({ length: 15 }, (_, index) => ({
       season: index + 1,
       age: 200,
@@ -631,6 +631,9 @@ test('تطبيع سجل الموسم يحد القيم ويحذف السجلات
   assert.equal(normalized.records[0].played, 1000000);
   assert.equal(normalized.records[0].bestPosition, 20);
   assert.equal(normalized.records[0].titles, 1000000);
+  assert.equal(normalized.records[0].titleStreak, 1000000);
+  assert.equal(normalized.records[0].bestTitleStreak, 1000000,
+    'the historical best streak must never be lower than the recorded current streak');
   assert.equal(normalized.history.length, 12);
   assert.equal(normalized.history[0].season, 4);
   assert.equal(normalized.history.at(-1).age, 150);
