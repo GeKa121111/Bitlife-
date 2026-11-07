@@ -225,6 +225,19 @@
     return (value / (1024 * 1024)).toFixed(2) + ' ميجابايت';
   }
 
+  async function sha256Fingerprint(file, cryptoApi) {
+    if (!file || typeof file.arrayBuffer !== 'function' ||
+        !cryptoApi || !cryptoApi.subtle || typeof cryptoApi.subtle.digest !== 'function') return null;
+    try {
+      const bytes = await file.arrayBuffer();
+      const digest = await cryptoApi.subtle.digest('SHA-256', bytes);
+      return Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, '0')).join('');
+    } catch {
+      // Fingerprinting is optional; a browser limitation must not block the local save inspection.
+      return null;
+    }
+  }
+
   function mount(doc, host) {
     if (!doc || !doc.getElementById) return;
     const input = doc.getElementById('backupFile');
@@ -275,6 +288,7 @@
       const facts = [
         ['اسم الملف', file.name],
         ['حجم الملف', formatBytes(file.size)],
+        ['بصمة SHA-256', report.sha256 || 'غير متاحة في هذا المتصفح'],
         ['نوع الملف', report.format],
         ['الشخصية', report.name || 'غير متاحة'],
         ['العمر بعد التطبيع', report.age === null ? 'غير متاح' : report.age + ' سنة'],
@@ -312,7 +326,7 @@
         panel.appendChild(warnings);
       }
       appendText(panel, 'p', 'report-disclaimer',
-        'هذا فحص أولي لشروط الاستيراد الأساسية التي يطبقها المحرك، وليس ضمانًا لسلامة كل تفاصيل الحياة. احتفظ بالملف الأصلي ولا تستبدل حفظك الحالي اعتمادًا على هذه النتيجة وحدها.');
+        'يمكن مقارنة بصمة SHA-256 قبل نقل الملف وبعده؛ تطابق البصمة لا يثبت مصدر الملف ولا يضمن سلامة كل تفاصيل الحياة. هذا فحص أولي فقط، فاحتفظ بالملف الأصلي ولا تستبدل حفظك الحالي اعتمادًا على النتيجة وحدها.');
       resultNode.replaceChildren(panel);
       clearButton.disabled = false;
     };
@@ -341,13 +355,17 @@
       reader.onabort = () => {
         if (isCurrentRead()) activeReader = null;
       };
-      reader.onload = () => {
+      reader.onload = async () => {
         if (!isCurrentRead()) return;
         activeReader = null;
         try {
           const parsed = JSON.parse(String(reader.result || ''));
-          renderReport(file, inspectBackup(parsed));
+          const sha256 = await sha256Fingerprint(file, runtime.crypto);
+          // A newer file selection or a clear action invalidates this async digest.
+          if (sequence !== inspectionSequence) return;
+          renderReport(file, { ...inspectBackup(parsed), sha256 });
         } catch {
+          if (sequence !== inspectionSequence) return;
           showMessage('الملف ليس JSON صالحًا أو تعذّرت قراءته.', 'report-invalid');
         }
       };
@@ -381,5 +399,5 @@
     });
   }
 
-  return { MAX_FILE_BYTES, MAX_REWIND_SNAPSHOT_CHARS, inspectRewindHistory, inspectBackup, formatBytes, mount };
+  return { MAX_FILE_BYTES, MAX_REWIND_SNAPSHOT_CHARS, inspectRewindHistory, inspectBackup, formatBytes, sha256Fingerprint, mount };
 });

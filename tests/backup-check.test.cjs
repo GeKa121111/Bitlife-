@@ -2,10 +2,15 @@
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+const { createHash, webcrypto } = require('node:crypto');
 const {
   inspectBackup,
+  sha256Fingerprint,
   MAX_REWIND_SNAPSHOT_CHARS
 } = require('../backup-check.js');
+const checkerSource = fs.readFileSync(path.join(__dirname, '..', 'backup-check.js'), 'utf8');
 
 function makeLife(overrides = {}) {
   return {
@@ -207,4 +212,37 @@ test('النقاط القابلة للتحليل لكنها غير صالحة ل
   assert.equal(report.rewindUnusableSnapshotCount, 4);
   assert.equal(report.rewindUsableSnapshotCount, 0);
   assert.ok(report.warnings.some(message => message.includes('لا تخص عمرًا أقدم')));
+});
+
+
+test('فاحص الحفظ يحسب بصمة SHA-256 مطابقة لبايتات الملف دون تعديلها', async () => {
+  const bytes = Buffer.from('حياة — نسخة احتياطية');
+  const file = {
+    arrayBuffer: async () => bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength)
+  };
+  const before = Buffer.from(bytes);
+  const fingerprint = await sha256Fingerprint(file, webcrypto);
+
+  assert.equal(fingerprint, createHash('sha256').update(bytes).digest('hex'));
+  assert.match(fingerprint, /^[a-f0-9]{64}$/);
+  assert.deepEqual(bytes, before);
+});
+
+test('تعذر Web Crypto لا يمنع فحص ملف الحفظ', async () => {
+  const file = { arrayBuffer: async () => new ArrayBuffer(0) };
+  const unavailable = await sha256Fingerprint(file, null);
+  const missingFileReaderApi = await sha256Fingerprint({}, webcrypto);
+  const rejectedDigest = await sha256Fingerprint(file, {
+    subtle: { digest: async () => { throw new Error('digest unavailable'); } }
+  });
+
+  assert.equal(unavailable, null);
+  assert.equal(missingFileReaderApi, null);
+  assert.equal(rejectedDigest, null);
+});
+
+test('واجهة فاحص الحفظ تعرض البصمة وتوضح أنها ليست إثباتًا لمصدر الملف', () => {
+  assert.match(checkerSource, /بصمة SHA-256/);
+  assert.match(checkerSource, /sha256Fingerprint\(file, runtime\.crypto\)/);
+  assert.match(checkerSource, /تطابق البصمة لا يثبت مصدر الملف/);
 });
