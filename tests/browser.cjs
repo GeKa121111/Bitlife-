@@ -2812,12 +2812,14 @@ async function run() {
     assert.ok(persistedCommunitySeason.league.standings.every(row => row.played <= 2),
       'a rival should not be scheduled for more than two bouts in one season');
 
-    // Aging may also open a life-event overlay; dismiss its explicit close control before navigating.
-    const ageEventClose = page.locator('#modalRoot .event-modal .event-banner .closebtn');
-    if (await ageEventClose.count()) {
-      await ageEventClose.first().click();
-      await page.locator('#modalRoot .event-overlay').waitFor({ state: 'detached' });
-    }
+    // The annual save can complete before its life-event overlay is rendered.
+    // Wait for the deterministic test event, close it, and wait until it no longer blocks navigation.
+    const ageEventOverlay = page.locator('#modalRoot #overlay.event-overlay');
+    await ageEventOverlay.waitFor({ state: 'visible', timeout: 5000 });
+    const ageEventClose = ageEventOverlay.locator('.event-modal .event-banner .closebtn');
+    await ageEventClose.waitFor({ state: 'visible' });
+    await ageEventClose.click();
+    await ageEventOverlay.waitFor({ state: 'hidden' });
 
     // Aging closes the combat-community dialog; reopen the live menus before continuing the social-interaction flow.
     await page.locator('[data-panel="career"]').click();
