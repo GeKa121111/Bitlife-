@@ -161,6 +161,14 @@ jobs:
         run: node --check tests/accessibility-large-text.browser.cjs
       - name: Run mobile browser end-to-end tests
         run: node tests/browser.cjs
+      - name: Upload Hayah visual identity screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: hayah-identity-screenshots
+          path: test-results/hayah-identity/*.png
+          if-no-files-found: warn
+          retention-days: 7
       - name: Run expanded large-text accessibility browser checks
         run: node tests/accessibility-large-text.browser.cjs
       - name: Check diary search browser test syntax

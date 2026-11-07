@@ -234,20 +234,18 @@ assert.match(index, /id="stageNavLabel"/);
 assert.match(index, /id="heirloomBtn"/);
 assert.match(index, /class="bottom-dock">[\s\S]*<nav class="nav"[\s\S]*id="statsPanel"/);
 assert.match(css, /height:54px;min-height:54px;flex:0 0 54px/);
-const finalUi = css.slice(css.lastIndexOf("/* Hayah's original life screen: compact identity"));
-assert.ok(finalUi.length > 0, 'the original Hayah layout block should exist');
-assert.match(finalUi, /--hayah-primary:#176b66/, 'the main screen should use Hayah teal as its primary color');
-assert.match(finalUi, /--hayah-navy:#1d3b53/, 'the five-tab navigation should use Hayah navy');
-assert.match(finalUi, /--hayah-accent:#e5b34b/, 'the main screen should retain the warm-gold accent');
-assert.match(finalUi, /\.bottom-dock\s*\{[^}]*position:fixed[^}]*left:50%/s, 'the bottom dock should stay anchored to the device viewport');
-assert.match(finalUi, /\.nav\s*\{[^}]*order:0/s, 'tabs should appear above the meters');
-assert.match(finalUi, /\.stats\s*\{[^}]*order:1/s, 'status meters should appear beneath the tabs');
-assert.match(finalUi, /\.statrow\s*\{[^}]*grid-template-columns:78px minmax\(0,1fr\)/s, 'status bars should use the full row width');
-assert.match(finalUi, /\.fill\s*\{[^}]*position:absolute[^}]*right:0/s, 'status fills should render inside the track');
-assert.match(finalUi, /\.statvalue\s*\{[^}]*position:absolute[^}]*z-index:1/s, 'status values should overlay the progress bars');
-assert.match(finalUi, /\.nav\{direction:ltr\}/, 'tab positions should follow the original left-to-right order');
-assert.match(finalUi, /\.fill\{left:0;right:auto\}/, 'progress fills should grow from the left edge like the reference');
-assert.match(serviceWorker, /hayah-shell-v194/, 'the app shell cache should refresh the new styles');
+const finalUi = css.slice(css.lastIndexOf('/* v195: Hayah visual identity system'));
+assert.ok(finalUi.length > 0, 'the v195 Hayah visual identity layer should exist');
+assert.match(finalUi, /--hayah-primary:#0f766e/);
+assert.match(finalUi, /--hayah-primary-deep:#123b3a/);
+assert.match(finalUi, /--hayah-accent:#c06c4f/);
+assert.match(finalUi, /\.nav\s*\{[^}]*order:0!important/s);
+assert.match(finalUi, /\.stats\s*\{[^}]*order:1!important/s);
+assert.match(finalUi, /\.statrow\s*\{[^}]*grid-template-columns:72px minmax\(0,1fr\)/s);
+assert.match(finalUi, /\.fill\s*\{[^}]*left:0!important;right:auto!important/s);
+assert.match(finalUi, /@media\(max-width:380px\)/);
+assert.doesNotMatch(css, /BitLife|--bitlife-/i);
+assert.match(serviceWorker, /hayah-shell-v195/, 'the app shell cache should refresh the new identity layer');
 assert.match(app, /function siblingEmploymentDecision\(relative,profile,year,age\)/, 'sibling job events should be simulated deterministically');
 assert.match(app, /function schoolHub\(\)/);
 assert.match(app, /function maintainAsset\(index\)/);
@@ -628,7 +626,7 @@ assert.ok(app.includes('uiSettings.boosts'), 'recovery opportunities should be o
 assert.ok(app.includes('uiSettings.sound'));
 assert.ok(app.includes('uiSettings.haptics'));
 assert.ok(app.includes('uiSettings.reducedMotion'));
-assert.match(serviceWorker, /hayah-shell-v194/);
+assert.match(serviceWorker, /hayah-shell-v195/);
 assert.ok(app.includes('function formatStorageBytes(bytes)'));
 assert.ok(app.includes('function inspectStorageCapacity()'));
 assert.match(app, /فحص مساحة التخزين/);
@@ -650,13 +648,13 @@ assert.ok(app.includes("function advanceBusinessRivals(raw,business,industry,yea
 assert.ok(app.includes("function summarizeBusinessRivals(rivals,baselineCompetition,profile)"));
 assert.match(app, /marketRivalPlans/);
 assert.match(app, /الشركات المنافسة داخل المحاكاة/);
-assert.match(serviceWorker, /hayah-shell-v194/);
+assert.match(serviceWorker, /hayah-shell-v195/);
 
 assert.match(app, /function normalizeSocialFeed\(raw\)/, 'social audience feedback should be normalized for legacy saves');
 assert.match(app, /function socialAudienceFeedMenu\(platformId\)/, 'players should be able to review audience feedback');
 assert.match(app, /function offerSoundCloudTrackToLabel\(platformId='soundcloud'\)/, 'SoundCloud tracks should have a label-offer path');
 assert.match(app, /const KEY = 'hekayat_hayah_save_v1';/);
-assert.match(serviceWorker, /hayah-shell-v194/);
+assert.match(serviceWorker, /hayah-shell-v195/);
 
 assert.match(app, /function combatRoundEnergy\(currentEnergy,move,mode='street',reactionCost=0\)/);
 assert.match(app, /function normalizeCombatTitleDefenseHistory\(raw\)/);
@@ -750,7 +748,7 @@ assert.match(app, /function siblingPropertySaleDecision\(/);
 assert.match(app, /propertySaleDebtPaid/);
 assert.match(app, /function siblingPropertyAnnualUpkeep\(/);
 assert.match(app, /propertyExpensesAnnual/);
-assert.match(serviceWorker, /hayah-shell-v194/);
+assert.match(serviceWorker, /hayah-shell-v195/);
 
 assert.match(app, /function siblingRentalPurchaseDecision\(/, 'siblings should be able to acquire an independent rental property');
 assert.match(app, /function siblingRentalAnnualIncome\(/, 'rental income should model occupancy and collection rates deterministically');
@@ -791,7 +789,7 @@ assert.match(app, /function siblingEstateSettlement\(relative,profile,year\)/, '
 assert.match(app, /function siblingReleaseChildInheritance\(relative,child,year\)/, 'minor inheritance should be released when the child becomes an adult');
 assert.match(app, /assetTransferStatus/, 'property title transfer must remain explicit and auditable');
 assert.match(app, /function siblingEstatePlanMenu\(relative\)/, 'adult siblings should be able to record an estate plan');
-assert.match(serviceWorker, /hayah-shell-v194/, 'the PWA cache must be versioned with the estate update');
+assert.match(serviceWorker, /hayah-shell-v195/, 'the PWA cache must be versioned with the estate update');
 
 assert.match(app, /beneficiaryType:share\.kind/, 'surviving spouses should be recorded as estate beneficiaries');
 assert.match(app, /inheritanceCashBalance/, 'surviving spouse inheritance balances should be preserved');
@@ -876,7 +874,7 @@ assert.match(app, /function combatSponsorshipMenu\(\)/, 'fighters should be able
 assert.match(app, /function negotiateCombatSponsorship\(sponsorId\)/, 'fighter sponsorship negotiation should be available');
 assert.match(app, /function growCombatFanbase\(c,won,mode,fame,rank\)/, 'fight outcomes should change the fighter audience');
 assert.match(app, /settleCombatSponsorshipYear\(cc,state\.bank\)/, 'active sponsorships should settle once per game year');
-assert.match(serviceWorker, /hayah-shell-v194/, 'the new sponsorship UI and engine must be in the current PWA shell');
+assert.match(serviceWorker, /hayah-shell-v195/, 'the new sponsorship UI and engine must be in the current PWA shell');
 
 assert.ok(app.includes('function changeSiblingInvestmentRisk('), 'adult siblings should have a controlled investment-risk setting');
 assert.ok(app.includes('function siblingInvestmentRiskMenu('), 'the sibling financial profile should expose investment choices');
@@ -901,17 +899,11 @@ assert.ok(serviceWorker.includes('APP_SHELL.find(url => new URL(url).pathname ==
   'known standalone pages should be cached and served by their own URL while offline');
 
 
-// BitLife reference UI regression: blue shell, flat section lists, centered red-framed event cards.
-assert.match(css, /--brand:#075b9b/);
-assert.match(css, /#modalRoot \.event-overlay\{[\s\S]*?align-items:center!important/);
-assert.match(css, /#modalRoot \.event-modal\{[\s\S]*?border:5px solid #e84a24/);
-assert.match(css, /#modalRoot \.event-modal \.choice\{[\s\S]*?background:#087fca/);
-assert.match(css, /#modalRoot \.drawer-head\{[\s\S]*?background:#075b9b/);
-assert.match(css, /#app \.fill\{[\s\S]*?linear-gradient\(90deg,#169447,#38b95c\)/);
-
-
-assert.match(css, /#modalRoot \.drawer-head \.closebtn::before[\s\S]*?content:"‹"/);
-assert.match(css, /#modalRoot \.event-modal::before[\s\S]*?height:44px/);
-assert.match(css, /@media \(forced-colors: active\)[\s\S]*?#app \.agebtn[\s\S]*?background:Highlight!important/);
-
-assert.match(css, /#app \.agebtn\{\s*background:ButtonText!important;\s*color:HighlightText!important;\s*border:2px solid HighlightText!important/);
+// Hayah v195 identity regression: jade, linen, clay, and accessible dialog surfaces.
+assert.match(finalUi, /#modalRoot \.event-modal\{[\s\S]*?border-top:6px solid var\(--hayah-accent\)!important/);
+assert.match(finalUi, /#modalRoot \.event-modal \.choice\{[\s\S]*?background:var\(--hayah-primary\)!important/);
+assert.match(finalUi, /#modalRoot \.modalhead,#modalRoot \.drawer-head/);
+assert.match(finalUi, /#modalRoot \.event-modal \.event-banner \.closebtn[\s\S]*?min-height:44px!important/);
+assert.match(finalUi, /@media \(forced-colors: active\)/);
+assert.match(finalUi, /background:ButtonText!important/);
+assert.match(finalUi, /color:HighlightText!important/);
