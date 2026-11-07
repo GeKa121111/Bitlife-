@@ -305,6 +305,8 @@ test('الحفظ القديم بلا بيانات تصفيات يظل صالحً
   assert.equal(normalized.records[0].playoffAppearances, 0);
   assert.equal(normalized.records[0].playoffWins, 0);
   assert.equal(normalized.records[0].playoffTitles, 0);
+  assert.equal(normalized.records[0].titleStreak, 0);
+  assert.equal(normalized.records[0].bestTitleStreak, 0);
   assert.equal(normalized.history[0].playoffs, null);
 });
 
@@ -531,6 +533,48 @@ test('سجل المسيرة التراكمي يستمر بعد انتهاء أر
     'a removed or retired rival keeps their historical career record');
 });
 
+test('سلسلة ألقاب الدوري تسجل الاستمرار والانقطاع والعودة دون خلطها بلقب العالم', () => {
+  const context = createContext();
+  const career = makeCareer();
+  career.community = [
+    { id: 'rival-a', name: 'بطل الدوري', rating: 95, momentum: 0, respect: 95, tension: 0 },
+    { id: 'rival-b', name: 'المنافس', rating: 20, momentum: 0, respect: 10, tension: 100 }
+  ];
+
+  for (let age = 20; age < 24; age += 1) {
+    context.state.age = age;
+    const result = context.HayahCombatSeason.simulate(career);
+    assert.equal(result.leader.id, 'rival-a');
+  }
+  let championRecord = career.communityLeague.records.find(record => record.id === 'rival-a');
+  assert.equal(championRecord.titleStreak, 4);
+  assert.equal(championRecord.bestTitleStreak, 4);
+  assert.equal(championRecord.titles, 4);
+
+  context.state.age = 24;
+  career.community.find(fighter => fighter.id === 'rival-a').rating = 20;
+  career.community.find(fighter => fighter.id === 'rival-b').rating = 95;
+  const lostSeason = context.HayahCombatSeason.simulate(career);
+  assert.equal(lostSeason.leader.id, 'rival-b');
+  championRecord = career.communityLeague.records.find(record => record.id === 'rival-a');
+  assert.equal(championRecord.titleStreak, 0, 'a non-winning season must end the active streak');
+  assert.equal(championRecord.bestTitleStreak, 4, 'the historical best streak must remain intact');
+
+  context.state.age = 25;
+  career.community.find(fighter => fighter.id === 'rival-a').rating = 95;
+  career.community.find(fighter => fighter.id === 'rival-b').rating = 20;
+  assert.equal(context.HayahCombatSeason.simulate(career).leader.id, 'rival-a');
+  championRecord = career.communityLeague.records.find(record => record.id === 'rival-a');
+  assert.equal(championRecord.titleStreak, 1, 'a returning champion starts a new streak after a missed title');
+  assert.equal(championRecord.bestTitleStreak, 4);
+
+  context.state.age = 26;
+  assert.equal(context.HayahCombatSeason.simulate(career).leader.id, 'rival-a');
+  championRecord = career.communityLeague.records.find(record => record.id === 'rival-a');
+  assert.equal(championRecord.titleStreak, 2);
+  assert.equal(championRecord.bestTitleStreak, 4);
+});
+
 test('واجهة سجل المسيرة تعرض الأرقام التراكمية وتفصلها عن لقب العالم', () => {
   const context = createContext();
   const career = makeCareer();
@@ -546,6 +590,8 @@ test('واجهة سجل المسيرة تعرض الأرقام التراكمي�
   assert.match(context.lastInfo[2], /لقب موسم/);
   assert.match(context.lastInfo[2], /لقب تصفيات/);
   assert.match(context.lastInfo[2], /فوز إقصائي/);
+  assert.match(context.lastInfo[2], /سلسلة ألقاب الدوري/);
+  assert.match(context.lastInfo[2], /أفضل سلسلة/);
   assert.match(context.lastInfo[2], /ليس سجل لقب العالم/);
 });
 
