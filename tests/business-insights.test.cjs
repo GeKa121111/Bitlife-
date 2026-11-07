@@ -132,3 +132,16 @@ test('الحفظ الفارغ أو التالف لا ينتج أنشطة أو أ
   assert.equal(result.reportedCount, 0);
   assert.equal(result.items[0].status, 'unknown');
 });
+
+test('الحفظ القديم الذي يحتفظ بأصل الشركة دون كائن business يظل ظاهرًا في اللوحة', () => {
+  const summary = analyzeBusinessPortfolio({
+    assets: [
+      { id: 'legacy-business-asset', kind: 'business', title: 'أصل تجاري قديم', value: 75000 },
+      { id: 'portfolio-asset', kind: 'business', companyPortfolio: true, title: 'أصل شركة محفظة' }
+    ],
+    companies: []
+  });
+  assert.equal(summary.businessCount, 1);
+  assert.equal(summary.items[0].title, 'أصل تجاري قديم');
+  assert.equal(summary.items[0].hasReport, false);
+});
