@@ -933,3 +933,105 @@ test('تطبيع سجل المواسم يتعامل بأمان مع جائزة �
     { id: 'rival-c', name: 'منافس ج', change: 4.25, position: 2 }
   );
 });
+
+
+test('سجل جوائز المواسم يعرض أحدث 12 موسمًا محفوظًا بترتيب عكسي دون اختراع جوائز قديمة', () => {
+  const context = createContext();
+  const career = makeCareer();
+  career.communityLeague = {
+    season: 14,
+    lastSimulatedAge: 38,
+    matchesLastSeason: 3,
+    standings: [],
+    records: [],
+    history: Array.from({ length: 14 }, (_, index) => ({
+      season: index + 1,
+      age: 25 + index,
+      matches: 3,
+      leaderId: 'rival-a',
+      leaderName: 'منافس أ',
+      leaderPoints: 6,
+      topThree: [],
+      risingStar: {
+        id: 'rival-' + (index + 1),
+        name: 'صاحب التحسن ' + (index + 1),
+        change: 1 + index / 10,
+        position: 1 + (index % 4)
+      }
+    }))
+  };
+  context.career = career;
+
+  context.HayahCombatSeason.openMenu();
+  const option = context.lastModal[3].find(item => item.title === 'سجل جوائز المواسم');
+  assert.ok(option, 'the main season menu should expose the award archive');
+  option.action();
+
+  const summary = context.lastInfo[2];
+  assert.match(summary, /الموسم 14/);
+  assert.match(summary, /الموسم 3/);
+  assert.ok(!summary.includes('الموسم 2 ·'), 'only the latest twelve stored seasons should be shown');
+  assert.ok(summary.indexOf('الموسم 14') < summary.indexOf('الموسم 13'),
+    'the newest award should appear first');
+  assert.match(summary, /صاحب التحسن 14/);
+});
+
+test('سجل جوائز المواسم يوضح غياب الجوائز في السجلات القديمة ويعمل في واجهة الاحتياط', () => {
+  const root = new FakeElement('div');
+  const context = createContext({
+    modal: undefined,
+    choice: undefined,
+    document: {
+      getElementById(id) { return id === 'modalRoot' ? root : null; },
+      createElement(tagName) { return new FakeElement(tagName); }
+    }
+  });
+  const career = makeCareer();
+  career.communityLeague = {
+    season: 2,
+    lastSimulatedAge: 26,
+    matchesLastSeason: 3,
+    standings: [],
+    records: [],
+    history: [
+      {
+        season: 1,
+        age: 25,
+        matches: 3,
+        leaderId: 'rival-a',
+        leaderName: 'منافس أ',
+        leaderPoints: 6,
+        topThree: []
+      },
+      {
+        season: 2,
+        age: 26,
+        matches: 3,
+        leaderId: 'rival-b',
+        leaderName: 'منافس ب',
+        leaderPoints: 6,
+        topThree: []
+      }
+    ]
+  };
+  context.career = career;
+
+  context.HayahCombatSeason.openMenu();
+  const option = findChoiceByTitle(root, 'سجل جوائز المواسم');
+  assert.ok(option, 'the fallback modal should expose the award archive');
+  option.listeners.click();
+
+  const findDescription = node => {
+    if (!node) return null;
+    if (node.className === 'desc') return node;
+    for (const child of node.children || []) {
+      const found = findDescription(child);
+      if (found) return found;
+    }
+    return null;
+  };
+  const description = findDescription(root);
+  assert.ok(description);
+  assert.match(description.textContent, /المواسم القديمة/);
+  assert.match(description.textContent, /لن تُنشأ لها نتائج بأثر رجعي/);
+});
