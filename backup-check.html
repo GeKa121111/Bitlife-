@@ -94,6 +94,17 @@
     .report-facts { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr); gap: 8px 14px; margin: 0; }
     .report-facts dt { color: var(--muted); }
     .report-facts dd { margin: 0; overflow-wrap: anywhere; font-weight: 700; }
+    .fingerprint-tools { margin: 18px 0; padding: 14px; border: 1px solid var(--line); border-radius: 14px; background: var(--page); }
+    .fingerprint-tools h3 { margin: 0 0 10px; font-size: 16px; }
+    .fingerprint-field { display: block; margin-top: 12px; }
+    .fingerprint-label { display: block; margin-bottom: 6px; color: var(--muted); font-size: 14px; font-weight: 700; }
+    .fingerprint-value, .fingerprint-expected { display: block; width: 100%; min-height: 46px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--ink); font: 13px/1.5 ui-monospace, SFMono-Regular, Consolas, monospace; }
+    .fingerprint-value, .fingerprint-expected { direction: ltr; text-align: left; }
+    .fingerprint-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+    .fingerprint-actions .button { flex: 1 1 150px; }
+    .fingerprint-status { min-height: 1.7em; margin: 10px 0 0; color: var(--muted); font-size: 13px; }
+    .fingerprint-status.is-success { color: var(--good); }
+    .fingerprint-status.is-warning { color: var(--warn); }
     .report-errors-title, .report-warnings-title { margin: 18px 0 6px; font-size: 15px; }
     .report-errors-title { color: var(--bad); }
     .report-warnings-title { color: var(--warn); }
