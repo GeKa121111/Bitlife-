@@ -8,6 +8,8 @@ const { createHash, webcrypto } = require('node:crypto');
 const {
   inspectBackup,
   sha256Fingerprint,
+  normalizeSha256Fingerprint,
+  compareSha256Fingerprints,
   MAX_REWIND_SNAPSHOT_CHARS
 } = require('../backup-check.js');
 const checkerSource = fs.readFileSync(path.join(__dirname, '..', 'backup-check.js'), 'utf8');
@@ -245,4 +247,107 @@ test('واجهة فاحص الحفظ تعرض البصمة وتوضح أنها �
   assert.match(checkerSource, /بصمة SHA-256/);
   assert.match(checkerSource, /sha256Fingerprint\(file, runtime\.crypto\)/);
   assert.match(checkerSource, /تطابق البصمة لا يثبت مصدر الملف/);
+});
+
+
+test('مقارنة البصمة تطبع المسافات والحروف الكبيرة والبادئة دون قبول قيمة غير صحيحة', () => {
+  const digest = '0123456789abcdef'.repeat(4);
+  assert.equal(normalizeSha256Fingerprint(' SHA-256: ' + digest.toUpperCase() + ' '), digest);
+  assert.equal(compareSha256Fingerprints(digest, 'sha256=' + digest.toUpperCase()), 'match');
+  assert.equal(compareSha256Fingerprints(digest, 'f'.repeat(64)), 'mismatch');
+  assert.equal(compareSha256Fingerprints(digest, 'ليست بصمة'), 'invalid-reference');
+  assert.equal(compareSha256Fingerprints('غير صالحة', digest), 'invalid-current');
+});
+
+test('واجهة الفاحص تسمح بنسخ البصمة ومقارنتها ببصمة مرجعية', async () => {
+  const checker = require('../backup-check.js');
+  class FakeNode {
+    constructor() {
+      this.children = [];
+      this.listeners = {};
+      this.className = '';
+      this.value = '';
+      this.disabled = false;
+      this.attributes = {};
+      this.selected = false;
+    }
+    addEventListener(type, callback) { this.listeners[type] = callback; }
+    appendChild(child) { this.children.push(child); return child; }
+    replaceChildren(...children) { this.children = children; }
+    setAttribute(name, value) { this.attributes[name] = value; }
+    focus() { this.focused = true; }
+    select() { this.selected = true; }
+    set textContent(value) { this._text = String(value); this.children = []; }
+    get textContent() {
+      return [this._text || '', ...this.children.map(child => child.textContent)].filter(Boolean).join(' ');
+    }
+  }
+  const nodes = new Map([
+    ['backupFile', new FakeNode()],
+    ['backupDropZone', new FakeNode()],
+    ['backupResult', new FakeNode()],
+    ['clearBackupCheck', new FakeNode()]
+  ]);
+  const readers = [];
+  class FakeFileReader {
+    constructor() { this.result = ''; readers.push(this); }
+    readAsText(file) { this.file = file; this.result = file.text; }
+    abort() { this.aborted = true; if (this.onabort) this.onabort(); }
+  }
+  const doc = {
+    getElementById(id) { return nodes.get(id) || null; },
+    createElement() { return new FakeNode(); }
+  };
+  let copied = '';
+  const runtime = {
+    FileReader: FakeFileReader,
+    crypto: webcrypto,
+    navigator: { clipboard: { writeText: async value => { copied = value; } } }
+  };
+  checker.mount(doc, runtime);
+
+  const bytes = Buffer.from(JSON.stringify(makeLife()));
+  const file = {
+    name: 'نسخة-حياة.json',
+    size: bytes.length,
+    text: bytes.toString('utf8'),
+    arrayBuffer: async () => bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength)
+  };
+  nodes.get('backupFile').listeners.change({ target: { files: [file] } });
+  await readers[0].onload();
+
+  const findByClass = (node, className) => {
+    if (String(node.className || '').split(/\s+/).includes(className)) return node;
+    for (const child of node.children || []) {
+      const found = findByClass(child, className);
+      if (found) return found;
+    }
+    return null;
+  };
+  const currentInput = findByClass(nodes.get('backupResult'), 'fingerprint-value');
+  const expectedInput = findByClass(nodes.get('backupResult'), 'fingerprint-expected');
+  const copyButton = findByClass(nodes.get('backupResult'), 'fingerprint-copy');
+  const compareButton = findByClass(nodes.get('backupResult'), 'fingerprint-compare');
+  const status = findByClass(nodes.get('backupResult'), 'fingerprint-status');
+  assert.ok(currentInput && expectedInput && copyButton && compareButton && status);
+
+  const expectedDigest = createHash('sha256').update(bytes).digest('hex');
+  await copyButton.listeners.click();
+  assert.equal(copied, expectedDigest);
+  expectedInput.value = 'SHA-256: ' + expectedDigest.toUpperCase();
+  compareButton.listeners.click();
+  assert.match(status.textContent, /متطابقة/);
+
+  expectedInput.value = 'f'.repeat(64);
+  compareButton.listeners.click();
+  assert.match(status.textContent, /غير متطابقة/);
+
+  expectedInput.value = 'قيمة غير صالحة';
+  compareButton.listeners.click();
+  assert.match(status.textContent, /64 خانة/);
+
+  runtime.navigator.clipboard = null;
+  await copyButton.listeners.click();
+  assert.equal(currentInput.selected, true, 'the fallback should select the current digest for manual copying');
+  assert.match(status.textContent, /النسخ التلقائي غير متاح/);
 });
