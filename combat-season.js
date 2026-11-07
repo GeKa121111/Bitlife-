@@ -631,7 +631,7 @@
     return button;
   }
 
-  function renderFallbackSeasonModal(summary, careerSummary, onBack) {
+  function renderFallbackSeasonModal(summary, careerSummary, onBack, challenge) {
     const doc = global.document;
     const root = doc && typeof doc.getElementById === 'function' ? doc.getElementById('modalRoot') : null;
     if (!root || typeof doc.createElement !== 'function') return;
@@ -699,6 +699,9 @@
       '',
       returnToPrevious
     );
+    if (challenge) {
+      grid.appendChild(createFallbackChoice(doc, challenge.icon, challenge.title, challenge.description, challenge.action));
+    }
     grid.appendChild(about);
     grid.appendChild(career);
     grid.appendChild(back);
@@ -707,6 +710,50 @@
     panel.appendChild(body);
     overlay.appendChild(panel);
     root.appendChild(overlay);
+  }
+
+  function resolveLatestPlayoffChampion(career, league) {
+    const history = league && Array.isArray(league.history) ? league.history : [];
+    const latest = history.length ? history[history.length - 1] : null;
+    const playoffs = latest ? normalizePlayoffSummary(latest.playoffs) : null;
+    if (!latest || !playoffs) return null;
+    const community = career && Array.isArray(career.community) ? career.community : [];
+    const fighter = community.find(item => item && safeId(item.id) === playoffs.championId) || null;
+    if (!fighter) {
+      return { status: 'missing', playoffs, season: latest.season, age: latest.age };
+    }
+    return {
+      status: fighter.retired === true || fighter.deceased === true ? 'unavailable' : 'active',
+      fighter,
+      playoffs,
+      season: latest.season,
+      age: latest.age
+    };
+  }
+
+  function createPlayoffChampionChallenge(career, candidate) {
+    if (!candidate || candidate.status !== 'active' || !candidate.fighter || career.retired === true) return null;
+    const defending = career.champion === true;
+    const fighter = candidate.fighter;
+    const title = defending ? 'دفاع عن لقب العالم أمام بطل التصفيات' : 'مواجهة بطل التصفيات';
+    const outcome = defending
+      ? 'الفوز يسجل دفاعًا ناجحًا، والخسارة تسجل فقدان لقب العالم.'
+      : 'الفوز يضيف نقاطًا للدوري وقد يقربك من شروط التتويج.';
+    return {
+      icon: defending ? '👑' : '🥊',
+      title,
+      description: 'بطل تصفيات الموسم ' + candidate.season + ': ' + safeName(fighter.name, 'منافس') +
+        '. نزال دوري مباشر يخضع لشروط الطاقة والإصابة والإيقاف ورسوم المشاركة المعتادة. ' + outcome,
+      action: () => {
+        const host = global.HayahCombatSeasonHost;
+        if (host && typeof host.startCommunityBout === 'function') {
+          return host.startCommunityBout('league', fighter.id);
+        }
+        showInfo('🥊', 'المواجهة غير متاحة',
+          'تعذر فتح نزال الدوري من سجل المواسم. افتح ملف المنافس من مجتمع المقاتلين لبدء المواجهة.');
+        return undefined;
+      }
+    };
   }
 
   function openCommunitySeasonMenu() {
@@ -733,20 +780,36 @@
       row.wins + ' فوز · ' + row.draws + ' تعادل · ' + row.losses + ' خسارة'
     );
     const latest = league.history.length ? league.history[league.history.length - 1] : null;
+    const playoffChampion = resolveLatestPlayoffChampion(career, league);
+    const challenge = createPlayoffChampionChallenge(career, playoffChampion);
     const playoffLine = latest && latest.playoffs
       ? '\nبطل تصفيات الموسم: ' + latest.playoffs.championName + ' بعد ثلاث مواجهات إقصائية.'
       : '\nلم تُقم تصفيات هذا الموسم لعدم اكتمال أربعة منافسين مؤهلين.';
+    const challengerLine = playoffChampion
+      ? playoffChampion.status === 'active'
+        ? (career.retired === true
+          ? '\nبطل التصفيات: ' + safeName(playoffChampion.fighter.name, 'منافس') + ' · مسيرتك معتزلة، لذلك لا يمكن بدء مواجهة جديدة.'
+          : '\nالمرشح من التصفيات: ' + safeName(playoffChampion.fighter.name, 'منافس') +
+            ' · الموسم ' + playoffChampion.season + '. يمكنك بدء مواجهة دوري اختيارية؛ لا يبدأ النزال تلقائيًا.')
+        : '\nبطل التصفيات المسجل (' + playoffChampion.playoffs.championName +
+          ') لم يعد متاحًا للمواجهة؛ سجله التاريخي محفوظ.'
+      : '';
+    const retirementLine = career.retired === true
+      ? '\nمسيرتك القتالية معتزلة؛ سجل البطولة متاح للمراجعة فقط.'
+      : '';
     const tieBreakLine = '\nفض التعادل: المواجهات المباشرة داخل مجموعة المتساوين، ثم التقييم، ثم المعرّف.';
     const summary = league.season
       ? 'آخر موسم: ' + league.season + ' · العمر عند المحاكاة: ' + league.lastSimulatedAge +
         ' · مواجهات الدوري التمهيدي: ' + league.matchesLastSeason + '.\n' +
         'متصدر الموسم: ' + (latest ? latest.leaderName : 'غير متاح') +
-        (latest ? ' برصيد ' + latest.leaderPoints + ' نقطة.' : '.') + playoffLine + tieBreakLine +
+        (latest ? ' برصيد ' + latest.leaderPoints + ' نقطة.' : '.') + playoffLine + challengerLine + retirementLine + tieBreakLine +
         '\n\nترتيب المنافسين:\n' + (lines.length ? lines.join('\n') : 'لا توجد نتائج محفوظة.')
-      : 'لم يبدأ موسم بعد. تُحاكى مواجهات المنافسين تلقائيًا عند التقدم بالعمر داخل مسيرة القتال. يواجه كل منافس خصمين نشطين عند توفر ثلاثة منافسين أو أكثر، بحد أقصى 20 مواجهة تمهيدية، ثم ثلاث مواجهات إقصائية لأفضل أربعة منافسين عند اكتمال العدد.\n\nالنتائج تخص منافسي المجتمع فقط، ولا تضيف نقاطًا إلى مسيرة اللاعب أو تغيّر لقب العالم مباشرة.\n\n' + tieBreakLine.slice(1);
+      : 'لم يبدأ موسم بعد. تُحاكى مواجهات المنافسين تلقائيًا عند التقدم بالعمر داخل مسيرة القتال. يواجه كل منافس خصمين نشطين عند توفر ثلاثة منافسين أو أكثر، بحد أقصى 20 مواجهة تمهيدية، ثم ثلاث مواجهات إقصائية لأفضل أربعة منافسين عند اكتمال العدد.\n\nالنتائج تخص منافسي المجتمع فقط ولا تغيّر لقب اللاعب تلقائيًا. بعد اكتمال التصفيات يمكن اختيار بطلها لمواجهة دوري مباشرة، وتظل شروط النزال المعتادة سارية.\n\n' + tieBreakLine.slice(1);
 
     if (hasModalHelper() && hasChoiceHelper()) {
-      const options = [
+      const options = [];
+      if (challenge) options.push(makeChoice(challenge.icon, challenge.title, challenge.description, challenge.action));
+      options.push(
         makeChoice('📘', 'عن نظام المواسم', 'يواجه كل منافس خصمين نشطين في الدوري التمهيدي عند توفر ثلاثة منافسين أو أكثر. يتأهل أفضل أربعة إلى نصف النهائي والنهائي، والنتائج حتمية وتؤثر تدريجيًا في الزخم والاحترام. عند تساوي النقاط والانتصارات تُحسم المراكز بالمواجهات المباشرة ثم التقييم.', () => {
           showInfo('📘', 'عن نظام المواسم', 'تُحاكى مواجهات الدوري التمهيدي مرة واحدة لكل عمر. عند وجود أربعة منافسين مؤهلين، يتأهل أفضل أربعة إلى نصف النهائي والنهائي. عند تساوي النقاط والانتصارات تُحتسب المواجهات المباشرة داخل مجموعة المتساوين قبل التقييم. لا تُحتسب هذه النتائج ضمن سجل نزالات اللاعب أو دفاعاته عن لقب العالم.');
         }),
@@ -754,12 +817,12 @@
           showInfo('📚', 'سجل المسيرة التاريخي', careerSummary);
         }),
         makeChoice('↩️', 'رجوع إلى مجتمع المقاتلين', '', backToMenu)
-      ];
+      );
       showModal('🏆', 'سجل مواسم المنافسين', summary, options);
       return;
     }
 
-    renderFallbackSeasonModal(summary, careerSummary, backToMenu);
+    renderFallbackSeasonModal(summary, careerSummary, backToMenu, challenge);
   }
 
   function injectSeasonMenuEntry(root) {
