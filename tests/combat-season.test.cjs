@@ -411,6 +411,7 @@ test('تكامل الجسر يقرأ حالة الحياة الخاصة ويفت
   const career = makeCareer();
   const bridgedState = { age: 24, yearCount: 24, combatCareer: career };
   const root = new FakeElement('div');
+  const ageButton = new FakeElement('button');
   const host = {
     getState() { return bridgedState; },
     ensureCombatCareer() { return career; },
@@ -427,7 +428,7 @@ test('تكامل الجسر يقرأ حالة الحياة الخاصة ويفت
     choice: undefined,
     HayahCombatSeasonHost: host,
     document: {
-      getElementById(id) { return id === 'modalRoot' ? root : null; },
+      getElementById(id) { return id === 'modalRoot' ? root : id === 'ageUpBtn' ? ageButton : null; },
       createElement(tagName) { return new FakeElement(tagName); }
     }
   });
@@ -452,10 +453,8 @@ test('تكامل الجسر يقرأ حالة الحياة الخاصة ويفت
     'the back action must call the app-owned community menu through the bridge');
 
   bridgedState.age = 25;
-  const ageButton = new FakeElement('button');
-  context.document.getElementById = id => id === 'ageUpBtn' ? ageButton : id === 'modalRoot' ? root : null;
-  // The fallback listener is installed once when the module loads; trigger it with a real age transition.
-  ageButton.listeners.click?.();
+  // The fallback listener is installed during module initialization; trigger the observed age transition.
+  ageButton.listeners.click();
   await Promise.resolve();
   assert.equal(career.communityLeague.season, 1);
   assert.equal(host.saveCalls, 1,
