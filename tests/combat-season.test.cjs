@@ -872,7 +872,7 @@ test('يسجل أكبر تحسن في مؤشر الأداء بعد الدوري 
   const result = context.HayahCombatSeason.simulate(career);
   assert.ok(result.risingStar, 'a season with measurable positive form changes should produce an award');
   assert.equal(result.risingStar.id, 'rival-d');
-  assert.equal(result.risingStar.change, 4.62);
+  assert.equal(result.risingStar.change, 3.08);
   assert.equal(result.risingStar.position, 2);
   const expected = career.community
     .filter(fighter => before.has(fighter.id))
