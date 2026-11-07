@@ -787,8 +787,10 @@
       : '\nلم تُقم تصفيات هذا الموسم لعدم اكتمال أربعة منافسين مؤهلين.';
     const challengerLine = playoffChampion
       ? playoffChampion.status === 'active'
-        ? '\nالمرشح من التصفيات: ' + safeName(playoffChampion.fighter.name, 'منافس') +
-          ' · الموسم ' + playoffChampion.season + '. يمكنك بدء مواجهة دوري اختيارية؛ لا يبدأ النزال تلقائيًا.'
+        ? (career.retired === true
+          ? '\nبطل التصفيات: ' + safeName(playoffChampion.fighter.name, 'منافس') + ' · مسيرتك معتزلة، لذلك لا يمكن بدء مواجهة جديدة.'
+          : '\nالمرشح من التصفيات: ' + safeName(playoffChampion.fighter.name, 'منافس') +
+            ' · الموسم ' + playoffChampion.season + '. يمكنك بدء مواجهة دوري اختيارية؛ لا يبدأ النزال تلقائيًا.')
         : '\nبطل التصفيات المسجل (' + playoffChampion.playoffs.championName +
           ') لم يعد متاحًا للمواجهة؛ سجله التاريخي محفوظ.'
       : '';
@@ -815,7 +817,6 @@
           showInfo('📚', 'سجل المسيرة التاريخي', careerSummary);
         }),
         makeChoice('↩️', 'رجوع إلى مجتمع المقاتلين', '', backToMenu)
-      ];
       );
       showModal('🏆', 'سجل مواسم المنافسين', summary, options);
       return;
