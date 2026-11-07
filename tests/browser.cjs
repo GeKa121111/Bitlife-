@@ -2787,6 +2787,8 @@ async function run() {
     assert.match(await page.locator('#modalRoot').innerText(), /يواجه كل منافس خصمين/,
       'the season screen should explain the bounded annual opponent schedule');
     await page.locator('#modalRoot .choice').filter({ hasText: 'رجوع إلى مجتمع المقاتلين' }).click();
+    // The back action intentionally returns to the live community menu; close that menu before aging up.
+    await page.locator('#modalRoot .modalhead .closebtn').click();
     const ageBeforeCommunitySeason = await page.evaluate(() =>
       JSON.parse(localStorage.getItem('hekayat_hayah_save_v1') || 'null').age
     );
