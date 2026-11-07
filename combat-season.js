@@ -84,6 +84,7 @@
         };
       }).filter(Boolean)
       : [];
+    const qualifierById = new Map(qualifiers.map(qualifier => [qualifier.id, qualifier]));
     const matches = Array.isArray(value.matches)
       ? value.matches.slice(0, PLAYOFF_MATCH_LIMIT).map((item, index) => {
         if (!item || typeof item !== 'object' || Array.isArray(item)) return null;
@@ -93,17 +94,20 @@
         const aId = safeId(item.aId);
         const bId = safeId(item.bId);
         const winnerId = safeId(item.winnerId);
-        if (!round || !aId || !bId || aId === bId || !qualifierIds.has(aId) ||
-            !qualifierIds.has(bId) || (winnerId !== aId && winnerId !== bId)) return null;
+        const fighterA = qualifierById.get(aId);
+        const fighterB = qualifierById.get(bId);
+        const winner = qualifierById.get(winnerId);
+        if (!round || !aId || !bId || aId === bId || !fighterA || !fighterB ||
+            !winner || (winnerId !== aId && winnerId !== bId)) return null;
         return {
           round,
           slot: boundedInteger(item.slot, expectedSlot, expectedSlot, expectedSlot),
           aId,
-          aName: safeName(item.aName, 'منافس'),
+          aName: fighterA.name,
           bId,
-          bName: safeName(item.bName, 'منافس'),
+          bName: fighterB.name,
           winnerId,
-          winnerName: safeName(item.winnerName, 'منافس')
+          winnerName: winner.name
         };
       }).filter(Boolean)
       : [];
@@ -128,7 +132,7 @@
       qualifiers,
       matches,
       championId,
-      championName: safeName(value.championName, matches[2].winnerName)
+      championName: qualifierById.get(championId).name
     };
   }
 
