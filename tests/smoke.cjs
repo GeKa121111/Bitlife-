@@ -20,6 +20,7 @@ assert.match(index, /id="businessInsightsBtn"/);
 assert.match(index, /src="business-insights\.js"/);
 assert.ok(index.indexOf('app.js') < index.indexOf('business-insights.js'), 'business insights must initialize after the life engine');
 assert.match(businessInsightsCss, /\.business-insights-dialog/);
+assert.match(businessInsightsCss, /min-width:44px;min-height:44px/, 'the insights entry point must meet the 44px touch target');
 assert.match(businessInsights, /function analyzeBusinessPortfolio\(state\)/);
 assert.match(businessInsights, /getItem\('hekayat_hayah_save_v1'\)/);
 assert.doesNotMatch(businessInsights, /setItem\s*\(/, 'business insights must remain read-only');
