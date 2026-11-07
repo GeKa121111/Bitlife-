@@ -2894,6 +2894,7 @@ body.theme-gold{--hayah-primary:#806026;--hayah-primary-deep:#493817;--hayah-acc
 body.theme-dark #app .bottom-dock,body.theme-dark #app .nav,body.theme-dark #app .stats{background:var(--hayah-surface)!important;border-color:var(--hayah-line)!important}
 body.theme-dark #app .logcard,body.theme-dark #app .modal{background:var(--hayah-surface)!important}
 body.theme-dark #modalRoot .event-modal .choice{background:var(--hayah-primary)!important;color:#fff!important}
+body.text-large #app .sectiontitle{font-size:16px!important;line-height:1.7!important}
 body.text-large #app .logtitle{font-size:14px!important;line-height:1.6!important}
 body.text-large #app .logtext{font-size:14px!important;line-height:1.85!important}
 body.text-large #app .navbtn,body.text-large #app .statlabel{font-size:11px!important}
