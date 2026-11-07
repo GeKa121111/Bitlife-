@@ -732,7 +732,7 @@ test('الترتيب يحسم تعادل النقاط والانتصارات ب�
 
   assert.equal(result.matches, 5);
   assert.deepEqual(
-    result.standings.map(row => row.id),
+    JSON.parse(JSON.stringify(result.standings.map(row => row.id))),
     ['rival-03', 'rival-04', 'rival-06', 'rival-01', 'rival-02']
   );
   assert.equal(byId.get('rival-01').points, 3);
