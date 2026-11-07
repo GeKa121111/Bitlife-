@@ -2812,6 +2812,13 @@ async function run() {
     assert.ok(persistedCommunitySeason.league.standings.every(row => row.played <= 2),
       'a rival should not be scheduled for more than two bouts in one season');
 
+    // Aging may also open a life-event overlay; dismiss its explicit close control before navigating.
+    const ageEventClose = page.locator('#modalRoot .event-modal .event-banner .closebtn');
+    if (await ageEventClose.count()) {
+      await ageEventClose.first().click();
+      await page.locator('#modalRoot .event-overlay').waitFor({ state: 'detached' });
+    }
+
     // Aging closes the combat-community dialog; reopen the live menus before continuing the social-interaction flow.
     await page.locator('[data-panel="career"]').click();
     await page.locator('.choice').filter({ hasText: 'المهن الخاصة والشهرة' }).click();
