@@ -6,6 +6,8 @@
   const MAX_SEASON_BOUTS = MAX_FIGHTERS;
   const CAREER_RECORD_LIMIT = 40;
   const MAX_IMPORTED_CAREER_RECORDS = 500;
+  const PLAYOFF_QUALIFIER_LIMIT = 4;
+  const PLAYOFF_MATCH_LIMIT = 3;
 
   function boundedNumber(value, fallback, min, max) {
     const number = Number(value);
@@ -56,29 +58,88 @@
       losses: boundedInteger(item.losses, 0, 0, 1000000),
       points: boundedInteger(item.points, 0, 0, 1000000000),
       titles: boundedInteger(item.titles, 0, 0, 1000000),
+      playoffAppearances: boundedInteger(item.playoffAppearances, 0, 0, 1000000),
+      playoffWins: boundedInteger(item.playoffWins, 0, 0, 1000000),
+      playoffTitles: boundedInteger(item.playoffTitles, 0, 0, 1000000),
       bestPosition: boundedInteger(item.bestPosition, MAX_FIGHTERS, 1, MAX_FIGHTERS),
       lastSeason: boundedInteger(item.lastSeason, 0, 0, 1000000),
       lastAge: boundedInteger(item.lastAge, 0, 0, 150)
     };
   }
 
+  function normalizePlayoffSummary(value) {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+    const qualifierIds = new Set();
+    const qualifiers = Array.isArray(value.qualifiers)
+      ? value.qualifiers.slice(0, PLAYOFF_QUALIFIER_LIMIT).map((item, index) => {
+        if (!item || typeof item !== 'object' || Array.isArray(item)) return null;
+        const id = safeId(item.id);
+        if (!id || qualifierIds.has(id)) return null;
+        qualifierIds.add(id);
+        return {
+          seed: boundedInteger(item.seed, index + 1, 1, PLAYOFF_QUALIFIER_LIMIT),
+          id,
+          name: safeName(item.name, 'منافس'),
+          points: boundedInteger(item.points, 0, 0, 1000000)
+        };
+      }).filter(Boolean)
+      : [];
+    const matches = Array.isArray(value.matches)
+      ? value.matches.slice(0, PLAYOFF_MATCH_LIMIT).map((item, index) => {
+        if (!item || typeof item !== 'object' || Array.isArray(item)) return null;
+        const expectedRound = index < 2 ? 'semi-final' : 'final';
+        const expectedSlot = index < 2 ? index + 1 : 1;
+        const round = item.round === expectedRound ? expectedRound : '';
+        const aId = safeId(item.aId);
+        const bId = safeId(item.bId);
+        const winnerId = safeId(item.winnerId);
+        if (!round || !aId || !bId || aId === bId || !qualifierIds.has(aId) ||
+            !qualifierIds.has(bId) || (winnerId !== aId && winnerId !== bId)) return null;
+        return {
+          round,
+          slot: boundedInteger(item.slot, expectedSlot, expectedSlot, expectedSlot),
+          aId,
+          aName: safeName(item.aName, 'منافس'),
+          bId,
+          bName: safeName(item.bName, 'منافس'),
+          winnerId,
+          winnerName: safeName(item.winnerName, 'منافس')
+        };
+      }).filter(Boolean)
+      : [];
+    const championId = safeId(value.championId);
+    if (qualifiers.length !== PLAYOFF_QUALIFIER_LIMIT || matches.length !== PLAYOFF_MATCH_LIMIT ||
+        !championId || championId !== matches[2].winnerId) return null;
+    const semifinalWinners = new Set(matches.slice(0, 2).map(match => match.winnerId));
+    if (!semifinalWinners.has(matches[2].aId) || !semifinalWinners.has(matches[2].bId)) return null;
+    return {
+      qualifiers,
+      matches,
+      championId,
+      championName: safeName(value.championName, matches[2].winnerName)
+    };
+  }
+
   function sortCommunityCareerRecords(records) {
     return (Array.isArray(records) ? records : []).slice().sort((a, b) => {
       if (b.titles !== a.titles) return b.titles - a.titles;
+      if (b.playoffTitles !== a.playoffTitles) return b.playoffTitles - a.playoffTitles;
       if (b.points !== a.points) return b.points - a.points;
       if (b.wins !== a.wins) return b.wins - a.wins;
+      if (b.playoffWins !== a.playoffWins) return b.playoffWins - a.playoffWins;
       if (a.bestPosition !== b.bestPosition) return a.bestPosition - b.bestPosition;
       return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
     });
   }
 
-  function updateCommunityCareerRecords(league, standings, season, age) {
+  function updateCommunityCareerRecords(league, standings, season, age, playoffs) {
     const records = new Map((Array.isArray(league.records) ? league.records : [])
       .map(record => [record.id, Object.assign({}, record)]));
     standings.forEach(row => {
       const record = records.get(row.id) || {
         id: row.id, name: row.name, seasons: 0, played: 0, wins: 0, draws: 0,
-        losses: 0, points: 0, titles: 0, bestPosition: MAX_FIGHTERS, lastSeason: 0, lastAge: 0
+        losses: 0, points: 0, titles: 0, playoffAppearances: 0, playoffWins: 0,
+        playoffTitles: 0, bestPosition: MAX_FIGHTERS, lastSeason: 0, lastAge: 0
       };
       record.name = safeName(row.name, record.name || 'منافس');
       record.seasons = boundedInteger(record.seasons + 1, 0, 0, 1000000);
@@ -88,6 +149,9 @@
       record.losses = boundedInteger(record.losses + row.losses, 0, 0, 1000000);
       record.points = boundedInteger(record.points + row.points, 0, 0, 1000000000);
       record.titles = boundedInteger(record.titles + (row.position === 1 ? 1 : 0), 0, 0, 1000000);
+      record.playoffAppearances = boundedInteger(record.playoffAppearances, 0, 0, 1000000);
+      record.playoffWins = boundedInteger(record.playoffWins, 0, 0, 1000000);
+      record.playoffTitles = boundedInteger(record.playoffTitles, 0, 0, 1000000);
       record.bestPosition = Math.min(
         boundedInteger(record.bestPosition, MAX_FIGHTERS, 1, MAX_FIGHTERS),
         boundedInteger(row.position, MAX_FIGHTERS, 1, MAX_FIGHTERS)
@@ -96,6 +160,18 @@
       record.lastAge = boundedInteger(age, 0, 0, 150);
       records.set(row.id, record);
     });
+    if (playoffs) {
+      playoffs.qualifiers.forEach(qualifier => {
+        const record = records.get(qualifier.id);
+        if (record) record.playoffAppearances = boundedInteger(record.playoffAppearances + 1, 0, 0, 1000000);
+      });
+      playoffs.matches.forEach(match => {
+        const record = records.get(match.winnerId);
+        if (record) record.playoffWins = boundedInteger(record.playoffWins + 1, 0, 0, 1000000);
+      });
+      const champion = records.get(playoffs.championId);
+      if (champion) champion.playoffTitles = boundedInteger(champion.playoffTitles + 1, 0, 0, 1000000);
+    }
     league.records = sortCommunityCareerRecords(Array.from(records.values())).slice(0, CAREER_RECORD_LIMIT);
   }
 
@@ -104,8 +180,9 @@
     if (!leaders.length) return 'لا توجد أرقام مسيرة محفوظة بعد. ستظهر هنا نتائج المنافسين التراكمية بعد أول موسم مكتمل.';
     const lines = leaders.map((record, index) =>
       (index + 1) + '. ' + record.name + ' — ' + record.titles + ' لقب موسم · ' +
-      record.wins + ' فوز · ' + record.draws + ' تعادل · ' + record.losses +
-      ' خسارة · ' + record.played + ' نزال · أفضل مركز ' + record.bestPosition
+      record.playoffTitles + ' لقب تصفيات · ' + record.playoffWins + ' فوز إقصائي · ' +
+      record.playoffAppearances + ' مشاركة تصفيات · ' + record.wins + ' فوز · ' + record.draws +
+      ' تعادل · ' + record.losses + ' خسارة · ' + record.played + ' نزال · أفضل مركز ' + record.bestPosition
     );
     return 'السجل التراكمي لمنافسي المجتمع، وليس سجل لقب العالم الخاص باللاعب.\n\n' + lines.join('\n');
   }
@@ -143,7 +220,8 @@
           leaderId: safeId(item.leaderId),
           leaderName: safeName(item.leaderName, 'لم يُحسم'),
           leaderPoints: boundedInteger(item.leaderPoints, 0, 0, 1000000),
-          topThree
+          topThree,
+          playoffs: normalizePlayoffSummary(item.playoffs)
         };
       }).filter(Boolean)
       : [];
@@ -259,6 +337,53 @@
     );
   }
 
+  function resolveCommunityPlayoffMatch(a, b, fighterById, season, round, slot) {
+    const fighterA = fighterById.get(a.id);
+    const fighterB = fighterById.get(b.id);
+    const powerA = fighterA ? fighterPower(fighterA) : boundedNumber(a.rating, 20, 20, 95);
+    const powerB = fighterB ? fighterPower(fighterB) : boundedNumber(b.rating, 20, 20, 95);
+    const chanceA = boundedNumber(50 + (powerA - powerB) * 2.2, 50, 10, 90);
+    const seed = 'playoff-winner|' + season + '|' + round + '|' + slot + '|' + a.id + '|' + b.id;
+    const winner = stableHash(seed) % 100 < chanceA ? a : b;
+    const winnerFighter = fighterById.get(winner.id);
+    const loserFighter = fighterById.get(winner.id === a.id ? b.id : a.id);
+    if (winnerFighter) applySeasonForm(winnerFighter, 1, 1);
+    if (loserFighter) applySeasonForm(loserFighter, -1, -1);
+    return {
+      round,
+      slot,
+      aId: a.id,
+      aName: a.name,
+      bId: b.id,
+      bName: b.name,
+      winnerId: winner.id,
+      winnerName: winner.name
+    };
+  }
+
+  function simulateCommunityPlayoffs(standings, fighters, season) {
+    if (!Array.isArray(standings) || standings.length < PLAYOFF_QUALIFIER_LIMIT) return null;
+    const qualifiers = standings.slice(0, PLAYOFF_QUALIFIER_LIMIT).map((row, index) => ({
+      seed: index + 1,
+      id: row.id,
+      name: row.name,
+      points: row.points
+    }));
+    const fighterById = new Map((Array.isArray(fighters) ? fighters : []).map(entry => [entry.id, entry.fighter]));
+    const rowById = new Map(standings.map(row => [row.id, row]));
+    const semifinalOne = resolveCommunityPlayoffMatch(qualifiers[0], qualifiers[3], fighterById, season, 'semi-final', 1);
+    const semifinalTwo = resolveCommunityPlayoffMatch(qualifiers[1], qualifiers[2], fighterById, season, 'semi-final', 2);
+    const finalistA = rowById.get(semifinalOne.winnerId);
+    const finalistB = rowById.get(semifinalTwo.winnerId);
+    const final = resolveCommunityPlayoffMatch(finalistA, finalistB, fighterById, season, 'final', 1);
+    return {
+      qualifiers,
+      matches: [semifinalOne, semifinalTwo, final],
+      championId: final.winnerId,
+      championName: final.winnerName
+    };
+  }
+
   function simulateCommunitySeason(career) {
     if (!career || typeof career !== 'object' || Array.isArray(career)) return null;
     const age = currentAge();
@@ -365,7 +490,8 @@
       return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
     }).map((row, index) => Object.assign({}, row, { position: index + 1 }));
 
-    updateCommunityCareerRecords(league, standings, season, age);
+    const playoffs = simulateCommunityPlayoffs(standings, fighters, season);
+    updateCommunityCareerRecords(league, standings, season, age, playoffs);
 
     const leader = standings[0];
     const topThree = standings.slice(0, 3).map(row => Object.assign({}, row));
@@ -376,7 +502,8 @@
       leaderId: leader.id,
       leaderName: leader.name,
       leaderPoints: leader.points,
-      topThree
+      topThree,
+      playoffs
     };
 
     league.season = season;
@@ -393,7 +520,8 @@
       matches,
       standings: standings.map(row => Object.assign({}, row)),
       leader: Object.assign({}, leader),
-      matchups: matchups.map(pair => pair.slice())
+      matchups: matchups.map(pair => pair.slice()),
+      playoffs: playoffs ? JSON.parse(JSON.stringify(playoffs)) : null
     };
   }
 
@@ -489,9 +617,9 @@
       doc,
       '📘',
       'عن نظام المواسم',
-      'يواجه كل منافس خصمين نشطين في الموسم عند توفر ثلاثة منافسين أو أكثر، ولا تُحتسب النتائج ضمن سجل اللاعب أو دفاعاته عن اللقب.',
+      'يواجه كل منافس خصمين نشطين في الدوري التمهيدي عند توفر ثلاثة منافسين أو أكثر، ثم يتأهل أفضل أربعة إلى نصف النهائي والنهائي إذا اكتمل العدد. لا تُحتسب نتائج المجتمع ضمن سجل اللاعب أو دفاعاته عن اللقب.',
       () => {
-        description.textContent = 'يواجه كل منافس خصمين نشطين في الموسم عند توفر ثلاثة منافسين أو أكثر، بحد أقصى 20 مواجهة للموسم. الفوز 3 نقاط والتعادل نقطة والخسارة بلا نقاط. النتائج تخص مجتمع المنافسين ولا تغيّر لقب اللاعب.';
+        description.textContent = 'يواجه كل منافس خصمين نشطين في الدوري التمهيدي عند توفر ثلاثة منافسين أو أكثر، بحد أقصى 20 مواجهة تمهيدية. يتأهل أفضل أربعة إلى نصف النهائي والنهائي عند اكتمال العدد. الفوز 3 نقاط والتعادل نقطة والخسارة بلا نقاط، ولا تغيّر نتائج المجتمع لقب اللاعب.';
       }
     );
     const career = createFallbackChoice(
@@ -542,20 +670,23 @@
       row.wins + ' فوز · ' + row.draws + ' تعادل · ' + row.losses + ' خسارة'
     );
     const latest = league.history.length ? league.history[league.history.length - 1] : null;
+    const playoffLine = latest && latest.playoffs
+      ? '\nبطل تصفيات الموسم: ' + latest.playoffs.championName + ' بعد ثلاث مواجهات إقصائية.'
+      : '\nلم تُقم تصفيات هذا الموسم لعدم اكتمال أربعة منافسين مؤهلين.';
     const summary = league.season
       ? 'آخر موسم: ' + league.season + ' · العمر عند المحاكاة: ' + league.lastSimulatedAge +
-        ' · عدد المواجهات: ' + league.matchesLastSeason + '.\n' +
+        ' · مواجهات الدوري التمهيدي: ' + league.matchesLastSeason + '.\n' +
         'متصدر الموسم: ' + (latest ? latest.leaderName : 'غير متاح') +
-        (latest ? ' برصيد ' + latest.leaderPoints + ' نقطة.' : '.') +
+        (latest ? ' برصيد ' + latest.leaderPoints + ' نقطة.' : '.') + playoffLine +
         '\n\nترتيب المنافسين:\n' + (lines.length ? lines.join('\n') : 'لا توجد نتائج محفوظة.')
-      : 'لم يبدأ موسم بعد. تُحاكى مواجهات المنافسين تلقائيًا عند التقدم بالعمر داخل مسيرة القتال. يواجه كل منافس خصمين نشطين عند توفر ثلاثة منافسين أو أكثر، بحد أقصى 20 مواجهة في الموسم.\n\nالنتائج تخص منافسي المجتمع فقط، ولا تضيف نقاطًا إلى مسيرة اللاعب أو تغيّر لقب العالم مباشرة.';
+      : 'لم يبدأ موسم بعد. تُحاكى مواجهات المنافسين تلقائيًا عند التقدم بالعمر داخل مسيرة القتال. يواجه كل منافس خصمين نشطين عند توفر ثلاثة منافسين أو أكثر، بحد أقصى 20 مواجهة تمهيدية، ثم ثلاث مواجهات إقصائية لأفضل أربعة منافسين عند اكتمال العدد.\n\nالنتائج تخص منافسي المجتمع فقط، ولا تضيف نقاطًا إلى مسيرة اللاعب أو تغيّر لقب العالم مباشرة.';
 
     if (hasModalHelper() && hasChoiceHelper()) {
       const options = [
-        makeChoice('📘', 'عن نظام المواسم', 'يواجه كل منافس خصمين نشطين في الموسم عند توفر ثلاثة منافسين أو أكثر. النتائج حتمية وقابلة لإعادة الاختبار، وتؤثر تدريجيًا في الزخم والاحترام.', () => {
-          showInfo('📘', 'عن نظام المواسم', 'تُحاكى مواجهات المنافسين مرة واحدة لكل عمر عند تقدم الحياة. لا تُحتسب هذه النتائج ضمن سجل نزالات اللاعب أو دفاعاته عن لقب العالم.');
+        makeChoice('📘', 'عن نظام المواسم', 'يواجه كل منافس خصمين نشطين في الدوري التمهيدي عند توفر ثلاثة منافسين أو أكثر. يتأهل أفضل أربعة إلى نصف النهائي والنهائي، والنتائج حتمية وتؤثر تدريجيًا في الزخم والاحترام.', () => {
+          showInfo('📘', 'عن نظام المواسم', 'تُحاكى مواجهات الدوري التمهيدي مرة واحدة لكل عمر. عند وجود أربعة منافسين مؤهلين، يتأهل أفضل أربعة إلى نصف النهائي والنهائي. لا تُحتسب هذه النتائج ضمن سجل نزالات اللاعب أو دفاعاته عن لقب العالم.');
         }),
-        makeChoice('📚', 'سجل المسيرة التاريخي', 'أرقام تراكمية للمواسم والانتصارات والألقاب وأفضل مركز لكل منافس.', () => {
+        makeChoice('📚', 'سجل المسيرة التاريخي', 'أرقام تراكمية للمواسم والتصفيات والانتصارات والألقاب وأفضل مركز لكل منافس.', () => {
           showInfo('📚', 'سجل المسيرة التاريخي', careerSummary);
         }),
         makeChoice('↩️', 'رجوع إلى مجتمع المقاتلين', '', backToMenu)
