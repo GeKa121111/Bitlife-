@@ -336,7 +336,7 @@ test('واجهة الفاحص تسمح بنسخ البصمة ومقارنتها 
   assert.equal(copied, expectedDigest);
   expectedInput.value = 'SHA-256: ' + expectedDigest.toUpperCase();
   compareButton.listeners.click();
-  assert.match(status.textContent, /متطابقة/);
+  assert.match(status.textContent, /^متطابقة:/);
 
   expectedInput.value = 'f'.repeat(64);
   compareButton.listeners.click();
