@@ -64,11 +64,11 @@
       losses: boundedInteger(item.losses, 0, 0, 1000000),
       points: boundedInteger(item.points, 0, 0, 1000000000),
       titles: boundedInteger(item.titles, 0, 0, 1000000),
-      titleStreak,
-      bestTitleStreak,
       playoffAppearances: boundedInteger(item.playoffAppearances, 0, 0, 1000000),
       playoffWins: boundedInteger(item.playoffWins, 0, 0, 1000000),
       playoffTitles: boundedInteger(item.playoffTitles, 0, 0, 1000000),
+      titleStreak,
+      bestTitleStreak,
       bestPosition: boundedInteger(item.bestPosition, MAX_FIGHTERS, 1, MAX_FIGHTERS),
       lastSeason: boundedInteger(item.lastSeason, 0, 0, 1000000),
       lastAge: boundedInteger(item.lastAge, 0, 0, 150)
@@ -197,7 +197,9 @@
       const previousSeason = boundedInteger(record.lastSeason, 0, 0, 1000000);
       const previousTitleStreak = boundedInteger(record.titleStreak, 0, 0, 1000000);
       record.titleStreak = row.position === 1
-        ? (previousSeason === season - 1 ? previousTitleStreak + 1 : 1)
+        ? (previousSeason === season - 1
+          ? boundedInteger(previousTitleStreak + 1, 1, 1, 1000000)
+          : 1)
         : 0;
       record.bestTitleStreak = Math.max(
         boundedInteger(record.bestTitleStreak, 0, 0, 1000000),
