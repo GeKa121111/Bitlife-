@@ -1036,3 +1036,117 @@ test('سجل جوائز المواسم يوضح غياب الجوائز في ا�
   assert.match(description.textContent, /لم يحقق أي منافس تحسنًا إيجابيًا/);
   assert.match(description.textContent, /لن تُنشأ نتائج بأثر رجعي/);
 });
+
+
+test('أرشيف المواسم يعرض آخر 12 موسمًا مع المتصدر والمراكز وبطل التصفيات والجائزة', () => {
+  const context = createContext();
+  const career = makeCareer();
+  const playoffs = {
+    qualifiers: [
+      { seed: 1, id: 'rival-a', name: 'منافس أ', points: 9 },
+      { seed: 2, id: 'rival-b', name: 'منافس ب', points: 6 },
+      { seed: 3, id: 'rival-c', name: 'منافس ج', points: 3 },
+      { seed: 4, id: 'rival-d', name: 'منافس د', points: 0 }
+    ],
+    matches: [
+      { round: 'semi-final', slot: 1, aId: 'rival-a', bId: 'rival-d', winnerId: 'rival-a' },
+      { round: 'semi-final', slot: 2, aId: 'rival-b', bId: 'rival-c', winnerId: 'rival-b' },
+      { round: 'final', slot: 1, aId: 'rival-a', bId: 'rival-b', winnerId: 'rival-a' }
+    ],
+    championId: 'rival-a',
+    championName: 'اسم عرض غير موثوق'
+  };
+  career.communityLeague = {
+    season: 14,
+    lastSimulatedAge: 38,
+    matchesLastSeason: 3,
+    standings: [],
+    records: [],
+    history: Array.from({ length: 14 }, (_, index) => ({
+      season: index + 1,
+      age: 25 + index,
+      matches: 3,
+      leaderId: 'rival-a',
+      leaderName: 'متصدر الموسم ' + (index + 1),
+      leaderPoints: 9,
+      topThree: [
+        { position: 1, id: 'rival-a', name: 'متصدر الموسم ' + (index + 1), points: 9 },
+        { position: 2, id: 'rival-b', name: 'الوصيف', points: 6 },
+        { position: 3, id: 'rival-c', name: 'الثالث', points: 3 }
+      ],
+      risingStar: index === 13
+        ? { id: 'rival-c', name: 'صاحب التحسن', change: 2.75, position: 3 }
+        : null,
+      playoffs: index === 13 ? playoffs : null
+    }))
+  };
+  context.career = career;
+
+  context.HayahCombatSeason.openMenu();
+  const option = context.lastModal[3].find(item => item.title === 'أرشيف المواسم');
+  assert.ok(option, 'the main season menu should expose the season archive');
+  option.action();
+
+  const summary = context.lastInfo[2];
+  assert.match(summary, /الموسم 14 · العمر 38/);
+  assert.match(summary, /متصدر الموسم 14 — 9 نقطة/);
+  assert.match(summary, /أفضل المراكز: 1\. متصدر الموسم 14/);
+  assert.match(summary, /بطل التصفيات: منافس أ/);
+  assert.match(summary, /أكبر تحسن: صاحب التحسن \(\+2\.75\)/);
+  assert.match(summary, /الموسم 3/);
+  assert.ok(!summary.includes('الموسم 2 ·'), 'the archive should be bounded to the latest twelve seasons');
+  assert.ok(summary.indexOf('الموسم 14') < summary.indexOf('الموسم 13'),
+    'the newest season should appear first');
+  assert.ok(!summary.includes('الموسم 1 ·'), 'older seasons should not be displayed');
+});
+
+test('أرشيف المواسم في واجهة الاحتياط يعرض نقص بيانات الحفظ القديم دون اختراع نتائج', () => {
+  const root = new FakeElement('div');
+  const context = createContext({
+    modal: undefined,
+    choice: undefined,
+    document: {
+      getElementById(id) { return id === 'modalRoot' ? root : null; },
+      createElement(tagName) { return new FakeElement(tagName); }
+    }
+  });
+  const career = makeCareer();
+  career.communityLeague = {
+    season: 1,
+    lastSimulatedAge: 25,
+    matchesLastSeason: 1,
+    standings: [],
+    records: [],
+    history: [{
+      season: 1,
+      age: 25,
+      matches: 1,
+      leaderId: 'legacy-rival',
+      leaderName: 'منافس قديم',
+      leaderPoints: 3,
+      topThree: []
+    }]
+  };
+  context.career = career;
+
+  context.HayahCombatSeason.openMenu();
+  const option = findChoiceByTitle(root, 'أرشيف المواسم');
+  assert.ok(option, 'the fallback modal should expose the season archive');
+  option.listeners.click();
+
+  const findDescription = node => {
+    if (!node) return null;
+    if (node.className === 'desc') return node;
+    for (const child of node.children || []) {
+      const found = findDescription(child);
+      if (found) return found;
+    }
+    return null;
+  };
+  const description = findDescription(root);
+  assert.ok(description);
+  assert.match(description.textContent, /متصدر الدوري: منافس قديم/);
+  assert.match(description.textContent, /تفاصيل المراكز الثلاثة غير متاحة/);
+  assert.match(description.textContent, /لا يوجد سجل تصفيات صالح محفوظ/);
+  assert.match(description.textContent, /لا توجد جائزة تحسن مسجلة/);
+});

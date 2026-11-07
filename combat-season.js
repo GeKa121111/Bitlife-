@@ -238,6 +238,39 @@
       Math.min(recent.length, HISTORY_LIMIT) + ' موسمًا محفوظًا (الأحدث أولًا):\n\n' + lines.join('\n');
   }
 
+  function communitySeasonHistorySummary(history) {
+    const recent = (Array.isArray(history) ? history : [])
+      .slice(-HISTORY_LIMIT)
+      .slice()
+      .reverse();
+    const lines = recent.map(item => {
+      if (!item || typeof item !== 'object' || Array.isArray(item)) return null;
+      const season = boundedInteger(item.season, 0, 0, 1000000);
+      const age = boundedInteger(item.age, 0, 0, 150);
+      const leaderName = safeName(item.leaderName, 'لم يُحسم');
+      const leaderPoints = boundedInteger(item.leaderPoints, 0, 0, 1000000);
+      const podium = (Array.isArray(item.topThree) ? item.topThree : [])
+        .slice(0, 3)
+        .map((entry, index) => normalizeStanding(entry, index))
+        .filter(Boolean)
+        .map(row => row.position + '. ' + row.name + ' (' + row.points + ' نقطة)');
+      const playoffs = normalizePlayoffSummary(item.playoffs);
+      const risingStar = normalizeRisingStar(item.risingStar);
+      const heading = 'الموسم ' + season + (age > 0 ? ' · العمر ' + age : '');
+      return [
+        heading,
+        'متصدر الدوري: ' + leaderName + ' — ' + leaderPoints + ' نقطة.',
+        podium.length ? 'أفضل المراكز: ' + podium.join(' · ') + '.' : 'تفاصيل المراكز الثلاثة غير متاحة في هذا السجل.',
+        playoffs ? 'بطل التصفيات: ' + playoffs.championName + '.' : 'لا يوجد سجل تصفيات صالح محفوظ لهذا الموسم.',
+        risingStar ? 'أكبر تحسن: ' + risingStar.name + ' (+' + risingStar.change.toFixed(2) + ').' : 'لا توجد جائزة تحسن مسجلة لهذا الموسم.'
+      ].join('\n');
+    }).filter(Boolean);
+    if (!lines.length) {
+      return 'لا توجد مواسم محفوظة لعرض أرشيفها حتى الآن. سيظهر ملخص كل موسم بعد اكتمال محاكاته.';
+    }
+    return 'أرشيف آخر ' + recent.length + ' موسمًا محفوظًا (الأحدث أولًا):\n\n' + lines.join('\n\n');
+  }
+
   function normalizeCommunityLeague(value) {
     const source = value && typeof value === 'object' && !Array.isArray(value) ? value : {};
     const standings = Array.isArray(source.standings)
@@ -697,7 +730,7 @@
     return button;
   }
 
-  function renderFallbackSeasonModal(summary, careerSummary, awardsSummary, onBack, challenge) {
+  function renderFallbackSeasonModal(summary, careerSummary, awardsSummary, historySummary, onBack, challenge) {
     const doc = global.document;
     const root = doc && typeof doc.getElementById === 'function' ? doc.getElementById('modalRoot') : null;
     if (!root || typeof doc.createElement !== 'function') return;
@@ -765,6 +798,13 @@
       'راجع أصحاب أكبر تحسن في مؤشر الأداء عبر المواسم الأخيرة.',
       () => { description.textContent = awardsSummary; }
     );
+    const history = createFallbackChoice(
+      doc,
+      '🗓️',
+      'أرشيف المواسم',
+      'راجع متصدري الدوري وأفضل المراكز ونتائج التصفيات والجوائز المسجلة لكل موسم.',
+      () => { description.textContent = historySummary; }
+    );
     const back = createFallbackChoice(
       doc,
       '↩️',
@@ -778,6 +818,7 @@
     grid.appendChild(about);
     grid.appendChild(career);
     grid.appendChild(awards);
+    grid.appendChild(history);
     grid.appendChild(back);
     body.appendChild(grid);
     panel.appendChild(header);
@@ -850,6 +891,7 @@
 
     const careerSummary = communityCareerRecordSummary(league.records);
     const awardsSummary = communitySeasonAwardsSummary(league.history);
+    const historySummary = communitySeasonHistorySummary(league.history);
     const lines = league.standings.slice(0, 10).map(row =>
       row.position + '. ' + row.name + ' — ' + row.points + ' نقطة · ' +
       row.wins + ' فوز · ' + row.draws + ' تعادل · ' + row.losses + ' خسارة'
@@ -898,13 +940,16 @@
         makeChoice('🏅', 'سجل جوائز المواسم', 'راجع أصحاب أكبر تحسن في مؤشر الأداء عبر المواسم الأخيرة.', () => {
           showInfo('🏅', 'سجل جوائز المواسم', awardsSummary);
         }),
+        makeChoice('🗓️', 'أرشيف المواسم', 'راجع متصدري الدوري وأفضل المراكز ونتائج التصفيات والجوائز المسجلة لكل موسم.', () => {
+          showInfo('🗓️', 'أرشيف المواسم', historySummary);
+        }),
         makeChoice('↩️', 'رجوع إلى مجتمع المقاتلين', '', backToMenu)
       );
       showModal('🏆', 'سجل مواسم المنافسين', summary, options);
       return;
     }
 
-    renderFallbackSeasonModal(summary, careerSummary, awardsSummary, backToMenu, challenge);
+    renderFallbackSeasonModal(summary, careerSummary, awardsSummary, historySummary, backToMenu, challenge);
   }
 
   function injectSeasonMenuEntry(root) {
