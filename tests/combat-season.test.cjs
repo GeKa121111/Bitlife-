@@ -674,3 +674,36 @@ test('تكامل الجسر يقرأ حالة الحياة الخاصة ويفت
     'the host save bridge must persist a season when the age-button fallback is used');
 });
 
+
+test('تطبيع أسماء التصفيات يربط كل اسم بمعرّف المتأهل المسجل', () => {
+  const context = createContext();
+  const career = makeCareer();
+  career.community.push({ id: 'rival-d', name: 'منافس د', rating: 82, momentum: 1, respect: 60, tension: 20 });
+  const generated = context.HayahCombatSeason.simulate(career);
+  const imported = JSON.parse(JSON.stringify(generated.playoffs));
+  imported.matches[0].aName = 'اسم غير مطابق';
+  imported.matches[0].bName = 'اسم آخر غير مطابق';
+  imported.matches[0].winnerName = 'فائز غير مطابق';
+  imported.championName = 'بطل غير مطابق';
+
+  const normalized = context.HayahCombatSeason.normalize({
+    history: [{
+      season: 1,
+      age: 25,
+      matches: 23,
+      leaderId: 'rival-a',
+      leaderName: 'منافس أ',
+      leaderPoints: 10,
+      topThree: [],
+      playoffs: imported
+    }]
+  }).history[0].playoffs;
+
+  assert.ok(normalized, 'valid bracket IDs should remain readable');
+  const namesById = new Map(normalized.qualifiers.map(qualifier => [qualifier.id, qualifier.name]));
+  const semifinal = normalized.matches[0];
+  assert.equal(semifinal.aName, namesById.get(semifinal.aId));
+  assert.equal(semifinal.bName, namesById.get(semifinal.bId));
+  assert.equal(semifinal.winnerName, namesById.get(semifinal.winnerId));
+  assert.equal(normalized.championName, namesById.get(normalized.championId));
+});
