@@ -238,6 +238,24 @@
     }
   }
 
+
+  function normalizeSha256Fingerprint(value) {
+    const normalized = String(value == null ? '' : value)
+      .trim()
+      .replace(/^sha-?256\s*[:=]\s*/i, '')
+      .replace(/\s+/g, '')
+      .toLowerCase();
+    return /^[a-f0-9]{64}$/.test(normalized) ? normalized : null;
+  }
+
+  function compareSha256Fingerprints(actual, expected) {
+    const actualDigest = normalizeSha256Fingerprint(actual);
+    const expectedDigest = normalizeSha256Fingerprint(expected);
+    if (!actualDigest) return 'invalid-current';
+    if (!expectedDigest) return 'invalid-reference';
+    return actualDigest === expectedDigest ? 'match' : 'mismatch';
+  }
+
   function mount(doc, host) {
     if (!doc || !doc.getElementById) return;
     const input = doc.getElementById('backupFile');
@@ -310,6 +328,100 @@
         appendText(list, 'dd', '', value);
       });
       panel.appendChild(list);
+
+      if (report.sha256) {
+        const fingerprintTools = doc.createElement('section');
+        fingerprintTools.className = 'fingerprint-tools';
+        fingerprintTools.setAttribute('aria-labelledby', 'fingerprintToolsTitle');
+        const fingerprintTitle = appendText(fingerprintTools, 'h3', 'fingerprint-title', 'التحقق من تطابق النسخة');
+        fingerprintTitle.id = 'fingerprintToolsTitle';
+
+        const currentLabel = doc.createElement('label');
+        currentLabel.className = 'fingerprint-field';
+        appendText(currentLabel, 'span', 'fingerprint-label', 'بصمة الملف الحالي');
+        const currentInput = doc.createElement('input');
+        currentInput.type = 'text';
+        currentInput.value = report.sha256;
+        currentInput.readOnly = true;
+        currentInput.dir = 'ltr';
+        currentInput.className = 'fingerprint-value';
+        currentInput.setAttribute('aria-label', 'بصمة الملف الحالي SHA-256');
+        currentLabel.appendChild(currentInput);
+        fingerprintTools.appendChild(currentLabel);
+
+        const expectedLabel = doc.createElement('label');
+        expectedLabel.className = 'fingerprint-field';
+        appendText(expectedLabel, 'span', 'fingerprint-label', 'البصمة المسجلة قبل نقل الملف');
+        const expectedInput = doc.createElement('input');
+        expectedInput.type = 'text';
+        expectedInput.value = '';
+        expectedInput.dir = 'ltr';
+        expectedInput.autocomplete = 'off';
+        expectedInput.spellcheck = false;
+        expectedInput.className = 'fingerprint-expected';
+        expectedInput.placeholder = 'الصق بصمة SHA-256 المكونة من 64 خانة';
+        expectedInput.setAttribute('aria-label', 'البصمة المرجعية من النسخة الأصلية');
+        expectedLabel.appendChild(expectedInput);
+        fingerprintTools.appendChild(expectedLabel);
+
+        const actions = doc.createElement('div');
+        actions.className = 'fingerprint-actions';
+        const status = appendText(
+          fingerprintTools,
+          'p',
+          'fingerprint-status',
+          'الصق البصمة المسجلة قبل النقل ثم اضغط مقارنة.'
+        );
+        status.setAttribute('role', 'status');
+        status.setAttribute('aria-live', 'polite');
+
+        const copyButton = doc.createElement('button');
+        copyButton.type = 'button';
+        copyButton.className = 'button secondary fingerprint-copy';
+        copyButton.textContent = 'نسخ البصمة';
+        copyButton.addEventListener('click', async () => {
+          const clipboard = runtime.navigator && runtime.navigator.clipboard;
+          try {
+            if (!clipboard || typeof clipboard.writeText !== 'function') {
+              throw new Error('clipboard-unavailable');
+            }
+            await clipboard.writeText(report.sha256);
+            status.className = 'fingerprint-status is-success';
+            status.textContent = 'تم نسخ البصمة.';
+          } catch {
+            if (typeof currentInput.focus === 'function') currentInput.focus();
+            if (typeof currentInput.select === 'function') currentInput.select();
+            status.className = 'fingerprint-status';
+            status.textContent = 'النسخ التلقائي غير متاح؛ حدد البصمة وانسخها يدويًا.';
+          }
+        });
+        actions.appendChild(copyButton);
+
+        const compareButton = doc.createElement('button');
+        compareButton.type = 'button';
+        compareButton.className = 'button fingerprint-compare';
+        compareButton.textContent = 'مقارنة البصمة';
+        compareButton.addEventListener('click', () => {
+          const comparison = compareSha256Fingerprints(report.sha256, expectedInput.value);
+          if (comparison === 'match') {
+            status.className = 'fingerprint-status is-success';
+            status.textContent = 'متطابقة: الملف يطابق البصمة المرجعية.';
+          } else if (comparison === 'mismatch') {
+            status.className = 'fingerprint-status is-warning';
+            status.textContent = 'غير متطابقة: الملف مختلف عن البصمة المرجعية.';
+          } else if (comparison === 'invalid-reference') {
+            status.className = 'fingerprint-status is-warning';
+            status.textContent = 'أدخل بصمة SHA-256 صحيحة من 64 خانة سداسية عشرية.';
+          } else {
+            status.className = 'fingerprint-status is-warning';
+            status.textContent = 'بصمة الملف الحالي غير متاحة؛ أعد الفحص في متصفح يدعم Web Crypto.';
+          }
+        });
+        actions.appendChild(compareButton);
+        fingerprintTools.appendChild(actions);
+        panel.appendChild(fingerprintTools);
+      }
+
 
       if (report.errors.length) {
         appendText(panel, 'h3', 'report-errors-title', 'أخطاء تحتاج إلى مراجعة');
@@ -399,5 +511,5 @@
     });
   }
 
-  return { MAX_FILE_BYTES, MAX_REWIND_SNAPSHOT_CHARS, inspectRewindHistory, inspectBackup, formatBytes, sha256Fingerprint, mount };
+  return { MAX_FILE_BYTES, MAX_REWIND_SNAPSHOT_CHARS, inspectRewindHistory, inspectBackup, formatBytes, sha256Fingerprint, normalizeSha256Fingerprint, compareSha256Fingerprints, mount };
 });
