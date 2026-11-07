@@ -12885,7 +12885,8 @@ if(typeof window!=='undefined')window.HayahCombatSeasonHost=Object.freeze({
  getState:()=>state,
  ensureCombatCareer:()=>ensureCombatCareer(),
  save:()=>save(),
- openCommunityMenu:()=>combatCommunityMenu()
+ openCommunityMenu:()=>combatCommunityMenu(),
+ startCommunityBout:(mode,fighterId)=>startCombatBout(mode,fighterId)
 });
 init();
 })();
