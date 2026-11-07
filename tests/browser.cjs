@@ -17,6 +17,7 @@ const routes = new Map([
   ['/pwa-update.css', 'pwa-update.css'],
   ['/pwa-update.js', 'pwa-update.js'],
   ['/app.js', 'app.js'],
+  ['/combat-season.js', 'combat-season.js'],
   ['/sw.js', 'sw.js'],
   ['/manifest.webmanifest', 'manifest.webmanifest'],
   ['/icon.svg', 'icon.svg'],
@@ -2776,6 +2777,54 @@ async function run() {
     assert.equal(completedCombat.bout.roundInjuryGain,
       completedCombat.impactRounds.reduce((sum, round) => sum + round.injuryGain, 0));
 
+    await page.locator('.choice').filter({ hasText: 'إدارة مسيرة القتال' }).click();
+    await page.locator('.choice').filter({ hasText: 'مجتمع المقاتلين' }).click();
+    const seasonMenuEntry = page.locator('.choice').filter({ hasText: 'سجل مواسم المنافسين' });
+    await seasonMenuEntry.waitFor();
+    await seasonMenuEntry.click();
+    await page.waitForFunction(() => document.querySelector('#modalRoot .modaltitle')?.textContent.trim() === 'سجل مواسم المنافسين');
+    assert.equal((await page.locator('#modalRoot .modaltitle').innerText()).trim(), 'سجل مواسم المنافسين');
+    assert.match(await page.locator('#modalRoot').innerText(), /يواجه كل منافس خصمين/,
+      'the season screen should explain the bounded annual opponent schedule');
+    await page.locator('#modalRoot .choice').filter({ hasText: 'رجوع إلى مجتمع المقاتلين' }).click();
+    // The back action intentionally returns to the live community menu; close that menu before aging up.
+    await page.locator('#modalRoot .modalhead .closebtn').click();
+    const ageBeforeCommunitySeason = await page.evaluate(() =>
+      JSON.parse(localStorage.getItem('hekayat_hayah_save_v1') || 'null').age
+    );
+    await page.locator('#ageUpBtn').click();
+    await page.waitForFunction(() => {
+      const saved = JSON.parse(localStorage.getItem('hekayat_hayah_save_v1') || 'null');
+      const league = saved && saved.combatCareer && saved.combatCareer.communityLeague;
+      return !!league && league.season >= 1 && league.lastSimulatedAge === saved.age;
+    }, null, { timeout: 8000 });
+    const persistedCommunitySeason = await page.evaluate(() => {
+      const saved = JSON.parse(localStorage.getItem('hekayat_hayah_save_v1') || 'null');
+      return {
+        age: saved.age,
+        league: saved.combatCareer.communityLeague
+      };
+    });
+    assert.ok(persistedCommunitySeason.age > ageBeforeCommunitySeason,
+      'the season should be generated after the player advances a year');
+    assert.ok(persistedCommunitySeason.league.matchesLastSeason <= 20,
+      'a persisted annual season should not exceed twenty NPC bouts');
+    assert.ok(persistedCommunitySeason.league.standings.every(row => row.played <= 2),
+      'a rival should not be scheduled for more than two bouts in one season');
+
+    // The deterministic age-up fixture opens a narrative choice, not a dismissible alert.
+    // Resolve it through its least-committal in-game option before continuing the browser flow.
+    const ageEventOverlay = page.locator('#modalRoot #overlay.event-overlay');
+    await ageEventOverlay.waitFor({ state: 'visible', timeout: 5000 });
+    const listenFirstChoice = page.locator('#modalRoot .choice:visible')
+      .filter({ hasText: 'أسمع التفاصيل الأول' }).first();
+    await listenFirstChoice.waitFor({ state: 'visible', timeout: 5000 });
+    await listenFirstChoice.click();
+    await ageEventOverlay.waitFor({ state: 'hidden', timeout: 5000 });
+
+    // Aging closes the combat-community dialog; reopen the live menus before continuing the social-interaction flow.
+    await page.locator('[data-panel="career"]').click();
+    await page.locator('.choice').filter({ hasText: 'المهن الخاصة والشهرة' }).click();
     await page.locator('.choice').filter({ hasText: 'إدارة مسيرة القتال' }).click();
     await page.locator('.choice').filter({ hasText: 'مجتمع المقاتلين' }).click();
     await page.locator('.choice').filter({ hasText: 'آدم منصور' }).click();

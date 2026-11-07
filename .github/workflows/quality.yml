@@ -73,6 +73,12 @@ jobs:
         run: node --check tests/combat-community-contenders.test.cjs
       - name: Run contender scoring and named league challenge tests
         run: node --test tests/combat-community-contenders.test.cjs
+      - name: Check annual combat season module syntax
+        run: node --check combat-season.js
+      - name: Check annual combat season regression test syntax
+        run: node --check tests/combat-season.test.cjs
+      - name: Run annual NPC combat community season tests
+        run: node --test tests/combat-season.test.cjs
       - name: Check combat title-defense regression test syntax
         run: node --check tests/combat-title-defense.test.cjs
       - name: Run combat title-defense and legacy-save tests
