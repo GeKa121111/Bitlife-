@@ -111,6 +111,10 @@ jobs:
         run: node --check tests/business-market-simulation.test.cjs
       - name: Run business market and product simulation tests
         run: node --test tests/business-market-simulation.test.cjs
+      - name: Check business portfolio insights test syntax
+        run: node --check tests/business-insights.test.cjs
+      - name: Run business portfolio insights regression tests
+        run: node --test tests/business-insights.test.cjs
       - name: Check integrated business-lifecycle test syntax
         run: node --check tests/business-lifecycle.test.cjs
       - name: Run 30-year integrated business-lifecycle tests
