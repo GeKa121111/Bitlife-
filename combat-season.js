@@ -5,6 +5,7 @@
   const MAX_FIGHTERS = 20;
   const MAX_SEASON_BOUTS = MAX_FIGHTERS;
   const CAREER_RECORD_LIMIT = 40;
+  const MAX_IMPORTED_CAREER_RECORDS = 500;
 
   function boundedNumber(value, fallback, min, max) {
     const number = Number(value);
@@ -115,12 +116,19 @@
       ? source.standings.slice(0, MAX_FIGHTERS).map(normalizeStanding).filter(Boolean)
       : [];
     const recordIds = new Set();
+    // Imported saves may contain more than the current 40-record cap.
+    // Normalize and rank a bounded prefix before truncating, so valid top
+    // performers are not accidentally discarded by taking the array tail.
     const records = Array.isArray(source.records)
-      ? source.records.slice(-CAREER_RECORD_LIMIT).map(normalizeCareerRecord).filter(record => {
-        if (!record || recordIds.has(record.id)) return false;
-        recordIds.add(record.id);
-        return true;
-      })
+      ? sortCommunityCareerRecords(
+        source.records.slice(0, MAX_IMPORTED_CAREER_RECORDS)
+          .map(normalizeCareerRecord)
+          .filter(record => {
+            if (!record || recordIds.has(record.id)) return false;
+            recordIds.add(record.id);
+            return true;
+          })
+      ).slice(0, CAREER_RECORD_LIMIT)
       : [];
     const history = Array.isArray(source.history)
       ? source.history.slice(-HISTORY_LIMIT).map(item => {

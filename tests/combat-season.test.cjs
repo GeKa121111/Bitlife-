@@ -455,6 +455,30 @@ test('تطبيع سجل الموسم يحد القيم ويحذف السجلات
   assert.equal(normalized.history.at(-1).age, 150);
 });
 
+test('تطبيع سجل المسيرة يحتفظ بأفضل 40 سجلًا قبل تطبيق الحد الأقصى', () => {
+  const context = createContext();
+  const records = Array.from({ length: 45 }, (_, index) => ({
+    id: 'rival-' + String(index + 1).padStart(2, '0'),
+    name: 'منافس ' + (index + 1),
+    seasons: 45 - index,
+    played: (45 - index) * 2,
+    wins: 45 - index,
+    draws: 0,
+    losses: 45 - index,
+    points: (45 - index) * 6,
+    titles: 45 - index,
+    bestPosition: 1,
+    lastSeason: 45 - index,
+    lastAge: 30
+  }));
+  const normalized = context.HayahCombatSeason.normalize({ records });
+
+  assert.equal(normalized.records.length, 40);
+  assert.equal(normalized.records[0].id, 'rival-01');
+  assert.equal(normalized.records.at(-1).id, 'rival-40');
+  assert.ok(!normalized.records.some(record => record.id === 'rival-41'));
+});
+
 test('نظام المواسم لا يكتب مباشرة إلى localStorage ولا يغير مفاتيح الحفظ الأساسية', () => {
   assert.doesNotMatch(source, /localStorage|sessionStorage/);
   assert.match(source, /communityLeague/);
