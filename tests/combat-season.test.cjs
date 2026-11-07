@@ -1150,3 +1150,66 @@ test('أرشيف المواسم في واجهة الاحتياط يعرض نقص
   assert.match(description.textContent, /لا يوجد سجل تصفيات صالح محفوظ/);
   assert.match(description.textContent, /لا توجد جائزة تحسن مسجلة/);
 });
+
+
+test('استيراد سجل مواسم غير مرتب يعيد اختيار أحدث 12 موسمًا وترتيبها زمنيًا', () => {
+  const context = createContext();
+  const career = makeCareer();
+  const importedOrder = [1, 14, 3, 12, 5, 10, 7, 8, 6, 9, 4, 11, 2, 13];
+  career.communityLeague = {
+    season: 14,
+    lastSimulatedAge: 34,
+    matchesLastSeason: 3,
+    standings: [],
+    records: [],
+    history: importedOrder.map(season => ({
+      season,
+      age: 20 + season,
+      matches: 3,
+      leaderId: 'rival-' + season,
+      leaderName: 'متصدر ' + season,
+      leaderPoints: season,
+      topThree: [],
+      risingStar: {
+        id: 'rival-' + season,
+        name: 'صاحب التحسن ' + season,
+        change: season / 10,
+        position: 1
+      }
+    }))
+  };
+  context.career = career;
+
+  const normalized = context.HayahCombatSeason.normalize(career.communityLeague);
+  assert.deepEqual(
+    JSON.parse(JSON.stringify(normalized.history.map(item => item.season))),
+    [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14],
+    'the normalized save should retain the twelve highest season numbers in chronological order'
+  );
+  career.communityLeague = normalized;
+
+  context.HayahCombatSeason.openMenu();
+  const archiveOption = context.lastModal[3].find(item => item.title === 'أرشيف المواسم');
+  assert.ok(archiveOption);
+  archiveOption.action();
+  const archive = context.lastInfo[2];
+  const newestFirst = [14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3];
+  const archivePositions = newestFirst.map(season => archive.indexOf('الموسم ' + season + ' ·'));
+  assert.ok(archivePositions.every(position => position >= 0));
+  assert.ok(archivePositions.every((position, index) =>
+    index === 0 || archivePositions[index - 1] < position
+  ), 'the season archive should display imported seasons newest first');
+  assert.ok(!archive.includes('الموسم 2 ·'));
+  assert.ok(!archive.includes('الموسم 1 ·'));
+
+  const awardsOption = context.lastModal[3].find(item => item.title === 'سجل جوائز المواسم');
+  assert.ok(awardsOption);
+  awardsOption.action();
+  const awards = context.lastInfo[2];
+  const awardPositions = newestFirst.map(season => awards.indexOf('الموسم ' + season + ' ·'));
+  assert.ok(awardPositions.every(position => position >= 0));
+  assert.ok(awardPositions.every((position, index) =>
+    index === 0 || awardPositions[index - 1] < position
+  ), 'the award archive should use the same normalized chronology');
+  assert.ok(!awards.includes('الموسم 2 ·'));
+});
