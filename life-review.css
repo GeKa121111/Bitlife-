@@ -1,0 +1,236 @@
+/* Read-only life review shown from the end-of-life summary. */
+#modalRoot #deathDialog[data-life-review-open="true"] {
+  width: min(100%, 480px) !important;
+  max-height: min(90dvh, 820px) !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+  background: var(--hayah-surface, #fffdf8) !important;
+  color: var(--hayah-text, #1c3935) !important;
+}
+
+#modalRoot .life-review-panel {
+  display: grid;
+  gap: 14px;
+  max-height: min(90dvh, 820px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 18px;
+  direction: rtl;
+  text-align: right;
+  color: var(--hayah-text, #1c3935);
+  background: var(--hayah-surface, #fffdf8);
+}
+
+#modalRoot .life-review-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+#modalRoot .life-review-heading {
+  min-width: 0;
+}
+
+#modalRoot .life-review-eyebrow {
+  display: inline-block;
+  margin-bottom: 5px;
+  color: var(--hayah-primary, #0f766e);
+  font-size: 11px;
+  font-weight: 900;
+}
+
+#modalRoot .life-review-heading h2 {
+  margin: 0;
+  color: var(--hayah-text, #1c3935);
+  font-size: 20px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+#modalRoot .life-review-heading p {
+  margin: 5px 0 0;
+  color: var(--hayah-muted, #647b72);
+  font-size: 12px;
+  line-height: 1.7;
+}
+
+#modalRoot .life-review-close {
+  flex: 0 0 44px;
+  width: 44px;
+  min-width: 44px;
+  min-height: 44px;
+  height: 44px;
+  border: 1px solid var(--hayah-line, #d9e3dc);
+  border-radius: 13px;
+  background: var(--hayah-surface-soft, #f2f5ef);
+  color: var(--hayah-text, #1c3935);
+  font-size: 24px;
+  font-weight: 800;
+}
+
+#modalRoot .life-review-ribbon {
+  padding: 10px 12px;
+  border: 1px solid var(--hayah-line, #d9e3dc);
+  border-radius: 13px;
+  background: var(--hayah-surface-soft, #f2f5ef);
+  color: var(--hayah-primary-deep, #17433e);
+  font-size: 12px;
+  font-weight: 900;
+  line-height: 1.7;
+}
+
+#modalRoot .life-review-metrics {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+#modalRoot .life-review-metric {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+  padding: 11px;
+  border: 1px solid var(--hayah-line, #d9e3dc);
+  border-radius: 13px;
+  background: var(--hayah-surface-soft, #f2f5ef);
+}
+
+#modalRoot .life-review-metric-label {
+  color: var(--hayah-muted, #647b72);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+#modalRoot .life-review-metric-value {
+  color: var(--hayah-text, #1c3935);
+  font-size: 16px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+#modalRoot .life-review-section {
+  display: grid;
+  gap: 8px;
+  padding-top: 11px;
+  border-top: 1px solid var(--hayah-line, #d9e3dc);
+}
+
+#modalRoot .life-review-section-title {
+  margin: 0;
+  color: var(--hayah-primary-deep, #17433e);
+  font-size: 14px;
+  font-weight: 950;
+}
+
+#modalRoot .life-review-summary-line {
+  margin: 0;
+  color: var(--hayah-text, #1c3935);
+  font-size: 12px;
+  line-height: 1.75;
+}
+
+#modalRoot .life-review-list {
+  display: grid;
+  gap: 7px;
+  margin: 0;
+  padding: 0 18px 0 0;
+  color: var(--hayah-text, #1c3935);
+}
+
+#modalRoot .life-review-list-item {
+  padding-inline-start: 2px;
+  font-size: 12px;
+  line-height: 1.75;
+  overflow-wrap: anywhere;
+}
+
+#modalRoot .life-review-list-title {
+  display: block;
+  font-weight: 900;
+}
+
+#modalRoot .life-review-list-copy {
+  display: block;
+  margin-top: 2px;
+  color: var(--hayah-muted, #647b72);
+}
+
+#modalRoot .life-review-empty {
+  color: var(--hayah-muted, #647b72);
+  font-size: 12px;
+  line-height: 1.7;
+}
+
+#modalRoot .life-review-note {
+  margin: 0;
+  padding: 9px 11px;
+  border-inline-start: 3px solid var(--hayah-accent, #c06c4f);
+  border-radius: 8px;
+  background: var(--hayah-surface-soft, #f2f5ef);
+  color: var(--hayah-muted, #647b72);
+  font-size: 11px;
+  line-height: 1.7;
+}
+
+#modalRoot .life-review-footer {
+  display: flex;
+}
+
+#modalRoot .life-review-done {
+  width: 100%;
+  min-height: 48px;
+  border: 0;
+  border-radius: 13px;
+  background: var(--hayah-primary, #0f766e);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 950;
+}
+
+#modalRoot .life-review-close:focus-visible,
+#modalRoot .life-review-done:focus-visible {
+  outline: 3px solid var(--hayah-focus-ring, #d4a16e);
+  outline-offset: 3px;
+}
+
+body.text-large #modalRoot .life-review-heading h2 { font-size: 23px; }
+body.text-large #modalRoot .life-review-heading p,
+body.text-large #modalRoot .life-review-metric-label,
+body.text-large #modalRoot .life-review-summary-line,
+body.text-large #modalRoot .life-review-list-item,
+body.text-large #modalRoot .life-review-empty { font-size: 14px; }
+body.text-large #modalRoot .life-review-metric-value { font-size: 19px; }
+body.text-large #modalRoot .life-review-close,
+body.text-large #modalRoot .life-review-done { min-height: 48px; }
+
+@media (max-width: 360px) {
+  #modalRoot .life-review-panel { gap: 11px; padding: 13px; }
+  #modalRoot .life-review-metric { padding: 9px; }
+  #modalRoot .life-review-metric-value { font-size: 14px; }
+}
+
+@media (forced-colors: active) {
+  #modalRoot #deathDialog[data-life-review-open="true"],
+  #modalRoot .life-review-panel,
+  #modalRoot .life-review-metric,
+  #modalRoot .life-review-ribbon,
+  #modalRoot .life-review-note {
+    forced-color-adjust: auto;
+    background: Canvas !important;
+    color: CanvasText !important;
+    border-color: CanvasText !important;
+    box-shadow: none !important;
+  }
+  #modalRoot .life-review-heading h2,
+  #modalRoot .life-review-section-title,
+  #modalRoot .life-review-metric-value,
+  #modalRoot .life-review-summary-line,
+  #modalRoot .life-review-list-item {
+    color: CanvasText !important;
+  }
+  #modalRoot .life-review-close,
+  #modalRoot .life-review-done {
+    border: 2px solid ButtonText !important;
+  }
+}
