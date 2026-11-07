@@ -238,6 +238,62 @@ test('لا يتكرر الموسم مرتين في العمر نفسه، ويب�
   assert.equal(career.communityLeague.season, 2);
 });
 
+test('أفضل أربعة يتأهلون إلى نصف النهائي والنهائي مع سجل مستقل دون تغيير لقب اللاعب', () => {
+  const context = createContext();
+  const career = makeCareer();
+  career.community.push({ id: 'rival-d', name: 'منافس د', rating: 82, momentum: 1, respect: 60, tension: 20 });
+  const result = context.HayahCombatSeason.simulate(career);
+  assert.ok(result.playoffs);
+  assert.deepEqual(JSON.parse(JSON.stringify(result.playoffs.qualifiers.map(item => item.seed))), [1, 2, 3, 4]);
+  assert.equal(result.playoffs.matches.length, 3);
+  assert.deepEqual(result.playoffs.matches.map(match => match.round), ['semi-final', 'semi-final', 'final']);
+  assert.equal(result.playoffs.matches[2].winnerId, result.playoffs.championId);
+  assert.ok(result.playoffs.qualifiers.every(item => ['rival-a', 'rival-b', 'rival-c', 'rival-d'].includes(item.id)));
+  const records = career.communityLeague.records;
+  assert.equal(records.reduce((sum, record) => sum + record.playoffAppearances, 0), 4);
+  assert.equal(records.reduce((sum, record) => sum + record.playoffWins, 0), 3);
+  assert.equal(records.reduce((sum, record) => sum + record.playoffTitles, 0), 1);
+  assert.equal(career.communityLeague.history[0].playoffs.championId, result.playoffs.championId);
+  assert.equal(career.leagueWins, 7);
+  assert.equal(career.leaguePoints, 90);
+  assert.equal(career.champion, true);
+});
+
+test('لا تُقام تصفيات إذا كان عدد المنافسين النشطين أقل من أربعة', () => {
+  const context = createContext();
+  const career = makeCareer();
+  const result = context.HayahCombatSeason.simulate(career);
+  assert.equal(result.playoffs, null);
+  assert.ok(career.communityLeague.records.every(record => record.playoffAppearances === 0));
+  assert.ok(career.communityLeague.records.every(record => record.playoffWins === 0));
+  assert.ok(career.communityLeague.records.every(record => record.playoffTitles === 0));
+});
+
+test('نتائج التصفيات حتمية لنفس الموسم والمنافسين', () => {
+  const firstContext = createContext();
+  const secondContext = createContext();
+  const firstCareer = makeCareer();
+  const secondCareer = makeCareer();
+  const extra = { id: 'rival-d', name: 'منافس د', rating: 82, momentum: 1, respect: 60, tension: 20 };
+  firstCareer.community.push(Object.assign({}, extra));
+  secondCareer.community.push(Object.assign({}, extra));
+  const first = firstContext.HayahCombatSeason.simulate(firstCareer);
+  const second = secondContext.HayahCombatSeason.simulate(secondCareer);
+  assert.deepEqual(JSON.parse(JSON.stringify(first.playoffs)), JSON.parse(JSON.stringify(second.playoffs)));
+});
+
+test('الحفظ القديم بلا بيانات تصفيات يظل صالحًا وتُهيّأ إحصاءاتها بصفر', () => {
+  const context = createContext();
+  const normalized = context.HayahCombatSeason.normalize({
+    records: [{ id: 'legacy-rival', name: 'منافس قديم', titles: 2 }],
+    history: [{ season: 1, age: 30, matches: 2, leaderId: 'legacy-rival', leaderName: 'منافس قديم', leaderPoints: 6, topThree: [] }]
+  });
+  assert.equal(normalized.records[0].playoffAppearances, 0);
+  assert.equal(normalized.records[0].playoffWins, 0);
+  assert.equal(normalized.records[0].playoffTitles, 0);
+  assert.equal(normalized.history[0].playoffs, null);
+});
+
 test('سجل النتائج يحتفظ بآخر 12 موسمًا فقط', () => {
   const context = createContext();
   const career = makeCareer();
@@ -403,14 +459,18 @@ test('سجل المسيرة التراكمي يستمر بعد انتهاء أر
 test('واجهة سجل المسيرة تعرض الأرقام التراكمية وتفصلها عن لقب العالم', () => {
   const context = createContext();
   const career = makeCareer();
+  career.community.push({ id: 'rival-d', name: 'منافس د', rating: 82, momentum: 1, respect: 60, tension: 20 });
   context.career = career;
   context.HayahCombatSeason.simulate(career);
   context.HayahCombatSeason.openMenu();
+  assert.match(context.lastModal[2], /بطل تصفيات الموسم/);
   const recordBook = context.lastModal[3].find(option => option.title === 'سجل المسيرة التاريخي');
   assert.ok(recordBook);
   recordBook.action();
   assert.equal(context.lastInfo[1], 'سجل المسيرة التاريخي');
   assert.match(context.lastInfo[2], /لقب موسم/);
+  assert.match(context.lastInfo[2], /لقب تصفيات/);
+  assert.match(context.lastInfo[2], /فوز إقصائي/);
   assert.match(context.lastInfo[2], /ليس سجل لقب العالم/);
 });
 
