@@ -136,6 +136,19 @@
     };
   }
 
+  function normalizeRisingStar(value) {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+    const id = safeId(value.id);
+    const change = boundedNumber(value.change, 0, 0, 100);
+    if (!id || change <= 0) return null;
+    return {
+      id,
+      name: safeName(value.name, 'منافس'),
+      change: Math.round(change * 100) / 100,
+      position: boundedInteger(value.position, MAX_FIGHTERS, 1, MAX_FIGHTERS)
+    };
+  }
+
   function sortCommunityCareerRecords(records) {
     return (Array.isArray(records) ? records : []).slice().sort((a, b) => {
       if (b.titles !== a.titles) return b.titles - a.titles;
@@ -237,6 +250,7 @@
           leaderName: safeName(item.leaderName, 'لم يُحسم'),
           leaderPoints: boundedInteger(item.leaderPoints, 0, 0, 1000000),
           topThree,
+          risingStar: normalizeRisingStar(item.risingStar),
           playoffs: normalizePlayoffSummary(item.playoffs)
         };
       }).filter(Boolean)
@@ -400,6 +414,32 @@
     };
   }
 
+  function resolveSeasonRisingStar(standings, fighters, preSeasonPower) {
+    const fighterById = new Map((Array.isArray(fighters) ? fighters : [])
+      .map(entry => [entry.id, entry.fighter]));
+    const candidates = (Array.isArray(standings) ? standings : [])
+      .map(row => {
+        const fighter = fighterById.get(row.id);
+        const before = preSeasonPower && preSeasonPower.get(row.id);
+        if (!fighter || !Number.isFinite(before)) return null;
+        const change = Math.round((fighterPower(fighter) - before) * 100) / 100;
+        if (change <= 0) return null;
+        return {
+          id: row.id,
+          name: safeName(row.name, 'منافس'),
+          change,
+          position: boundedInteger(row.position, MAX_FIGHTERS, 1, MAX_FIGHTERS)
+        };
+      })
+      .filter(Boolean)
+      .sort((a, b) => {
+        if (b.change !== a.change) return b.change - a.change;
+        if (a.position !== b.position) return a.position - b.position;
+        return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
+      });
+    return candidates[0] || null;
+  }
+
   function simulateCommunitySeason(career) {
     if (!career || typeof career !== 'object' || Array.isArray(career)) return null;
     const age = currentAge();
@@ -424,6 +464,7 @@
 
     if (fighters.length < 2) return null;
 
+    const preSeasonPower = new Map(fighters.map(entry => [entry.id, fighterPower(entry.fighter)]));
     const season = league.season + 1;
     const table = new Map();
     fighters.forEach(entry => {
@@ -554,6 +595,7 @@
     const standings = rankedRows.map((row, index) => Object.assign({}, row, { position: index + 1 }));
 
     const playoffs = simulateCommunityPlayoffs(standings, fighters, season);
+    const risingStar = resolveSeasonRisingStar(standings, fighters, preSeasonPower);
     updateCommunityCareerRecords(league, standings, season, age, playoffs);
 
     const leader = standings[0];
@@ -566,6 +608,7 @@
       leaderName: leader.name,
       leaderPoints: leader.points,
       topThree,
+      risingStar,
       playoffs
     };
 
@@ -584,6 +627,7 @@
       standings: standings.map(row => Object.assign({}, row)),
       leader: Object.assign({}, leader),
       matchups: matchups.map(pair => pair.slice()),
+      risingStar: risingStar ? Object.assign({}, risingStar) : null,
       playoffs: playoffs ? JSON.parse(JSON.stringify(playoffs)) : null
     };
   }
@@ -785,6 +829,10 @@
     const playoffLine = latest && latest.playoffs
       ? '\nبطل تصفيات الموسم: ' + latest.playoffs.championName + ' بعد ثلاث مواجهات إقصائية.'
       : '\nلم تُقم تصفيات هذا الموسم لعدم اكتمال أربعة منافسين مؤهلين.';
+    const risingStarLine = latest && latest.risingStar
+      ? '\nأكبر تحسن في مؤشر الأداء: ' + latest.risingStar.name + ' (+' +
+        latest.risingStar.change.toFixed(2) + '، المركز ' + latest.risingStar.position + ').'
+      : '';
     const challengerLine = playoffChampion
       ? playoffChampion.status === 'active'
         ? (career.retired === true
@@ -802,7 +850,7 @@
       ? 'آخر موسم: ' + league.season + ' · العمر عند المحاكاة: ' + league.lastSimulatedAge +
         ' · مواجهات الدوري التمهيدي: ' + league.matchesLastSeason + '.\n' +
         'متصدر الموسم: ' + (latest ? latest.leaderName : 'غير متاح') +
-        (latest ? ' برصيد ' + latest.leaderPoints + ' نقطة.' : '.') + playoffLine + challengerLine + retirementLine + tieBreakLine +
+        (latest ? ' برصيد ' + latest.leaderPoints + ' نقطة.' : '.') + playoffLine + risingStarLine + challengerLine + retirementLine + tieBreakLine +
         '\n\nترتيب المنافسين:\n' + (lines.length ? lines.join('\n') : 'لا توجد نتائج محفوظة.')
       : 'لم يبدأ موسم بعد. تُحاكى مواجهات المنافسين تلقائيًا عند التقدم بالعمر داخل مسيرة القتال. يواجه كل منافس خصمين نشطين عند توفر ثلاثة منافسين أو أكثر، بحد أقصى 20 مواجهة تمهيدية، ثم ثلاث مواجهات إقصائية لأفضل أربعة منافسين عند اكتمال العدد.\n\nالنتائج تخص منافسي المجتمع فقط ولا تغيّر لقب اللاعب تلقائيًا. بعد اكتمال التصفيات يمكن اختيار بطلها لمواجهة دوري مباشرة، وتظل شروط النزال المعتادة سارية.\n\n' + tieBreakLine.slice(1);
 

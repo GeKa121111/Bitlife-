@@ -855,3 +855,81 @@ test('الحفظ القديم بلا تصفيات لا يعرض مرشحًا و�
   assert.equal(career.champion, before.champion);
   assert.equal(career.leaguePoints, before.leaguePoints);
 });
+
+
+test('يسجل أكبر تحسن في مؤشر الأداء بعد الدوري والتصفيات ويعرضه في سجل الموسم', () => {
+  const context = createContext();
+  const career = makeCareer();
+  career.community.push({ id: 'rival-d', name: 'منافس د', rating: 82, momentum: 1, respect: 60, tension: 20 });
+  const performance = fighter => fighter.rating +
+    (Number(fighter.momentum) || 0) * 1.5 +
+    ((Number.isFinite(Number(fighter.respect)) ? Number(fighter.respect) : 50) -
+      (Number(fighter.tension) || 0)) * 0.04;
+  const before = new Map(career.community
+    .filter(fighter => fighter.retired !== true && fighter.deceased !== true)
+    .map(fighter => [fighter.id, performance(fighter)]));
+
+  const result = context.HayahCombatSeason.simulate(career);
+  assert.ok(result.risingStar, 'a season with measurable positive form changes should produce an award');
+  assert.equal(result.risingStar.id, 'rival-d');
+  assert.equal(result.risingStar.change, 3.08);
+  assert.equal(result.risingStar.position, 2);
+  const expected = career.community
+    .filter(fighter => before.has(fighter.id))
+    .map(fighter => ({
+      id: fighter.id,
+      change: Math.round((performance(fighter) - before.get(fighter.id)) * 100) / 100
+    }))
+    .filter(entry => entry.change > 0)
+    .sort((a, b) => b.change - a.change || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))[0];
+  assert.equal(result.risingStar.id, expected.id);
+
+  context.career = career;
+  context.HayahCombatSeason.openMenu();
+  assert.match(context.lastModal[2], /أكبر تحسن في مؤشر الأداء/);
+  assert.match(context.lastModal[2], /منافس د/);
+});
+
+test('تطبيع سجل المواسم يتعامل بأمان مع جائزة التحسن الاختيارية في الحفظ القديم', () => {
+  const context = createContext();
+  const normalized = context.HayahCombatSeason.normalize({
+    history: [
+      {
+        season: 1,
+        age: 25,
+        matches: 3,
+        leaderId: 'rival-a',
+        leaderName: 'منافس أ',
+        leaderPoints: 6,
+        topThree: []
+      },
+      {
+        season: 2,
+        age: 26,
+        matches: 3,
+        leaderId: 'rival-b',
+        leaderName: 'منافس ب',
+        leaderPoints: 6,
+        topThree: [],
+        risingStar: { id: '', name: 'سجل تالف', change: 8, position: 1 }
+      },
+      {
+        season: 3,
+        age: 27,
+        matches: 3,
+        leaderId: 'rival-c',
+        leaderName: 'منافس ج',
+        leaderPoints: 6,
+        topThree: [],
+        risingStar: { id: 'rival-c', name: 'منافس ج', change: 4.25, position: 2 }
+      }
+    ]
+  });
+
+  assert.equal(normalized.history[0].risingStar, null);
+  assert.equal(normalized.history[1].risingStar, null);
+  assert.deepEqual(
+    JSON.parse(JSON.stringify(normalized.history[2].risingStar)),
+    { id: 'rival-c', name: 'منافس ج', change: 4.25, position: 2 }
+  );
+});
