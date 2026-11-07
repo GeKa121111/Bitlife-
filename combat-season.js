@@ -109,7 +109,8 @@
     return 'السجل التراكمي لمنافسي المجتمع، وليس سجل لقب العالم الخاص باللاعب.\n\n' + lines.join('\n');
   }
 
-  function normalizeCommunityLeague(value) {    const source = value && typeof value === 'object' && !Array.isArray(value) ? value : {};
+  function normalizeCommunityLeague(value) {
+    const source = value && typeof value === 'object' && !Array.isArray(value) ? value : {};
     const standings = Array.isArray(source.standings)
       ? source.standings.slice(0, MAX_FIGHTERS).map(normalizeStanding).filter(Boolean)
       : [];
