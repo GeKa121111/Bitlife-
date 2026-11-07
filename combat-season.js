@@ -263,12 +263,12 @@
         podium.length ? 'أفضل المراكز: ' + podium.join(' · ') + '.' : 'تفاصيل المراكز الثلاثة غير متاحة في هذا السجل.',
         playoffs ? 'بطل التصفيات: ' + playoffs.championName + '.' : 'لا يوجد سجل تصفيات صالح محفوظ لهذا الموسم.',
         risingStar ? 'أكبر تحسن: ' + risingStar.name + ' (+' + risingStar.change.toFixed(2) + ').' : 'لا توجد جائزة تحسن مسجلة لهذا الموسم.'
-      ].join('\\n');
+      ].join('\n');
     }).filter(Boolean);
     if (!lines.length) {
       return 'لا توجد مواسم محفوظة لعرض أرشيفها حتى الآن. سيظهر ملخص كل موسم بعد اكتمال محاكاته.';
     }
-    return 'أرشيف آخر ' + recent.length + ' موسمًا محفوظًا (الأحدث أولًا):\\n\\n' + lines.join('\\n\\n');
+    return 'أرشيف آخر ' + recent.length + ' موسمًا محفوظًا (الأحدث أولًا):\n\n' + lines.join('\n\n');
   }
 
   function normalizeCommunityLeague(value) {
