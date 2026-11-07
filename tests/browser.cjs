@@ -2816,7 +2816,9 @@ async function run() {
     // Wait for the deterministic test event, close it, and wait until it no longer blocks navigation.
     const ageEventOverlay = page.locator('#modalRoot #overlay.event-overlay');
     await ageEventOverlay.waitFor({ state: 'visible', timeout: 5000 });
-    const ageEventClose = ageEventOverlay.locator('.event-modal .event-banner .closebtn');
+    // The backdrop and event card are sibling nodes under modalRoot; query the card's
+    // close control from the root rather than scoping it to the backdrop.
+    const ageEventClose = page.locator('#modalRoot .event-banner .closebtn').first();
     await ageEventClose.waitFor({ state: 'visible' });
     await ageEventClose.click();
     await ageEventOverlay.waitFor({ state: 'hidden' });
