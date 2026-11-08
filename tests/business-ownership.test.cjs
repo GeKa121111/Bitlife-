@@ -467,7 +467,7 @@ test('ownership and treasury menus disclose reserved dividends and block sale un
  const treasuryMenu=findFunction('businessTreasuryMenu');
  const sellAsset=findFunction('sellAsset');
  const sellCompany=findFunction('sellCompany');
- assert.match(ownershipMenu,/المستحقات المعلقة/);
+ assert.match(ownershipMenu,/مستحقات معلقة/);
  assert.match(treasuryMenu,/مبالغ محجوزة للملاك/);
  assert.match(sellAsset,/pending>0/);
  assert.match(sellCompany,/pending>0/);
