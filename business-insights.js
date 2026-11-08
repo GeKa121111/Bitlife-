@@ -69,10 +69,15 @@
     const rawHistory = (Array.isArray(safeEntity.financialHistory) ? safeEntity.financialHistory : [])
       .filter(isRecord);
     const invalidReportYearCount = rawHistory.filter(item => !isValidFiscalYear(item.year)).length;
-    const history = rawHistory
-      .filter(item => isValidFiscalYear(item.year))
-      .slice()
-      .sort((a, b) => number(a.year, 0) - number(b.year, 0));
+    const latestByYear = new Map();
+    rawHistory.forEach(item => {
+      if (!isValidFiscalYear(item.year)) return;
+      // Keep the last stored report for each year, matching the annual portfolio summary.
+      latestByYear.set(Number(item.year), item);
+    });
+    const history = Array.from(latestByYear.entries())
+      .sort((a, b) => a[0] - b[0])
+      .map(([, item]) => item);
     const report = history.length ? history[history.length - 1] : null;
     if (!report) {
       return {
