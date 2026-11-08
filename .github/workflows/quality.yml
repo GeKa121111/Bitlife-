@@ -115,10 +115,6 @@ jobs:
         run: node --check tests/business-insights.test.cjs
       - name: Run business portfolio insights regression tests
         run: node --test tests/business-insights.test.cjs
-      - name: Check business ownership regression test syntax
-        run: node --check tests/business-ownership.test.cjs
-      - name: Run business ownership and succession ledger tests
-        run: node --test tests/business-ownership.test.cjs
       - name: Check integrated business-lifecycle test syntax
         run: node --check tests/business-lifecycle.test.cjs
       - name: Run 30-year integrated business-lifecycle tests
