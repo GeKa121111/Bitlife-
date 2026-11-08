@@ -71,7 +71,7 @@ function createServer() {
         accomplishments: ['تخرجت من الجامعة'],
         combatCareer: { wins: 12, losses: 3, draws: 2, knockouts: 5, rank: 4, retired: true, champion: true, championshipHistory: [{ age: 40, year: 2040, opponent: 'منافس' }], titleDefenseHistory: [{ result: 'defended' }] },
         filmStudio: { projects: 4, awards: 2, bestCritic: 92, totalBoxOffice: 1200000, filmography: [] },
-        esportsCareer: { tournaments: 6, wins: 4, losses: 2 },
+        esportsCareer: { tournaments: 6, wins: 4, losses: 2, rank: 5 },
         business: { id: 'main-business', title: 'مشروع رئيسي' },
         companies: [{ id: 'main-business', title: 'مكرر' }, { id: 'company-2', title: 'شركة إضافية' }],
         log: [
@@ -114,7 +114,7 @@ function createServer() {
         containsSpecializedHeading: reportText.includes('بصمة المسارات المتخصصة'),
         containsCombatRecord: reportText.includes('مسيرة القتال') && reportText.includes('دفاع ناجح عن اللقب') && reportText.includes('تعادل') && reportText.includes('تتويج عالمي') && reportText.includes('اعتزل المنافسة'),
         containsFilmRecord: reportText.includes('استوديو الأفلام') && reportText.includes('جائزة') && reportText.includes('أعلى تقييم نقدي'),
-        containsEsportsRecord: reportText.includes('الألعاب الإلكترونية'),
+        containsEsportsRecord: reportText.includes('الألعاب الإلكترونية') && reportText.includes('الترتيب'),
         containsBusinessRecord: reportText.includes('إدارة الأعمال') && reportText.includes('نشاط تجاري'),
         noUndefinedAge: !reportText.includes('عمر undefined'),
         containsNetWorth: reportText.includes('220,000') || reportText.includes('٢٢٠٬٠٠٠') || reportText.includes('220000'),
