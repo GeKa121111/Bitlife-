@@ -69,6 +69,11 @@ function createServer() {
         specialCareerHistory: [{ title: 'مخرج' }],
         education: { major: 'هندسة' },
         accomplishments: ['تخرجت من الجامعة'],
+        combatCareer: { wins: 12, losses: 3, knockouts: 5, champion: true, titleDefenseHistory: [{ result: 'defended' }] },
+        filmStudio: { projects: 4, awards: 2, totalBoxOffice: 1200000, filmography: [] },
+        esportsCareer: { tournaments: 6, wins: 4, losses: 2 },
+        business: { id: 'main-business', title: 'مشروع رئيسي' },
+        companies: [{ id: 'main-business', title: 'مكرر' }, { id: 'company-2', title: 'شركة إضافية' }],
         log: [
           { age: 22, title: '<img src=x onerror=alert(2)>', text: 'محطة آمنة كنص.', tone: 'special' },
           { age: 29, title: 'بداية مشروع', text: 'بدأت مشروعك الأول.', tone: 'special' }
@@ -106,6 +111,12 @@ function createServer() {
         opened: !!panel,
         title: title && title.textContent,
         containsCareer: reportText.includes('مهندس'),
+        containsSpecializedHeading: reportText.includes('بصمة المسارات المتخصصة'),
+        containsCombatRecord: reportText.includes('مسيرة القتال') && reportText.includes('دفاع ناجح عن اللقب'),
+        containsFilmRecord: reportText.includes('استوديو الأفلام') && reportText.includes('جائزة'),
+        containsEsportsRecord: reportText.includes('الألعاب الإلكترونية'),
+        containsBusinessRecord: reportText.includes('إدارة الأعمال') && reportText.includes('نشاط تجاري'),
+        noUndefinedAge: !reportText.includes('عمر undefined'),
         containsNetWorth: reportText.includes('220,000') || reportText.includes('٢٢٠٬٠٠٠') || reportText.includes('220000'),
         imageCount,
         restored: dialog.contains(reviewButton),
@@ -117,6 +128,12 @@ function createServer() {
     assert.equal(result.opened, true, 'the existing end-of-life review button must open the report');
     assert.equal(result.title, 'حياة <img src=x onerror=alert(1)>');
     assert.equal(result.containsCareer, true);
+    assert.equal(result.containsSpecializedHeading, true);
+    assert.equal(result.containsCombatRecord, true);
+    assert.equal(result.containsFilmRecord, true);
+    assert.equal(result.containsEsportsRecord, true);
+    assert.equal(result.containsBusinessRecord, true);
+    assert.equal(result.noUndefinedAge, true, 'specialized records must not be rendered as age-based milestones');
     assert.equal(result.containsNetWorth, true);
     assert.equal(result.imageCount, 0, 'saved strings must be rendered as text, not executable markup');
     assert.equal(result.restored, true, 'closing the report must restore the original end-of-life summary');
