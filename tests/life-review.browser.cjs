@@ -69,8 +69,8 @@ function createServer() {
         specialCareerHistory: [{ title: 'مخرج' }],
         education: { major: 'هندسة' },
         accomplishments: ['تخرجت من الجامعة'],
-        combatCareer: { wins: 12, losses: 3, knockouts: 5, champion: true, titleDefenseHistory: [{ result: 'defended' }] },
-        filmStudio: { projects: 4, awards: 2, totalBoxOffice: 1200000, filmography: [] },
+        combatCareer: { wins: 12, losses: 3, draws: 2, knockouts: 5, rank: 4, retired: true, champion: true, championshipHistory: [{ age: 40, year: 2040, opponent: 'منافس' }], titleDefenseHistory: [{ result: 'defended' }] },
+        filmStudio: { projects: 4, awards: 2, bestCritic: 92, totalBoxOffice: 1200000, filmography: [] },
         esportsCareer: { tournaments: 6, wins: 4, losses: 2 },
         business: { id: 'main-business', title: 'مشروع رئيسي' },
         companies: [{ id: 'main-business', title: 'مكرر' }, { id: 'company-2', title: 'شركة إضافية' }],
@@ -112,8 +112,8 @@ function createServer() {
         title: title && title.textContent,
         containsCareer: reportText.includes('مهندس'),
         containsSpecializedHeading: reportText.includes('بصمة المسارات المتخصصة'),
-        containsCombatRecord: reportText.includes('مسيرة القتال') && reportText.includes('دفاع ناجح عن اللقب'),
-        containsFilmRecord: reportText.includes('استوديو الأفلام') && reportText.includes('جائزة'),
+        containsCombatRecord: reportText.includes('مسيرة القتال') && reportText.includes('دفاع ناجح عن اللقب') && reportText.includes('تعادل') && reportText.includes('تتويج عالمي') && reportText.includes('اعتزل المنافسة'),
+        containsFilmRecord: reportText.includes('استوديو الأفلام') && reportText.includes('جائزة') && reportText.includes('أعلى تقييم نقدي'),
         containsEsportsRecord: reportText.includes('الألعاب الإلكترونية'),
         containsBusinessRecord: reportText.includes('إدارة الأعمال') && reportText.includes('نشاط تجاري'),
         noUndefinedAge: !reportText.includes('عمر undefined'),
@@ -129,8 +129,8 @@ function createServer() {
     assert.equal(result.title, 'حياة <img src=x onerror=alert(1)>');
     assert.equal(result.containsCareer, true);
     assert.equal(result.containsSpecializedHeading, true);
-    assert.equal(result.containsCombatRecord, true);
-    assert.equal(result.containsFilmRecord, true);
+    assert.equal(result.containsCombatRecord, true, 'the final review should retain draws, title wins, and retirement status');
+    assert.equal(result.containsFilmRecord, true, 'the final review should show the best critic score');
     assert.equal(result.containsEsportsRecord, true);
     assert.equal(result.containsBusinessRecord, true);
     assert.equal(result.noUndefinedAge, true, 'specialized records must not be rendered as age-based milestones');
