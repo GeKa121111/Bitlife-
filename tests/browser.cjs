@@ -3129,8 +3129,10 @@ async function run() {
     assert.ok(checkerReportText.includes('حزمة حفظ حياة كاملة'));
     assert.match(checkerReportText, /نقاط الرجوع بالزمن\s+3/,
       'the preflight report should display all stored non-empty rewind entries');
-    assert.match(checkerReportText, /نقاط قابلة للاستعادة\s+2/,
-      'the preflight report should distinguish snapshots the game can actually restore');
+    assert.match(checkerReportText, /نقاط قابلة للاستعادة بنيويًا قبل حدود السعة\s+2/,
+      'the preflight report should distinguish structurally restorable snapshots before retention limits');
+    assert.match(checkerReportText, /تقدير الصالح للاستعادة — حد 8 نقاط\s+2 من 3/,
+      'the preflight report should show the number that remains restorable after the base retention limit');
     assert.match(checkerReportText, /نقاط JSON تالفة\s+1/,
       'the preflight report should warn about malformed snapshot JSON');
     assert.ok(checkerReportText.includes('طول سجل الرجوع'),
