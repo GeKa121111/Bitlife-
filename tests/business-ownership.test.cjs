@@ -20,7 +20,7 @@ function findFunction(name){
  }
  throw new Error('unterminated function: '+name);
 }
-const names=['createBusinessOwnershipLedger','normalizeBusinessOwnershipLedger','formatBusinessOwnershipPercent','businessOwnershipSnapshot','businessOwnershipEarningsSnapshot','buildInheritedBusinessOwnershipLedger','applyInheritedBusinessOwnership'];
+const names=['createBusinessOwnershipLedger','normalizeBusinessOwnershipLedger','formatBusinessOwnershipPercent','businessOwnershipSnapshot','businessOwnershipEarningsSnapshot','businessDividendReadinessSnapshot','businessCreditBalance','businessTaxLiability','businessUsesSeparateTreasury','buildInheritedBusinessOwnershipLedger','applyInheritedBusinessOwnership'];
 const runtime=names.map(findFunction).join('\n');
 function createApi(){
  const context={calculateEstateSnapshot(previous){return {businessEntries:previous.businessEntries||[]};}};
@@ -203,6 +203,92 @@ test('ownership earnings applies the same valid fiscal-year range as business in
  assert.equal(invalidOnly.reason,'invalid-report-year');
  assert.equal(invalidOnly.invalidReportYearCount,2);
 });
+
+test('dividend readiness estimates separate-treasury cash after tax, credit and reserve without mutating saved data',()=>{
+ const api=createApi();
+ const company={
+  value:500000,
+  treasuryMode:'separate',
+  cashBalance:1000001,
+  taxLiability:100000,
+  credit:{principal:150000,accruedInterest:50000},
+  ownershipLedger:{version:1,activeBeneficiaryId:'owner',shareholders:[
+   {beneficiaryId:'owner',name:'المالك الحالي',kind:'owner',shareBps:4000},
+   {beneficiaryId:'partner',name:'شريك العائلة',kind:'child',shareBps:6000}
+  ]},
+  financialHistory:[
+   {year:2026,costs:800000},
+   {year:0,costs:900000},
+   {year:'2026',costs:400000}
+  ]
+ };
+ const before=JSON.stringify(company);
+ const result=api.businessDividendReadinessSnapshot(company,'owner','المالك الحالي');
+ assert.equal(result.ready,true);
+ assert.equal(result.year,2026);
+ assert.equal(result.cashBalance,1000001);
+ assert.equal(result.taxLiability,100000);
+ assert.equal(result.creditBalance,200000);
+ assert.equal(result.reserve,100000,'the reserve uses one quarter of the latest valid annual costs');
+ assert.equal(result.distributable,600001);
+ assert.equal(result.activeShareAmount,240000);
+ assert.deepEqual(Array.from(result.shareholders,item=>[item.beneficiaryId,item.potentialAmount]),[['owner',240000],['partner',360001]]);
+ assert.equal(result.shareholders.reduce((sum,item)=>sum+item.potentialAmount,0),600001);
+ assert.equal(result.invalidReportYearCount,1);
+ assert.equal(JSON.stringify(company),before,'the readiness estimate must not mutate saved company data');
+});
+
+test('dividend readiness never treats the shared personal wallet as company treasury',()=>{
+ const api=createApi();
+ const company={treasuryMode:'shared',cashBalance:900000,financialHistory:[{year:2026,costs:100000}]};
+ const before=JSON.stringify(company);
+ const result=api.businessDividendReadinessSnapshot(company,'owner','المالك');
+ assert.equal(result.ready,false);
+ assert.equal(result.reason,'shared-treasury');
+ assert.equal(result.distributable,0);
+ assert.equal(JSON.stringify(company),before);
+});
+
+test('dividend readiness refuses missing or invalid financial baselines',()=>{
+ const api=createApi();
+ const company={treasuryMode:'separate',cashBalance:500000,financialHistory:[
+  {year:0,costs:10000},{year:'غير معروف',costs:20000}
+ ]};
+ const result=api.businessDividendReadinessSnapshot(company,'owner','المالك');
+ assert.equal(result.ready,false);
+ assert.equal(result.reason,'invalid-report-year');
+ assert.equal(result.invalidReportYearCount,2);
+ const invalidCosts=api.businessDividendReadinessSnapshot({
+  treasuryMode:'separate',cashBalance:500000,financialHistory:[{year:2026,costs:''}]
+ },'owner','المالك');
+ assert.equal(invalidCosts.ready,false);
+ assert.equal(invalidCosts.reason,'invalid-financial-result');
+});
+
+test('dividend readiness returns zero when liabilities and reserve consume available cash',()=>{
+ const api=createApi();
+ const company={
+  treasuryMode:'separate',cashBalance:250000,taxLiability:100000,
+  credit:{principal:200000,accruedInterest:0},
+  financialHistory:[{year:2026,costs:400000}]
+ };
+ const result=api.businessDividendReadinessSnapshot(company,'owner','المالك');
+ assert.equal(result.ready,true);
+ assert.equal(result.reserve,100000);
+ assert.equal(result.distributable,0);
+ assert.equal(result.reason,'no-distributable-cash');
+ assert.equal(result.shareholders.reduce((sum,item)=>sum+item.potentialAmount,0),0);
+});
+
+test('ownership menu exposes the read-only dividend readiness estimate',()=>{
+ const menu=findFunction('businessOwnershipMenu');
+ const readiness=findFunction('businessDividendReadinessMenu');
+ assert.match(menu,/تقدير السيولة القابلة للتوزيع/);
+ assert.match(menu,/businessDividendReadinessMenu/);
+ assert.match(readiness,/لا يخصم من الخزينة أو يضيف أموالًا/);
+ assert.match(readiness,/25% من مصروفات آخر تقرير/);
+});
+
 test('invalid ownership ledger never produces a shareholder earnings statement',()=>{
  const api=createApi();
  const result=api.businessOwnershipEarningsSnapshot({
