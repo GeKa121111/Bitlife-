@@ -2168,6 +2168,21 @@ async function run() {
     assert.match(ownershipEarningsDialog, /لا يحوّل أموالًا إلى أرصدة الملاك/);
     await page.locator('.choice').filter({ hasText: 'رجوع لسجل الملكية' }).click();
     await page.locator('.choice').filter({ hasText: 'رجوع' }).last().click();
+    await page.evaluate(() => {
+      const key = 'hekayat_hayah_save_v1';
+      const saved = JSON.parse(localStorage.getItem(key) || 'null');
+      const company = saved && saved.companies && saved.companies[0];
+      if (!company) throw new Error('portfolio company fixture missing after ownership statement');
+      company.ownershipLedger = { version: 1, activeBeneficiaryId: '787878', shareholders: [
+        { beneficiaryId: '787878', name: 'اختبار تشغيل شركة مستقلة', kind: 'owner', shareBps: 10000 }
+      ] };
+      localStorage.setItem(key, JSON.stringify(saved));
+    });
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await page.evaluate(() => { Math.random = () => 0.99; });
+    await page.locator('[data-panel="assets"]').click();
+    await page.locator('.choice').filter({ hasText: 'شركة محفظة اختبار' }).click();
+    await page.locator('.choice').filter({ hasText: 'إدارة التشغيل' }).click();
     await page.locator('.choice').filter({ hasText: 'خزينة النشاط ورأس المال' }).click();
     await page.locator('.choice').filter({ hasText: 'فصل الخزينة وتحويل 50%' }).click();
     await page.locator('.choice').filter({ hasText: 'سحب 25% من خزينة الشركة' }).click();
