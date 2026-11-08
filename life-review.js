@@ -265,7 +265,7 @@
       items.forEach(item => {
         const row = createElement(doc, 'li', 'life-review-list-item');
         if (isRecord(item)) {
-          const title = item.age === null ? item.title : 'عمر ' + item.age + ' · ' + item.title;
+          const title = item.age === null || item.age === undefined ? item.title : 'عمر ' + item.age + ' · ' + item.title;
           row.appendChild(createElement(doc, 'strong', 'life-review-list-title', title));
           if (item.text) row.appendChild(createElement(doc, 'span', 'life-review-list-copy', item.text));
         } else {
