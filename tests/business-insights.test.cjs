@@ -61,7 +61,8 @@ test('السنة المالية صفر أو السالبة أو خارج الن�
   assert.equal(result.invalidReportYearCount, 3);
 
   const portfolio = analyzeBusinessPortfolio({ business });
-  assert.deepEqual(portfolio.reportYears, [2025, 2026]);
+  assert.deepEqual(portfolio.reportYears, [2026]);
+  assert.deepEqual(portfolio.annualSummaries.map(item => item.year), [2026, 2025]);
   assert.equal(portfolio.invalidReportYearCount, 3);
   assert.equal(portfolio.unknownReportYearCount, 0);
   assert.equal(portfolio.annualSummaries[0].year, 2026);
