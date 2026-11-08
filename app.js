@@ -11027,7 +11027,17 @@ function applyInheritedBusinessOwnership(previous,inheritance,beneficiaryAccount
   inherited.ownershipLedger=buildInheritedBusinessOwnershipLedger(entry.entity,beneficiaryAccounts,nextActiveBeneficiaryId,fallbackId,previous.name,previous.age);
   if(entry.entity.dividendLedger!==undefined&&inherited.ownershipLedger.auditStatus!=='needs_review'){
    const claimTransfer=inheritBusinessDividendClaims(entry.entity.dividendLedger,fallbackId,beneficiaryAccounts);
-   if(claimTransfer.valid)inherited.dividendLedger=claimTransfer.ledger;
+   if(claimTransfer.valid){
+    inherited.dividendLedger=claimTransfer.ledger;
+   }else{
+    // Never leave a deceased owner's unpaid claim silently attached to the new owner.
+    // Quarantine the dividend ledger while preserving the original entries and escrow.
+    inherited.dividendLedger={
+     ...entry.entity.dividendLedger,
+     auditStatus:'needs_review',
+     auditIssues:['inheritance_claim_transfer_failed',claimTransfer.reason||'unknown']
+    };
+   }
   }
  });
  return true;
