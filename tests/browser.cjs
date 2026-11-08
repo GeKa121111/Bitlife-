@@ -2140,7 +2140,15 @@ async function run() {
       saved.bank = 500000;
       saved.debt = 0;
       saved.business = null;
-      saved.companies = [{ id, assetId: id, title: 'شركة محفظة اختبار', sector: 'تقنية', value: 160000, level: 1, upkeep: 4000, bought: 30, emoji: '💻' }];
+      saved.companies = [{
+        id, assetId: id, title: 'شركة محفظة اختبار', sector: 'تقنية', value: 160000, level: 1,
+        upkeep: 4000, bought: 30, emoji: '💻',
+        ownershipLedger: { version: 1, activeBeneficiaryId: '787878', shareholders: [
+          { beneficiaryId: '787878', name: 'اختبار تشغيل شركة مستقلة', kind: 'owner', shareBps: 6000 },
+          { beneficiaryId: 'family-partner', name: 'شريك العائلة', kind: 'child', shareBps: 4000 }
+        ] },
+        financialHistory: [{ year: 34, revenue: 100000, costs: 70000, profit: 30000 }]
+      }];
       saved.assets = [{ id, title: 'شركة محفظة اختبار', emoji: '💻', kind: 'business', value: 160000, upkeep: 0, bought: 30, companyPortfolio: true }];
       saved.timeMachineSnapshots = [];
       saved.log = [{ icon: '🧪', title: 'اختبار شركة المحفظة', text: 'اختبار إدارة شركة مستقلة عن المشروع الأساسي.', type: 'special', age: 35 }];
@@ -2151,6 +2159,15 @@ async function run() {
     await page.locator('[data-panel="assets"]').click();
     await page.locator('.choice').filter({ hasText: 'شركة محفظة اختبار' }).click();
     await page.locator('.choice').filter({ hasText: 'إدارة التشغيل' }).click();
+    await page.locator('.choice').filter({ hasText: 'سجل الملكية' }).click();
+    await page.locator('.choice').filter({ hasText: 'كشف نتيجة السنة حسب الملكية' }).click();
+    const ownershipEarningsDialog = await page.locator('#modalRoot').innerText();
+    assert.match(ownershipEarningsDialog, /كشف نتيجة السنة حسب الملكية/);
+    assert.match(ownershipEarningsDialog, /اختبار تشغيل شركة مستقلة/);
+    assert.match(ownershipEarningsDialog, /شريك العائلة/);
+    assert.match(ownershipEarningsDialog, /لا يحوّل أموالًا إلى أرصدة الملاك/);
+    await page.locator('.choice').filter({ hasText: 'رجوع لسجل الملكية' }).click();
+    await page.locator('.choice').filter({ hasText: 'رجوع' }).last().click();
     await page.locator('.choice').filter({ hasText: 'خزينة النشاط ورأس المال' }).click();
     await page.locator('.choice').filter({ hasText: 'فصل الخزينة وتحويل 50%' }).click();
     await page.locator('.choice').filter({ hasText: 'سحب 25% من خزينة الشركة' }).click();

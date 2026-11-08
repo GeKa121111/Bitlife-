@@ -20,7 +20,7 @@ function findFunction(name){
  }
  throw new Error('unterminated function: '+name);
 }
-const names=['createBusinessOwnershipLedger','normalizeBusinessOwnershipLedger','formatBusinessOwnershipPercent','businessOwnershipSnapshot','buildInheritedBusinessOwnershipLedger','applyInheritedBusinessOwnership'];
+const names=['createBusinessOwnershipLedger','normalizeBusinessOwnershipLedger','formatBusinessOwnershipPercent','businessOwnershipSnapshot','businessOwnershipEarningsSnapshot','buildInheritedBusinessOwnershipLedger','applyInheritedBusinessOwnership'];
 const runtime=names.map(findFunction).join('\n');
 function createApi(){
  const context={calculateEstateSnapshot(previous){return {businessEntries:previous.businessEntries||[]};}};
@@ -114,4 +114,80 @@ test('shared business stakes cannot bypass the sale guard through the assets scr
 test('the child succession flow applies ownership using the selected beneficiary account', () => {
   assert.match(app, /const selectedOwnershipBeneficiaryId=String\(childAccounts\[index\]/);
   assert.match(app, /applyInheritedBusinessOwnership\(previous,inheritance,beneficiaryAccounts,selectedOwnershipBeneficiaryId\)/);
+});
+
+
+test('annual business result is allocated exactly by saved ownership shares without mutating the report',()=>{
+ const api=createApi();
+ const company={value:300000,ownershipLedger:{version:1,activeBeneficiaryId:'owner',shareholders:[
+  {beneficiaryId:'owner',name:'المالك الحالي',kind:'owner',shareBps:4000},
+  {beneficiaryId:'partner',name:'شريك العائلة',kind:'child',shareBps:6000}
+ ]},financialHistory:[
+  {year:2025,revenue:90000,costs:50000,profit:40000},
+  {year:2026,revenue:120000,costs:70000,profit:101}
+ ]};
+ const before=JSON.stringify(company);
+ const result=api.businessOwnershipEarningsSnapshot(company,'owner','المالك الحالي');
+ assert.equal(result.valid,true);
+ assert.equal(result.hasReport,true);
+ assert.equal(result.year,2026);
+ assert.equal(result.totalProfit,101);
+ assert.equal(result.activeShareAmount,40);
+ assert.deepEqual(result.shareholders.map(item=>[item.beneficiaryId,item.resultShare]),[['owner',40],['partner',61]]);
+ assert.equal(result.shareholders.reduce((sum,item)=>sum+item.resultShare,0),101);
+ assert.equal(JSON.stringify(company),before,'the ownership statement must remain read-only');
+});
+
+test('loss allocation preserves the sign and sums exactly across all owners',()=>{
+ const api=createApi();
+ const company={ownershipLedger:{version:1,activeBeneficiaryId:'owner',shareholders:[
+  {beneficiaryId:'owner',name:'المالك',shareBps:4000},
+  {beneficiaryId:'partner',name:'الشريك',shareBps:6000}
+ ]},financialHistory:[{year:2026,revenue:50000,costs:50103,profit:-103}]};
+ const result=api.businessOwnershipEarningsSnapshot(company,'owner','المالك');
+ assert.equal(result.totalProfit,-103);
+ assert.deepEqual(result.shareholders.map(item=>item.resultShare),[-41,-62]);
+ assert.equal(result.shareholders.reduce((sum,item)=>sum+item.resultShare,0),-103);
+ assert.equal(result.activeShareAmount,-41);
+});
+
+test('legacy sole-owner fallback and missing reports remain safe',()=>{
+ const api=createApi();
+ const legacy=api.businessOwnershipEarningsSnapshot({value:75000,financialHistory:[{year:'2025',revenue:100000,costs:60000}]},'legacy-owner','مالك قديم');
+ assert.equal(legacy.valid,true);
+ assert.equal(legacy.hasReport,true);
+ assert.equal(legacy.totalProfit,40000);
+ assert.equal(legacy.activeShareAmount,40000);
+ assert.equal(legacy.shareholders.length,1);
+ assert.equal(legacy.shareholders[0].shareBps,10000);
+ const missing=api.businessOwnershipEarningsSnapshot({
+  ownershipLedger:api.createBusinessOwnershipLedger('owner','مالك',30),
+  financialHistory:[{year:'سنة غير صالحة',revenue:10000,costs:5000}]
+ },'owner','مالك');
+ assert.equal(missing.valid,true);
+ assert.equal(missing.hasReport,false);
+ assert.equal(missing.reason,'no-valid-report');
+});
+
+test('invalid ownership ledger never produces a shareholder earnings statement',()=>{
+ const api=createApi();
+ const result=api.businessOwnershipEarningsSnapshot({
+  ownershipLedger:{version:1,activeBeneficiaryId:'owner',shareholders:[
+   {beneficiaryId:'owner',name:'مالك',shareBps:7000},
+   {beneficiaryId:'partner',name:'شريك',shareBps:2000}
+  ]},
+  financialHistory:[{year:2026,revenue:100000,costs:50000,profit:50000}]
+ },'owner','مالك');
+ assert.equal(result.valid,false);
+ assert.equal(result.hasReport,false);
+ assert.deepEqual(result.shareholders,[]);
+});
+
+test('ownership screen exposes the read-only annual statement and discloses that no cash is paid',()=>{
+ const menu=findFunction('businessOwnershipMenu');
+ const earningsMenu=findFunction('businessOwnershipEarningsMenu');
+ assert.match(menu,/businessOwnershipEarningsMenu/);
+ assert.match(menu,/كشف نتيجة السنة حسب الملكية/);
+ assert.match(earningsMenu,/لا يحوّل أموالًا إلى أرصدة الملاك/);
+ assert.match(earningsMenu,/لا ينشئ توزيعات نقدية/);
 });

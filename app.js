@@ -10679,6 +10679,40 @@ function businessOwnershipSnapshot(entity,fallbackBeneficiaryId,fallbackName){
  const stakeValue=Math.max(0,Math.round(Number(entity&&entity.value)||0)),activeShareBps=active?active.shareBps:0;
  return {valid:!!active,legacyFallback:normalized.legacyFallback,issues:normalized.issues,activeBeneficiaryId:normalized.ledger.activeBeneficiaryId,activeShareBps,stakeValue,wholeValueEstimate:activeShareBps>0?Math.round(stakeValue*10000/activeShareBps):0,shareholders:normalized.ledger.shareholders.map(item=>({...item}))};
 }
+
+function businessOwnershipEarningsSnapshot(entity,fallbackBeneficiaryId,fallbackName){
+ const ownership=businessOwnershipSnapshot(entity,fallbackBeneficiaryId,fallbackName);
+ if(!ownership.valid)return {valid:false,hasReport:false,reason:'invalid-ownership',year:null,totalProfit:0,activeBeneficiaryId:null,activeShareAmount:0,shareholders:[]};
+ const history=Array.isArray(entity&&entity.financialHistory)?entity.financialHistory:[];
+ let latest=null,latestYear=-1,latestIndex=-1;
+ history.forEach((report,index)=>{
+  if(!report||typeof report!=='object'||Array.isArray(report))return;
+  const year=Number(report.year);
+  if(!Number.isSafeInteger(year)||year<0)return;
+  if(year>latestYear||(year===latestYear&&index>latestIndex)){latest=report;latestYear=year;latestIndex=index;}
+ });
+ const empty={valid:true,hasReport:false,year:null,totalProfit:0,activeBeneficiaryId:ownership.activeBeneficiaryId,activeShareAmount:0,shareholders:[]};
+ if(!latest)return {...empty,reason:'no-valid-report'};
+ const finite=value=>value!==null&&value!==undefined&&value!==''&&Number.isFinite(Number(value));
+ let profit;
+ if(finite(latest.profit))profit=Number(latest.profit);
+ else if(finite(latest.revenue)&&finite(latest.costs))profit=Number(latest.revenue)-Number(latest.costs);
+ else return {...empty,reason:'invalid-financial-result'};
+ const totalProfit=Math.max(-1000000000000,Math.min(1000000000000,Math.round(profit)));
+ const absoluteProfit=Math.abs(totalProfit);
+ const parts=ownership.shareholders.map((item,index)=>{
+  const rawAmount=absoluteProfit*item.shareBps/10000;
+  const amount=Math.floor(rawAmount);
+  return {...item,amount,fraction:rawAmount-amount,index};
+ });
+ let remainder=absoluteProfit-parts.reduce((sum,item)=>sum+item.amount,0);
+ const remainderOrder=parts.slice().sort((a,b)=>b.fraction-a.fraction||a.index-b.index);
+ for(let index=0;remainder>0&&remainderOrder.length;index++,remainder--)remainderOrder[index%remainderOrder.length].amount++;
+ const shareholders=parts.map(({amount,fraction,index,...item})=>({...item,resultShare:totalProfit<0?-amount:amount}));
+ const active=shareholders.find(item=>item.beneficiaryId===ownership.activeBeneficiaryId);
+ return {valid:true,hasReport:true,reason:null,year:latestYear,totalProfit,activeBeneficiaryId:ownership.activeBeneficiaryId,activeShareAmount:active?active.resultShare:0,shareholders};
+}
+
 function buildInheritedBusinessOwnershipLedger(entity,beneficiaryAccounts,nextActiveBeneficiaryId,fallbackActiveBeneficiaryId,fallbackName,age){
  const normalized=normalizeBusinessOwnershipLedger(entity&&entity.ownershipLedger,fallbackActiveBeneficiaryId,fallbackName);
  const nextId=String(nextActiveBeneficiaryId||'').trim().slice(0,120);
@@ -10723,6 +10757,29 @@ function applyInheritedBusinessOwnership(previous,inheritance,beneficiaryAccount
  });
  return true;
 }
+
+function businessOwnershipEarningsMenu(entity,back){
+ const fallbackId=state&&state.lifeId||state&&state.name||state&&state.legacy&&state.legacy.activeBeneficiaryId;
+ const snapshot=businessOwnershipEarningsSnapshot(entity,fallbackId,state&&state.name);
+ const returnToOwnership=()=>businessOwnershipMenu(entity,back);
+ if(!snapshot.valid){info('⚠️','تعذر إعداد كشف الملكية','سجل الحصص يحتاج مراجعة؛ لم نعرض أي توزيع حسابي حتى لا نعتمد على نسب غير متوازنة.');return;}
+ if(!snapshot.hasReport){
+  const message=snapshot.reason==='invalid-financial-result'?'آخر التقارير لا يحتوي نتيجة مالية صالحة للتحليل.':'لا يوجد تقرير مالي صالح لهذا النشاط حتى الآن.';
+  modal('📊','كشف نتيجة السنة حسب الملكية',message,[choice('↩️','رجوع لسجل الملكية','',returnToOwnership)]);
+  return;
+ }
+ const resultLabel=snapshot.totalProfit<0?'صافي خسارة النشاط':snapshot.totalProfit>0?'صافي ربح النشاط':'نتيجة النشاط متعادلة';
+ const lines=snapshot.shareholders.slice(0,12).map(item=>{
+  const amountLabel=item.resultShare<0?'نصيب من الخسارة ':'نصيب من صافي النتيجة ';
+  return item.name+' · '+formatBusinessOwnershipPercent(item.shareBps)+'% · '+amountLabel+cash(Math.abs(item.resultShare));
+ });
+ const hiddenCount=Math.max(0,snapshot.shareholders.length-lines.length);
+ const active=snapshot.shareholders.find(item=>item.beneficiaryId===snapshot.activeBeneficiaryId);
+ const activeDetail=active?'\nحصتك الحسابية: '+(active.resultShare<0?'نصيب من الخسارة ':'نصيب من صافي النتيجة ')+cash(Math.abs(active.resultShare)):'';
+ const detail='السنة المالية '+snapshot.year+' · '+resultLabel+' '+cash(Math.abs(snapshot.totalProfit))+activeDetail+'\n\n'+lines.join('\n')+(hiddenCount?'\nوملاك إضافيون: '+hiddenCount:'')+'\n\nهذا كشف محاسبي تقديري يوزع نتيجة السنة حسابيًا وفق الحصص المسجلة فقط؛ لا يحوّل أموالًا إلى أرصدة الملاك ولا ينشئ توزيعات نقدية.';
+ modal('📊','كشف نتيجة السنة حسب الملكية',detail,[choice('↩️','رجوع لسجل الملكية','',returnToOwnership)]);
+}
+
 function businessOwnershipMenu(entity,back){
  const fallbackId=state&&state.lifeId||state&&state.name||state&&state.legacy&&state.legacy.activeBeneficiaryId;
  const snapshot=businessOwnershipSnapshot(entity,fallbackId,state&&state.name);
@@ -10733,6 +10790,7 @@ function businessOwnershipMenu(entity,back){
  const opts=visibleShareholders.map(item=>choice(item.beneficiaryId===activeId?'👑':'👤',item.name+' · '+formatBusinessOwnershipPercent(item.shareBps)+'%','حصة ملكية مسجلة '+formatBusinessOwnershipPercent(item.shareBps)+'%'+(item.beneficiaryId===activeId?' · حصتك الحالية':' · مستفيد آخر مسجل'),()=>info('📑','تفاصيل المالك',item.name+' يملك '+formatBusinessOwnershipPercent(item.shareBps)+'% من النشاط حسب سجل الملكية المحلي.')));
  const hiddenShareholderCount=snapshot.shareholders.length-visibleShareholders.length;
  if(hiddenShareholderCount>0)opts.push(choice('👥','ملاك إضافيون ('+hiddenShareholderCount+')','يوجد ملاك آخرون محفوظون في الدفتر. افتح السجل الكامل من ملف الحفظ عند الحاجة.',()=>info('👥','بقية الملاك','يوجد '+hiddenShareholderCount+' مستفيدًا إضافيًا محفوظًا ضمن سجل الملكية.')));
+ opts.push(choice('📊','كشف نتيجة السنة حسب الملكية','اعرض نصيب كل مالك حسابيًا من أحدث نتيجة مالية دون تحويل أموال.',()=>businessOwnershipEarningsMenu(entity,back)));
  opts.push(choice('ℹ️','حدود السجل','السجل يحفظ نسب المستفيدين داخل هذه الحياة فقط؛ لا توجد مزامنة مشتركة بين ملفات الورثة أو معاملات تصويت وتوزيع أرباح حتى الآن.',()=>info('ℹ️','حدود الملكية المشتركة','تظهر النسب المحفوظة في ملفك الحالي. لا يتم تحديث ملفات بقية الورثة تلقائيًا، لذلك تظل عمليات البيع والتوزيع المشترك مؤجلة حتى إضافة سجل معاملات موحد.')));
  opts.push(choice('↩️','رجوع','',typeof back==='function'?back:companyPortfolioMenu));
  const detail='حصتك الحالية '+formatBusinessOwnershipPercent(snapshot.activeShareBps)+'% · قيمة حصتك '+cash(snapshot.stakeValue)+' · قيمة النشاط الكاملة التقديرية '+cash(snapshot.wholeValueEstimate)+'.'+(snapshot.legacyFallback?' هذا تقدير آمن لحفظ قديم لم يكن يحتوي دفتر حصص.':'');
