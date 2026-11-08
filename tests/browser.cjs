@@ -3176,6 +3176,7 @@ async function run() {
       const saved = JSON.parse(localStorage.getItem(key) || 'null');
       saved.business = saved.business && typeof saved.business === 'object' ? saved.business : {};
       saved.business.title = 'شركة مؤشرات الاختبار';
+      saved.business.id = 'primary-insights-test';
       saved.business.financialHistory = [{
         year: 2026,
         revenue: 90000,
@@ -3189,6 +3190,17 @@ async function run() {
         treasuryMode: 'separate',
         closingCashBalance: -1800
       }];
+      saved.companies = [{
+        id: 'older-year-insights-test',
+        title: 'شركة بتقرير أقدم',
+        financialHistory: [{
+          year: 2025,
+          revenue: 50000,
+          costs: 30000,
+          profit: 20000,
+          margin: 40
+        }]
+      }];
       localStorage.setItem(key, JSON.stringify(saved));
     });
     await page.reload({ waitUntil: 'domcontentloaded' });
@@ -3200,6 +3212,9 @@ async function run() {
     assert.ok(businessInsightsText.includes('شركة مؤشرات الاختبار'));
     assert.ok(businessInsightsText.includes('خزينة النشاط سالبة'));
     assert.ok(businessInsightsText.includes('التزامات ضريبية'));
+    assert.ok(businessInsightsText.includes('سنوات مالية مختلفة'));
+    assert.ok(businessInsightsText.includes('2025'));
+    assert.ok(businessInsightsText.includes('2026'));
     assert.equal(await page.evaluate(() => localStorage.getItem('hekayat_hayah_save_v1')), savedBeforeBusinessInsights,
       'opening the business insights dashboard must not mutate the saved life');
     await page.locator('.business-insights-close').click();
