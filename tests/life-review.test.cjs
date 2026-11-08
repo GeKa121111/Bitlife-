@@ -2,7 +2,7 @@
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { summarizeLife, collectMilestones, formatMoney } = require('../life-review.js');
+const { summarizeLife, collectMilestones, collectSpecializedHighlights, formatMoney } = require('../life-review.js');
 
 function sampleLife(overrides = {}) {
   return {
@@ -26,6 +26,11 @@ function sampleLife(overrides = {}) {
     specialCareerHistory: [{ title: 'مخرج' }],
     education: { level: 4, major: 'هندسة' },
     accomplishments: ['تخرجت من الجامعة', 'أسست مشروعًا'],
+    combatCareer: { wins: 18, losses: 4, knockouts: 6, champion: true, titleDefenseHistory: [{ result: 'defended' }, { result: 'lost' }, { result: 'defended' }] },
+    filmStudio: { projects: 5, awards: 2, totalBoxOffice: 2400000, filmography: [] },
+    esportsCareer: { tournaments: 7, wins: 4, losses: 3 },
+    business: { id: 'main-business', title: 'المشروع الرئيسي' },
+    companies: [{ id: 'main-business', title: 'نسخة مكررة' }, { id: 'company-2', title: 'شركة إضافية' }],
     log: [
       { age: 22, title: 'التخرج من الجامعة', text: 'أنهيت دراستك بنجاح.', tone: 'good' },
       { age: 29, title: 'بداية مشروع', text: 'بدأت مشروعك الأول.', tone: 'special' },
@@ -53,6 +58,11 @@ test('ملخص الرحلة يجمع مؤشرات الحياة من دون تع�
   assert.equal(summary.career, 'مهندس');
   assert.deepEqual(summary.careerHistory, ['مخرج', 'مهندس', 'محلل بيانات']);
   assert.deepEqual(summary.accomplishments, ['تخرجت من الجامعة', 'أسست مشروعًا']);
+  assert.equal(summary.specializedHighlights.length, 4);
+  assert.ok(summary.specializedHighlights.some(item => item.title === 'مسيرة القتال' && item.text.includes('دفاع ناجح عن اللقب')));
+  assert.ok(summary.specializedHighlights.some(item => item.title === 'استوديو الأفلام' && item.text.includes('جائزة')));
+  assert.ok(summary.specializedHighlights.some(item => item.title === 'الألعاب الإلكترونية'));
+  assert.ok(summary.specializedHighlights.some(item => item.title === 'إدارة الأعمال' && item.text.includes('نشاط تجاري')));
   assert.equal(JSON.stringify(life), before, 'the report must not mutate the saved life');
 });
 
@@ -72,6 +82,7 @@ test('الحفظ القديم الذي يفتقد الأقسام الاختيا�
   assert.equal(summary.career, 'لا يوجد مسار مهني مسجل');
   assert.equal(summary.ribbon, 'غير مسجل');
   assert.deepEqual(summary.milestones, []);
+  assert.deepEqual(summary.specializedHighlights, []);
 });
 
 test('الحفظ غير الصالح لا ينتج تقريرًا مضللًا', () => {
@@ -110,4 +121,28 @@ test('القيم المالية غير الرقمية لا تفسد الحساب
   assert.equal(summary.investmentsValue, 0);
   assert.equal(summary.netWorth, 1000);
   assert.ok(formatMoney(1200, 'ج.م').endsWith('ج.م'));
+});
+
+test('سجل المسارات المتخصصة يرفض القيم غير الرقمية ولا يخترع نتائج من الحفظ التالف', () => {
+  const highlights = collectSpecializedHighlights({
+    combatCareer: { wins: true, losses: ' ', knockouts: -2, champion: false, titleDefenseHistory: [{ result: 'unknown' }] },
+    filmStudio: { projects: true, awards: '', totalBoxOffice: 'غير معروف', filmography: [null] },
+    esportsCareer: { tournaments: Infinity, wins: false, losses: '  ' },
+    business: {},
+    companies: [{}, null]
+  });
+  assert.deepEqual(highlights, []);
+});
+
+test('جمع المسارات المتخصصة للقراءة فقط ولا يكرر الشركة ذات المعرّف نفسه', () => {
+  const life = {
+    combatCareer: { wins: 2, losses: 1, champion: false, titleDefenseHistory: [] },
+    business: { id: 'company-a', title: 'النشاط الأول' },
+    companies: [{ id: 'company-a', title: 'تكرار' }, { id: 'company-b', title: 'النشاط الثاني' }]
+  };
+  const before = JSON.stringify(life);
+  const highlights = collectSpecializedHighlights(life);
+  assert.equal(highlights.length, 2);
+  assert.ok(highlights.find(item => item.title === 'إدارة الأعمال').text.includes('نشاط تجاري'));
+  assert.equal(JSON.stringify(life), before);
 });
