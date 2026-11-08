@@ -164,6 +164,61 @@ test('لوحة المحفظة تجمع أحدث تقرير لكل نشاط فق�
   assert.equal(JSON.stringify(state), before, 'portfolio analysis must be read-only');
 });
 
+test('إجمالي أحدث التقارير يكشف اختلاف السنوات المالية بين الأنشطة', () => {
+  const summary = analyzeBusinessPortfolio({
+    business: {
+      id: 'business-2024',
+      title: 'شركة أ',
+      financialHistory: [report({ year: 2024, revenue: 100000, profit: 20000 })]
+    },
+    companies: [{
+      id: 'business-2026',
+      title: 'شركة ب',
+      financialHistory: [report({ year: 2026, revenue: 80000, profit: 12000 })]
+    }]
+  });
+  assert.deepEqual(summary.reportYears, [2024, 2026]);
+  assert.equal(summary.unknownReportYearCount, 0);
+  assert.equal(summary.hasMixedReportYears, true);
+  assert.equal(summary.totalRevenue, 180000);
+});
+
+test('التقارير المتاحة من سنة مالية واحدة لا تنتج تحذير اختلاف السنوات', () => {
+  const summary = analyzeBusinessPortfolio({
+    business: {
+      id: 'business-a',
+      title: 'شركة أ',
+      financialHistory: [report({ year: 2026, revenue: 100000 })]
+    },
+    companies: [{
+      id: 'business-b',
+      title: 'شركة ب',
+      financialHistory: [report({ year: 2026, revenue: 80000 })]
+    }]
+  });
+  assert.deepEqual(summary.reportYears, [2026]);
+  assert.equal(summary.unknownReportYearCount, 0);
+  assert.equal(summary.hasMixedReportYears, false);
+});
+
+test('السنة المالية غير الصالحة تمنع وصف إجمالي المحفظة بأنه موحد', () => {
+  const summary = analyzeBusinessPortfolio({
+    business: {
+      id: 'business-unknown',
+      title: 'شركة بسنة غير صالحة',
+      financialHistory: [report({ year: 'غير معروف', revenue: 100000 })]
+    },
+    companies: [{
+      id: 'business-valid',
+      title: 'شركة بسنة صالحة',
+      financialHistory: [report({ year: 2026, revenue: 80000 })]
+    }]
+  });
+  assert.deepEqual(summary.reportYears, [2026]);
+  assert.equal(summary.unknownReportYearCount, 1);
+  assert.equal(summary.hasMixedReportYears, true);
+});
+
 test('الحفظ الفارغ أو التالف لا ينتج أنشطة أو أرقامًا غير محدودة', () => {
   assert.deepEqual(analyzeBusinessPortfolio(null), {
     businessCount: 0,
@@ -173,6 +228,9 @@ test('الحفظ الفارغ أو التالف لا ينتج أنشطة أو أ
     lossCount: 0,
     taxLiability: 0,
     loanBalance: 0,
+    reportYears: [],
+    unknownReportYearCount: 0,
+    hasMixedReportYears: false,
     items: []
   });
   const result = analyzeBusinessPortfolio({
@@ -202,4 +260,6 @@ test('واجهة المؤشرات تشرح سبب تعذر حساب نسبة ت�
   assert.match(source, /إيرادات السنة السابقة غير موجبة؛ لا تُحسب نسبة التغير/);
   assert.match(source, /لا توجد سنة مالية متتالية للمقارنة/);
   assert.match(source, /لا يوجد تقرير سابق للمقارنة/);
+  assert.match(source, /إجمالي أحدث التقارير يجمع سنوات مالية مختلفة/);
+  assert.match(source, /business-insights-period-note/);
 });
