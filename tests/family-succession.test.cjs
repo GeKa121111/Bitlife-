@@ -71,6 +71,10 @@ const runtime = [
   'advanceChildren',
   'businessUsesSeparateTreasury',
   'businessCreditBalance',
+  'businessTreasuryBalance',
+  'normalizeBusinessDividendLedger',
+  'businessDividendPendingLiability',
+  'businessDividendEscrowBalance',
   'createBusinessOwnershipLedger',
   'normalizeBusinessOwnershipLedger',
   'formatBusinessOwnershipPercent',
@@ -2641,4 +2645,15 @@ test('ملخص أنشطة العائلة في الوصية يحسب الأصول
   assert.match(app, /function businessInheritanceSummaryMenu\(previous=state\)/);
   assert.match(app, /businessInheritanceSummaryMenu\(state\)/,
     'the will menu must expose the business inheritance breakdown');
+});
+
+
+test('inherited separate company treasuries are marked as proportional stakes for dividend safety',()=>{
+  const context = makeContext();
+  const parent = makeParent();
+  const inheritance = context.calculateInheritance(parent, 0.8);
+  assert.equal(inheritance.business.dividendTreasuryScope, 'inherited-stake');
+  assert.equal(inheritance.companies[0].dividendTreasuryScope, 'inherited-stake');
+  assert.equal(parent.business.dividendTreasuryScope, undefined,
+    'the source generation must not be mutated by inheritance');
 });

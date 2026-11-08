@@ -20,10 +20,10 @@ function findFunction(name){
  }
  throw new Error('unterminated function: '+name);
 }
-const names=['createBusinessOwnershipLedger','normalizeBusinessOwnershipLedger','formatBusinessOwnershipPercent','businessOwnershipSnapshot','businessOwnershipEarningsSnapshot','businessDividendReadinessSnapshot','businessCreditBalance','businessTaxLiability','businessUsesSeparateTreasury','buildInheritedBusinessOwnershipLedger','applyInheritedBusinessOwnership'];
+const names=['createBusinessOwnershipLedger','normalizeBusinessOwnershipLedger','formatBusinessOwnershipPercent','businessOwnershipSnapshot','businessOwnershipEarningsSnapshot','businessDividendReadinessSnapshot','businessCreditBalance','businessTaxLiability','businessUsesSeparateTreasury','businessTreasuryBalance','normalizeBusinessDividendLedger','businessDividendPendingLiability','businessDividendEscrowBalance','allocateBusinessDividendShares','businessDividendClaimableSnapshot','applyBusinessDividendDistribution','applyBusinessDividendClaims','inheritBusinessDividendClaims','calculateEstateSnapshot','buildInheritedBusinessOwnershipLedger','applyInheritedBusinessOwnership'];
 const runtime=names.map(findFunction).join('\n');
 function createApi(){
- const context={calculateEstateSnapshot(previous){return {businessEntries:previous.businessEntries||[]};}};
+ const context={state:{bank:0}};
  vm.runInNewContext(runtime+'\nthis.api={'+names.join(',')+'};',context);
  return context.api;
 }
@@ -83,9 +83,7 @@ test('primary and portfolio businesses receive inheritance ledgers without mutat
  const api=createApi();
  const primary={value:200000,ownershipLedger:api.createBusinessOwnershipLedger('parent','الوالد',60)};
  const company={value:800000,ownershipLedger:api.createBusinessOwnershipLedger('parent','الوالد',60)};
- const previous={lifeId:'parent-life',name:'الوالد',age:60,legacy:{activeBeneficiaryId:'parent'},businessEntries:[
-  {type:'primary',entity:primary},{type:'portfolio',entity:company}
- ]};
+ const previous={lifeId:'parent-life',name:'الوالد',age:60,legacy:{activeBeneficiaryId:'parent'},business:primary,companies:[company],assets:[],investments:[],bank:0,debt:0};
  const inheritance={business:{value:100000},companies:[{value:400000}]};
  const accounts={accounts:[
   {beneficiaryId:'child-a',name:'الوارث',kind:'child',share:.5},
@@ -107,6 +105,10 @@ test('shared business stakes cannot bypass the sale guard through the assets scr
   assert.match(sellAsset, /businessOwnershipSnapshot/);
   assert.match(sellAsset, /ownership\.activeShareBps<10000/);
   assert.match(sellCompany, /businessOwnershipSnapshot/);
+  assert.match(sellAsset, /businessDividendPendingLiability/);
+  assert.match(sellAsset, /businessDividendEscrowBalance/);
+  assert.match(sellCompany, /businessDividendPendingLiability/);
+  assert.match(sellCompany, /businessDividendEscrowBalance/);
   assert.match(sellCompany, /ownership\.activeShareBps<10000/);
 });
 
@@ -295,13 +297,21 @@ test('dividend readiness returns zero when liabilities and reserve consume avail
  assert.equal(result.shareholders.reduce((sum,item)=>sum+item.potentialAmount,0),0);
 });
 
-test('ownership menu exposes the read-only dividend readiness estimate',()=>{
+test('ownership menu exposes the dividend estimate, annual declaration and claim actions',()=>{
  const menu=findFunction('businessOwnershipMenu');
  const readiness=findFunction('businessDividendReadinessMenu');
+ const distribution=findFunction('businessDividendDistributionMenu');
+ const commit=findFunction('commitBusinessDividendDistribution');
+ const claim=findFunction('claimBusinessDividendPayments');
  assert.match(menu,/تقدير السيولة القابلة للتوزيع/);
- assert.match(menu,/businessDividendReadinessMenu/);
- assert.match(readiness,/لا يخصم من الخزينة أو يضيف أموالًا/);
+ assert.match(menu,/اعتماد توزيع أرباح سنوي/);
+ assert.match(menu,/استلام مستحقاتك/);
+ assert.match(readiness,/المبالغ المحجوزة للملاك/);
+ assert.match(readiness,/اختيار نسبة التوزيع/);
  assert.match(readiness,/25% من مصروفات آخر تقرير/);
+ assert.match(distribution,/توزيع واحد فقط لكل سنة مالية/);
+ assert.match(commit,/if\(!save\(\)\)/);
+ assert.match(claim,/if\(!save\(\)\)/);
 });
 
 test('invalid ownership ledger never produces a shareholder earnings statement',()=>{
@@ -327,4 +337,227 @@ test('ownership screen exposes the read-only annual statement and discloses that
  assert.match(earningsMenu,/لا ينشئ توزيعات نقدية/);
   assert.match(earningsMenu,/invalid-report-year/);
   assert.match(earningsMenu,/تم تجاهل/);
+});
+
+test('dividend ledger validates immutable allocations, claims and the escrow balance',()=>{
+ const api=createApi();
+ const empty=api.normalizeBusinessDividendLedger(undefined);
+ assert.equal(empty.valid,true);assert.deepEqual(Array.from(empty.ledger.entries),[]);
+ const ledger={version:1,entries:[{id:'dividend-2026',year:2026,declaredAtAge:40,createdBy:'owner',totalAmount:1000,
+  allocations:[{beneficiaryId:'owner',name:'المالك',shareBps:4000,amount:400},{beneficiaryId:'partner',name:'الشريك',shareBps:6000,amount:600}],
+  claims:[{beneficiaryId:'owner',name:'المالك',amount:400,paidAmount:400,paidAtAge:40},{beneficiaryId:'partner',name:'الشريك',amount:600,paidAmount:0,paidAtAge:null}]
+ }]};
+ const normalized=api.normalizeBusinessDividendLedger(ledger);
+ assert.equal(normalized.valid,true);
+ assert.equal(api.businessDividendPendingLiability({dividendLedger:ledger}),600);
+ assert.equal(api.businessDividendEscrowBalance({dividendLedger:ledger,dividendEscrowBalance:600}),600);
+ assert.equal(api.businessDividendEscrowBalance({dividendLedger:ledger,dividendEscrowBalance:599}),null);
+ const invalid={version:1,entries:[{...ledger.entries[0],totalAmount:1001}]};
+ assert.equal(api.normalizeBusinessDividendLedger(invalid).valid,false);
+ assert.equal(api.businessDividendPendingLiability({dividendLedger:invalid}),null);
+});
+
+test('largest-remainder dividend allocation reconciles every pound exactly',()=>{
+ const api=createApi();
+ const allocations=api.allocateBusinessDividendShares(101,[
+  {beneficiaryId:'owner',name:'المالك',shareBps:4000},
+  {beneficiaryId:'partner',name:'الشريك',shareBps:6000}
+ ]);
+ assert.deepEqual(Array.from(allocations,item=>[item.beneficiaryId,item.amount]),[['owner',40],['partner',61]]);
+ assert.equal(allocations.reduce((sum,item)=>sum+item.amount,0),101);
+ assert.equal(api.allocateBusinessDividendShares(10,[{beneficiaryId:'owner',name:'المالك',shareBps:9000}]),null);
+});
+
+test('annual dividend declaration pays the active owner and reserves other owners without double spending',()=>{
+ const api=createApi();
+ const company={treasuryMode:'separate',cashBalance:1000001,dividendEscrowBalance:0,taxLiability:100000,credit:{principal:150000,accruedInterest:50000},
+  ownershipLedger:{version:1,activeBeneficiaryId:'owner',shareholders:[
+   {beneficiaryId:'owner',name:'المالك',kind:'owner',shareBps:4000},
+   {beneficiaryId:'partner',name:'الشريك',kind:'child',shareBps:6000}
+  ]},financialHistory:[{year:2026,costs:400000}]};
+ const before=JSON.stringify(company),snapshot=api.businessDividendReadinessSnapshot(company,'owner','المالك');
+ assert.equal(snapshot.distributable,600001);
+ const result=api.applyBusinessDividendDistribution(company,snapshot,.5,'owner',40,100000);
+ assert.equal(result.ok,true);
+ assert.equal(result.amount,300000);
+ assert.equal(result.ownerAmount,120000);
+ assert.equal(result.pendingAmount,180000);
+ assert.equal(result.cashBalanceAfter,700001);
+ assert.equal(result.escrowBalanceAfter,180000);
+ assert.equal(result.personalBalanceAfter,220000);
+ assert.equal(api.businessDividendPendingLiability({dividendLedger:result.ledger}),180000);
+ assert.equal(JSON.stringify(company),before,'the calculation must not mutate the source save');
+ const committed={...company,cashBalance:result.cashBalanceAfter,dividendEscrowBalance:result.escrowBalanceAfter,dividendLedger:result.ledger};
+ const duplicate=api.applyBusinessDividendDistribution(committed,api.businessDividendReadinessSnapshot(committed,'owner','المالك'),.25,'owner',40,220000);
+ assert.equal(duplicate.ok,false);
+ assert.equal(duplicate.reason,'already-distributed');
+});
+
+test('a shareholder can claim reserved dividends once without debiting operating cash twice',()=>{
+ const api=createApi();
+ const company={treasuryMode:'separate',cashBalance:700001,dividendEscrowBalance:180000,dividendLedger:{version:1,entries:[{
+  id:'dividend-2026',year:2026,declaredAtAge:40,createdBy:'owner',totalAmount:300000,
+  allocations:[{beneficiaryId:'owner',name:'المالك',shareBps:4000,amount:120000},{beneficiaryId:'partner',name:'الشريك',shareBps:6000,amount:180000}],
+  claims:[{beneficiaryId:'owner',name:'المالك',amount:120000,paidAmount:120000,paidAtAge:40},{beneficiaryId:'partner',name:'الشريك',amount:180000,paidAmount:0,paidAtAge:null}]
+ }]}};
+ const result=api.applyBusinessDividendClaims(company,'partner',42,5000);
+ assert.equal(result.ok,true);assert.equal(result.amount,180000);assert.equal(result.personalBalanceAfter,185000);
+ assert.equal(result.escrowBalanceAfter,0);assert.equal(api.businessDividendPendingLiability({dividendLedger:result.ledger}),0);
+ assert.equal(company.cashBalance,700001,'claim settlement must use the reserved account, not operating cash');
+ const repeated=api.applyBusinessDividendClaims({...company,dividendLedger:result.ledger,dividendEscrowBalance:0},'partner',42,result.personalBalanceAfter);
+ assert.equal(repeated.ok,false);assert.equal(repeated.reason,'no-pending-claims');
+});
+
+test('pending dividend claims transfer to heirs without changing the reserved total',()=>{
+ const api=createApi();
+ const ledger={version:1,entries:[{id:'dividend-2025',year:2025,declaredAtAge:60,createdBy:'other',totalAmount:1000,
+  allocations:[{beneficiaryId:'owner',name:'المالك',shareBps:4000,amount:400},{beneficiaryId:'partner',name:'الشريك',shareBps:6000,amount:600}],
+  claims:[{beneficiaryId:'owner',name:'المالك',amount:400,paidAmount:100,paidAtAge:55},{beneficiaryId:'partner',name:'الشريك',amount:600,paidAmount:0,paidAtAge:null}]
+ }]};
+ const accounts={accounts:[{beneficiaryId:'child-a',name:'الوارث',share:.6},{beneficiaryId:'child-b',name:'الأخت',share:.4}]};
+ const result=api.inheritBusinessDividendClaims(ledger,'owner',accounts);
+ assert.equal(result.valid,true);assert.equal(result.transferredAmount,300);
+ const claims=result.ledger.entries[0].claims;
+ assert.deepEqual(Array.from(claims.map(item=>[item.beneficiaryId,item.amount,item.paidAmount]).sort()),[
+  ['child-a',180,0],['child-b',120,0],['owner',100,100],['partner',600,0]
+ ]);
+ assert.equal(api.businessDividendPendingLiability({dividendLedger:result.ledger}),900);
+});
+
+test('business succession carries pending dividend claims to the selected heirs',()=>{
+ const api=createApi();
+ const previousBusiness={id:'estate-business',assetId:'estate-business',title:'شركة التركة',value:500000,treasuryMode:'separate',cashBalance:500000,dividendEscrowBalance:900,
+  ownershipLedger:{version:1,activeBeneficiaryId:'owner',shareholders:[{beneficiaryId:'owner',name:'المالك',kind:'owner',shareBps:10000}]},
+  dividendLedger:{version:1,entries:[{id:'dividend-2025',year:2025,declaredAtAge:60,createdBy:'owner',totalAmount:1000,
+   allocations:[{beneficiaryId:'owner',name:'المالك',shareBps:10000,amount:1000}],
+   claims:[{beneficiaryId:'owner',name:'المالك',amount:1000,paidAmount:100,paidAtAge:55}]
+  }]}
+ };
+ const previous={lifeId:'owner',name:'المالك',age:70,bank:0,debt:0,assets:[],investments:[],business:previousBusiness,companies:[]};
+ const inheritance={business:{...previousBusiness},companies:[]};
+ const accounts={accounts:[{beneficiaryId:'child-a',name:'الوارث',share:.6},{beneficiaryId:'child-b',name:'الأخت',share:.4}]};
+ assert.equal(api.applyInheritedBusinessOwnership(previous,inheritance,accounts,'child-a'),true);
+ const claims=inheritance.business.dividendLedger.entries[0].claims;
+ assert.deepEqual(Array.from(claims.map(item=>[item.beneficiaryId,item.amount,item.paidAmount]).sort()),[
+  ['child-a',540,0],['child-b',360,0],['owner',100,100]
+ ]);
+ assert.equal(inheritance.business.ownershipLedger.activeBeneficiaryId,'child-a');
+ assert.equal(api.businessDividendEscrowBalance(inheritance.business),900);
+});
+
+test('estate valuation includes escrow assets and dividend payables, and quarantines a mismatched ledger',()=>{
+ const api=createApi();
+ const company={id:'estate-business',treasuryMode:'separate',cashBalance:500,dividendEscrowBalance:100,
+  dividendLedger:{version:1,entries:[{id:'dividend-2026',year:2026,declaredAtAge:40,createdBy:'owner',totalAmount:100,
+   allocations:[{beneficiaryId:'owner',name:'المالك',shareBps:10000,amount:100}],
+   claims:[{beneficiaryId:'owner',name:'المالك',amount:100,paidAmount:0,paidAtAge:null}]
+  }]}};
+ const estate=api.calculateEstateSnapshot({bank:0,assets:[],investments:[],business:company,companies:[],debt:0});
+ assert.equal(estate.businessCash,600);
+ assert.equal(estate.businessLiabilities,100);
+ assert.equal(estate.net,500);
+ const corrupt={...company,dividendEscrowBalance:99};
+ const quarantined=api.calculateEstateSnapshot({bank:0,assets:[],investments:[],business:corrupt,companies:[],debt:0});
+ assert.equal(quarantined.businessDividendAuditWarnings,1);
+ assert.equal(quarantined.net,0,'a mismatched dividend ledger should not inflate estate value');
+});
+
+test('ownership and treasury menus disclose reserved dividends and block sale until claims are settled',()=>{
+ const ownershipMenu=findFunction('businessOwnershipMenu');
+ const treasuryMenu=findFunction('businessTreasuryMenu');
+ const sellAsset=findFunction('sellAsset');
+ const sellCompany=findFunction('sellCompany');
+ assert.match(ownershipMenu,/مستحقات معلقة/);
+ assert.match(treasuryMenu,/مبالغ محجوزة للملاك/);
+ assert.match(sellAsset,/pending>0/);
+ assert.match(sellCompany,/pending>0/);
+});
+
+
+test('business succession quarantines dividend claims when inheritance would exceed the safe claim ledger limit',()=>{
+ const api=createApi();
+ const ownership=api.createBusinessOwnershipLedger('owner','المالك',60);
+ ownership.shareholders=Array.from({length:100},(_,index)=>({
+  beneficiaryId:index===0?'owner':index===1?'heir-a':'shareholder-'+index,
+  name:index===0?'المالك':index===1?'الوارث الموجود':'مساهم '+index,
+  kind:index===0?'owner':'child',
+  shareBps:100
+ }));
+ const dividendEntry={
+  id:'dividend-2026',year:2026,declaredAtAge:60,createdBy:'owner',totalAmount:10000,
+  allocations:ownership.shareholders.map(item=>({
+   beneficiaryId:item.beneficiaryId,name:item.name,kind:item.kind,shareBps:item.shareBps,amount:100
+  })),
+  claims:ownership.shareholders.map(item=>({
+   beneficiaryId:item.beneficiaryId,name:item.name,amount:100,
+   paidAmount:item.beneficiaryId==='owner'?50:0,
+   paidAtAge:item.beneficiaryId==='owner'?55:null
+  }))
+ };
+ const previousBusiness={
+  id:'dense-claims-business',assetId:'dense-claims-business',title:'شركة المطالبات الكثيفة',
+  value:500000,treasuryMode:'separate',cashBalance:50000,dividendEscrowBalance:9950,
+  ownershipLedger:ownership,dividendLedger:{version:1,entries:[dividendEntry]}
+ };
+ const previous={
+  lifeId:'owner',name:'المالك',age:70,bank:0,debt:0,assets:[],investments:[],
+  business:previousBusiness,companies:[]
+ };
+ const inheritance={business:{...previousBusiness},companies:[]};
+ const accounts={accounts:[
+  {beneficiaryId:'heir-a',name:'الوارث الموجود',share:.5,kind:'child'},
+  {beneficiaryId:'heir-b',name:'الوارث الجديد',share:.5,kind:'child'}
+ ]};
+ assert.equal(api.normalizeBusinessDividendLedger(previousBusiness.dividendLedger).valid,true);
+ assert.equal(api.applyInheritedBusinessOwnership(previous,inheritance,accounts,'heir-a'),true);
+ assert.equal(inheritance.business.ownershipLedger.auditStatus,'balanced');
+ assert.equal(inheritance.business.dividendLedger.auditStatus,'needs_review');
+ assert.deepEqual(Array.from(inheritance.business.dividendLedger.auditIssues),[
+  'inheritance_claim_transfer_failed','inherited-claims-invalid'
+ ]);
+ assert.equal(api.normalizeBusinessDividendLedger(inheritance.business.dividendLedger).valid,false);
+ assert.equal(inheritance.business.dividendEscrowBalance,9950,'the reserved balance must remain untouched while quarantined');
+ assert.equal(previousBusiness.dividendLedger.auditStatus,undefined,'the source life must not be mutated');
+});
+
+
+test('inherited proportional treasury blocks new distributions but preserves existing shareholder claims',()=>{
+ const api=createApi();
+ const ownership=api.createBusinessOwnershipLedger('owner','المالك',35);
+ ownership.shareholders=[
+  {beneficiaryId:'owner',name:'المالك',kind:'owner',shareBps:5000},
+  {beneficiaryId:'partner',name:'الشريك',kind:'child',shareBps:5000}
+ ];
+ const company={
+  treasuryMode:'separate',dividendTreasuryScope:'inherited-stake',cashBalance:50000,
+  ownershipLedger:ownership,dividendEscrowBalance:500,
+  financialHistory:[{year:2026,costs:10000}],
+  dividendLedger:{version:1,entries:[{
+   id:'dividend-2025',year:2025,declaredAtAge:35,createdBy:'owner',totalAmount:1000,
+   allocations:[
+    {beneficiaryId:'owner',name:'المالك',shareBps:5000,amount:500},
+    {beneficiaryId:'partner',name:'الشريك',shareBps:5000,amount:500}
+   ],
+   claims:[
+    {beneficiaryId:'owner',name:'المالك',amount:500,paidAmount:500,paidAtAge:35},
+    {beneficiaryId:'partner',name:'الشريك',amount:500,paidAmount:0,paidAtAge:null}
+   ]
+  }]}
+ };
+ const before=JSON.stringify(company);
+ const snapshot=api.businessDividendReadinessSnapshot(company,'owner','المالك');
+ assert.equal(snapshot.valid,true);
+ assert.equal(snapshot.ready,false);
+ assert.equal(snapshot.reason,'inherited-stake-treasury');
+ const distribution=api.applyBusinessDividendDistribution(company,snapshot,.5,'owner',35,1000);
+ assert.equal(distribution.ok,false);
+ assert.equal(distribution.reason,'inherited-stake-treasury');
+ const claimable=api.businessDividendClaimableSnapshot(company,'partner');
+ assert.equal(claimable.valid,true);
+ assert.equal(claimable.amount,500,'previously reserved claims remain receivable');
+ assert.equal(JSON.stringify(company),before,'the safety guard must not mutate the inherited save');
+ const readinessMenu=findFunction('businessDividendReadinessMenu');
+ const distributionMenu=findFunction('businessDividendDistributionMenu');
+ assert.match(readinessMenu,/الخزينة المحفوظة هنا تمثل الحصة الموروثة/);
+ assert.match(distributionMenu,/الخزينة الموروثة تمثل نصيب المالك الحالي/);
 });

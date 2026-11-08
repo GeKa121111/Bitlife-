@@ -3273,9 +3273,94 @@ async function run() {
     assert.equal(await page.evaluate(() => localStorage.getItem('hekayat_hayah_save_v1')), savedBeforeBusinessInsights,
       'opening the business insights dashboard must not mutate the saved life');
     await page.locator('.business-insights-close').click();
+
+    // Dividend declarations reserve non-active shareholders' amounts separately and allow one claim per beneficiary.
+    await page.evaluate(() => {
+      const key = 'hekayat_hayah_save_v1';
+      const saved = JSON.parse(localStorage.getItem(key) || 'null');
+      const id = 'dividend-company-browser';
+      saved.lifeId = 'dividend-owner';
+      saved.name = 'مالك التوزيعات';
+      saved.age = 38;
+      saved.yearCount = 38;
+      saved.status = 'حي';
+      saved.cause = null;
+      saved.retired = false;
+      saved.bank = 50000;
+      saved.business = null;
+      saved.companies = [{
+        id, assetId: id, title: 'شركة توزيع تجريبية', sector: 'تقنية', value: 500000, level: 1,
+        upkeep: 4000, bought: 30, emoji: '💻', treasuryMode: 'separate', cashBalance: 1000000,
+        dividendEscrowBalance: 0, taxLiability: 0, credit: null,
+        ownershipLedger: { version: 1, activeBeneficiaryId: 'dividend-owner', shareholders: [
+          { beneficiaryId: 'dividend-owner', name: 'مالك التوزيعات', kind: 'owner', shareBps: 6000 },
+          { beneficiaryId: 'dividend-partner', name: 'شريك العائلة', kind: 'child', shareBps: 4000 }
+        ] },
+        financialHistory: [{ year: 38, revenue: 300000, costs: 100000, profit: 200000 }]
+      }];
+      saved.assets = [{ id, title: 'شركة توزيع تجريبية', emoji: '💻', kind: 'business',
+        value: 500000, upkeep: 0, bought: 30, companyPortfolio: true }];
+      saved.log = [{ icon: '🧪', title: 'اختبار توزيعات الأرباح', text: 'اختبار دفتر التوزيعات وحساب الحجز.', type: 'special', age: 38 }];
+      localStorage.setItem(key, JSON.stringify(saved));
+    });
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await page.locator('[data-panel="assets"]').click();
+    await page.locator('.choice').filter({ hasText: 'شركة توزيع تجريبية' }).click();
+    await page.locator('.choice').filter({ hasText: 'إدارة التشغيل' }).click();
+    await page.locator('.choice').filter({ hasText: 'سجل الملكية' }).click();
+    await page.locator('.choice').filter({ hasText: 'اعتماد توزيع أرباح سنوي' }).click();
+    await page.locator('.choice').filter({ hasText: 'توزيع 50% من السيولة المتاحة' }).click();
+    await page.locator('.choice').filter({ hasText: 'اعتماد التوزيع' }).click();
+    const dividendDeclaration = await page.evaluate(() => {
+      const saved = JSON.parse(localStorage.getItem('hekayat_hayah_save_v1') || 'null');
+      const company = saved && saved.companies && saved.companies[0];
+      const entry = company && company.dividendLedger && company.dividendLedger.entries[0];
+      return { bank: saved && saved.bank, cash: company && company.cashBalance,
+        escrow: company && company.dividendEscrowBalance, entry };
+    });
+    assert.equal(dividendDeclaration.bank, 342500, 'the active owner should receive only their 60% share immediately');
+    assert.equal(dividendDeclaration.cash, 512500, 'the full declared amount should leave operating cash');
+    assert.equal(dividendDeclaration.escrow, 195000, 'the partner share should remain in restricted escrow');
+    assert.equal(dividendDeclaration.entry.totalAmount, 487500);
+    assert.equal(dividendDeclaration.entry.paidAmount, 292500);
+    assert.equal(dividendDeclaration.entry.pendingAmount, 195000);
+
+    await page.locator('.choice').filter({ hasText: 'اعتماد توزيع أرباح سنوي' }).click();
+    const duplicateDividendDialog = await page.locator('#modalRoot').innerText();
+    assert.match(duplicateDividendDialog, /لا يمكن اعتماد توزيع ثانٍ للسنة نفسها/);
+    await page.locator('.choice').filter({ hasText: 'رجوع لسجل الملكية' }).click();
+
+    await page.evaluate(() => {
+      const key = 'hekayat_hayah_save_v1';
+      const saved = JSON.parse(localStorage.getItem(key) || 'null');
+      saved.lifeId = 'dividend-partner';
+      saved.name = 'شريك العائلة';
+      saved.bank = 1000;
+      saved.companies[0].ownershipLedger.activeBeneficiaryId = 'dividend-partner';
+      localStorage.setItem(key, JSON.stringify(saved));
+    });
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await page.locator('[data-panel="assets"]').click();
+    await page.locator('.choice').filter({ hasText: 'شركة توزيع تجريبية' }).click();
+    await page.locator('.choice').filter({ hasText: 'إدارة التشغيل' }).click();
+    await page.locator('.choice').filter({ hasText: 'سجل الملكية' }).click();
+    await page.locator('.choice').filter({ hasText: 'استلام مستحقاتك' }).click();
+    const dividendClaim = await page.evaluate(() => {
+      const saved = JSON.parse(localStorage.getItem('hekayat_hayah_save_v1') || 'null');
+      const company = saved && saved.companies && saved.companies[0];
+      const entry = company && company.dividendLedger && company.dividendLedger.entries[0];
+      return { bank: saved && saved.bank, cash: company && company.cashBalance,
+        escrow: company && company.dividendEscrowBalance, entry };
+    });
+    assert.equal(dividendClaim.bank, 196000, 'the partner should receive their reserved dividend exactly once');
+    assert.equal(dividendClaim.cash, 512500, 'claiming must not debit operating cash a second time');
+    assert.equal(dividendClaim.escrow, 0);
+    assert.equal(dividendClaim.entry.pendingAmount, 0);
+    assert.equal(dividendClaim.entry.status, 'paid');
+
     assert.deepEqual(pageErrors, [], 'the browser run should complete without uncaught JavaScript errors');
 
-    console.log('PASS: mobile layout, legacy v1 load, persistence, rewind, complete backup bundle export/import, auxiliary data restoration, JSON import, inheritance, insolvent estate, career promotion migration, annual supplier market, persistent competitor market, facilities and production capacity, researched and instinct product launches, product pricing, annual product sales, business reports, independent portfolio-company operations, and business credit accrual, repayment, persistence, sale settlement, unpaid-interest capitalization, underwater-sale protection, industry tax assessment, tax arrears, loss exemption, treasury-only tax payment, and annual tax reconciliation, fighter move mastery, one-use stamina recovery and legacy-save migration, fighter community relationships, friendly interactions, named rival bouts, and director actor auditions, persistent cast profiles, on-set conflict effects, and one-time film festival submissions with awards and duplicate protection.');
+    console.log('PASS: mobile layout, legacy v1 load, persistence, rewind, complete backup bundle export/import, auxiliary data restoration, JSON import, inheritance, insolvent estate, career promotion migration, annual supplier market, persistent competitor market, facilities and production capacity, researched and instinct product launches, product pricing, annual product sales, business reports, independent portfolio-company operations, and business credit accrual, repayment, persistence, sale settlement, unpaid-interest capitalization, underwater-sale protection, industry tax assessment, tax arrears, loss exemption, treasury-only tax payment, and annual tax reconciliation, fighter move mastery, one-use stamina recovery and legacy-save migration, fighter community relationships, friendly interactions, named rival bouts, director actor auditions, persistent cast profiles, on-set conflict effects, one-time film festival submissions with awards and duplicate protection, and shareholder dividend declarations, escrow claims and duplicate-year protection.');
     await context.close();
   } finally {
     if (browser) await browser.close();
