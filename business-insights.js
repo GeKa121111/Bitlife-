@@ -266,7 +266,9 @@
       (sum, item) => sum + Math.max(0, number(item.invalidReportYearCount, 0)),
       0
     );
-    const unknownReportYearCount = invalidReportYearCount;
+    const unknownReportYearCount = items.filter(item =>
+      !item.hasReport && item.invalidReportYearCount > 0
+    ).length;
     return {
       businessCount: items.length,
       reportedCount: reported.length,
@@ -369,11 +371,14 @@
       if (summary.reportedCount) {
         let periodMessage;
         if (summary.unknownReportYearCount > 0) {
-          periodMessage = 'بعض التقارير لا تحمل سنة مالية صالحة؛ إجمالي أحدث التقارير لا يمثل فترة موحدة.';
+          periodMessage = 'بعض الأنشطة لا تملك تقريرًا بسنة مالية صالحة؛ إجمالي أحدث التقارير لا يمثل فترة موحدة.';
         } else if (summary.reportYears.length > 1) {
           periodMessage = 'إجمالي أحدث التقارير يجمع سنوات مالية مختلفة (' +
             summary.reportYears.map(formatNumber).join('، ') +
             ')؛ لا تقارنه كإجمالي لسنة واحدة.';
+        } else if (summary.invalidReportYearCount > 0) {
+          periodMessage = 'تم استبعاد ' + formatNumber(summary.invalidReportYearCount) +
+            ' سجل مالي بسنة غير صالحة من التحليل؛ راجع سجلات الشركات.';
         } else {
           periodMessage = 'كل التقارير المالية المتاحة تخص السنة المالية ' +
             formatNumber(summary.reportYears[0]) + '.';
