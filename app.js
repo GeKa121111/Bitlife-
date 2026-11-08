@@ -10943,6 +10943,7 @@ function businessDividendReadinessSnapshot(entity,fallbackBeneficiaryId,fallback
  const empty={valid:ownership.valid,ready:false,reason:null,year:null,cashBalance:0,availableCash:0,annualCosts:0,taxLiability:0,creditBalance:0,liabilities:0,reserve:0,distributable:0,dividendPayables:0,dividendEscrowBalance:0,activeBeneficiaryId:ownership.activeBeneficiaryId||null,activeShareAmount:0,invalidReportYearCount:0,shareholders:[]};
  if(!ownership.valid)return {...empty,valid:false,reason:'invalid-ownership'};
  if(!businessUsesSeparateTreasury(entity))return {...empty,reason:'shared-treasury'};
+ if(entity.dividendTreasuryScope==='inherited-stake')return {...empty,reason:'inherited-stake-treasury'};
  const dividendLedger=normalizeBusinessDividendLedger(entity&&entity.dividendLedger);
  const dividendPayables=dividendLedger.valid?dividendLedger.ledger.entries.reduce((sum,entry)=>sum+entry.pendingAmount,0):null;
  const dividendEscrow=businessDividendEscrowBalance(entity);
@@ -11080,6 +11081,7 @@ function businessDividendReadinessMenu(entity,back){
  if(!snapshot.ready){
   let message='لا تتوفر بيانات كافية لتقدير السيولة القابلة للتوزيع.';
   if(snapshot.reason==='shared-treasury')message='هذا النشاط يستخدم الرصيد المشترك مع المالك. افصل خزينة النشاط أولًا.';
+  else if(snapshot.reason==='inherited-stake-treasury')message='الخزينة المحفوظة هنا تمثل الحصة الموروثة للمالك الحالي، وليست خزينة الشركة الكاملة. أوقفنا اعتماد توزيعات جديدة حتى تتوفر تسوية موحدة لخزينة جميع الملاك؛ تظل المطالبات السابقة قابلة للاستلام.';
   else if(snapshot.reason==='invalid-treasury')message='رصيد خزينة النشاط غير صالح رقميًا؛ راجع سجل الخزينة قبل أي قرار مالي.';
   else if(snapshot.reason==='invalid-report-year')message='لا يوجد تقرير بسنة صالحة. تم تجاهل '+snapshot.invalidReportYearCount+' سجل مالي بسنة غير صالحة.';
   else if(snapshot.reason==='invalid-financial-result')message='أحدث تقرير بسنة صالحة لا يحتوي مصروفات يمكن الاعتماد عليها لتقدير احتياطي السيولة.';
@@ -11106,7 +11108,7 @@ function businessDividendDistributionMenu(entity,back){
  const ledger=normalizeBusinessDividendLedger(entity&&entity.dividendLedger);
  const returnToOwnership=()=>businessOwnershipMenu(entity,back);
  if(!snapshot.valid||!snapshot.ready||!ledger.valid||businessDividendEscrowBalance(entity)===null){
-  const reason=snapshot.reason==='shared-treasury'?'افصل خزينة النشاط أولًا قبل اعتماد أي توزيع.':snapshot.reason==='invalid-dividend-ledger'?'دفتر التوزيعات أو رصيد المبالغ المحجوزة يحتاج مراجعة؛ لم نغيّر أي رصيد.':'لا توجد بيانات مالية وملكية كافية لاعتماد توزيع آمن.';
+  const reason=snapshot.reason==='shared-treasury'?'افصل خزينة النشاط أولًا قبل اعتماد أي توزيع.':snapshot.reason==='inherited-stake-treasury'?'الخزينة الموروثة تمثل نصيب المالك الحالي فقط؛ لا يمكن اعتماد توزيع للشركة كلها دون تسوية موحدة لخزائن الملاك. تظل المستحقات السابقة قابلة للاستلام.':snapshot.reason==='invalid-dividend-ledger'?'دفتر التوزيعات أو رصيد المبالغ المحجوزة يحتاج مراجعة؛ لم نغيّر أي رصيد.':'لا توجد بيانات مالية وملكية كافية لاعتماد توزيع آمن.';
   modal('⚠️','تعذر اعتماد التوزيع',reason,[choice('↩️','رجوع لسجل الملكية','',returnToOwnership)]);
   return;
  }
@@ -11344,6 +11346,8 @@ function calculateInheritance(previous,share,targetValue){
   if(businessUsesSeparateTreasury(copy)){
    const balance=Number(copy.cashBalance);
    copy.cashBalance=Math.round((Number.isFinite(balance)?balance:0)*factor);
+   // The inherited record stores the selected heir's proportional stake, not the full company treasury.
+   copy.dividendTreasuryScope='inherited-stake';
   }
   if(Number.isFinite(Number(copy.taxLiability)))copy.taxLiability=Math.round(Math.max(0,Number(copy.taxLiability))*factor);
   if(copy.credit&&typeof copy.credit==='object'){
