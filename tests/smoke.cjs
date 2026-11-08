@@ -259,7 +259,7 @@ assert.match(finalUi, /\.statrow\s*\{[^}]*grid-template-columns:72px minmax\(0,1
 assert.match(finalUi, /\.fill\s*\{[^}]*left:0!important;right:auto!important/s);
 assert.match(finalUi, /@media\(max-width:380px\)/);
 assert.doesNotMatch(css, /BitLife|--bitlife-/i);
-assert.match(serviceWorker, /hayah-shell-v213/, 'the app shell cache should refresh the new identity layer');
+assert.match(serviceWorker, /hayah-shell-v214/, 'the app shell cache should refresh the new identity layer');
 assert.match(app, /function siblingEmploymentDecision\(relative,profile,year,age\)/, 'sibling job events should be simulated deterministically');
 assert.match(app, /function schoolHub\(\)/);
 assert.match(app, /function maintainAsset\(index\)/);
@@ -640,7 +640,7 @@ assert.ok(app.includes('uiSettings.boosts'), 'recovery opportunities should be o
 assert.ok(app.includes('uiSettings.sound'));
 assert.ok(app.includes('uiSettings.haptics'));
 assert.ok(app.includes('uiSettings.reducedMotion'));
-assert.match(serviceWorker, /hayah-shell-v213/);
+assert.match(serviceWorker, /hayah-shell-v214/);
 assert.ok(app.includes('function formatStorageBytes(bytes)'));
 assert.ok(app.includes('function inspectStorageCapacity()'));
 assert.match(app, /فحص مساحة التخزين/);
@@ -662,13 +662,13 @@ assert.ok(app.includes("function advanceBusinessRivals(raw,business,industry,yea
 assert.ok(app.includes("function summarizeBusinessRivals(rivals,baselineCompetition,profile)"));
 assert.match(app, /marketRivalPlans/);
 assert.match(app, /الشركات المنافسة داخل المحاكاة/);
-assert.match(serviceWorker, /hayah-shell-v213/);
+assert.match(serviceWorker, /hayah-shell-v214/);
 
 assert.match(app, /function normalizeSocialFeed\(raw\)/, 'social audience feedback should be normalized for legacy saves');
 assert.match(app, /function socialAudienceFeedMenu\(platformId\)/, 'players should be able to review audience feedback');
 assert.match(app, /function offerSoundCloudTrackToLabel\(platformId='soundcloud'\)/, 'SoundCloud tracks should have a label-offer path');
 assert.match(app, /const KEY = 'hekayat_hayah_save_v1';/);
-assert.match(serviceWorker, /hayah-shell-v213/);
+assert.match(serviceWorker, /hayah-shell-v214/);
 
 assert.match(app, /function combatRoundEnergy\(currentEnergy,move,mode='street',reactionCost=0\)/);
 assert.match(app, /function normalizeCombatTitleDefenseHistory\(raw\)/);
@@ -762,7 +762,7 @@ assert.match(app, /function siblingPropertySaleDecision\(/);
 assert.match(app, /propertySaleDebtPaid/);
 assert.match(app, /function siblingPropertyAnnualUpkeep\(/);
 assert.match(app, /propertyExpensesAnnual/);
-assert.match(serviceWorker, /hayah-shell-v213/);
+assert.match(serviceWorker, /hayah-shell-v214/);
 
 assert.match(app, /function siblingRentalPurchaseDecision\(/, 'siblings should be able to acquire an independent rental property');
 assert.match(app, /function siblingRentalAnnualIncome\(/, 'rental income should model occupancy and collection rates deterministically');
@@ -803,7 +803,7 @@ assert.match(app, /function siblingEstateSettlement\(relative,profile,year\)/, '
 assert.match(app, /function siblingReleaseChildInheritance\(relative,child,year\)/, 'minor inheritance should be released when the child becomes an adult');
 assert.match(app, /assetTransferStatus/, 'property title transfer must remain explicit and auditable');
 assert.match(app, /function siblingEstatePlanMenu\(relative\)/, 'adult siblings should be able to record an estate plan');
-assert.match(serviceWorker, /hayah-shell-v213/, 'the PWA cache must be versioned with the estate update');
+assert.match(serviceWorker, /hayah-shell-v214/, 'the PWA cache must be versioned with the estate update');
 
 assert.match(app, /beneficiaryType:share\.kind/, 'surviving spouses should be recorded as estate beneficiaries');
 assert.match(app, /inheritanceCashBalance/, 'surviving spouse inheritance balances should be preserved');
@@ -888,7 +888,7 @@ assert.match(app, /function combatSponsorshipMenu\(\)/, 'fighters should be able
 assert.match(app, /function negotiateCombatSponsorship\(sponsorId\)/, 'fighter sponsorship negotiation should be available');
 assert.match(app, /function growCombatFanbase\(c,won,mode,fame,rank\)/, 'fight outcomes should change the fighter audience');
 assert.match(app, /settleCombatSponsorshipYear\(cc,state\.bank\)/, 'active sponsorships should settle once per game year');
-assert.match(serviceWorker, /hayah-shell-v213/, 'the new sponsorship UI and engine must be in the current PWA shell');
+assert.match(serviceWorker, /hayah-shell-v214/, 'the new sponsorship UI and engine must be in the current PWA shell');
 
 assert.ok(app.includes('function changeSiblingInvestmentRisk('), 'adult siblings should have a controlled investment-risk setting');
 assert.ok(app.includes('function siblingInvestmentRiskMenu('), 'the sibling financial profile should expose investment choices');
