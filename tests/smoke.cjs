@@ -931,9 +931,9 @@ assert.match(index, /src="life-review\.js"/);
 assert.ok(index.indexOf('app.js') < index.indexOf('life-review.js'),
   'the life review hook must load after the life engine creates the end-of-life summary');
 assert.match(lifeReviewCss, /life-review-panel/);
-assert.match(lifeReview, /dialog\\.setAttribute\\('aria-modal', 'true'\\)/,
+assert.ok(lifeReview.includes("dialog.setAttribute('aria-modal', 'true')"),
   'the end-of-life report must expose modal semantics to assistive technology');
-assert.match(lifeReview, /event\\.key === 'Tab'/,
+assert.ok(lifeReview.includes("event.key === 'Tab'"),
   'the end-of-life report must keep keyboard focus inside the dialog');
 assert.match(lifeReview, /function summarizeLife\(state, cemeteryEntries\)/);
 assert.match(lifeReview, /getItem\(key\)/);
