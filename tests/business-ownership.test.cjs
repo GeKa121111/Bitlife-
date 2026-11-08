@@ -519,3 +519,45 @@ test('business succession quarantines dividend claims when inheritance would exc
  assert.equal(inheritance.business.dividendEscrowBalance,9950,'the reserved balance must remain untouched while quarantined');
  assert.equal(previousBusiness.dividendLedger.auditStatus,undefined,'the source life must not be mutated');
 });
+
+
+test('inherited proportional treasury blocks new distributions but preserves existing shareholder claims',()=>{
+ const api=createApi();
+ const ownership=api.createBusinessOwnershipLedger('owner','المالك',35);
+ ownership.shareholders=[
+  {beneficiaryId:'owner',name:'المالك',kind:'owner',shareBps:5000},
+  {beneficiaryId:'partner',name:'الشريك',kind:'child',shareBps:5000}
+ ];
+ const company={
+  treasuryMode:'separate',dividendTreasuryScope:'inherited-stake',cashBalance:50000,
+  ownershipLedger:ownership,dividendEscrowBalance:500,
+  financialHistory:[{year:2026,costs:10000}],
+  dividendLedger:{version:1,entries:[{
+   id:'dividend-2025',year:2025,declaredAtAge:35,createdBy:'owner',totalAmount:1000,
+   allocations:[
+    {beneficiaryId:'owner',name:'المالك',shareBps:5000,amount:500},
+    {beneficiaryId:'partner',name:'الشريك',shareBps:5000,amount:500}
+   ],
+   claims:[
+    {beneficiaryId:'owner',name:'المالك',amount:500,paidAmount:500,paidAtAge:35},
+    {beneficiaryId:'partner',name:'الشريك',amount:500,paidAmount:0,paidAtAge:null}
+   ]
+  }]}
+ };
+ const before=JSON.stringify(company);
+ const snapshot=api.businessDividendReadinessSnapshot(company,'owner','المالك');
+ assert.equal(snapshot.valid,true);
+ assert.equal(snapshot.ready,false);
+ assert.equal(snapshot.reason,'inherited-stake-treasury');
+ const distribution=api.applyBusinessDividendDistribution(company,snapshot,.5,'owner',35,1000);
+ assert.equal(distribution.ok,false);
+ assert.equal(distribution.reason,'inherited-stake-treasury');
+ const claimable=api.businessDividendClaimableSnapshot(company,'partner');
+ assert.equal(claimable.valid,true);
+ assert.equal(claimable.amount,500,'previously reserved claims remain receivable');
+ assert.equal(JSON.stringify(company),before,'the safety guard must not mutate the inherited save');
+ const readinessMenu=findFunction('businessDividendReadinessMenu');
+ const distributionMenu=findFunction('businessDividendDistributionMenu');
+ assert.match(readinessMenu,/الخزينة المحفوظة هنا تمثل الحصة الموروثة/);
+ assert.match(distributionMenu,/الخزينة الموروثة تمثل نصيب المالك الحالي/);
+});
