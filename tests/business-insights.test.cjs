@@ -476,7 +476,8 @@ test('واجهة المؤشرات تشرح سبب تعذر حساب نسبة ت�
   assert.match(source, /لا توجد سنة مالية متتالية للمقارنة/);
   assert.match(source, /لا يوجد تقرير سابق للمقارنة/);
   assert.match(source, /إجمالي أحدث التقارير يجمع سنوات مالية مختلفة/);
-  assert.match(source, /تم استبعاد .* سجل مالي بسنة غير صالحة من التحليل/);
+  assert.match(source, /تم استبعاد '/);
+  assert.match(source, /' سجل مالي بسنة غير صالحة من التحليل/);
   assert.match(source, /business-insights-period-note/);
   assert.match(source, /ملخص التقارير حسب السنة/);
   assert.match(source, /business-insights-annual-card/);
