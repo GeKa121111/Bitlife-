@@ -314,6 +314,7 @@ test('الحفظ الفارغ أو التالف لا ينتج أنشطة أو أ
   assert.deepEqual(analyzeBusinessPortfolio(null), {
     businessCount: 0,
     reportedCount: 0,
+    invalidFinancialReportCount: 0,
     totalRevenue: 0,
     totalProfit: 0,
     lossCount: 0,
@@ -378,12 +379,12 @@ test('ملخص السنوات يجمع تقارير السنة نفسها ويع
   const summary = analyzeBusinessPortfolio(state);
   assert.deepEqual(summary.annualSummaries, [
     {
-      year: 2026, reportedCount: 2, totalRevenue: 180000, totalProfit: 35000,
+      year: 2026, reportedCount: 2, invalidReportCount: 0, totalRevenue: 180000, totalProfit: 35000,
       businessCount: 3, missingBusinessCount: 1, coverage: 'partial',
       revenueChangePercent: null, comparisonUnavailableReason: 'incomplete-coverage'
     },
     {
-      year: 2025, reportedCount: 3, totalRevenue: 175000, totalProfit: 45000,
+      year: 2025, reportedCount: 3, invalidReportCount: 0, totalRevenue: 175000, totalProfit: 45000,
       businessCount: 3, missingBusinessCount: 0, coverage: 'complete',
       revenueChangePercent: null, comparisonUnavailableReason: 'no-consecutive-year'
     }
@@ -494,4 +495,77 @@ test('واجهة المؤشرات تشرح سبب تعذر حساب نسبة ت�
   assert.match(source, /ملخص التقارير حسب السنة/);
   assert.match(source, /business-insights-annual-card/);
   assert.match(source, /annualPortfolioSummaries\(entries\)/);
+});
+
+
+test('التقرير المالي غير المكتمل لا يتحول إلى إيراد صفري ولا يشارك في نمو السنة', () => {
+  const business = {
+    id: 'incomplete-latest-report',
+    title: 'شركة بتقرير غير مكتمل',
+    financialHistory: [
+      report({ year: 2025, revenue: 100000, costs: 70000, profit: 30000 }),
+      report({ year: 2026, revenue: 'غير معروف', costs: 80000, profit: 20000 })
+    ]
+  };
+  const before = JSON.stringify(business);
+  const result = analyzeBusiness(business);
+  assert.equal(result.hasReport, true);
+  assert.equal(result.year, 2025, 'the invalid latest year must not replace the last usable report');
+  assert.equal(result.revenue, 100000);
+  assert.equal(result.invalidFinancialReportCount, 1);
+  assert.equal(result.status, 'warning');
+  assert.ok(result.insights.some(item => item.code === 'invalid-financial-report'));
+
+  const portfolio = analyzeBusinessPortfolio({
+    business,
+    companies: [{
+      id: 'valid-2026',
+      financialHistory: [report({ year: 2026, revenue: 50000, costs: 30000, profit: 20000 })]
+    }]
+  });
+  const annual2026 = portfolio.annualSummaries.find(item => item.year === 2026);
+  assert.equal(portfolio.invalidFinancialReportCount, 1);
+  assert.equal(annual2026.reportedCount, 1);
+  assert.equal(annual2026.invalidReportCount, 1);
+  assert.equal(annual2026.missingBusinessCount, 0);
+  assert.equal(annual2026.coverage, 'partial');
+  assert.equal(annual2026.totalRevenue, 50000,
+    'invalid financial data must not be silently counted as zero or included in the annual total');
+  assert.equal(annual2026.revenueChangePercent, null);
+  assert.equal(annual2026.comparisonUnavailableReason, 'incomplete-coverage');
+  assert.equal(JSON.stringify(business), before, 'report validation must remain read-only');
+});
+
+test('التقرير الذي يفتقد الإيرادات أو لا يملك ربحًا وتكاليف صالحين لا يُعتمد', () => {
+  const invalidRevenue = analyzeBusiness({
+    financialHistory: [report({ year: 2026, revenue: true, costs: 1000, profit: 500 })]
+  });
+  assert.equal(invalidRevenue.hasReport, false);
+  assert.equal(invalidRevenue.invalidFinancialReportCount, 1);
+  assert.equal(invalidRevenue.revenueChangeUnavailableReason, 'invalid-financial-report');
+
+  const invalidResult = analyzeBusiness({
+    financialHistory: [report({ year: 2026, revenue: 10000, costs: 'تكلفة مجهولة', profit: [] })]
+  });
+  assert.equal(invalidResult.hasReport, false);
+  assert.equal(invalidResult.invalidFinancialReportCount, 1);
+
+  const whitespace = analyzeBusiness({
+    financialHistory: [report({ year: 2026, revenue: '   ', costs: 5000, profit: 1000 })]
+  });
+  assert.equal(whitespace.hasReport, false);
+});
+
+test('التقارير القديمة التي تفتقد حقل الربح أو التكلفة تظل قابلة للتحليل عند توافر البديل', () => {
+  const derivedProfit = analyzeBusiness({
+    financialHistory: [{ year: 2025, revenue: '100000', costs: '65000' }]
+  });
+  assert.equal(derivedProfit.hasReport, true);
+  assert.equal(derivedProfit.profit, 35000);
+
+  const savedProfit = analyzeBusiness({
+    financialHistory: [{ year: 2025, revenue: 100000, profit: 25000 }]
+  });
+  assert.equal(savedProfit.hasReport, true);
+  assert.equal(savedProfit.profit, 25000);
 });
