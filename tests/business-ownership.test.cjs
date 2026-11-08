@@ -472,3 +472,50 @@ test('ownership and treasury menus disclose reserved dividends and block sale un
  assert.match(sellAsset,/pending>0/);
  assert.match(sellCompany,/pending>0/);
 });
+
+
+test('business succession quarantines dividend claims when inheritance would exceed the safe claim ledger limit',()=>{
+ const api=createApi();
+ const ownership=api.createBusinessOwnershipLedger('owner','المالك',60);
+ ownership.shareholders=Array.from({length:100},(_,index)=>({
+  beneficiaryId:index===0?'owner':index===1?'heir-a':'shareholder-'+index,
+  name:index===0?'المالك':index===1?'الوارث الموجود':'مساهم '+index,
+  kind:index===0?'owner':'child',
+  shareBps:100
+ }));
+ const dividendEntry={
+  id:'dividend-2026',year:2026,declaredAtAge:60,createdBy:'owner',totalAmount:10000,
+  allocations:ownership.shareholders.map(item=>({
+   beneficiaryId:item.beneficiaryId,name:item.name,kind:item.kind,shareBps:item.shareBps,amount:100
+  })),
+  claims:ownership.shareholders.map(item=>({
+   beneficiaryId:item.beneficiaryId,name:item.name,amount:100,
+   paidAmount:item.beneficiaryId==='owner'?50:0,
+   paidAtAge:item.beneficiaryId==='owner'?55:null
+  }))
+ };
+ const previousBusiness={
+  id:'dense-claims-business',assetId:'dense-claims-business',title:'شركة المطالبات الكثيفة',
+  value:500000,treasuryMode:'separate',cashBalance:50000,dividendEscrowBalance:9950,
+  ownershipLedger:ownership,dividendLedger:{version:1,entries:[dividendEntry]}
+ };
+ const previous={
+  lifeId:'owner',name:'المالك',age:70,bank:0,debt:0,assets:[],investments:[],
+  business:previousBusiness,companies:[]
+ };
+ const inheritance={business:{...previousBusiness},companies:[]};
+ const accounts={accounts:[
+  {beneficiaryId:'heir-a',name:'الوارث الموجود',share:.5,kind:'child'},
+  {beneficiaryId:'heir-b',name:'الوارث الجديد',share:.5,kind:'child'}
+ ]};
+ assert.equal(api.normalizeBusinessDividendLedger(previousBusiness.dividendLedger).valid,true);
+ assert.equal(api.applyInheritedBusinessOwnership(previous,inheritance,accounts,'heir-a'),true);
+ assert.equal(inheritance.business.ownershipLedger.auditStatus,'balanced');
+ assert.equal(inheritance.business.dividendLedger.auditStatus,'needs_review');
+ assert.deepEqual(Array.from(inheritance.business.dividendLedger.auditIssues),[
+  'inheritance_claim_transfer_failed','inherited-claims-invalid'
+ ]);
+ assert.equal(api.normalizeBusinessDividendLedger(inheritance.business.dividendLedger).valid,false);
+ assert.equal(inheritance.business.dividendEscrowBalance,9950,'the reserved balance must remain untouched while quarantined');
+ assert.equal(previousBusiness.dividendLedger.auditStatus,undefined,'the source life must not be mutated');
+});
