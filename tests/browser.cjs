@@ -3213,8 +3213,10 @@ async function run() {
     assert.ok(businessInsightsText.includes('خزينة النشاط سالبة'));
     assert.ok(businessInsightsText.includes('التزامات ضريبية'));
     assert.ok(businessInsightsText.includes('سنوات مالية مختلفة'));
-    assert.ok(businessInsightsText.includes('2025'));
-    assert.ok(businessInsightsText.includes('2026'));
+    const formattedReportYears = [2025, 2026].map(year =>
+      new Intl.NumberFormat('ar-EG', { maximumFractionDigits: 0 }).format(year));
+    formattedReportYears.forEach(year =>
+      assert.ok(businessInsightsText.includes(year), 'the period note should show the formatted fiscal year ' + year));
     assert.equal(await page.evaluate(() => localStorage.getItem('hekayat_hayah_save_v1')), savedBeforeBusinessInsights,
       'opening the business insights dashboard must not mutate the saved life');
     await page.locator('.business-insights-close').click();
