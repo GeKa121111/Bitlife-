@@ -101,17 +101,23 @@
     // Mirror the import engine's count and serialized-size limits without mutating the save.
     const candidates = snapshots.slice(-limit);
     let retained = [];
+    let retainedChars = 2; // JSON.stringify([]) includes the opening and closing brackets.
     for (let index = candidates.length - 1; index >= 0; index -= 1) {
-      const candidate = [candidates[index], ...retained];
-      if (JSON.stringify(candidate).length <= MAX_REWIND_SNAPSHOT_CHARS) {
-        retained = candidate;
+      const snapshot = candidates[index];
+      const encodedChars = JSON.stringify(snapshot).length;
+      const candidateChars = retained.length
+        ? retainedChars + encodedChars + 1
+        : retainedChars + encodedChars;
+      if (candidateChars <= MAX_REWIND_SNAPSHOT_CHARS) {
+        retained.unshift(snapshot);
+        retainedChars = candidateChars;
       }
     }
     return {
       snapshots: retained,
       count: retained.length,
       droppedCount: snapshots.length - retained.length,
-      serializedChars: JSON.stringify(retained).length
+      serializedChars: retainedChars
     };
   }
 
@@ -367,7 +373,7 @@
         ['إصدار بيانات الحياة', report.lifeVersion === null ? 'غير متاح' : report.lifeVersion],
         ['نقاط الرجوع بالزمن', report.rewindSnapshotCount],
         ['طول سجل الرجوع', report.rewindSnapshotChars ? report.rewindSnapshotChars + ' وحدة نصية' : 'لا توجد نقاط محفوظة'],
-        ['نقاط صالحة بنيويًا قبل حدود السعة', report.rewindUsableSnapshotCount],
+        ['نقاط قابلة للاستعادة بنيويًا قبل حدود السعة', report.rewindUsableSnapshotCount],
         ['تقدير الصالح للاستعادة — حد 8 نقاط', report.rewindBaseRestorableCount + ' من ' + report.rewindBaseRetainedCount],
         ['تقدير الصالح للاستعادة — حد 60 نقطة', report.rewindExpandedRestorableCount + ' من ' + report.rewindExpandedRetainedCount],
         ['نقاط مستبعدة — الحد الأساسي', report.rewindBaseDroppedCount],
