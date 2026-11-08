@@ -116,6 +116,7 @@ function createServer() {
         containsFilmRecord: reportText.includes('استوديو الأفلام') && reportText.includes('جائزة'),
         containsEsportsRecord: reportText.includes('الألعاب الإلكترونية'),
         containsBusinessRecord: reportText.includes('إدارة الأعمال') && reportText.includes('نشاط تجاري'),
+        noUndefinedAge: !reportText.includes('عمر undefined'),
         containsNetWorth: reportText.includes('220,000') || reportText.includes('٢٢٠٬٠٠٠') || reportText.includes('220000'),
         imageCount,
         restored: dialog.contains(reviewButton),
@@ -132,6 +133,7 @@ function createServer() {
     assert.equal(result.containsFilmRecord, true);
     assert.equal(result.containsEsportsRecord, true);
     assert.equal(result.containsBusinessRecord, true);
+    assert.equal(result.noUndefinedAge, true, 'specialized records must not be rendered as age-based milestones');
     assert.equal(result.containsNetWorth, true);
     assert.equal(result.imageCount, 0, 'saved strings must be rendered as text, not executable markup');
     assert.equal(result.restored, true, 'closing the report must restore the original end-of-life summary');
