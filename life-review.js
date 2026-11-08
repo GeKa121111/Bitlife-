@@ -417,6 +417,7 @@
       ? activeElement : doc.getElementById('reviewBtn');
     let closed = false;
     let escapeHandler = null;
+    let backgroundStates = [];
 
     const close = () => {
       if (closed) return;
@@ -433,6 +434,14 @@
       if (hadRole) dialog.setAttribute('role', originalRole);
       else dialog.removeAttribute('role');
       if (escapeHandler) doc.removeEventListener('keydown', escapeHandler, true);
+      for (let index = backgroundStates.length - 1; index >= 0; index--) {
+        const saved = backgroundStates[index];
+        if (saved.inert) saved.element.setAttribute('inert', '');
+        else saved.element.removeAttribute('inert');
+        if (saved.ariaHidden === null) saved.element.removeAttribute('aria-hidden');
+        else saved.element.setAttribute('aria-hidden', saved.ariaHidden);
+      }
+      backgroundStates = [];
       const focusTarget = returnFocus && typeof returnFocus.focus === 'function' &&
         (!doc.documentElement || doc.documentElement.contains(returnFocus))
         ? returnFocus : doc.getElementById('reviewBtn');
@@ -508,6 +517,26 @@
     doc.addEventListener('keydown', escapeHandler, true);
     const firstControl = dialog.querySelector('[data-life-review-close], .life-review-done');
     if (firstControl && typeof firstControl.focus === 'function') firstControl.focus();
+
+    // A custom modal must make every background branch inert, not merely announce aria-modal.
+    let branch = dialog;
+    while (branch && branch.parentElement) {
+      const parent = branch.parentElement;
+      Array.from(parent.children || []).forEach(sibling => {
+        if (sibling === branch || (typeof sibling.contains === 'function' && sibling.contains(dialog))) return;
+        const tagName = String(sibling.tagName || '').toUpperCase();
+        if (/^(SCRIPT|STYLE|LINK|META)$/.test(tagName)) return;
+        backgroundStates.push({
+          element: sibling,
+          inert: sibling.hasAttribute('inert'),
+          ariaHidden: sibling.getAttribute('aria-hidden')
+        });
+        sibling.setAttribute('inert', '');
+        sibling.setAttribute('aria-hidden', 'true');
+      });
+      if (parent === doc.body || parent === doc.documentElement) break;
+      branch = parent;
+    }
     return true;
   }
 
