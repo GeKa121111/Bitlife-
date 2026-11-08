@@ -385,6 +385,7 @@ test('واجهة الفاحص تسمح بنسخ البصمة ومقارنتها 
     ['backupFile', new FakeNode()],
     ['backupDropZone', new FakeNode()],
     ['backupResult', new FakeNode()],
+    ['backupAnnouncement', new FakeNode()],
     ['clearBackupCheck', new FakeNode()]
   ]);
   const readers = [];
@@ -414,6 +415,8 @@ test('واجهة الفاحص تسمح بنسخ البصمة ومقارنتها 
   };
   nodes.get('backupFile').listeners.change({ target: { files: [file] } });
   await readers[0].onload();
+  assert.equal(nodes.get('backupAnnouncement').textContent,
+    'اكتمل فحص ملف الحفظ: متوافق مبدئيًا مع ملاحظات.');
 
   const findByClass = (node, className) => {
     if (String(node.className || '').split(/\s+/).includes(className)) return node;
@@ -449,4 +452,13 @@ test('واجهة الفاحص تسمح بنسخ البصمة ومقارنتها 
   await copyButton.listeners.click();
   assert.equal(currentInput.selected, true, 'the fallback should select the current digest for manual copying');
   assert.match(status.textContent, /النسخ التلقائي غير متاح/);
+
+  nodes.get('backupFile').listeners.change({
+    target: { files: [{ name: 'ملف-كبير.json', size: checker.MAX_FILE_BYTES + 1 }] }
+  });
+  assert.match(nodes.get('backupAnnouncement').textContent, /15 ميجابايت/);
+  assert.equal(readers.length, 1, 'an oversized file must be rejected before another read starts');
+
+  nodes.get('clearBackupCheck').listeners.click();
+  assert.equal(nodes.get('backupAnnouncement').textContent, 'تم مسح نتيجة الفحص.');
 });
