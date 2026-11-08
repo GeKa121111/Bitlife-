@@ -638,6 +638,86 @@ test('واجهة سجل المسيرة تعرض الأرقام التراكمي�
   assert.match(context.lastInfo[2], /ليس سجل لقب العالم/);
 });
 
+test('سجل سلاسل السيطرة يرتب السلاسل النشطة حتميًا ويستبعد السلاسل المنتهية', () => {
+  const context = createContext();
+  const career = makeCareer();
+  career.communityLeague = {
+    season: 8,
+    lastSimulatedAge: 32,
+    matchesLastSeason: 0,
+    standings: [],
+    records: [
+      { id: 'rival-c', name: 'منافس ج', titles: 5, titleStreak: 3, bestTitleStreak: 5 },
+      { id: 'rival-b', name: 'منافس ب', titles: 6, titleStreak: 3, bestTitleStreak: 4 },
+      { id: 'rival-a', name: 'منافس أ', titles: 5, titleStreak: 3, bestTitleStreak: 5 },
+      { id: 'rival-d', name: 'منافس د', titles: 2, titleStreak: 1, bestTitleStreak: 2 },
+      { id: 'rival-old', name: 'بطل سابق', titles: 9, titleStreak: 0, bestTitleStreak: 7 }
+    ],
+    history: []
+  };
+  context.career = career;
+
+  context.HayahCombatSeason.openMenu();
+  const option = context.lastModal[3].find(item => item.title === 'سجل سلاسل السيطرة');
+  assert.ok(option);
+  option.action();
+
+  const summary = context.lastInfo[2];
+  assert.ok(summary.indexOf('منافس أ') < summary.indexOf('منافس ج'),
+    'equal current and best streaks should use total titles and then stable id ordering');
+  assert.ok(summary.indexOf('منافس ج') < summary.indexOf('منافس ب'),
+    'a better all-time streak should break a tie in the active run');
+  assert.ok(summary.indexOf('منافس ب') < summary.indexOf('منافس د'),
+    'longer active runs should rank ahead of shorter runs');
+  assert.doesNotMatch(summary, /بطل سابق/,
+    'a rival whose current streak ended must not appear in the active streak leaderboard');
+  assert.match(summary, /أفضل سلسلة: 5/);
+  assert.match(summary, /إجمالي ألقاب الدوري/);
+  assert.doesNotMatch(summary, /لقب العالم/,
+    'community league streaks must remain distinct from the player world title');
+});
+
+test('سجل سلاسل السيطرة يوضح الحالة الفارغة ويعمل في الواجهة الاحتياطية', () => {
+  const root = new FakeElement('div');
+  const context = createContext({
+    modal: undefined,
+    choice: undefined,
+    document: {
+      getElementById(id) { return id === 'modalRoot' ? root : null; },
+      createElement(tagName) { return new FakeElement(tagName); }
+    }
+  });
+  const career = makeCareer();
+  career.communityLeague = {
+    season: 1,
+    lastSimulatedAge: 25,
+    matchesLastSeason: 1,
+    standings: [],
+    records: [{ id: 'former', name: 'بطل سابق', titles: 2, titleStreak: 0, bestTitleStreak: 2 }],
+    history: []
+  };
+  context.career = career;
+
+  context.HayahCombatSeason.openMenu();
+  const option = findChoiceByTitle(root, 'سجل سلاسل السيطرة');
+  assert.ok(option, 'the fallback modal should expose the title-streak leaderboard');
+  option.listeners.click();
+
+  const findDescription = node => {
+    if (!node) return null;
+    if (node.className === 'desc') return node;
+    for (const child of node.children || []) {
+      const found = findDescription(child);
+      if (found) return found;
+    }
+    return null;
+  };
+  const description = findDescription(root);
+  assert.ok(description);
+  assert.match(description.textContent, /لا توجد سلسلة ألقاب نشطة حاليًا/);
+  assert.doesNotMatch(description.textContent, /بطل سابق/);
+});
+
 test('تطبيع سجل الموسم يحد القيم ويحذف السجلات غير الصالحة', () => {
   const context = createContext();
   const normalized = context.HayahCombatSeason.normalize({
