@@ -10712,6 +10712,54 @@ function businessOwnershipEarningsSnapshot(entity,fallbackBeneficiaryId,fallback
  return {valid:true,hasReport:true,reason:null,year:latestYear,totalProfit,activeBeneficiaryId:ownership.activeBeneficiaryId,activeShareAmount:active?active.resultShare:0,invalidReportYearCount,shareholders};
 }
 
+
+function businessDividendReadinessSnapshot(entity,fallbackBeneficiaryId,fallbackName){
+ const ownership=businessOwnershipSnapshot(entity,fallbackBeneficiaryId,fallbackName);
+ const empty={valid:ownership.valid,ready:false,reason:null,year:null,cashBalance:0,availableCash:0,annualCosts:0,taxLiability:0,creditBalance:0,liabilities:0,reserve:0,distributable:0,activeBeneficiaryId:ownership.activeBeneficiaryId||null,activeShareAmount:0,invalidReportYearCount:0,shareholders:[]};
+ if(!ownership.valid)return {...empty,valid:false,reason:'invalid-ownership'};
+ if(!businessUsesSeparateTreasury(entity))return {...empty,reason:'shared-treasury'};
+ const rawCashValue=entity&&entity.cashBalance;
+ const supportedCashType=typeof rawCashValue==='number'||typeof rawCashValue==='string';
+ const nonEmptyCashString=typeof rawCashValue!=='string'||rawCashValue.trim().length>0;
+ const rawCash=Number(rawCashValue);
+ if(!supportedCashType||!nonEmptyCashString||!Number.isFinite(rawCash))return {...empty,reason:'invalid-treasury'};
+ const history=Array.isArray(entity&&entity.financialHistory)?entity.financialHistory:[];
+ let latest=null,latestYear=-1,latestIndex=-1,invalidReportYearCount=0;
+ history.forEach((report,index)=>{
+  if(!report||typeof report!=='object'||Array.isArray(report))return;
+  const rawYear=report.year;
+  const supportedYearType=typeof rawYear==='number'||typeof rawYear==='string';
+  const nonEmptyYearString=typeof rawYear!=='string'||rawYear.trim().length>0;
+  const year=Number(rawYear);
+  if(!supportedYearType||!nonEmptyYearString||!Number.isSafeInteger(year)||year<1||year>9999){invalidReportYearCount++;return;}
+  if(year>latestYear||(year===latestYear&&index>latestIndex)){latest=report;latestYear=year;latestIndex=index;}
+ });
+ if(!latest)return {...empty,reason:invalidReportYearCount?'invalid-report-year':'no-valid-report',invalidReportYearCount};
+ const rawCosts=latest.costs;
+ const supportedCostType=typeof rawCosts==='number'||typeof rawCosts==='string';
+ const nonEmptyCostString=typeof rawCosts!=='string'||rawCosts.trim().length>0;
+ const numericCosts=Number(rawCosts);
+ if(!supportedCostType||!nonEmptyCostString||!Number.isFinite(numericCosts)||numericCosts<0)return {...empty,reason:'invalid-financial-result',year:latestYear,invalidReportYearCount};
+ const cashBalance=Math.max(-1000000000000,Math.min(1000000000000,Math.round(rawCash)));
+ const availableCash=Math.max(0,cashBalance);
+ const annualCosts=Math.max(0,Math.min(1000000000000,Math.round(Number(rawCosts))));
+ const taxLiability=businessTaxLiability(entity);
+ const creditBalance=businessCreditBalance(entity);
+ const liabilities=Math.min(1000000000000,taxLiability+creditBalance);
+ const reserve=Math.min(availableCash,Math.ceil(annualCosts/4));
+ const distributable=Math.max(0,Math.min(1000000000000,availableCash-liabilities-reserve));
+ const parts=ownership.shareholders.map((item,index)=>{
+  const rawAmount=distributable*item.shareBps/10000,amount=Math.floor(rawAmount);
+  return {...item,amount,fraction:rawAmount-amount,index};
+ });
+ let remainder=distributable-parts.reduce((sum,item)=>sum+item.amount,0);
+ const remainderOrder=parts.slice().sort((a,b)=>b.fraction-a.fraction||a.index-b.index);
+ for(let index=0;remainder>0&&remainderOrder.length;index++,remainder--)remainderOrder[index%remainderOrder.length].amount++;
+ const shareholders=parts.map(({amount,fraction,index,...item})=>({...item,potentialAmount:amount}));
+ const active=shareholders.find(item=>item.beneficiaryId===ownership.activeBeneficiaryId);
+ return {valid:true,ready:true,reason:distributable>0?null:'no-distributable-cash',year:latestYear,cashBalance,availableCash,annualCosts,taxLiability,creditBalance,liabilities,reserve,distributable,activeBeneficiaryId:ownership.activeBeneficiaryId,activeShareAmount:active?active.potentialAmount:0,invalidReportYearCount,shareholders};
+}
+
 function buildInheritedBusinessOwnershipLedger(entity,beneficiaryAccounts,nextActiveBeneficiaryId,fallbackActiveBeneficiaryId,fallbackName,age){
  const normalized=normalizeBusinessOwnershipLedger(entity&&entity.ownershipLedger,fallbackActiveBeneficiaryId,fallbackName);
  const nextId=String(nextActiveBeneficiaryId||'').trim().slice(0,120);
@@ -10782,6 +10830,33 @@ function businessOwnershipEarningsMenu(entity,back){
  modal('📊','كشف نتيجة السنة حسب الملكية',detail,[choice('↩️','رجوع لسجل الملكية','',returnToOwnership)]);
 }
 
+
+function businessDividendReadinessMenu(entity,back){
+ const fallbackId=state&&state.lifeId||state&&state.name||state&&state.legacy&&state.legacy.activeBeneficiaryId;
+ const snapshot=businessDividendReadinessSnapshot(entity,fallbackId,state&&state.name);
+ const returnToOwnership=()=>businessOwnershipMenu(entity,back);
+ if(!snapshot.valid){
+  modal('⚠️','تعذر تقدير سيولة التوزيعات','سجل الملكية غير متوازن أو يحتاج مراجعة؛ لم نعرض أي مبلغ تقديري.',[choice('↩️','رجوع لسجل الملكية','',returnToOwnership)]);
+  return;
+ }
+ if(!snapshot.ready){
+  let message='لا تتوفر بيانات كافية لتقدير السيولة القابلة للتوزيع.';
+  if(snapshot.reason==='shared-treasury')message='هذا النشاط يستخدم الرصيد المشترك مع المالك. لا يمكن تقدير توزيعات الشركة من رصيدك الشخصي؛ افصل خزينة النشاط أولًا.';
+  else if(snapshot.reason==='invalid-treasury')message='رصيد خزينة النشاط غير صالح رقميًا؛ راجع سجل الخزينة قبل أي قرار مالي.';
+  else if(snapshot.reason==='invalid-report-year')message='لا يوجد تقرير بسنة صالحة. تم تجاهل '+snapshot.invalidReportYearCount+' سجل مالي بسنة غير صالحة.';
+  else if(snapshot.reason==='invalid-financial-result')message='أحدث تقرير بسنة صالحة لا يحتوي مصروفات يمكن الاعتماد عليها لتقدير احتياطي السيولة.';
+  else if(snapshot.reason==='no-valid-report')message='لا يوجد تقرير مالي صالح لهذا النشاط حتى الآن.';
+  modal('💸','تقدير سيولة التوزيعات',message,[choice('↩️','رجوع لسجل الملكية','',returnToOwnership)]);
+  return;
+ }
+ const lines=snapshot.shareholders.slice(0,12).map(item=>item.name+' · '+formatBusinessOwnershipPercent(item.shareBps)+'% · حصة تقديرية '+cash(item.potentialAmount));
+ const hiddenCount=Math.max(0,snapshot.shareholders.length-lines.length);
+ const status=snapshot.distributable>0?'السيولة التقديرية بعد الالتزامات والاحتياطي '+cash(snapshot.distributable):'لا توجد سيولة تقديرية قابلة للتوزيع حاليًا.';
+ const invalidNote=snapshot.invalidReportYearCount>0?'\nتم تجاهل '+snapshot.invalidReportYearCount+' سجل مالي بسنة غير صالحة.':'';
+ const detail='السنة المرجعية '+snapshot.year+'\nرصيد الخزينة '+cash(snapshot.cashBalance)+'\nالضرائب المستحقة '+cash(snapshot.taxLiability)+' · التمويل التجاري وفوائده '+cash(snapshot.creditBalance)+'\nاحتياطي تحفظي (25% من مصروفات آخر تقرير) '+cash(snapshot.reserve)+'\n\n'+status+'\n\n'+lines.join('\n')+(hiddenCount?'\nوملاك إضافيون: '+hiddenCount:'')+invalidNote+'\n\nهذا تقدير تخطيطي للقراءة فقط؛ لا يسجل قرار توزيع ولا يخصم من الخزينة أو يضيف أموالًا إلى أرصدة الملاك.';
+ modal('💸','تقدير السيولة القابلة للتوزيع',detail,[choice('↩️','رجوع لسجل الملكية','',returnToOwnership)]);
+}
+
 function businessOwnershipMenu(entity,back){
  const fallbackId=state&&state.lifeId||state&&state.name||state&&state.legacy&&state.legacy.activeBeneficiaryId;
  const snapshot=businessOwnershipSnapshot(entity,fallbackId,state&&state.name);
@@ -10793,6 +10868,7 @@ function businessOwnershipMenu(entity,back){
  const hiddenShareholderCount=snapshot.shareholders.length-visibleShareholders.length;
  if(hiddenShareholderCount>0)opts.push(choice('👥','ملاك إضافيون ('+hiddenShareholderCount+')','يوجد ملاك آخرون محفوظون في الدفتر. افتح السجل الكامل من ملف الحفظ عند الحاجة.',()=>info('👥','بقية الملاك','يوجد '+hiddenShareholderCount+' مستفيدًا إضافيًا محفوظًا ضمن سجل الملكية.')));
  opts.push(choice('📊','كشف نتيجة السنة حسب الملكية','اعرض نصيب كل مالك حسابيًا من أحدث نتيجة مالية دون تحويل أموال.',()=>businessOwnershipEarningsMenu(entity,back)));
+ opts.push(choice('💸','تقدير السيولة القابلة للتوزيع','تقدير محافظ بعد الالتزامات واحتياطي ربع مصروفات آخر تقرير؛ لا ينفذ تحويلًا نقديًا.',()=>businessDividendReadinessMenu(entity,back)));
  opts.push(choice('ℹ️','حدود السجل','السجل يحفظ نسب المستفيدين داخل هذه الحياة فقط؛ لا توجد مزامنة مشتركة بين ملفات الورثة أو معاملات تصويت وتوزيع أرباح حتى الآن.',()=>info('ℹ️','حدود الملكية المشتركة','تظهر النسب المحفوظة في ملفك الحالي. لا يتم تحديث ملفات بقية الورثة تلقائيًا، لذلك تظل عمليات البيع والتوزيع المشترك مؤجلة حتى إضافة سجل معاملات موحد.')));
  opts.push(choice('↩️','رجوع','',typeof back==='function'?back:companyPortfolioMenu));
  const detail='حصتك الحالية '+formatBusinessOwnershipPercent(snapshot.activeShareBps)+'% · قيمة حصتك '+cash(snapshot.stakeValue)+' · قيمة النشاط الكاملة التقديرية '+cash(snapshot.wholeValueEstimate)+'.'+(snapshot.legacyFallback?' هذا تقدير آمن لحفظ قديم لم يكن يحتوي دفتر حصص.':'');
