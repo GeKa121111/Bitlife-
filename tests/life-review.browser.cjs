@@ -89,6 +89,7 @@ function createServer() {
       dialog.id = 'deathDialog';
       dialog.className = 'modal';
       dialog.setAttribute('role', 'dialog');
+      dialog.setAttribute('aria-modal', 'false');
       dialog.setAttribute('aria-labelledby', 'originalDeathTitle');
       const originalTitle = document.createElement('h2');
       originalTitle.id = 'originalDeathTitle';
@@ -100,13 +101,38 @@ function createServer() {
       dialog.append(originalTitle, reviewButton);
       document.getElementById('modalRoot').appendChild(dialog);
 
+      reviewButton.focus();
       reviewButton.click();
       const panel = dialog.querySelector('[data-life-review-panel]');
       const title = panel && panel.querySelector('h2');
       const imageCount = panel ? panel.querySelectorAll('img').length : -1;
       const reportText = panel ? panel.textContent : '';
       const closeButton = panel && panel.querySelector('[data-life-review-close]');
+      const doneButton = panel && panel.querySelector('.life-review-done');
+      const initialFocus = document.activeElement === closeButton;
+      const modalDuring = dialog.getAttribute('aria-modal');
+      let shiftWrapped = false;
+      let forwardWrapped = false;
+      if (closeButton && doneButton) {
+        closeButton.focus();
+        const reverseTab = new KeyboardEvent('keydown', { key: 'Tab', shiftKey: true, bubbles: true, cancelable: true });
+        document.dispatchEvent(reverseTab);
+        shiftWrapped = document.activeElement === doneButton && reverseTab.defaultPrevented;
+        doneButton.focus();
+        const forwardTab = new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true });
+        document.dispatchEvent(forwardTab);
+        forwardWrapped = document.activeElement === closeButton && forwardTab.defaultPrevented;
+      }
       if (closeButton) closeButton.click();
+      const focusRestored = document.activeElement === reviewButton;
+      const restoredModal = dialog.getAttribute('aria-modal');
+      const restoredRole = dialog.getAttribute('role');
+      reviewButton.click();
+      const escapeEvent = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true });
+      document.dispatchEvent(escapeEvent);
+      const escapeClosed = !dialog.hasAttribute('data-life-review-open');
+      const escapePrevented = escapeEvent.defaultPrevented;
+      const escapeFocusRestored = document.activeElement === reviewButton;
       return {
         opened: !!panel,
         title: title && title.textContent,
@@ -121,6 +147,16 @@ function createServer() {
         imageCount,
         restored: dialog.contains(reviewButton),
         restoredLabel: dialog.getAttribute('aria-labelledby'),
+        initialFocus,
+        modalDuring,
+        shiftWrapped,
+        forwardWrapped,
+        focusRestored,
+        restoredModal,
+        restoredRole,
+        escapeClosed,
+        escapePrevented,
+        escapeFocusRestored,
         unchanged: localStorage.getItem('hekayat_hayah_save_v1') === before
       };
     });
@@ -138,6 +174,16 @@ function createServer() {
     assert.equal(result.imageCount, 0, 'saved strings must be rendered as text, not executable markup');
     assert.equal(result.restored, true, 'closing the report must restore the original end-of-life summary');
     assert.equal(result.restoredLabel, 'originalDeathTitle');
+    assert.equal(result.initialFocus, true, 'opening the report must move focus into the dialog');
+    assert.equal(result.modalDuring, 'true', 'the report must be announced as a modal dialog');
+    assert.equal(result.shiftWrapped, true, 'Shift+Tab from the first control must wrap to the last');
+    assert.equal(result.forwardWrapped, true, 'Tab from the last control must wrap to the first');
+    assert.equal(result.focusRestored, true, 'closing the report must return focus to its trigger');
+    assert.equal(result.restoredModal, 'false', 'the original aria-modal value must be restored');
+    assert.equal(result.restoredRole, 'dialog', 'the original dialog role must be preserved');
+    assert.equal(result.escapeClosed, true, 'Escape must close the report');
+    assert.equal(result.escapePrevented, true, 'Escape must be consumed by the report');
+    assert.equal(result.escapeFocusRestored, true, 'Escape must restore focus to the trigger');
     assert.equal(result.unchanged, true, 'opening the report must not write to the save');
 
     assert.deepEqual(errors, [], 'life review should not create browser runtime errors');
