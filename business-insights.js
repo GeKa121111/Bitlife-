@@ -177,8 +177,50 @@
     };
   }
 
+  function annualPortfolioSummaries(entries) {
+    const totalsByYear = new Map();
+    entries.forEach(entry => {
+      const history = Array.isArray(entry.entity.financialHistory) ? entry.entity.financialHistory : [];
+      const latestByYear = new Map();
+      history.forEach(report => {
+        if (!isRecord(report)) return;
+        const year = Number(report.year);
+        if (!Number.isInteger(year) || year <= 0 || year > 9999) return;
+        // Match the per-business history rule: the last stored report for a duplicate year wins.
+        latestByYear.set(year, report);
+      });
+      latestByYear.forEach((report, year) => {
+        let annual = totalsByYear.get(year);
+        if (!annual) {
+          annual = { year, reportedCount: 0, totalRevenue: 0, totalProfit: 0 };
+          totalsByYear.set(year, annual);
+        }
+        const revenue = Math.max(0, number(report.revenue, 0));
+        const costs = Math.max(0, number(report.costs, 0));
+        const profit = hasFinite(report, 'profit') ? number(report.profit) : revenue - costs;
+        annual.reportedCount += 1;
+        annual.totalRevenue += revenue;
+        annual.totalProfit += profit;
+      });
+    });
+
+    return Array.from(totalsByYear.values())
+      .sort((a, b) => b.year - a.year)
+      .slice(0, 5)
+      .map(annual => {
+        const missingBusinessCount = Math.max(0, entries.length - annual.reportedCount);
+        return {
+          ...annual,
+          businessCount: entries.length,
+          missingBusinessCount,
+          coverage: entries.length > 0 && missingBusinessCount === 0 ? 'complete' : 'partial'
+        };
+      });
+  }
+
   function analyzeBusinessPortfolio(state) {
-    const items = businessEntries(state).map(entry => analyzeBusiness(entry.entity, entry.title));
+    const entries = businessEntries(state);
+    const items = entries.map(entry => analyzeBusiness(entry.entity, entry.title));
     const reported = items.filter(item => item.hasReport);
     const reportYears = Array.from(new Set(reported
       .map(item => item.year)
@@ -198,6 +240,7 @@
       reportYears,
       unknownReportYearCount,
       hasMixedReportYears: reportYears.length > 1 || unknownReportYearCount > 0,
+      annualSummaries: annualPortfolioSummaries(entries),
       items
     };
   }
@@ -297,6 +340,55 @@
             formatNumber(summary.reportYears[0]) + '.';
         }
         appendText(doc, body, 'p', 'business-insights-period-note', periodMessage);
+      }
+
+      if (summary.annualSummaries.length) {
+        const annualSection = doc.createElement('section');
+        annualSection.className = 'business-insights-annual';
+        appendText(doc, annualSection, 'h3', 'business-insights-annual-title', 'ملخص التقارير حسب السنة');
+        appendText(doc, annualSection, 'p', 'business-insights-annual-intro',
+          'كل سنة تُجمع بشكل مستقل؛ راجع عدد الأنشطة التي أصدرت تقريرًا قبل مقارنة الإجمالي.');
+
+        const annualGrid = doc.createElement('div');
+        annualGrid.className = 'business-insights-annual-grid';
+        summary.annualSummaries.forEach(annual => {
+          const annualCard = doc.createElement('article');
+          annualCard.className = 'business-insights-annual-card';
+          annualCard.dataset.year = String(annual.year);
+          annualCard.dataset.coverage = annual.coverage;
+          annualCard.dataset.reportedCount = String(annual.reportedCount);
+          annualCard.dataset.businessCount = String(annual.businessCount);
+
+          const annualHeader = doc.createElement('div');
+          annualHeader.className = 'business-insights-annual-header';
+          appendText(doc, annualHeader, 'h4', 'business-insights-annual-year',
+            'السنة المالية ' + formatNumber(annual.year));
+          appendText(doc, annualHeader, 'span', 'business-insights-annual-coverage',
+            annual.coverage === 'complete' ? 'تغطية كاملة' : 'تغطية جزئية');
+          annualCard.appendChild(annualHeader);
+
+          appendText(doc, annualCard, 'p', 'business-insights-annual-meta',
+            'تقارير متاحة: ' + formatNumber(annual.reportedCount) + ' من ' +
+            formatNumber(annual.businessCount) + ' نشاط');
+
+          const annualMetrics = doc.createElement('div');
+          annualMetrics.className = 'business-insights-card-metrics';
+          createMetric(doc, annualMetrics, 'الإيرادات المجمعة',
+            formatMoney(annual.totalRevenue, state.place && state.place.unit));
+          createMetric(doc, annualMetrics, 'صافي النتيجة',
+            formatMoney(annual.totalProfit, state.place && state.place.unit),
+            annual.totalProfit < 0 ? 'business-insights-negative' : 'business-insights-metric-value');
+          annualCard.appendChild(annualMetrics);
+
+          if (annual.missingBusinessCount > 0) {
+            appendText(doc, annualCard, 'p', 'business-insights-annual-note',
+              'الإجمالي لا يشمل ' + formatNumber(annual.missingBusinessCount) +
+              ' نشاط دون تقرير لهذه السنة.');
+          }
+          annualGrid.appendChild(annualCard);
+        });
+        annualSection.appendChild(annualGrid);
+        body.appendChild(annualSection);
       }
 
       if (!summary.reportedCount) {
