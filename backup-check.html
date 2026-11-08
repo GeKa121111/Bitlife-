@@ -82,6 +82,7 @@
       border: 0;
     }
     .file-input:focus-visible + .button { outline: 3px solid var(--brand); outline-offset: 3px; }
+    .visually-hidden { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
     .privacy-note { margin: 16px 0 0; color: var(--muted); font-size: 13px; text-align: center; }
     #backupResult { margin-top: 18px; }
     .report-card { padding: 18px; }
@@ -166,9 +167,10 @@
         </div>
       </div>
       <p class="privacy-note" id="privacyNote">لا يتم تعديل الملف أو حفظه في اللعبة. الحد الأقصى لحجم الملف 15 ميجابايت.</p>
-      <div id="backupResult" role="status" aria-live="polite" aria-atomic="true">
+      <div id="backupResult" role="region" aria-label="نتيجة فحص ملف الحفظ" aria-live="off">
         <p class="muted">لم يتم اختيار ملف بعد.</p>
       </div>
+      <p id="backupAnnouncement" class="visually-hidden" role="status" aria-live="polite" aria-atomic="true"></p>
     </section>
 
     <footer>
