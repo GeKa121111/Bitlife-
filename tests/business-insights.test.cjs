@@ -63,7 +63,7 @@ test('السنة المالية صفر أو السالبة أو خارج الن�
   const portfolio = analyzeBusinessPortfolio({ business });
   assert.deepEqual(portfolio.reportYears, [2025, 2026]);
   assert.equal(portfolio.invalidReportYearCount, 3);
-  assert.equal(portfolio.unknownReportYearCount, 3);
+  assert.equal(portfolio.unknownReportYearCount, 0);
   assert.equal(portfolio.annualSummaries[0].year, 2026);
   assert.equal(JSON.stringify(business), before, 'invalid-year filtering must remain read-only');
 });
@@ -91,11 +91,33 @@ test('النشاط الذي لا يملك إلا تقارير بسنة غير ص
   assert.equal(portfolio.reportedCount, 0);
   assert.equal(portfolio.totalRevenue, 0);
   assert.equal(portfolio.invalidReportYearCount, 2);
-  assert.equal(portfolio.unknownReportYearCount, 2);
+  assert.equal(portfolio.unknownReportYearCount, 1);
   assert.equal(portfolio.hasMixedReportYears, true);
   assert.equal(portfolio.items[0].hasReport, false);
   assert.equal(JSON.stringify(state), before, 'invalid-only histories must not be mutated');
 });
+
+test('سجل قديم غير صالح لا يجعل تقارير السنة الموحدة تبدو مختلطة', () => {
+  const summary = analyzeBusinessPortfolio({
+    business: {
+      id: 'current-a',
+      financialHistory: [
+        report({ year: 0, revenue: 999999, profit: 999999 }),
+        report({ year: 2026, revenue: 100000, profit: 20000 })
+      ]
+    },
+    companies: [{
+      id: 'current-b',
+      financialHistory: [report({ year: 2026, revenue: 50000, profit: 10000 })]
+    }]
+  });
+  assert.deepEqual(summary.reportYears, [2026]);
+  assert.equal(summary.invalidReportYearCount, 1);
+  assert.equal(summary.unknownReportYearCount, 0);
+  assert.equal(summary.hasMixedReportYears, false);
+  assert.equal(summary.annualSummaries[0].coverage, 'complete');
+});
+
 
 test('الخسارة والسيولة السالبة والضريبة والمنتج الخاسر تظهر كتوصيات مستقلة', () => {
   const business = {
@@ -453,6 +475,7 @@ test('واجهة المؤشرات تشرح سبب تعذر حساب نسبة ت�
   assert.match(source, /لا توجد سنة مالية متتالية للمقارنة/);
   assert.match(source, /لا يوجد تقرير سابق للمقارنة/);
   assert.match(source, /إجمالي أحدث التقارير يجمع سنوات مالية مختلفة/);
+  assert.match(source, /تم استبعاد .* سجل مالي بسنة غير صالحة من التحليل/);
   assert.match(source, /business-insights-period-note/);
   assert.match(source, /ملخص التقارير حسب السنة/);
   assert.match(source, /business-insights-annual-card/);
