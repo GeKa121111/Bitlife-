@@ -180,6 +180,13 @@
   function analyzeBusinessPortfolio(state) {
     const items = businessEntries(state).map(entry => analyzeBusiness(entry.entity, entry.title));
     const reported = items.filter(item => item.hasReport);
+    const reportYears = Array.from(new Set(reported
+      .map(item => item.year)
+      .filter(year => Number.isInteger(year) && year > 0 && year <= 9999)))
+      .sort((a, b) => a - b);
+    const unknownReportYearCount = reported.filter(item =>
+      !Number.isInteger(item.year) || item.year <= 0 || item.year > 9999
+    ).length;
     return {
       businessCount: items.length,
       reportedCount: reported.length,
@@ -188,6 +195,9 @@
       lossCount: reported.filter(item => item.profit < 0).length,
       taxLiability: reported.reduce((sum, item) => sum + item.taxLiability, 0),
       loanBalance: reported.reduce((sum, item) => sum + item.loanBalance, 0),
+      reportYears,
+      unknownReportYearCount,
+      hasMixedReportYears: reportYears.length > 1 || unknownReportYearCount > 0,
       items
     };
   }
@@ -273,6 +283,21 @@
       createMetric(doc, totals, 'تمويل قائم', formatMoney(summary.loanBalance, state.place && state.place.unit));
       createMetric(doc, totals, 'أنشطة سجلت خسارة', formatNumber(summary.lossCount));
       body.appendChild(totals);
+
+      if (summary.reportedCount) {
+        let periodMessage;
+        if (summary.unknownReportYearCount > 0) {
+          periodMessage = 'بعض التقارير لا تحمل سنة مالية صالحة؛ إجمالي أحدث التقارير لا يمثل فترة موحدة.';
+        } else if (summary.reportYears.length > 1) {
+          periodMessage = 'إجمالي أحدث التقارير يجمع سنوات مالية مختلفة (' +
+            summary.reportYears.map(formatNumber).join('، ') +
+            ')؛ لا تقارنه كإجمالي لسنة واحدة.';
+        } else {
+          periodMessage = 'كل التقارير المالية المتاحة تخص السنة المالية ' +
+            formatNumber(summary.reportYears[0]) + '.';
+        }
+        appendText(doc, body, 'p', 'business-insights-period-note', periodMessage);
+      }
 
       if (!summary.reportedCount) {
         appendText(doc, body, 'p', 'business-insights-empty', 'لم تصدر تقارير مالية للأنشطة بعد. ستظهر المؤشرات بعد إكمال سنة مالية.');
