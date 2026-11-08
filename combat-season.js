@@ -172,6 +172,14 @@
   function updateCommunityCareerRecords(league, standings, season, age, playoffs) {
     const records = new Map((Array.isArray(league.records) ? league.records : [])
       .map(record => [record.id, Object.assign({}, record)]));
+    const activeIds = new Set(standings.map(row => row.id));
+    records.forEach(record => {
+      const lastSeason = boundedInteger(record.lastSeason, 0, 0, 1000000);
+      if (!activeIds.has(record.id) && lastSeason < season) {
+        // A season without participation breaks a consecutive league-title run.
+        record.titleStreak = 0;
+      }
+    });
     standings.forEach(row => {
       const record = records.get(row.id) || {
         id: row.id, name: row.name, seasons: 0, played: 0, wins: 0, draws: 0,
