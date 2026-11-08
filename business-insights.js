@@ -75,6 +75,7 @@
         profit: 0,
         margin: null,
         revenueChangePercent: null,
+        revenueChangeUnavailableReason: 'no-report',
         marketShare: null,
         marketShareChange: null,
         taxLiability: 0,
@@ -96,6 +97,13 @@
     const revenueChangePercent = hasConsecutivePrevious && previousRevenue > 0
       ? (revenue - previousRevenue) / previousRevenue * 100
       : null;
+    const revenueChangeUnavailableReason = !previous
+      ? 'no-previous-report'
+      : !hasConsecutivePrevious
+        ? 'nonconsecutive-year'
+        : previousRevenue <= 0
+          ? 'nonpositive-baseline'
+          : null;
     const marketShare = hasFinite(report, 'marketShare') ? number(report.marketShare) : null;
     const marketShareChange = hasFinite(report, 'marketShareChange') ? number(report.marketShareChange) : null;
     const taxLiability = Math.max(0, number(report.taxLiability, 0));
@@ -159,6 +167,7 @@
       profit,
       margin,
       revenueChangePercent,
+      revenueChangeUnavailableReason,
       marketShare,
       marketShareChange,
       taxLiability,
@@ -286,7 +295,14 @@
           createMetric(doc, metrics, 'الإيرادات', formatMoney(item.revenue, state.place && state.place.unit));
           createMetric(doc, metrics, 'صافي النتيجة', formatMoney(item.profit, state.place && state.place.unit), item.profit < 0 ? 'business-insights-negative' : 'business-insights-metric-value');
           createMetric(doc, metrics, 'هامش الربح', formatPercent(item.margin, false));
-          createMetric(doc, metrics, 'تغير الإيرادات', item.revenueChangePercent === null ? 'لا توجد سنة مالية متتالية للمقارنة' : formatPercent(item.revenueChangePercent, true));
+          const revenueChangeLabel = item.revenueChangePercent !== null
+            ? formatPercent(item.revenueChangePercent, true)
+            : item.revenueChangeUnavailableReason === 'nonpositive-baseline'
+              ? 'إيرادات السنة السابقة غير موجبة؛ لا تُحسب نسبة التغير'
+              : item.revenueChangeUnavailableReason === 'nonconsecutive-year'
+                ? 'لا توجد سنة مالية متتالية للمقارنة'
+                : 'لا يوجد تقرير سابق للمقارنة';
+          createMetric(doc, metrics, 'تغير الإيرادات', revenueChangeLabel);
           card.appendChild(metrics);
         } else {
           appendText(doc, card, 'p', 'business-insights-meta', 'لا يوجد تقرير مالي محفوظ لهذا النشاط.');
