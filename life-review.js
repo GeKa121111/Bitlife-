@@ -66,6 +66,75 @@
     }).slice(-8).reverse();
   }
 
+  function readNonNegativeNumber(value, limit) {
+    if (typeof value !== 'number' && typeof value !== 'string') return 0;
+    if (typeof value === 'string' && !value.trim()) return 0;
+    const parsed = Number(value);
+    if (!Number.isFinite(parsed) || parsed < 0) return 0;
+    return Math.min(parsed, limit === undefined ? 1000000000000 : limit);
+  }
+
+  function formatCount(value) {
+    try {
+      return new Intl.NumberFormat('ar-EG', { maximumFractionDigits: 0 }).format(value);
+    } catch {
+      return String(value);
+    }
+  }
+
+  function collectSpecializedHighlights(state) {
+    if (!isRecord(state)) return [];
+    const highlights = [];
+    const combat = isRecord(state.combatCareer) ? state.combatCareer : null;
+    if (combat) {
+      const wins = Math.floor(readNonNegativeNumber(combat.wins, 1000000));
+      const losses = Math.floor(readNonNegativeNumber(combat.losses, 1000000));
+      const knockouts = Math.floor(readNonNegativeNumber(combat.knockouts, 1000000));
+      const defenses = list(combat.titleDefenseHistory).filter(item => isRecord(item) && item.result === 'defended').length;
+      const parts = [];
+      if (wins + losses > 0) parts.push(formatCount(wins) + ' فوز و' + formatCount(losses) + ' خسارة');
+      if (knockouts > 0) parts.push(formatCount(knockouts) + ' انتصارًا بالضربة القاضية');
+      if (defenses > 0) parts.push(formatCount(defenses) + ' دفاع ناجح عن اللقب');
+      if (combat.champion === true) parts.push('حامل اللقب عند نهاية الرحلة');
+      if (parts.length) highlights.push({ title: 'مسيرة القتال', text: parts.join(' · ') });
+    }
+
+    const studio = isRecord(state.filmStudio) ? state.filmStudio : null;
+    if (studio) {
+      const filmCount = Math.max(Math.floor(readNonNegativeNumber(studio.projects, 1000000)), list(studio.filmography).filter(isRecord).length);
+      const awards = Math.floor(readNonNegativeNumber(studio.awards, 1000000));
+      const boxOffice = readNonNegativeNumber(studio.totalBoxOffice, 1000000000000000);
+      const parts = [];
+      if (filmCount > 0) parts.push(formatCount(filmCount) + ' مشروع سينمائي');
+      if (awards > 0) parts.push(formatCount(awards) + ' جائزة');
+      if (boxOffice > 0) parts.push('إيرادات شباك التذاكر ' + formatMoney(boxOffice, isRecord(state.place) ? state.place.unit : 'ج.م'));
+      if (parts.length) highlights.push({ title: 'استوديو الأفلام', text: parts.join(' · ') });
+    }
+
+    const esports = isRecord(state.esportsCareer) ? state.esportsCareer : null;
+    if (esports) {
+      const tournaments = Math.floor(readNonNegativeNumber(esports.tournaments, 1000000));
+      const wins = Math.floor(readNonNegativeNumber(esports.wins, 1000000));
+      const losses = Math.floor(readNonNegativeNumber(esports.losses, 1000000));
+      if (tournaments + wins + losses > 0) {
+        highlights.push({ title: 'الألعاب الإلكترونية', text: formatCount(tournaments) + ' بطولة · ' + formatCount(wins) + ' فوز · ' + formatCount(losses) + ' خسارة' });
+      }
+    }
+
+    const businesses = [];
+    if (isRecord(state.business)) businesses.push(state.business);
+    list(state.companies).forEach(item => { if (isRecord(item)) businesses.push(item); });
+    const seenBusinesses = new Set();
+    let anonymousIndex = 0;
+    businesses.forEach(item => {
+      const identity = [item.id, item.assetId, item.title, item.name].find(value => (typeof value === 'string' || typeof value === 'number') && String(value).trim());
+      const key = identity === undefined ? 'anonymous-' + anonymousIndex++ : String(identity).trim().toLocaleLowerCase();
+      seenBusinesses.add(key);
+    });
+    if (seenBusinesses.size > 0) highlights.push({ title: 'إدارة الأعمال', text: formatCount(seenBusinesses.size) + ' نشاط تجاري في سجل الملكية' });
+    return highlights;
+  }
+
   function collectMilestones(log) {
     const entries = list(log).filter(entry => isRecord(entry) &&
       typeof entry.title === 'string' && entry.title.trim());
@@ -146,6 +215,7 @@
       partnerName: partner && typeof partner.name === 'string' ? partner.name.slice(0, 80) : '',
       career,
       careerHistory: collectCareerHistory(state),
+      specializedHighlights: collectSpecializedHighlights(state),
       education: String(educationLabel).slice(0, 100),
       accomplishments,
       accomplishmentsCount: list(state.accomplishments).length,
@@ -243,6 +313,9 @@
     personal.appendChild(createElement(doc, 'p', 'life-review-summary-line', 'آخر مسار مهني: ' + summary.career));
     personal.appendChild(createElement(doc, 'p', 'life-review-summary-line', 'التعليم: ' + summary.education));
     appendList(doc, personal, summary.careerHistory, 'لا يوجد سجل مهني سابق محفوظ.');
+
+    const specialized = appendSection(doc, panel, 'بصمة المسارات المتخصصة');
+    appendList(doc, specialized, summary.specializedHighlights, 'لم تُسجل نتائج لمسارات متخصصة في هذه الحياة.');
 
     const relationships = appendSection(doc, panel, 'الأسرة والعلاقات');
     const relationshipItems = [
@@ -385,6 +458,7 @@
     SAVE_KEY,
     summarizeLife,
     collectMilestones,
+    collectSpecializedHighlights,
     formatMoney,
     openReport,
     mount
