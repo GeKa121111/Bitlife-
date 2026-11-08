@@ -275,7 +275,7 @@
         ' — ' + current + ' موسم متتالٍ · أفضل سلسلة: ' + best +
         ' · إجمالي ألقاب الدوري: ' + titles;
     });
-    return 'أطول سلاسل ألقاب الدوري النشطة حاليًا (الأطول أولًا):\\n\\n' + lines.join('\\n');
+    return 'أطول سلاسل ألقاب الدوري النشطة حاليًا (الأطول أولًا):\n\n' + lines.join('\n');
   }
 
   function communitySeasonAwardsSummary(history) {
