@@ -1739,6 +1739,14 @@ function normalizeCoreState(data){
   entity.taxLiability=Math.max(0,Math.min(8000000000,Number.isFinite(taxLiability)?Math.round(taxLiability):0));
   entity.pendingTaxPayments=Math.max(0,Math.min(8000000000,Number.isFinite(pendingTaxPayments)?Math.round(pendingTaxPayments):0));
   entity.financialHistory=entity.financialHistory.filter(report=>report&&typeof report==='object'&&Number.isFinite(Number(report.year))&&Number.isFinite(Number(report.revenue))&&Number.isFinite(Number(report.costs))&&Number.isFinite(Number(report.profit))).slice(-10);
+  if(entity.dividendLedger!==undefined){
+   const normalizedDividends=normalizeBusinessDividendLedger(entity.dividendLedger);
+   if(normalizedDividends.valid){
+    entity.dividendLedger=normalizedDividends.ledger;
+    const pending=normalizedDividends.ledger.entries.reduce((sum,entry)=>sum+entry.pendingAmount,0);
+    if(entity.dividendEscrowBalance===undefined&&pending===0)entity.dividendEscrowBalance=0;
+   }
+  }
   if(!Array.isArray(entity.staff))entity.staff=[];
   entity.staff=entity.staff.filter(employee=>employee&&typeof employee==='object'&&!Array.isArray(employee)).slice(0,5).map((employee,index)=>{
    const role=BUSINESS_STAFF_ROLES.find(item=>item.id===employee.role);
@@ -6772,7 +6780,13 @@ function reinvestCompany(index){
  log('📈','إعادة استثمار في '+company.title,'ارتفع مستوى الشركة إلى '+company.level+' والقيمة التقديرية إلى '+cash(company.value)+'.','good');save();render();companyDetailMenu(index);
 }
 function sellCompany(index){
- closeModal();const company=(state.companies||[])[index];if(!company)return;const ownership=businessOwnershipSnapshot(company,state.lifeId||state.name||state.legacy&&state.legacy.activeBeneficiaryId,state.name);if(!ownership.valid){info('⚠️','سجل الملكية غير متوازن','لم نبع الشركة لأن دفتر الحصص يحتاج مراجعة.');return;}if(ownership.activeShareBps<10000){info('🔒','بيع الحصة المشتركة مؤجل','السجل يوضح أن النشاط مملوك لأكثر من مستفيد، لكن ملفات الورثة لا تتزامن بعد. أوقفنا البيع حتى لا تبقى سجلات الملكية متعارضة.');return;}const grossProceeds=Math.round(company.value*.75),creditBalance=businessCreditBalance(company);
+ closeModal();const company=(state.companies||[])[index];if(!company)return;
+ const ownership=businessOwnershipSnapshot(company,state.lifeId||state.name||state.legacy&&state.legacy.activeBeneficiaryId,state.name);
+ if(!ownership.valid){info('⚠️','سجل الملكية غير متوازن','لم نبع الشركة لأن دفتر الحصص يحتاج مراجعة.');return;}
+ if(ownership.activeShareBps<10000){info('🔒','بيع الحصة المشتركة مؤجل','السجل يوضح أن النشاط مملوك لأكثر من مستفيد، لكن ملفات الورثة لا تتزامن بعد. أوقفنا البيع حتى لا تبقى سجلات الملكية متعارضة.');return;}
+ const pending=businessDividendPendingLiability(company),escrow=businessDividendEscrowBalance(company);
+ if(pending===null||escrow===null||pending>0){info('🔒','بيع الشركة متوقف','توجد مستحقات توزيعات غير مسددة أو حساب حجز يحتاج مراجعة. سوِّ مستحقات الملاك قبل البيع.');return;}
+ const grossProceeds=Math.round(company.value*.75),creditBalance=businessCreditBalance(company);
  const companyCash=businessUsesSeparateTreasury(company)?businessTreasuryBalance(company):0;
  const proceeds=grossProceeds+companyCash-creditBalance;
  if(proceeds<0){info('🏦','تعذر بيع الشركة','صافي حصيلة البيع بعد احتساب خزينة الشركة '+cash(companyCash)+' وتسوية التمويل '+cash(creditBalance)+' سيكون '+cash(proceeds)+'. موّل النشاط أو سدّد جزءًا من الدين أولًا.');return;}
@@ -7131,6 +7145,8 @@ function businessTreasuryMenu(){
  const ownerCash=Math.max(0,Math.round(Number(state.bank)||0));
  const companyCash=businessTreasuryBalance(business);
  const taxLiability=businessTaxLiability(business);
+ const dividendEscrow=businessDividendEscrowBalance(business);
+ const dividendDetail=dividendEscrow===null?' · حساب حجز التوزيعات يحتاج مراجعة':dividendEscrow>0?' · مبالغ محجوزة للملاك '+cash(dividendEscrow):'';
  const opts=[];
  if(!separate){
   const seen=new Set();
@@ -7165,8 +7181,8 @@ function businessTreasuryMenu(){
  }
  opts.push(choice('↩️','رجوع لإدارة النشاط','',businessMenu));
  const detail=separate
-  ?'الخزينة مستقلة. رصيد الشركة '+cash(companyCash)+' · رصيدك الشخصي '+cash(ownerCash)+'. المتأخرات الضريبية '+cash(taxLiability)+'. التحويلات بين المالك والشركة تسجل في التقرير السنوي ولا تختلط بالمبيعات أو الأرباح.'
-  :'هذا حفظ قديم يستخدم الرصيد المشترك للتوافق. القروض القديمة تظل مرتبطة بالنشاط؛ اختر رأس مال افتتاحيًا اختياريًا أو ابدأ بصفر. المتأخرات الضريبية '+cash(taxLiability)+'. بعد الفصل تتحمل الشركة مصروفاتها من رصيدها وحده.';
+  ?'الخزينة التشغيلية مستقلة. رصيد الشركة '+cash(companyCash)+' · رصيدك الشخصي '+cash(ownerCash)+'. المتأخرات الضريبية '+cash(taxLiability)+dividendDetail+'. التحويلات بين المالك والشركة تسجل في التقرير السنوي ولا تختلط بالمبيعات أو الأرباح.'
+  :'هذا حفظ قديم يستخدم الرصيد المشترك للتوافق. القروض القديمة تظل مرتبطة بالنشاط؛ اختر رأس مال افتتاحيًا اختياريًا أو ابدأ بصفر. المتأخرات الضريبية '+cash(taxLiability)+dividendDetail+'. بعد الفصل تتحمل الشركة مصروفاتها من رصيدها وحده.';
  modal('🏦','خزينة النشاط ورأس المال',detail,opts);
 }
 
@@ -7546,6 +7562,8 @@ function sellAsset(index){
    const ownership=businessOwnershipSnapshot(state.business,state.lifeId||state.name||state.legacy&&state.legacy.activeBeneficiaryId,state.name);
    if(!ownership.valid){info('⚠️','سجل الملكية غير متوازن','لم نبع النشاط لأن دفتر الحصص يحتاج مراجعة.');return;}
    if(ownership.activeShareBps<10000){info('🔒','بيع الحصة المشتركة مؤجل','لا توجد مزامنة بين ملفات الورثة لتحديث حصص الجميع؛ أوقفنا البيع حتى لا تتعارض السجلات.');return;}
+   const pending=businessDividendPendingLiability(state.business),escrow=businessDividendEscrowBalance(state.business);
+   if(pending===null||escrow===null||pending>0){info('🔒','بيع النشاط متوقف','توجد مستحقات توزيعات غير مسددة أو حساب حجز يحتاج مراجعة. استلم المستحقات أو سوِّ السجل قبل البيع.');return;}
   }
  }
  const condition=(a.kind==='property'||a.kind==='car'||a.kind==='racecar')?clamp(a.condition??100):null;
@@ -10616,22 +10634,30 @@ function calculateEstateSnapshot(previous){
  const unbackedBusinessValue=businessEntries.reduce((sum,entry)=>sum+(backingAssetFor(entry.entity)?0:valueOf(entry.entity)),0);
  const businessCash=businessEntries.reduce((sum,entry)=>{
   if(!businessUsesSeparateTreasury(entry.entity))return sum;
-  const balance=Number(entry.entity.cashBalance);
-  return sum+(Number.isFinite(balance)?Math.max(0,balance):0);
+  const balance=Number(entry.entity.cashBalance),escrow=Number(entry.entity.dividendEscrowBalance);
+  return sum+(Number.isFinite(balance)?Math.max(0,balance):0)+(Number.isFinite(escrow)?Math.max(0,Math.min(1000000000000,escrow)):0);
  },0);
  const businessOverdraft=businessEntries.reduce((sum,entry)=>{
   if(!businessUsesSeparateTreasury(entry.entity))return sum;
   const balance=Number(entry.entity.cashBalance);
   return sum+(Number.isFinite(balance)?Math.max(0,-balance):0);
  },0);
+ let businessDividendAuditWarnings=0;
  const businessLiabilities=businessEntries.reduce((sum,entry)=>{
-  const tax=Math.max(0,Number(entry.entity.taxLiability)||0);
-  return sum+tax+businessCreditBalance(entry.entity);
+  const tax=Math.max(0,Number(entry.entity.taxLiability)||0),credit=businessCreditBalance(entry.entity);
+  const pending=businessDividendPendingLiability(entry.entity),escrow=businessDividendEscrowBalance(entry.entity);
+  if(pending===null||escrow===null){
+   businessDividendAuditWarnings++;
+   const rawEscrow=Number(entry.entity.dividendEscrowBalance);
+   const heldEscrow=Number.isFinite(rawEscrow)?Math.max(0,Math.min(1000000000000,Math.round(rawEscrow))):0;
+   return sum+tax+credit+Math.max(0,businessTreasuryBalance(entry.entity))+heldEscrow;
+  }
+  return sum+tax+credit+pending;
  },0)+businessOverdraft;
  const gross=bank+assetValue+investmentValue+businessCash+unbackedBusinessValue;
  const personalDebt=Math.max(0,Number(previous&&previous.debt)||0);
  const net=Math.max(0,gross-personalDebt-businessLiabilities);
- return {bank,assets,investments,valueOf,businessEntries,backingAssetFor,businessCash,businessOverdraft,businessLiabilities,gross,personalDebt,net};
+ return {bank,assets,investments,valueOf,businessEntries,backingAssetFor,businessCash,businessOverdraft,businessLiabilities,businessDividendAuditWarnings,gross,personalDebt,net};
 }
 
 function createBusinessOwnershipLedger(activeBeneficiaryId,activeName,age){
@@ -10713,11 +10739,212 @@ function businessOwnershipEarningsSnapshot(entity,fallbackBeneficiaryId,fallback
 }
 
 
+
+function normalizeBusinessDividendLedger(raw){
+ const invalid=issues=>({valid:false,issues,ledger:{version:1,entries:[],auditStatus:'needs_review',auditIssues:issues}});
+ if(raw===undefined||raw===null)return {valid:true,issues:[],ledger:{version:1,entries:[]}};
+ if(!raw||typeof raw!=='object'||Array.isArray(raw)||Number(raw.version)!==1||!Array.isArray(raw.entries)||raw.entries.length>150||raw.auditStatus==='needs_review')return invalid(['dividend_ledger_shape_invalid']);
+ const ids=new Set(),years=new Set(),entries=[];
+ for(const entry of raw.entries){
+  if(!entry||typeof entry!=='object'||Array.isArray(entry))return invalid(['dividend_entry_invalid']);
+  const id=String(entry.id||'').trim().slice(0,160),rawYear=entry.year;
+  const supportedYear=typeof rawYear==='number'||typeof rawYear==='string';
+  const year=Number(rawYear),totalAmount=Number(entry.totalAmount),declaredAtAge=Number(entry.declaredAtAge);
+  if(!id||ids.has(id)||!supportedYear||(typeof rawYear==='string'&&!rawYear.trim())||!Number.isSafeInteger(year)||year<1||year>9999||years.has(year)||!Number.isSafeInteger(totalAmount)||totalAmount<=0||totalAmount>1000000000000||!Number.isSafeInteger(declaredAtAge)||declaredAtAge<0||declaredAtAge>150)return invalid(['dividend_entry_identity_or_amount_invalid']);
+  if(!Array.isArray(entry.allocations)||!entry.allocations.length||entry.allocations.length>100||!Array.isArray(entry.claims)||!entry.claims.length||entry.claims.length>100)return invalid(['dividend_entry_parties_invalid']);
+  const allocationIds=new Set(),allocations=[];
+  for(const item of entry.allocations){
+   if(!item||typeof item!=='object'||Array.isArray(item))return invalid(['dividend_allocation_invalid']);
+   const beneficiaryId=String(item.beneficiaryId||'').trim().slice(0,120),name=String(item.name||'').trim().slice(0,80),shareBps=Number(item.shareBps),amount=Number(item.amount);
+   if(!beneficiaryId||!name||allocationIds.has(beneficiaryId)||!Number.isSafeInteger(shareBps)||shareBps<=0||shareBps>10000||!Number.isSafeInteger(amount)||amount<0||amount>totalAmount)return invalid(['dividend_allocation_invalid']);
+   allocationIds.add(beneficiaryId);allocations.push({beneficiaryId,name,kind:String(item.kind||'beneficiary').slice(0,24),shareBps,amount});
+  }
+  if(allocations.reduce((sum,item)=>sum+item.shareBps,0)!==10000||allocations.reduce((sum,item)=>sum+item.amount,0)!==totalAmount)return invalid(['dividend_allocation_total_mismatch']);
+  const claimIds=new Set(),claims=[];
+  for(const item of entry.claims){
+   if(!item||typeof item!=='object'||Array.isArray(item))return invalid(['dividend_claim_invalid']);
+   const beneficiaryId=String(item.beneficiaryId||'').trim().slice(0,120),name=String(item.name||'').trim().slice(0,80),amount=Number(item.amount),paidAmount=Number(item.paidAmount);
+   if(!beneficiaryId||!name||claimIds.has(beneficiaryId)||!Number.isSafeInteger(amount)||amount<0||amount>totalAmount||!Number.isSafeInteger(paidAmount)||paidAmount<0||paidAmount>amount)return invalid(['dividend_claim_invalid']);
+   claimIds.add(beneficiaryId);
+   const paidAtAge=item.paidAtAge===undefined||item.paidAtAge===null?null:Number(item.paidAtAge);
+   if(paidAtAge!==null&&(!Number.isSafeInteger(paidAtAge)||paidAtAge<0||paidAtAge>150))return invalid(['dividend_claim_age_invalid']);
+   claims.push({beneficiaryId,name,amount,paidAmount,paidAtAge,inheritedFrom:typeof item.inheritedFrom==='string'?item.inheritedFrom.slice(0,120):''});
+  }
+  const claimedTotal=claims.reduce((sum,item)=>sum+item.amount,0),paidAmount=claims.reduce((sum,item)=>sum+item.paidAmount,0);
+  if(claimedTotal!==totalAmount||paidAmount>totalAmount)return invalid(['dividend_claim_total_mismatch']);
+  const pendingAmount=totalAmount-paidAmount;
+  ids.add(id);years.add(year);
+  entries.push({id,year,declaredAtAge,createdBy:String(entry.createdBy||'').slice(0,120),totalAmount,paidAmount,pendingAmount,status:pendingAmount>0?'pending':'paid',allocations,claims});
+ }
+ return {valid:true,issues:[],ledger:{version:1,entries}};
+}
+
+function businessDividendPendingLiability(entity){
+ const normalized=normalizeBusinessDividendLedger(entity&&entity.dividendLedger);
+ if(!normalized.valid)return null;
+ return Math.min(1000000000000,normalized.ledger.entries.reduce((sum,entry)=>sum+entry.pendingAmount,0));
+}
+
+function businessDividendEscrowBalance(entity){
+ const pending=businessDividendPendingLiability(entity);
+ if(pending===null)return null;
+ const raw=entity&&entity.dividendEscrowBalance;
+ if(raw===undefined||raw===null)return pending===0?0:null;
+ if((typeof raw!=='number'&&typeof raw!=='string')||(typeof raw==='string'&&!raw.trim()))return null;
+ const amount=Number(raw);
+ if(!Number.isSafeInteger(amount)||amount<0||amount>1000000000000||amount!==pending)return null;
+ return amount;
+}
+
+function allocateBusinessDividendShares(amount,shareholders){
+ const total=Number(amount);
+ if(!Number.isSafeInteger(total)||total<0||total>1000000000000||!Array.isArray(shareholders)||!shareholders.length||shareholders.length>100)return null;
+ const ids=new Set(),parts=[];
+ for(const item of shareholders){
+  const beneficiaryId=String(item&&item.beneficiaryId||'').trim(),shareBps=Number(item&&item.shareBps);
+  if(!beneficiaryId||ids.has(beneficiaryId)||!Number.isSafeInteger(shareBps)||shareBps<=0||shareBps>10000)return null;
+  ids.add(beneficiaryId);
+  const numerator=BigInt(total)*BigInt(shareBps),base=Number(numerator/10000n),remainder=Number(numerator%10000n);
+  parts.push({beneficiaryId,name:String(item.name||'مستفيد').slice(0,80),kind:String(item.kind||'beneficiary').slice(0,24),shareBps,amount:base,remainder});
+ }
+ if(parts.reduce((sum,item)=>sum+item.shareBps,0)!==10000)return null;
+ let remaining=total-parts.reduce((sum,item)=>sum+item.amount,0);
+ const order=parts.slice().sort((a,b)=>b.remainder-a.remainder||String(a.beneficiaryId).localeCompare(String(b.beneficiaryId)));
+ for(let index=0;remaining>0&&index<order.length;index++,remaining--)order[index].amount++;
+ if(remaining!==0)return null;
+ return parts.map(({remainder,...item})=>item);
+}
+
+function businessDividendClaimableSnapshot(entity,beneficiaryId){
+ const normalized=normalizeBusinessDividendLedger(entity&&entity.dividendLedger);
+ if(!normalized.valid)return {valid:false,amount:0,entryCount:0,issues:normalized.issues};
+ const id=String(beneficiaryId||'').trim();
+ let amount=0,entryCount=0;
+ normalized.ledger.entries.forEach(entry=>{
+  const claim=entry.claims.find(item=>item.beneficiaryId===id);
+  const pending=claim?Math.max(0,claim.amount-claim.paidAmount):0;
+  if(pending>0){amount=Math.min(1000000000000,amount+pending);entryCount++;}
+ });
+ return {valid:true,amount,entryCount};
+}
+
+function applyBusinessDividendDistribution(entity,snapshot,ratio,currentOwnerId,age,personalBalance){
+ if(!entity||!snapshot||snapshot.valid!==true||snapshot.ready!==true)return {ok:false,reason:snapshot&&snapshot.reason||'not-ready'};
+ const normalized=normalizeBusinessDividendLedger(entity.dividendLedger);
+ if(!normalized.valid)return {ok:false,reason:'invalid-dividend-ledger'};
+ const escrow=businessDividendEscrowBalance(entity);
+ if(escrow===null)return {ok:false,reason:'invalid-dividend-escrow'};
+ const year=Number(snapshot.year),activeId=String(currentOwnerId||'').trim(),allowed=[.1,.25,.5,1],selected=Number(ratio);
+ if(!Number.isSafeInteger(year)||year<1||year>9999||!allowed.includes(selected)||!activeId||activeId!==String(snapshot.activeBeneficiaryId||''))return {ok:false,reason:'invalid-distribution-request'};
+ if(normalized.ledger.entries.some(entry=>entry.year===year))return {ok:false,reason:'already-distributed'};
+ if(normalized.ledger.entries.length>=150)return {ok:false,reason:'ledger-capacity'};
+ const distributable=Number(snapshot.distributable);
+ if(!Number.isSafeInteger(distributable)||distributable<=0||distributable>1000000000000)return {ok:false,reason:'no-distributable-cash'};
+ const amount=selected===1?distributable:Math.floor(distributable*selected);
+ if(amount<=0)return {ok:false,reason:'no-distributable-cash'};
+ const rawCash=entity.cashBalance;
+ if((typeof rawCash!=='number'&&typeof rawCash!=='string')||(typeof rawCash==='string'&&!rawCash.trim())||!Number.isFinite(Number(rawCash)))return {ok:false,reason:'invalid-treasury'};
+ const cashBalance=Math.round(Number(rawCash));
+ if(cashBalance<amount)return {ok:false,reason:'insufficient-treasury'};
+ const bank=Number(personalBalance);
+ if(!Number.isFinite(bank))return {ok:false,reason:'invalid-personal-balance'};
+ const allocations=allocateBusinessDividendShares(amount,snapshot.shareholders);
+ if(!allocations)return {ok:false,reason:'invalid-ownership'};
+ const active=allocations.find(item=>item.beneficiaryId===activeId);
+ if(!active)return {ok:false,reason:'active-owner-missing'};
+ const pendingAmount=amount-active.amount,newBank=Math.round(bank)+active.amount,newEscrow=escrow+pendingAmount;
+ if(newBank>1000000000000||newBank< -1000000000000||newEscrow>1000000000000)return {ok:false,reason:'balance-limit'};
+ const claims=allocations.map(item=>({beneficiaryId:item.beneficiaryId,name:item.name,amount:item.amount,paidAmount:item.beneficiaryId===activeId?item.amount:0,paidAtAge:item.beneficiaryId===activeId?Math.max(0,Math.min(150,Math.floor(Number(age)||0))):null,inheritedFrom:''}));
+ const entry={id:'dividend-'+year,year,declaredAtAge:Math.max(0,Math.min(150,Math.floor(Number(age)||0))),createdBy:activeId,totalAmount:amount,allocations,claims};
+ const nextLedger=normalizeBusinessDividendLedger({version:1,entries:[...normalized.ledger.entries,entry]});
+ if(!nextLedger.valid)return {ok:false,reason:'invalid-dividend-ledger'};
+ return {ok:true,year,amount,ownerAmount:active.amount,pendingAmount,cashBalanceAfter:cashBalance-amount,escrowBalanceAfter:newEscrow,personalBalanceAfter:newBank,ledger:nextLedger.ledger,entry:nextLedger.ledger.entries[nextLedger.ledger.entries.length-1]};
+}
+
+function applyBusinessDividendClaims(entity,activeOwnerId,age,personalBalance){
+ const normalized=normalizeBusinessDividendLedger(entity&&entity.dividendLedger);
+ if(!normalized.valid)return {ok:false,reason:'invalid-dividend-ledger'};
+ const escrow=businessDividendEscrowBalance(entity);
+ if(escrow===null)return {ok:false,reason:'invalid-dividend-escrow'};
+ const id=String(activeOwnerId||'').trim();
+ if(!id)return {ok:false,reason:'active-owner-missing'};
+ const amount=normalized.ledger.entries.reduce((sum,entry)=>{
+  const claim=entry.claims.find(item=>item.beneficiaryId===id);
+  return sum+(claim?Math.max(0,claim.amount-claim.paidAmount):0);
+ },0);
+ if(amount<=0)return {ok:false,reason:'no-pending-claims'};
+ if(amount>escrow)return {ok:false,reason:'escrow-insufficient'};
+ const bank=Number(personalBalance);
+ if(!Number.isFinite(bank))return {ok:false,reason:'invalid-personal-balance'};
+ const newBank=Math.round(bank)+amount;
+ if(newBank>1000000000000||newBank< -1000000000000)return {ok:false,reason:'balance-limit'};
+ const paidAtAge=Math.max(0,Math.min(150,Math.floor(Number(age)||0)));
+ const entries=normalized.ledger.entries.map(entry=>({...entry,claims:entry.claims.map(claim=>claim.beneficiaryId===id&&claim.amount>claim.paidAmount?{...claim,paidAmount:claim.amount,paidAtAge}:claim)}));
+ const nextLedger=normalizeBusinessDividendLedger({version:1,entries});
+ if(!nextLedger.valid)return {ok:false,reason:'invalid-dividend-ledger'};
+ return {ok:true,amount,entryCount:nextLedger.ledger.entries.filter(entry=>entry.claims.some(claim=>claim.beneficiaryId===id&&claim.paidAmount===claim.amount&&claim.amount>0)).length,escrowBalanceAfter:escrow-amount,personalBalanceAfter:newBank,ledger:nextLedger.ledger};
+}
+
+function inheritBusinessDividendClaims(rawLedger,previousOwnerId,beneficiaryAccounts){
+ const normalized=normalizeBusinessDividendLedger(rawLedger);
+ if(!normalized.valid)return {valid:false,reason:'invalid-dividend-ledger',ledger:rawLedger};
+ const ownerId=String(previousOwnerId||'').trim();
+ if(!ownerId)return {valid:false,reason:'previous-owner-missing',ledger:normalized.ledger};
+ const hasPending=normalized.ledger.entries.some(entry=>entry.claims.some(claim=>claim.beneficiaryId===ownerId&&claim.amount>claim.paidAmount));
+ if(!hasPending)return {valid:true,ledger:normalized.ledger,transferredAmount:0};
+ const rawAccounts=Array.isArray(beneficiaryAccounts)?beneficiaryAccounts:(beneficiaryAccounts&&Array.isArray(beneficiaryAccounts.accounts)?beneficiaryAccounts.accounts:[]);
+ if(!rawAccounts.length||rawAccounts.length>100)return {valid:false,reason:'beneficiaries-missing',ledger:normalized.ledger};
+ const seen=new Set(),parts=[];
+ let shareTotal=0;
+ for(let index=0;index<rawAccounts.length;index++){
+  const account=rawAccounts[index],beneficiaryId=String(account&&account.beneficiaryId||'').trim().slice(0,120),name=String(account&&account.name||'').trim().slice(0,80),share=Number(account&&account.share);
+  if(!beneficiaryId||!name||seen.has(beneficiaryId)||!Number.isFinite(share)||share<=0||share>1)return {valid:false,reason:'beneficiary-entry-invalid',ledger:normalized.ledger};
+  seen.add(beneficiaryId);shareTotal+=share;
+  const rawBps=share*10000,base=Math.floor(rawBps);
+  parts.push({beneficiaryId,name,kind:String(account.kind||'beneficiary').slice(0,24),shareBps:base,fraction:rawBps-base});
+ }
+ if(Math.abs(shareTotal-1)>.00001)return {valid:false,reason:'beneficiary-shares-not-balanced',ledger:normalized.ledger};
+ let bpsRemainder=10000-parts.reduce((sum,item)=>sum+item.shareBps,0);
+ const bpsOrder=parts.slice().sort((a,b)=>b.fraction-a.fraction||a.beneficiaryId.localeCompare(b.beneficiaryId));
+ for(let index=0;bpsRemainder>0&&index<bpsOrder.length;index++,bpsRemainder--)bpsOrder[index].shareBps++;
+ if(bpsRemainder!==0)return {valid:false,reason:'beneficiary-share-rounding-invalid',ledger:normalized.ledger};
+ const beneficiaries=parts.filter(item=>item.shareBps>0);
+ if(!beneficiaries.length||beneficiaries.reduce((sum,item)=>sum+item.shareBps,0)!==10000)return {valid:false,reason:'beneficiary-shares-invalid',ledger:normalized.ledger};
+ let transferredAmount=0;
+ const entries=normalized.ledger.entries.map(entry=>{
+  const claims=entry.claims.map(item=>({...item}));
+  const oldIndex=claims.findIndex(item=>item.beneficiaryId===ownerId);
+  if(oldIndex<0)return {...entry,claims};
+  const old=claims[oldIndex],pending=old.amount-old.paidAmount;
+  if(pending<=0)return {...entry,claims};
+  const allocations=allocateBusinessDividendShares(pending,beneficiaries);
+  if(!allocations)return {...entry,claims};
+  transferredAmount+=pending;
+  if(old.paidAmount>0)claims[oldIndex]={...old,amount:old.paidAmount};
+  else claims.splice(oldIndex,1);
+  allocations.forEach(part=>{
+   if(part.amount<=0)return;
+   const existing=claims.find(item=>item.beneficiaryId===part.beneficiaryId);
+   if(existing){existing.amount+=part.amount;existing.inheritedFrom=existing.inheritedFrom||ownerId;}
+   else claims.push({beneficiaryId:part.beneficiaryId,name:part.name,amount:part.amount,paidAmount:0,paidAtAge:null,inheritedFrom:ownerId});
+  });
+  return {...entry,claims};
+ });
+ const nextLedger=normalizeBusinessDividendLedger({version:1,entries});
+ if(!nextLedger.valid)return {valid:false,reason:'inherited-claims-invalid',ledger:normalized.ledger};
+ return {valid:true,ledger:nextLedger.ledger,transferredAmount};
+}
+
+
 function businessDividendReadinessSnapshot(entity,fallbackBeneficiaryId,fallbackName){
  const ownership=businessOwnershipSnapshot(entity,fallbackBeneficiaryId,fallbackName);
- const empty={valid:ownership.valid,ready:false,reason:null,year:null,cashBalance:0,availableCash:0,annualCosts:0,taxLiability:0,creditBalance:0,liabilities:0,reserve:0,distributable:0,activeBeneficiaryId:ownership.activeBeneficiaryId||null,activeShareAmount:0,invalidReportYearCount:0,shareholders:[]};
+ const empty={valid:ownership.valid,ready:false,reason:null,year:null,cashBalance:0,availableCash:0,annualCosts:0,taxLiability:0,creditBalance:0,liabilities:0,reserve:0,distributable:0,dividendPayables:0,dividendEscrowBalance:0,activeBeneficiaryId:ownership.activeBeneficiaryId||null,activeShareAmount:0,invalidReportYearCount:0,shareholders:[]};
  if(!ownership.valid)return {...empty,valid:false,reason:'invalid-ownership'};
  if(!businessUsesSeparateTreasury(entity))return {...empty,reason:'shared-treasury'};
+ const dividendLedger=normalizeBusinessDividendLedger(entity&&entity.dividendLedger);
+ const dividendPayables=dividendLedger.valid?dividendLedger.ledger.entries.reduce((sum,entry)=>sum+entry.pendingAmount,0):null;
+ const dividendEscrow=businessDividendEscrowBalance(entity);
+ if(!dividendLedger.valid||dividendPayables===null||dividendEscrow===null)return {...empty,reason:'invalid-dividend-ledger'};
  const rawCashValue=entity&&entity.cashBalance;
  const supportedCashType=typeof rawCashValue==='number'||typeof rawCashValue==='string';
  const nonEmptyCashString=typeof rawCashValue!=='string'||rawCashValue.trim().length>0;
@@ -10748,16 +10975,11 @@ function businessDividendReadinessSnapshot(entity,fallbackBeneficiaryId,fallback
  const liabilities=Math.min(1000000000000,taxLiability+creditBalance);
  const reserve=Math.min(availableCash,Math.ceil(annualCosts/4));
  const distributable=Math.max(0,Math.min(1000000000000,availableCash-liabilities-reserve));
- const parts=ownership.shareholders.map((item,index)=>{
-  const rawAmount=distributable*item.shareBps/10000,amount=Math.floor(rawAmount);
-  return {...item,amount,fraction:rawAmount-amount,index};
- });
- let remainder=distributable-parts.reduce((sum,item)=>sum+item.amount,0);
- const remainderOrder=parts.slice().sort((a,b)=>b.fraction-a.fraction||a.index-b.index);
- for(let index=0;remainder>0&&remainderOrder.length;index++,remainder--)remainderOrder[index%remainderOrder.length].amount++;
- const shareholders=parts.map(({amount,fraction,index,...item})=>({...item,potentialAmount:amount}));
+ const allocations=allocateBusinessDividendShares(distributable,ownership.shareholders);
+ if(!allocations)return {...empty,reason:'invalid-ownership'};
+ const shareholders=allocations.map(item=>({...ownership.shareholders.find(owner=>owner.beneficiaryId===item.beneficiaryId),potentialAmount:item.amount}));
  const active=shareholders.find(item=>item.beneficiaryId===ownership.activeBeneficiaryId);
- return {valid:true,ready:true,reason:distributable>0?null:'no-distributable-cash',year:latestYear,cashBalance,availableCash,annualCosts,taxLiability,creditBalance,liabilities,reserve,distributable,activeBeneficiaryId:ownership.activeBeneficiaryId,activeShareAmount:active?active.potentialAmount:0,invalidReportYearCount,shareholders};
+ return {valid:true,ready:true,reason:distributable>0?null:'no-distributable-cash',year:latestYear,cashBalance,availableCash,annualCosts,taxLiability,creditBalance,liabilities,reserve,distributable,dividendPayables,dividendEscrowBalance:dividendEscrow,activeBeneficiaryId:ownership.activeBeneficiaryId,activeShareAmount:active?active.potentialAmount:0,invalidReportYearCount,shareholders};
 }
 
 function buildInheritedBusinessOwnershipLedger(entity,beneficiaryAccounts,nextActiveBeneficiaryId,fallbackActiveBeneficiaryId,fallbackName,age){
@@ -10801,6 +11023,10 @@ function applyInheritedBusinessOwnership(previous,inheritance,beneficiaryAccount
   if(!inherited)return;
   const fallbackId=entry.entity&&entry.entity.ownershipLedger&&entry.entity.ownershipLedger.activeBeneficiaryId||previous.lifeId||previous.name||previous.legacy&&previous.legacy.activeBeneficiaryId;
   inherited.ownershipLedger=buildInheritedBusinessOwnershipLedger(entry.entity,beneficiaryAccounts,nextActiveBeneficiaryId,fallbackId,previous.name,previous.age);
+  if(entry.entity.dividendLedger!==undefined&&inherited.ownershipLedger.auditStatus!=='needs_review'){
+   const claimTransfer=inheritBusinessDividendClaims(entry.entity.dividendLedger,fallbackId,beneficiaryAccounts);
+   if(claimTransfer.valid)inherited.dividendLedger=claimTransfer.ledger;
+  }
  });
  return true;
 }
@@ -10841,20 +11067,24 @@ function businessDividendReadinessMenu(entity,back){
  }
  if(!snapshot.ready){
   let message='لا تتوفر بيانات كافية لتقدير السيولة القابلة للتوزيع.';
-  if(snapshot.reason==='shared-treasury')message='هذا النشاط يستخدم الرصيد المشترك مع المالك. لا يمكن تقدير توزيعات الشركة من رصيدك الشخصي؛ افصل خزينة النشاط أولًا.';
+  if(snapshot.reason==='shared-treasury')message='هذا النشاط يستخدم الرصيد المشترك مع المالك. افصل خزينة النشاط أولًا.';
   else if(snapshot.reason==='invalid-treasury')message='رصيد خزينة النشاط غير صالح رقميًا؛ راجع سجل الخزينة قبل أي قرار مالي.';
   else if(snapshot.reason==='invalid-report-year')message='لا يوجد تقرير بسنة صالحة. تم تجاهل '+snapshot.invalidReportYearCount+' سجل مالي بسنة غير صالحة.';
   else if(snapshot.reason==='invalid-financial-result')message='أحدث تقرير بسنة صالحة لا يحتوي مصروفات يمكن الاعتماد عليها لتقدير احتياطي السيولة.';
+  else if(snapshot.reason==='invalid-dividend-ledger')message='دفتر التوزيعات أو حساب الحجز لا يتطابق؛ أوقفنا أي حركة مالية حتى مراجعة السجل.';
   else if(snapshot.reason==='no-valid-report')message='لا يوجد تقرير مالي صالح لهذا النشاط حتى الآن.';
   modal('💸','تقدير سيولة التوزيعات',message,[choice('↩️','رجوع لسجل الملكية','',returnToOwnership)]);
   return;
  }
  const lines=snapshot.shareholders.slice(0,12).map(item=>item.name+' · '+formatBusinessOwnershipPercent(item.shareBps)+'% · حصة تقديرية '+cash(item.potentialAmount));
  const hiddenCount=Math.max(0,snapshot.shareholders.length-lines.length);
- const status=snapshot.distributable>0?'السيولة التقديرية بعد الالتزامات والاحتياطي '+cash(snapshot.distributable):'لا توجد سيولة تقديرية قابلة للتوزيع حاليًا.';
+ const status=snapshot.distributable>0?'السيولة التشغيلية المتاحة بعد الالتزامات والاحتياطي '+cash(snapshot.distributable):'لا توجد سيولة تشغيلية قابلة للتوزيع حاليًا.';
  const invalidNote=snapshot.invalidReportYearCount>0?'\nتم تجاهل '+snapshot.invalidReportYearCount+' سجل مالي بسنة غير صالحة.':'';
- const detail='السنة المرجعية '+snapshot.year+'\nرصيد الخزينة '+cash(snapshot.cashBalance)+'\nالضرائب المستحقة '+cash(snapshot.taxLiability)+' · التمويل التجاري وفوائده '+cash(snapshot.creditBalance)+'\nاحتياطي تحفظي (25% من مصروفات آخر تقرير) '+cash(snapshot.reserve)+'\n\n'+status+'\n\n'+lines.join('\n')+(hiddenCount?'\nوملاك إضافيون: '+hiddenCount:'')+invalidNote+'\n\nهذا تقدير تخطيطي للقراءة فقط؛ لا يسجل قرار توزيع ولا يخصم من الخزينة أو يضيف أموالًا إلى أرصدة الملاك.';
- modal('💸','تقدير السيولة القابلة للتوزيع',detail,[choice('↩️','رجوع لسجل الملكية','',returnToOwnership)]);
+ const detail='السنة المرجعية '+snapshot.year+'\nالخزينة التشغيلية '+cash(snapshot.cashBalance)+'\nالمبالغ المحجوزة للملاك '+cash(snapshot.dividendEscrowBalance)+' · المستحقات غير المسددة '+cash(snapshot.dividendPayables)+'\nالضرائب المستحقة '+cash(snapshot.taxLiability)+' · التمويل التجاري وفوائده '+cash(snapshot.creditBalance)+'\nاحتياطي تحفظي (25% من مصروفات آخر تقرير) '+cash(snapshot.reserve)+'\n\n'+status+'\n\n'+lines.join('\n')+(hiddenCount?'\nوملاك إضافيون: '+hiddenCount:'')+invalidNote+'\n\nالتقدير للقراءة فقط؛ التوزيع المعتمد يحجز حصص بقية الملاك في حساب منفصل عن الخزينة التشغيلية.';
+ const opts=[];
+ if(snapshot.distributable>0)opts.push(choice('🧾','اختيار نسبة التوزيع','اعتمد توزيعًا واحدًا للسنة المالية المرجعية.',()=>businessDividendDistributionMenu(entity,back)));
+ opts.push(choice('↩️','رجوع لسجل الملكية','',returnToOwnership));
+ modal('💸','تقدير السيولة القابلة للتوزيع',detail,opts);
 }
 
 function businessOwnershipMenu(entity,back){
@@ -10868,10 +11098,21 @@ function businessOwnershipMenu(entity,back){
  const hiddenShareholderCount=snapshot.shareholders.length-visibleShareholders.length;
  if(hiddenShareholderCount>0)opts.push(choice('👥','ملاك إضافيون ('+hiddenShareholderCount+')','يوجد ملاك آخرون محفوظون في الدفتر. افتح السجل الكامل من ملف الحفظ عند الحاجة.',()=>info('👥','بقية الملاك','يوجد '+hiddenShareholderCount+' مستفيدًا إضافيًا محفوظًا ضمن سجل الملكية.')));
  opts.push(choice('📊','كشف نتيجة السنة حسب الملكية','اعرض نصيب كل مالك حسابيًا من أحدث نتيجة مالية دون تحويل أموال.',()=>businessOwnershipEarningsMenu(entity,back)));
- opts.push(choice('💸','تقدير السيولة القابلة للتوزيع','تقدير محافظ بعد الالتزامات واحتياطي ربع مصروفات آخر تقرير؛ لا ينفذ تحويلًا نقديًا.',()=>businessDividendReadinessMenu(entity,back)));
- opts.push(choice('ℹ️','حدود السجل','السجل يحفظ نسب المستفيدين داخل هذه الحياة فقط؛ لا توجد مزامنة مشتركة بين ملفات الورثة أو معاملات تصويت وتوزيع أرباح حتى الآن.',()=>info('ℹ️','حدود الملكية المشتركة','تظهر النسب المحفوظة في ملفك الحالي. لا يتم تحديث ملفات بقية الورثة تلقائيًا، لذلك تظل عمليات البيع والتوزيع المشترك مؤجلة حتى إضافة سجل معاملات موحد.')));
+ opts.push(choice('💸','تقدير السيولة القابلة للتوزيع','اعرض الخزينة التشغيلية والمبالغ المحجوزة قبل اعتماد أي حركة.',()=>businessDividendReadinessMenu(entity,back)));
+ const dividendLedgerState=normalizeBusinessDividendLedger(entity&&entity.dividendLedger);
+ const dividendEscrow=businessDividendEscrowBalance(entity);
+ const pendingLiability=businessDividendPendingLiability(entity);
+ if(!dividendLedgerState.valid||dividendEscrow===null||pendingLiability===null){
+  opts.push(choice('⚠️','دفتر التوزيعات يحتاج مراجعة','أوقفنا اعتماد التوزيع أو الاستلام أو البيع حتى مراجعة الحجز والمستحقات.',()=>info('⚠️','دفتر التوزيعات يحتاج مراجعة','لا يتطابق سجل المستحقات مع رصيد الحجز. لم نغيّر أي رصيد أو حصة.')));
+ }else{
+  const claimable=businessDividendClaimableSnapshot(entity,activeId);
+  if(claimable.valid&&claimable.amount>0)opts.push(choice('💰','استلام مستحقاتك '+cash(claimable.amount),'تحويل مستحقاتك من حساب التوزيعات المحجوز إلى رصيدك الشخصي.',()=>claimBusinessDividendPayments(entity,back),cash(claimable.amount)));
+  opts.push(choice('🧾','اعتماد توزيع أرباح سنوي','توزيع واحد لكل سنة؛ نصيبك يُصرف فورًا وحصص بقية الملاك تُحجز منفصلًا.',()=>businessDividendDistributionMenu(entity,back)));
+ }
+ opts.push(choice('ℹ️','حدود السجل','دفتر التوزيعات محفوظ داخل ملف الشركة الحالي. لا توجد مزامنة تلقائية بين ملفات مستقلة للورثة أو أجهزة مختلفة.',()=>info('ℹ️','حدود الملكية المشتركة','تُحفظ مستحقات الملاك في حساب حجز داخل الشركة، وتنتقل مطالبة المالك النشط إلى ورثته عند نجاح نقل الملكية. لا تتم مزامنة ملفات حياة منفصلة تلقائيًا.')));
  opts.push(choice('↩️','رجوع','',typeof back==='function'?back:companyPortfolioMenu));
- const detail='حصتك الحالية '+formatBusinessOwnershipPercent(snapshot.activeShareBps)+'% · قيمة حصتك '+cash(snapshot.stakeValue)+' · قيمة النشاط الكاملة التقديرية '+cash(snapshot.wholeValueEstimate)+'.'+(snapshot.legacyFallback?' هذا تقدير آمن لحفظ قديم لم يكن يحتوي دفتر حصص.':'');
+ const pendingText=pendingLiability===null?' · مستحقات تحتاج مراجعة':' · مستحقات معلقة '+cash(pendingLiability)+' · حجز '+cash(dividendEscrow);
+ const detail='حصتك الحالية '+formatBusinessOwnershipPercent(snapshot.activeShareBps)+'% · قيمة حصتك '+cash(snapshot.stakeValue)+' · قيمة النشاط الكاملة التقديرية '+cash(snapshot.wholeValueEstimate)+pendingText+'.'+(snapshot.legacyFallback?' هذا تقدير آمن لحفظ قديم لم يكن يحتوي دفتر حصص.':'');
  modal('📑','سجل ملكية '+String(entity&&entity.title||'النشاط'),detail,opts);
 }
 
