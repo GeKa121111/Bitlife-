@@ -501,6 +501,12 @@
           event.preventDefault();
           event.stopPropagation();
           last.focus();
+        } else if (!event.shiftKey && active === initialFocusTarget) {
+          // A programmatically focused heading is outside the normal Tab order;
+          // move explicitly to the first control instead of relying on browser defaults.
+          event.preventDefault();
+          event.stopPropagation();
+          first.focus();
         } else if (!event.shiftKey && (active === last || !dialog.contains(active))) {
           event.preventDefault();
           event.stopPropagation();
