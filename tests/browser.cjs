@@ -3178,6 +3178,12 @@ async function run() {
       saved.business.title = 'شركة مؤشرات الاختبار';
       saved.business.id = 'primary-insights-test';
       saved.business.financialHistory = [{
+        year: 2025,
+        revenue: 100000,
+        costs: 70000,
+        profit: 30000,
+        margin: 30
+      }, {
         year: 2026,
         revenue: 90000,
         costs: 120000,
@@ -3213,6 +3219,18 @@ async function run() {
     assert.ok(businessInsightsText.includes('خزينة النشاط سالبة'));
     assert.ok(businessInsightsText.includes('التزامات ضريبية'));
     assert.ok(businessInsightsText.includes('سنوات مالية مختلفة'));
+    const annualCoverage = await page.locator('.business-insights-annual-card').evaluateAll(cards =>
+      cards.map(card => ({
+        year: card.dataset.year,
+        coverage: card.dataset.coverage,
+        reportedCount: card.dataset.reportedCount,
+        businessCount: card.dataset.businessCount
+      }))
+    );
+    assert.deepEqual(annualCoverage, [
+      { year: '2026', coverage: 'partial', reportedCount: '1', businessCount: '2' },
+      { year: '2025', coverage: 'complete', reportedCount: '2', businessCount: '2' }
+    ], 'the annual view should separate years and disclose each year\'s report coverage');
     const formattedReportYears = [2025, 2026].map(year =>
       new Intl.NumberFormat('ar-EG', { maximumFractionDigits: 0 }).format(year));
     formattedReportYears.forEach(year =>
