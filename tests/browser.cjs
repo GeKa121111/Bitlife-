@@ -2140,10 +2140,42 @@ async function run() {
       saved.bank = 500000;
       saved.debt = 0;
       saved.business = null;
-      saved.companies = [{ id, assetId: id, title: 'شركة محفظة اختبار', sector: 'تقنية', value: 160000, level: 1, upkeep: 4000, bought: 30, emoji: '💻' }];
+      saved.companies = [{
+        id, assetId: id, title: 'شركة محفظة اختبار', sector: 'تقنية', value: 160000, level: 1,
+        upkeep: 4000, bought: 30, emoji: '💻',
+        ownershipLedger: { version: 1, activeBeneficiaryId: '787878', shareholders: [
+          { beneficiaryId: '787878', name: 'اختبار تشغيل شركة مستقلة', kind: 'owner', shareBps: 6000 },
+          { beneficiaryId: 'family-partner', name: 'شريك العائلة', kind: 'child', shareBps: 4000 }
+        ] },
+        financialHistory: [{ year: 34, revenue: 100000, costs: 70000, profit: 30000 }]
+      }];
       saved.assets = [{ id, title: 'شركة محفظة اختبار', emoji: '💻', kind: 'business', value: 160000, upkeep: 0, bought: 30, companyPortfolio: true }];
       saved.timeMachineSnapshots = [];
       saved.log = [{ icon: '🧪', title: 'اختبار شركة المحفظة', text: 'اختبار إدارة شركة مستقلة عن المشروع الأساسي.', type: 'special', age: 35 }];
+      localStorage.setItem(key, JSON.stringify(saved));
+    });
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await page.evaluate(() => { Math.random = () => 0.99; });
+    await page.locator('[data-panel="assets"]').click();
+    await page.locator('.choice').filter({ hasText: 'شركة محفظة اختبار' }).click();
+    await page.locator('.choice').filter({ hasText: 'إدارة التشغيل' }).click();
+    await page.locator('.choice').filter({ hasText: 'سجل الملكية' }).click();
+    await page.locator('.choice').filter({ hasText: 'كشف نتيجة السنة حسب الملكية' }).click();
+    const ownershipEarningsDialog = await page.locator('#modalRoot').innerText();
+    assert.match(ownershipEarningsDialog, /كشف نتيجة السنة حسب الملكية/);
+    assert.match(ownershipEarningsDialog, /اختبار تشغيل شركة مستقلة/);
+    assert.match(ownershipEarningsDialog, /شريك العائلة/);
+    assert.match(ownershipEarningsDialog, /لا يحوّل أموالًا إلى أرصدة الملاك/);
+    await page.locator('.choice').filter({ hasText: 'رجوع لسجل الملكية' }).click();
+    await page.locator('.choice').filter({ hasText: 'رجوع' }).last().click();
+    await page.evaluate(() => {
+      const key = 'hekayat_hayah_save_v1';
+      const saved = JSON.parse(localStorage.getItem(key) || 'null');
+      const company = saved && saved.companies && saved.companies[0];
+      if (!company) throw new Error('portfolio company fixture missing after ownership statement');
+      company.ownershipLedger = { version: 1, activeBeneficiaryId: '787878', shareholders: [
+        { beneficiaryId: '787878', name: 'اختبار تشغيل شركة مستقلة', kind: 'owner', shareBps: 10000 }
+      ] };
       localStorage.setItem(key, JSON.stringify(saved));
     });
     await page.reload({ waitUntil: 'domcontentloaded' });
