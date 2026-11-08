@@ -231,6 +231,7 @@ test('الحفظ الفارغ أو التالف لا ينتج أنشطة أو أ
     reportYears: [],
     unknownReportYearCount: 0,
     hasMixedReportYears: false,
+    annualSummaries: [],
     items: []
   });
   const result = analyzeBusinessPortfolio({
@@ -255,6 +256,85 @@ test('الحفظ القديم الذي يحتفظ بأصل الشركة دون �
   assert.equal(summary.items[0].hasReport, false);
 });
 
+test('ملخص السنوات يجمع تقارير السنة نفسها ويعرض اكتمال التغطية دون تعديل الحفظ', () => {
+  const state = {
+    business: {
+      id: 'annual-a',
+      title: 'شركة أ',
+      financialHistory: [
+        report({ year: 2025, revenue: 100000, costs: 70000, profit: 30000 }),
+        report({ year: 2026, revenue: 120000, costs: 100000, profit: 20000 })
+      ]
+    },
+    companies: [
+      {
+        id: 'annual-b',
+        title: 'شركة ب',
+        financialHistory: [
+          report({ year: 2025, revenue: 50000, costs: 40000, profit: 10000 }),
+          report({ year: 2026, revenue: 60000, costs: 45000, profit: 15000 })
+        ]
+      },
+      {
+        id: 'annual-c',
+        title: 'شركة ج',
+        financialHistory: [report({ year: 2025, revenue: 25000, costs: 20000, profit: 5000 })]
+      }
+    ]
+  };
+  const before = JSON.stringify(state);
+  const summary = analyzeBusinessPortfolio(state);
+  assert.deepEqual(summary.annualSummaries, [
+    {
+      year: 2026, reportedCount: 2, totalRevenue: 180000, totalProfit: 35000,
+      businessCount: 3, missingBusinessCount: 1, coverage: 'partial'
+    },
+    {
+      year: 2025, reportedCount: 3, totalRevenue: 175000, totalProfit: 45000,
+      businessCount: 3, missingBusinessCount: 0, coverage: 'complete'
+    }
+  ]);
+  assert.equal(JSON.stringify(state), before, 'annual aggregation must not mutate saved financial histories');
+});
+
+test('التقرير المكرر في السنة نفسها لا يضاعف مساهمة الشركة في ملخص المحفظة السنوي', () => {
+  const summary = analyzeBusinessPortfolio({
+    business: {
+      id: 'duplicate-a',
+      title: 'شركة أ',
+      financialHistory: [
+        report({ year: 2026, revenue: 100000, profit: 10000 }),
+        report({ year: 2026, revenue: 120000, profit: 15000 })
+      ]
+    },
+    companies: [{
+      id: 'duplicate-b',
+      title: 'شركة ب',
+      financialHistory: [report({ year: 2026, revenue: 50000, profit: 8000 })]
+    }]
+  });
+  assert.equal(summary.annualSummaries.length, 1);
+  assert.equal(summary.annualSummaries[0].reportedCount, 2);
+  assert.equal(summary.annualSummaries[0].totalRevenue, 170000,
+    'the last stored report for a duplicated company-year should replace the earlier entry');
+  assert.equal(summary.annualSummaries[0].totalProfit, 23000);
+  assert.equal(summary.annualSummaries[0].coverage, 'complete');
+});
+
+test('السنوات غير الصالحة لا تدخل الملخص السنوي ويُحتفظ بآخر خمس سنوات فقط', () => {
+  const history = [];
+  for (let year = 2020; year <= 2026; year += 1) {
+    history.push(report({ year, revenue: year * 10, profit: year }));
+  }
+  history.push(report({ year: 'سنة غير معروفة', revenue: 999999, profit: 999999 }));
+  const summary = analyzeBusinessPortfolio({
+    business: { id: 'annual-limit', title: 'شركة الاختبار', financialHistory: history }
+  });
+  assert.deepEqual(summary.annualSummaries.map(item => item.year), [2026, 2025, 2024, 2023, 2022]);
+  assert.equal(summary.annualSummaries[0].totalRevenue, 20260);
+  assert.equal(summary.annualSummaries.length, 5);
+});
+
 test('واجهة المؤشرات تشرح سبب تعذر حساب نسبة تغير الإيرادات بدقة', () => {
   const source = fs.readFileSync(path.join(__dirname, '..', 'business-insights.js'), 'utf8');
   assert.match(source, /إيرادات السنة السابقة غير موجبة؛ لا تُحسب نسبة التغير/);
@@ -262,4 +342,7 @@ test('واجهة المؤشرات تشرح سبب تعذر حساب نسبة ت�
   assert.match(source, /لا يوجد تقرير سابق للمقارنة/);
   assert.match(source, /إجمالي أحدث التقارير يجمع سنوات مالية مختلفة/);
   assert.match(source, /business-insights-period-note/);
+  assert.match(source, /ملخص التقارير حسب السنة/);
+  assert.match(source, /business-insights-annual-card/);
+  assert.match(source, /annualPortfolioSummaries\(entries\)/);
 });
