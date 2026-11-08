@@ -164,6 +164,26 @@ function makeLegacySnapshot(age, lifeId, overrides = {}) {
   });
 }
 
+test('فاحص الرجوع يقارن اللقطات بالعمر بعد تطبيع الاستيراد الفعلي', () => {
+  const life = makeLife({
+    lifeId: 77,
+    age: 150,
+    timeMachineSnapshots: [
+      makeWrappedSnapshot(130, 77),
+      makeWrappedSnapshot(119, 77)
+    ]
+  });
+  const report = inspectBackup(life);
+
+  assert.equal(report.valid, true);
+  assert.equal(report.age, 120,
+    'the import engine clamps the accepted v1 age to 120 before restoring snapshots');
+  assert.equal(report.rewindSnapshotCount, 2);
+  assert.equal(report.rewindUsableSnapshotCount, 1,
+    'a checkpoint at age 130 is not earlier than the imported age 120');
+  assert.equal(report.rewindUnusableSnapshotCount, 1);
+});
+
 test('الفاحص يميز اللقطات الحالية القديمة القابلة للاستعادة', () => {
   const life = makeLife({
     lifeId: 77,
