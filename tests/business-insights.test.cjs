@@ -41,6 +41,85 @@ test('التقارير القديمة التي تفتقد مؤشرات السو�
   assert.ok(result.insights.some(item => item.code === 'healthy-result'));
 });
 
+test('السنة المالية صفر أو السالبة أو خارج النطاق لا تتغلب على آخر تقرير صالح', () => {
+  const business = {
+    title: 'شركة بسجل سنوات مختلط',
+    financialHistory: [
+      report({ year: 2025, revenue: 80000, costs: 60000, profit: 20000 }),
+      report({ year: 0, revenue: 900000, costs: 0, profit: 900000 }),
+      report({ year: -1, revenue: 800000, costs: 0, profit: 800000 }),
+      report({ year: 10000, revenue: 700000, costs: 0, profit: 700000 }),
+      report({ year: '2026', revenue: 90000, costs: 65000, profit: 25000 })
+    ]
+  };
+  const before = JSON.stringify(business);
+  const result = analyzeBusiness(business);
+  assert.equal(result.hasReport, true);
+  assert.equal(result.year, 2026);
+  assert.equal(result.revenue, 90000);
+  assert.equal(result.profit, 25000);
+  assert.equal(result.invalidReportYearCount, 3);
+
+  const portfolio = analyzeBusinessPortfolio({ business });
+  assert.deepEqual(portfolio.reportYears, [2026]);
+  assert.deepEqual(portfolio.annualSummaries.map(item => item.year), [2026, 2025]);
+  assert.equal(portfolio.invalidReportYearCount, 3);
+  assert.equal(portfolio.unknownReportYearCount, 0);
+  assert.equal(portfolio.annualSummaries[0].year, 2026);
+  assert.equal(JSON.stringify(business), before, 'invalid-year filtering must remain read-only');
+});
+
+test('النشاط الذي لا يملك إلا تقارير بسنة غير صالحة لا يظهر كتقرير مالي معتمد', () => {
+  const state = {
+    business: {
+      id: 'invalid-years-only',
+      title: 'سجلات تحتاج مراجعة',
+      financialHistory: [
+        report({ year: 0, revenue: 100000, profit: 50000 }),
+        report({ year: 10000, revenue: 200000, profit: 90000 })
+      ]
+    }
+  };
+  const before = JSON.stringify(state);
+  const result = analyzeBusiness(state.business);
+  assert.equal(result.hasReport, false);
+  assert.equal(result.status, 'unknown');
+  assert.equal(result.revenueChangeUnavailableReason, 'invalid-report-year');
+  assert.equal(result.invalidReportYearCount, 2);
+  assert.ok(result.insights.some(item => item.code === 'invalid-report-year'));
+
+  const portfolio = analyzeBusinessPortfolio(state);
+  assert.equal(portfolio.reportedCount, 0);
+  assert.equal(portfolio.totalRevenue, 0);
+  assert.equal(portfolio.invalidReportYearCount, 2);
+  assert.equal(portfolio.unknownReportYearCount, 1);
+  assert.equal(portfolio.hasMixedReportYears, true);
+  assert.equal(portfolio.items[0].hasReport, false);
+  assert.equal(JSON.stringify(state), before, 'invalid-only histories must not be mutated');
+});
+
+test('سجل قديم غير صالح لا يجعل تقارير السنة الموحدة تبدو مختلطة', () => {
+  const summary = analyzeBusinessPortfolio({
+    business: {
+      id: 'current-a',
+      financialHistory: [
+        report({ year: 0, revenue: 999999, profit: 999999 }),
+        report({ year: 2026, revenue: 100000, profit: 20000 })
+      ]
+    },
+    companies: [{
+      id: 'current-b',
+      financialHistory: [report({ year: 2026, revenue: 50000, profit: 10000 })]
+    }]
+  });
+  assert.deepEqual(summary.reportYears, [2026]);
+  assert.equal(summary.invalidReportYearCount, 1);
+  assert.equal(summary.unknownReportYearCount, 0);
+  assert.equal(summary.hasMixedReportYears, false);
+  assert.equal(summary.annualSummaries[0].coverage, 'complete');
+});
+
+
 test('الخسارة والسيولة السالبة والضريبة والمنتج الخاسر تظهر كتوصيات مستقلة', () => {
   const business = {
     title: 'شركة تحتاج مراجعة',
@@ -230,6 +309,7 @@ test('الحفظ الفارغ أو التالف لا ينتج أنشطة أو أ
     loanBalance: 0,
     reportYears: [],
     unknownReportYearCount: 0,
+    invalidReportYearCount: 0,
     hasMixedReportYears: false,
     annualSummaries: [],
     items: []
@@ -396,6 +476,8 @@ test('واجهة المؤشرات تشرح سبب تعذر حساب نسبة ت�
   assert.match(source, /لا توجد سنة مالية متتالية للمقارنة/);
   assert.match(source, /لا يوجد تقرير سابق للمقارنة/);
   assert.match(source, /إجمالي أحدث التقارير يجمع سنوات مالية مختلفة/);
+  assert.match(source, /تم استبعاد '/);
+  assert.match(source, /' سجل مالي بسنة غير صالحة من التحليل/);
   assert.match(source, /business-insights-period-note/);
   assert.match(source, /ملخص التقارير حسب السنة/);
   assert.match(source, /business-insights-annual-card/);

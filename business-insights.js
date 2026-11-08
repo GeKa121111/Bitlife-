@@ -25,6 +25,13 @@
     return Number(value);
   }
 
+  function isValidFiscalYear(value) {
+    if (typeof value !== 'number' && typeof value !== 'string') return false;
+    if (typeof value === 'string' && !value.trim()) return false;
+    const year = Number(value);
+    return Number.isSafeInteger(year) && year >= 1 && year <= 9999;
+  }
+
   function businessEntries(state) {
     if (!isRecord(state)) return [];
     const entries = [];
@@ -59,8 +66,11 @@
   function analyzeBusiness(entity, fallbackTitle) {
     const safeEntity = isRecord(entity) ? entity : {};
     const title = String(safeEntity.title || safeEntity.name || fallbackTitle || 'نشاط تجاري').trim().slice(0, 100);
-    const history = (Array.isArray(safeEntity.financialHistory) ? safeEntity.financialHistory : [])
-      .filter(isRecord)
+    const rawHistory = (Array.isArray(safeEntity.financialHistory) ? safeEntity.financialHistory : [])
+      .filter(isRecord);
+    const invalidReportYearCount = rawHistory.filter(item => !isValidFiscalYear(item.year)).length;
+    const history = rawHistory
+      .filter(item => isValidFiscalYear(item.year))
       .slice()
       .sort((a, b) => number(a.year, 0) - number(b.year, 0));
     const report = history.length ? history[history.length - 1] : null;
@@ -75,13 +85,20 @@
         profit: 0,
         margin: null,
         revenueChangePercent: null,
-        revenueChangeUnavailableReason: 'no-report',
+        revenueChangeUnavailableReason: invalidReportYearCount ? 'invalid-report-year' : 'no-report',
+        invalidReportYearCount,
         marketShare: null,
         marketShareChange: null,
         taxLiability: 0,
         loanBalance: 0,
         closingCashBalance: null,
-        insights: [{ code: 'no-report', severity: 'info', message: 'لم يصدر تقرير مالي محفوظ لهذا النشاط بعد؛ ستظهر القراءة بعد إكمال سنة مالية.' }]
+        insights: [{
+          code: invalidReportYearCount ? 'invalid-report-year' : 'no-report',
+          severity: 'info',
+          message: invalidReportYearCount
+            ? 'توجد سجلات مالية بسنة غير صالحة؛ تم تجاهلها حتى لا تظهر كتقرير سنوي معتمد.'
+            : 'لم يصدر تقرير مالي محفوظ لهذا النشاط بعد؛ ستظهر القراءة بعد إكمال سنة مالية.'
+        }]
       };
     }
 
@@ -161,6 +178,7 @@
       title,
       hasReport: true,
       status,
+      invalidReportYearCount,
       year: number(report.year, 0),
       revenue,
       costs,
@@ -184,8 +202,8 @@
       const latestByYear = new Map();
       history.forEach(report => {
         if (!isRecord(report)) return;
+        if (!isValidFiscalYear(report.year)) return;
         const year = Number(report.year);
-        if (!Number.isInteger(year) || year <= 0 || year > 9999) return;
         // Match the per-business history rule: the last stored report for a duplicate year wins.
         latestByYear.set(year, report);
       });
@@ -244,8 +262,12 @@
       .map(item => item.year)
       .filter(year => Number.isInteger(year) && year > 0 && year <= 9999)))
       .sort((a, b) => a - b);
-    const unknownReportYearCount = reported.filter(item =>
-      !Number.isInteger(item.year) || item.year <= 0 || item.year > 9999
+    const invalidReportYearCount = items.reduce(
+      (sum, item) => sum + Math.max(0, number(item.invalidReportYearCount, 0)),
+      0
+    );
+    const unknownReportYearCount = items.filter(item =>
+      !item.hasReport && item.invalidReportYearCount > 0
     ).length;
     return {
       businessCount: items.length,
@@ -257,6 +279,7 @@
       loanBalance: reported.reduce((sum, item) => sum + item.loanBalance, 0),
       reportYears,
       unknownReportYearCount,
+      invalidReportYearCount,
       hasMixedReportYears: reportYears.length > 1 || unknownReportYearCount > 0,
       annualSummaries: annualPortfolioSummaries(entries),
       items
@@ -348,11 +371,14 @@
       if (summary.reportedCount) {
         let periodMessage;
         if (summary.unknownReportYearCount > 0) {
-          periodMessage = 'بعض التقارير لا تحمل سنة مالية صالحة؛ إجمالي أحدث التقارير لا يمثل فترة موحدة.';
+          periodMessage = 'بعض الأنشطة لا تملك تقريرًا بسنة مالية صالحة؛ إجمالي أحدث التقارير لا يمثل فترة موحدة.';
         } else if (summary.reportYears.length > 1) {
           periodMessage = 'إجمالي أحدث التقارير يجمع سنوات مالية مختلفة (' +
             summary.reportYears.map(formatNumber).join('، ') +
             ')؛ لا تقارنه كإجمالي لسنة واحدة.';
+        } else if (summary.invalidReportYearCount > 0) {
+          periodMessage = 'تم استبعاد ' + formatNumber(summary.invalidReportYearCount) +
+            ' سجل مالي بسنة غير صالحة من التحليل؛ راجع سجلات الشركات.';
         } else {
           periodMessage = 'كل التقارير المالية المتاحة تخص السنة المالية ' +
             formatNumber(summary.reportYears[0]) + '.';
@@ -452,7 +478,10 @@
           createMetric(doc, metrics, 'تغير الإيرادات', revenueChangeLabel);
           card.appendChild(metrics);
         } else {
-          appendText(doc, card, 'p', 'business-insights-meta', 'لا يوجد تقرير مالي محفوظ لهذا النشاط.');
+          const missingReportMessage = item.invalidReportYearCount > 0
+            ? 'لا يوجد تقرير بسنة مالية صالحة؛ تم تجاهل ' + formatNumber(item.invalidReportYearCount) + ' سجل غير صالح.'
+            : 'لا يوجد تقرير مالي محفوظ لهذا النشاط.';
+          appendText(doc, card, 'p', 'business-insights-meta', missingReportMessage);
         }
 
         const list = doc.createElement('ul');
