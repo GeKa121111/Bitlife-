@@ -663,6 +663,10 @@ test('سجل سلاسل السيطرة يرتب السلاسل النشطة حت
   option.action();
 
   const summary = context.lastInfo[2];
+  assert.ok(summary.includes('أطول سلاسل ألقاب الدوري النشطة حاليًا (الأطول أولًا):\n\n1.'),
+    'the leaderboard should use actual line breaks between its heading and first row');
+  assert.equal(summary.includes('\\n'), false,
+    'the leaderboard must not expose escaped newline markers as visible text');
   assert.ok(summary.indexOf('منافس أ') < summary.indexOf('منافس ج'),
     'equal current and best streaks should use total titles and then stable id ordering');
   assert.ok(summary.indexOf('منافس ج') < summary.indexOf('منافس ب'),
