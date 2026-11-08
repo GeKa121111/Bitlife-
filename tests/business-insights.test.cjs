@@ -82,6 +82,35 @@ test('مقارنة السنوات تكشف هبوط الإيرادات دون إ
   assert.equal(business.financialHistory[1].revenueChangePercent, undefined);
 });
 
+test('لا يقارن الإيرادات عبر سنوات مفقودة حتى لا يعرض هبوطًا مضللًا', () => {
+  const business = {
+    title: 'نشاط له تقارير متقطعة',
+    financialHistory: [
+      report({ year: 2023, revenue: 200000, profit: 30000 }),
+      report({ year: 2025, revenue: 150000, profit: 20000 })
+    ]
+  };
+  const before = JSON.stringify(business);
+  const result = analyzeBusiness(business);
+  assert.equal(result.revenueChangePercent, null);
+  assert.equal(result.insights.some(item => item.code === 'revenue-drop'), false);
+  assert.equal(JSON.stringify(business), before, 'analysis must remain read-only');
+});
+
+test('لا يقارن تقريرين من السنة نفسها حتى لو احتوى السجل على إدخال مكرر', () => {
+  const business = {
+    title: 'نشاط بسجل سنة مكرر',
+    financialHistory: [
+      report({ year: 2025, revenue: 100000, profit: 12000 }),
+      report({ year: 2026, revenue: 140000, profit: 18000 }),
+      report({ year: 2026, revenue: 90000, profit: -5000 })
+    ]
+  };
+  const result = analyzeBusiness(business);
+  assert.equal(result.revenueChangePercent, null);
+  assert.equal(result.insights.some(item => item.code === 'revenue-drop'), false);
+});
+
 test('لوحة المحفظة تجمع أحدث تقرير لكل نشاط فقط وتتجنب تكرار الشركة ذات المعرّف نفسه', () => {
   const state = {
     place: { unit: 'ج.م' },
