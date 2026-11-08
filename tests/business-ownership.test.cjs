@@ -133,7 +133,7 @@ test('annual business result is allocated exactly by saved ownership shares with
  assert.equal(result.year,2026);
  assert.equal(result.totalProfit,101);
  assert.equal(result.activeShareAmount,40);
- assert.deepEqual(result.shareholders.map(item=>[item.beneficiaryId,item.resultShare]),[['owner',40],['partner',61]]);
+ assert.deepEqual(Array.from(result.shareholders,item=>[item.beneficiaryId,item.resultShare]),[['owner',40],['partner',61]]);
  assert.equal(result.shareholders.reduce((sum,item)=>sum+item.resultShare,0),101);
  assert.equal(JSON.stringify(company),before,'the ownership statement must remain read-only');
 });
@@ -146,7 +146,7 @@ test('loss allocation preserves the sign and sums exactly across all owners',()=
  ]},financialHistory:[{year:2026,revenue:50000,costs:50103,profit:-103}]};
  const result=api.businessOwnershipEarningsSnapshot(company,'owner','المالك');
  assert.equal(result.totalProfit,-103);
- assert.deepEqual(result.shareholders.map(item=>item.resultShare),[-41,-62]);
+ assert.deepEqual(Array.from(result.shareholders,item=>item.resultShare),[-41,-62]);
  assert.equal(result.shareholders.reduce((sum,item)=>sum+item.resultShare,0),-103);
  assert.equal(result.activeShareAmount,-41);
 });
@@ -180,7 +180,7 @@ test('invalid ownership ledger never produces a shareholder earnings statement',
  },'owner','مالك');
  assert.equal(result.valid,false);
  assert.equal(result.hasReport,false);
- assert.deepEqual(result.shareholders,[]);
+ assert.equal(result.shareholders.length,0);
 });
 
 test('ownership screen exposes the read-only annual statement and discloses that no cash is paid',()=>{
