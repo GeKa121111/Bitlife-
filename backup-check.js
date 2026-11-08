@@ -98,26 +98,26 @@
   }
 
   function estimateRetainedSnapshots(snapshots, limit) {
-    // Mirror the import engine's count and serialized-size limits without mutating the save.
-    const candidates = snapshots.slice(-limit);
-    let retained = [];
-    let retainedChars = 2; // JSON.stringify([]) includes the opening and closing brackets.
-    for (let index = candidates.length - 1; index >= 0; index -= 1) {
-      const snapshot = candidates[index];
-      const encodedChars = JSON.stringify(snapshot).length;
-      const candidateChars = retained.length
-        ? retainedChars + encodedChars + 1
-        : retainedChars + encodedChars;
-      if (candidateChars <= MAX_REWIND_SNAPSHOT_CHARS) {
-        retained.unshift(snapshot);
-        retainedChars = candidateChars;
+    // Mirror fitTimeMachineSnapshots(): scan newest to oldest, skip an oversized
+    // newest entry once, then stop at the first older entry that exceeds the budget.
+    // The count limit applies to retained entries, not to the last N raw candidates.
+    const retained = [];
+    let serializedChars = 2; // JSON.stringify([]) includes the opening and closing brackets.
+    for (let index = snapshots.length - 1; index >= 0 && retained.length < limit; index -= 1) {
+      const candidate = [snapshots[index], ...retained];
+      const candidateChars = JSON.stringify(candidate).length;
+      if (candidateChars > MAX_REWIND_SNAPSHOT_CHARS) {
+        if (index === snapshots.length - 1) continue;
+        break;
       }
+      retained.unshift(snapshots[index]);
+      serializedChars = candidateChars;
     }
     return {
       snapshots: retained,
       count: retained.length,
       droppedCount: snapshots.length - retained.length,
-      serializedChars: retainedChars
+      serializedChars
     };
   }
 
