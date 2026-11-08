@@ -181,7 +181,7 @@ test('الفاحص يميز الصلاحية البنيوية عن النقاط 
   assert.equal(report.rewindExpandedDroppedCount, 0);
 });
 
-test('تقدير الميزانية يتخطى نقطة ضخمة ولا يمنع الاحتفاظ بنقاط أقدم صالحة', () => {
+test('تقدير الميزانية يطابق المحرك عند تجاوز نقطة داخل السجل', () => {
   const life = makeLife({
     lifeId: 77,
     age: 10,
@@ -195,10 +195,32 @@ test('تقدير الميزانية يتخطى نقطة ضخمة ولا يمنع
   const report = inspectBackup(life);
 
   assert.equal(report.rewindUsableSnapshotCount, 4);
-  assert.equal(report.rewindExpandedRetainedCount, 3);
-  assert.equal(report.rewindExpandedRestorableCount, 3);
-  assert.equal(report.rewindExpandedDroppedCount, 1);
+  assert.equal(report.rewindExpandedRetainedCount, 1,
+    'the import engine stops at the first oversized older checkpoint');
+  assert.equal(report.rewindExpandedRestorableCount, 1);
+  assert.equal(report.rewindExpandedDroppedCount, 3);
   assert.ok(report.warnings.some(message => message.includes('ميزانية التخزين')));
+});
+
+test('تخطي أحدث نقطة ضخمة يواصل البحث حتى يمتلئ حد العدد', () => {
+  const snapshots = Array.from({ length: 9 }, (_, index) =>
+    makeWrappedSnapshot(index + 1, 77));
+  snapshots[8] = makeWrappedSnapshot(9, 77, {
+    note: 'x'.repeat(MAX_REWIND_SNAPSHOT_CHARS)
+  });
+  const report = inspectBackup(makeLife({
+    lifeId: 77,
+    age: 20,
+    timeMachineSnapshots: snapshots
+  }));
+
+  assert.equal(report.rewindUsableSnapshotCount, 9);
+  assert.equal(report.rewindBaseRetainedCount, 8,
+    'the import engine scans older entries after skipping an oversized newest checkpoint');
+  assert.equal(report.rewindBaseRestorableCount, 8);
+  assert.equal(report.rewindBaseDroppedCount, 1);
+  assert.equal(report.rewindExpandedRetainedCount, 8);
+  assert.equal(report.rewindExpandedDroppedCount, 1);
 });
 
 test('واجهة الفاحص تفرق بين الصلاحية البنيوية وتقدير ما سيبقى بعد الاستيراد', () => {
