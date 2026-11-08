@@ -321,12 +321,16 @@
     const input = doc.getElementById('backupFile');
     const dropZone = doc.getElementById('backupDropZone');
     const resultNode = doc.getElementById('backupResult');
+    const announcementNode = doc.getElementById('backupAnnouncement');
     const clearButton = doc.getElementById('clearBackupCheck');
     if (!input || !dropZone || !resultNode || !clearButton) return;
 
     const runtime = host || (typeof globalThis === 'object' ? globalThis : {});
     let activeReader = null;
     let inspectionSequence = 0;
+    const announce = message => {
+      if (announcementNode) announcementNode.textContent = String(message || '');
+    };
 
     // Invalidate any pending read before starting another inspection or clearing the report.
     // Some browsers may still deliver a late load callback after abort(), so the sequence
@@ -354,6 +358,7 @@
       appendText(panel, 'p', 'report-status', message);
       resultNode.replaceChildren(panel);
       clearButton.disabled = false;
+      announce(message);
     };
 
     const renderReport = (file, report) => {
@@ -505,6 +510,11 @@
         'يمكن مقارنة بصمة SHA-256 قبل نقل الملف وبعده؛ تطابق البصمة لا يثبت مصدر الملف ولا يضمن سلامة كل تفاصيل الحياة. هذا فحص أولي فقط، فاحتفظ بالملف الأصلي ولا تستبدل حفظك الحالي اعتمادًا على النتيجة وحدها.');
       resultNode.replaceChildren(panel);
       clearButton.disabled = false;
+      announce(report.valid
+        ? (report.warnings.length
+          ? 'اكتمل فحص ملف الحفظ: متوافق مبدئيًا مع ملاحظات.'
+          : 'اكتمل فحص ملف الحفظ: اجتاز الشروط الأساسية.')
+        : 'اكتمل فحص ملف الحفظ: توجد أخطاء تمنع اجتياز الشروط الأساسية.');
     };
 
     const inspectFile = file => {
@@ -520,6 +530,7 @@
         return;
       }
 
+      announce('جارٍ فحص ملف الحفظ محليًا.');
       const reader = new runtime.FileReader();
       activeReader = reader;
       const isCurrentRead = () => sequence === inspectionSequence && activeReader === reader;
@@ -571,6 +582,7 @@
       resultNode.replaceChildren();
       appendText(resultNode, 'p', 'muted', 'لم يتم اختيار ملف بعد.');
       clearButton.disabled = true;
+      announce('تم مسح نتيجة الفحص.');
       input.focus();
     });
   }

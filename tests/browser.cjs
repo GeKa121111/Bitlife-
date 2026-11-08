@@ -3124,6 +3124,12 @@ async function run() {
       buffer: Buffer.from(JSON.stringify(checkerBundle))
     });
     await page.getByText('متوافق مبدئيًا مع شروط الاستيراد — مع ملاحظات', { exact: true }).waitFor();
+    assert.equal(await page.locator('#backupResult').getAttribute('role'), 'region');
+    assert.equal(await page.locator('#backupResult').getAttribute('aria-live'), 'off');
+    assert.equal(await page.locator('#backupAnnouncement').getAttribute('role'), 'status');
+    assert.equal(await page.locator('#backupAnnouncement').getAttribute('aria-live'), 'polite');
+    assert.equal((await page.locator('#backupAnnouncement').textContent()).trim(),
+      'اكتمل فحص ملف الحفظ: متوافق مبدئيًا مع ملاحظات.');
     const checkerReportText = await page.locator('#backupResult').innerText();
     assert.ok(checkerReportText.includes('اختبار فحص الحفظ'));
     assert.ok(checkerReportText.includes('حزمة حفظ حياة كاملة'));
@@ -3146,6 +3152,8 @@ async function run() {
       buffer: Buffer.from(JSON.stringify({ ...checkerBundle, life: null }))
     });
     await page.getByText('لن يجتاز الملف شروط الاستيراد الأساسية', { exact: true }).waitFor();
+    assert.equal((await page.locator('#backupAnnouncement').textContent()).trim(),
+      'اكتمل فحص ملف الحفظ: توجد أخطاء تمنع اجتياز الشروط الأساسية.');
     assert.ok((await page.locator('#backupResult').innerText()).includes('بيانات الحياة الأساسية'),
       'a full package without its life object must not be reported as valid');
     assert.equal(await page.evaluate(() => localStorage.getItem('hekayat_hayah_save_v1')), saveBeforeLocalInspection,
