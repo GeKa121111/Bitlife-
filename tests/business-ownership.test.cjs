@@ -4,6 +4,7 @@ const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const path=require('node:path');
 const vm=require('node:vm');
+const businessInsights=require('../business-insights.js');
 const app=fs.readFileSync(path.join(__dirname,'..','app.js'),'utf8');
 function findFunction(name){
  const start=app.indexOf('function '+name+'(');assert.notEqual(start,-1,'missing runtime function: '+name);
@@ -560,4 +561,85 @@ test('inherited proportional treasury blocks new distributions but preserves exi
  const distributionMenu=findFunction('businessDividendDistributionMenu');
  assert.match(readinessMenu,/الخزينة المحفوظة هنا تمثل الحصة الموروثة/);
  assert.match(distributionMenu,/الخزينة الموروثة تمثل نصيب المالك الحالي/);
+});
+
+
+test('كشف الملاك يستبعد أحدث تقرير مالي غير مكتمل ويعود إلى أحدث سنة صالحة مثل تحليل النشاط',()=>{
+ const api=createApi();
+ const company={
+  value:300000,
+  ownershipLedger:api.createBusinessOwnershipLedger('owner','المالك',45),
+  financialHistory:[
+   {year:2024,revenue:80000,costs:50000,profit:30000},
+   {year:2025,revenue:100000,costs:60000},
+   {year:2026,revenue:'غير متاح',costs:10000,profit:99999}
+  ]
+ };
+ const before=JSON.stringify(company);
+ const ownership=api.businessOwnershipEarningsSnapshot(company,'owner','المالك');
+ const insight=businessInsights.analyzeBusiness(company,'شركة الاختبار');
+ assert.equal(ownership.valid,true);
+ assert.equal(ownership.hasReport,true);
+ assert.equal(ownership.year,2025);
+ assert.equal(ownership.totalProfit,40000);
+ assert.equal(ownership.invalidFinancialReportCount,1);
+ assert.equal(ownership.year,insight.year);
+ assert.equal(ownership.totalProfit,insight.profit);
+ assert.equal(ownership.invalidFinancialReportCount,insight.invalidFinancialReportCount);
+ assert.equal(JSON.stringify(company),before,'financial validation must remain read-only');
+});
+
+test('كشف الملكية يرفض القيم المنطقية والمسافات ويستمر في اشتقاق الربح من تكاليف صالحة',()=>{
+ const api=createApi();
+ const company={
+  ownershipLedger:api.createBusinessOwnershipLedger('owner','المالك',40),
+  financialHistory:[
+   {year:2024,revenue:true,profit:10000},
+   {year:2025,revenue:100000,profit:true,costs:40000},
+   {year:2026,revenue:100000,profit:' ',costs:' '}
+  ]
+ };
+ const result=api.businessOwnershipEarningsSnapshot(company,'owner','المالك');
+ const insight=businessInsights.analyzeBusiness(company,'شركة الاختبار');
+ assert.equal(result.hasReport,true);
+ assert.equal(result.year,2025);
+ assert.equal(result.totalProfit,60000);
+ assert.equal(result.invalidFinancialReportCount,2);
+ assert.equal(result.year,insight.year);
+ assert.equal(result.totalProfit,insight.profit);
+ assert.equal(result.invalidFinancialReportCount,insight.invalidFinancialReportCount);
+ const invalidOnly=api.businessOwnershipEarningsSnapshot({
+  ownershipLedger:api.createBusinessOwnershipLedger('owner','المالك',40),
+  financialHistory:[{year:2026,revenue:true,profit:100000}]
+ },'owner','المالك');
+ assert.equal(invalidOnly.hasReport,false);
+ assert.equal(invalidOnly.reason,'invalid-financial-report');
+ assert.equal(invalidOnly.invalidFinancialReportCount,1);
+});
+
+test('آخر تقرير مخزن للسنة نفسها يحسم صلاحية السنة في كشف الملكية مثل تحليل الأعمال',()=>{
+ const api=createApi();
+ const company={
+  ownershipLedger:api.createBusinessOwnershipLedger('owner','المالك',40),
+  financialHistory:[
+   {year:2025,revenue:100000,costs:60000,profit:40000},
+   {year:'2025',revenue:'غير صالح',costs:60000,profit:40000},
+   {year:2026,revenue:120000,costs:70000,profit:50000}
+  ]
+ };
+ const ownership=api.businessOwnershipEarningsSnapshot(company,'owner','المالك');
+ const insight=businessInsights.analyzeBusiness(company,'شركة الاختبار');
+ assert.equal(ownership.year,2026);
+ assert.equal(ownership.totalProfit,50000);
+ assert.equal(ownership.invalidFinancialReportCount,1);
+ assert.equal(ownership.year,insight.year);
+ assert.equal(ownership.totalProfit,insight.profit);
+ assert.equal(ownership.invalidFinancialReportCount,insight.invalidFinancialReportCount);
+});
+
+test('واجهة كشف الملكية توضح استبعاد التقارير المالية غير المكتملة',()=>{
+ const earningsMenu=findFunction('businessOwnershipEarningsMenu');
+ assert.match(earningsMenu,/invalidFinancialReportCount/);
+ assert.match(earningsMenu,/تقرير مالي غير مكتمل/);
+ assert.match(earningsMenu,/لم نحوّل القيم الناقصة إلى أصفار/);
 });
