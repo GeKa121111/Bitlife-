@@ -405,9 +405,16 @@
     const originalNodes = Array.from(dialog.childNodes);
     const originalLabel = dialog.getAttribute('aria-labelledby');
     const originalDescription = dialog.getAttribute('aria-describedby');
+    const originalModal = dialog.getAttribute('aria-modal');
+    const originalRole = dialog.getAttribute('role');
     const originalOpenValue = dialog.getAttribute('data-life-review-open');
     const hadLabel = originalLabel !== null;
     const hadDescription = originalDescription !== null;
+    const hadModal = originalModal !== null;
+    const hadRole = originalRole !== null;
+    const activeElement = doc.activeElement;
+    const returnFocus = activeElement && activeElement !== doc.body
+      ? activeElement : doc.getElementById('reviewBtn');
     let closed = false;
     let escapeHandler = null;
 
@@ -421,9 +428,15 @@
       else dialog.removeAttribute('aria-labelledby');
       if (hadDescription) dialog.setAttribute('aria-describedby', originalDescription);
       else dialog.removeAttribute('aria-describedby');
+      if (hadModal) dialog.setAttribute('aria-modal', originalModal);
+      else dialog.removeAttribute('aria-modal');
+      if (hadRole) dialog.setAttribute('role', originalRole);
+      else dialog.removeAttribute('role');
       if (escapeHandler) doc.removeEventListener('keydown', escapeHandler, true);
-      const reviewButton = doc.getElementById('reviewBtn');
-      if (reviewButton && typeof reviewButton.focus === 'function') reviewButton.focus();
+      const focusTarget = returnFocus && typeof returnFocus.focus === 'function' &&
+        (!doc.documentElement || doc.documentElement.contains(returnFocus))
+        ? returnFocus : doc.getElementById('reviewBtn');
+      if (focusTarget && typeof focusTarget.focus === 'function') focusTarget.focus();
     };
 
     if (summary) {
@@ -457,9 +470,37 @@
       dialog.removeAttribute('aria-describedby');
     }
 
+    if (!hadRole) dialog.setAttribute('role', 'dialog');
+    dialog.setAttribute('aria-modal', 'true');
     dialog.setAttribute('data-life-review-open', 'true');
     escapeHandler = event => {
-      if (event.key !== 'Escape' || closed) return;
+      if (closed) return;
+      if (event.key === 'Tab') {
+        const focusable = Array.from(dialog.querySelectorAll(
+          'a[href], area[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        )).filter(element =>
+          !element.disabled && !element.hidden && element.tabIndex >= 0 &&
+          element.getAttribute('aria-hidden') !== 'true'
+        );
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        if (!first) {
+          event.preventDefault();
+          return;
+        }
+        const active = doc.activeElement;
+        if (event.shiftKey && (active === first || !dialog.contains(active))) {
+          event.preventDefault();
+          event.stopPropagation();
+          last.focus();
+        } else if (!event.shiftKey && (active === last || !dialog.contains(active))) {
+          event.preventDefault();
+          event.stopPropagation();
+          first.focus();
+        }
+        return;
+      }
+      if (event.key !== 'Escape') return;
       event.preventDefault();
       event.stopPropagation();
       close();
