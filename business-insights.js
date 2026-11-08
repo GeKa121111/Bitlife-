@@ -90,7 +90,10 @@
     const profit = hasFinite(report, 'profit') ? number(report.profit) : revenue - costs;
     const margin = hasFinite(report, 'margin') ? number(report.margin) : (revenue > 0 ? profit / revenue * 100 : 0);
     const previousRevenue = previous ? Math.max(0, number(previous.revenue, 0)) : 0;
-    const revenueChangePercent = previous && previousRevenue > 0
+    const reportYear = number(report.year, 0);
+    const previousYear = previous ? number(previous.year, 0) : null;
+    const hasConsecutivePrevious = previous && previousYear === reportYear - 1;
+    const revenueChangePercent = hasConsecutivePrevious && previousRevenue > 0
       ? (revenue - previousRevenue) / previousRevenue * 100
       : null;
     const marketShare = hasFinite(report, 'marketShare') ? number(report.marketShare) : null;
@@ -283,7 +286,7 @@
           createMetric(doc, metrics, 'الإيرادات', formatMoney(item.revenue, state.place && state.place.unit));
           createMetric(doc, metrics, 'صافي النتيجة', formatMoney(item.profit, state.place && state.place.unit), item.profit < 0 ? 'business-insights-negative' : 'business-insights-metric-value');
           createMetric(doc, metrics, 'هامش الربح', formatPercent(item.margin, false));
-          createMetric(doc, metrics, 'تغير الإيرادات', item.revenueChangePercent === null ? 'لا توجد سنة مقارنة' : formatPercent(item.revenueChangePercent, true));
+          createMetric(doc, metrics, 'تغير الإيرادات', item.revenueChangePercent === null ? 'لا توجد سنة مالية متتالية للمقارنة' : formatPercent(item.revenueChangePercent, true));
           card.appendChild(metrics);
         } else {
           appendText(doc, card, 'p', 'business-insights-meta', 'لا يوجد تقرير مالي محفوظ لهذا النشاط.');
