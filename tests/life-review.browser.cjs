@@ -121,7 +121,7 @@ function createServer() {
       const headingTabIndex = !!title && title.getAttribute('tabindex') === '-1';
       const descriptionRemovedWhileOpen = !dialog.hasAttribute('aria-describedby');
       let headingShiftWrapped = false;
-      let headingForwardAllowed = false;
+      let headingForwardFocused = false;
       if (title && doneButton) {
         title.focus();
         const reverseFromHeading = new KeyboardEvent('keydown', { key: 'Tab', shiftKey: true, bubbles: true, cancelable: true });
@@ -130,7 +130,7 @@ function createServer() {
         title.focus();
         const forwardFromHeading = new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true });
         document.dispatchEvent(forwardFromHeading);
-        headingForwardAllowed = !forwardFromHeading.defaultPrevented;
+        headingForwardFocused = document.activeElement === closeButton && forwardFromHeading.defaultPrevented;
       }
       const modalDuring = dialog.getAttribute('aria-modal');
       const appInertDuring = appRoot.hasAttribute('inert');
@@ -191,7 +191,7 @@ function createServer() {
         headingTabIndex,
         descriptionRemovedWhileOpen,
         headingShiftWrapped,
-        headingForwardAllowed,
+        headingForwardFocused,
         restoredDescription,
         modalDuring,
         appInertDuring,
@@ -237,7 +237,7 @@ function createServer() {
     assert.equal(result.headingTabIndex, true, 'the report heading must accept programmatic focus without entering the Tab order');
     assert.equal(result.descriptionRemovedWhileOpen, true, 'structured report content must not be flattened into aria-describedby');
     assert.equal(result.headingShiftWrapped, true, 'Shift+Tab from the initial heading must wrap to the last dialog control');
-    assert.equal(result.headingForwardAllowed, true, 'Tab from the initial heading must proceed to the first dialog control');
+    assert.equal(result.headingForwardFocused, true, 'the first Tab from the initial heading must explicitly focus the first dialog control');
     assert.equal(result.restoredDescription, 'originalDeathDescription', 'the dialog must restore its original description after closing');
     assert.equal(result.modalDuring, 'true', 'the report must be announced as a modal dialog');
     assert.equal(result.appInertDuring && result.appHiddenDuring, true, 'the game screen behind the report must be inert and hidden from assistive technology');
