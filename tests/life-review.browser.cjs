@@ -101,6 +101,13 @@ function createServer() {
       dialog.append(originalTitle, reviewButton);
       document.getElementById('modalRoot').appendChild(dialog);
 
+      const appRoot = document.getElementById('app');
+      const feedbackRoot = document.getElementById('feedbackRoot');
+      const skipLink = document.querySelector('.skip-link');
+      skipLink.setAttribute('aria-hidden', 'false');
+      feedbackRoot.setAttribute('inert', '');
+      feedbackRoot.setAttribute('aria-hidden', 'false');
+
       reviewButton.focus();
       reviewButton.click();
       const panel = dialog.querySelector('[data-life-review-panel]');
@@ -111,6 +118,13 @@ function createServer() {
       const doneButton = panel && panel.querySelector('.life-review-done');
       const initialFocus = document.activeElement === closeButton;
       const modalDuring = dialog.getAttribute('aria-modal');
+      const appInertDuring = appRoot.hasAttribute('inert');
+      const appHiddenDuring = appRoot.getAttribute('aria-hidden') === 'true';
+      const feedbackInertDuring = feedbackRoot.hasAttribute('inert');
+      const feedbackHiddenDuring = feedbackRoot.getAttribute('aria-hidden') === 'true';
+      const skipLinkInertDuring = skipLink.hasAttribute('inert');
+      const skipLinkHiddenDuring = skipLink.getAttribute('aria-hidden') === 'true';
+      const modalRootRemainsActive = !document.getElementById('modalRoot').hasAttribute('inert');
       let shiftWrapped = false;
       let forwardWrapped = false;
       if (closeButton && doneButton) {
@@ -125,6 +139,12 @@ function createServer() {
       }
       if (closeButton) closeButton.click();
       const focusRestored = document.activeElement === reviewButton;
+      const appInertRestored = !appRoot.hasAttribute('inert');
+      const appHiddenRestored = appRoot.getAttribute('aria-hidden') === null;
+      const feedbackInertRestored = feedbackRoot.hasAttribute('inert');
+      const feedbackHiddenRestored = feedbackRoot.getAttribute('aria-hidden') === 'false';
+      const skipLinkInertRestored = !skipLink.hasAttribute('inert');
+      const skipLinkHiddenRestored = skipLink.getAttribute('aria-hidden') === 'false';
       const restoredModal = dialog.getAttribute('aria-modal');
       const restoredRole = dialog.getAttribute('role');
       reviewButton.click();
@@ -133,6 +153,10 @@ function createServer() {
       const escapeClosed = !dialog.hasAttribute('data-life-review-open');
       const escapePrevented = escapeEvent.defaultPrevented;
       const escapeFocusRestored = document.activeElement === reviewButton;
+      const escapeBackgroundRestored = !appRoot.hasAttribute('inert') &&
+        appRoot.getAttribute('aria-hidden') === null &&
+        feedbackRoot.hasAttribute('inert') && feedbackRoot.getAttribute('aria-hidden') === 'false' &&
+        !skipLink.hasAttribute('inert') && skipLink.getAttribute('aria-hidden') === 'false';
       return {
         opened: !!panel,
         title: title && title.textContent,
@@ -149,6 +173,20 @@ function createServer() {
         restoredLabel: dialog.getAttribute('aria-labelledby'),
         initialFocus,
         modalDuring,
+        appInertDuring,
+        appHiddenDuring,
+        feedbackInertDuring,
+        feedbackHiddenDuring,
+        skipLinkInertDuring,
+        skipLinkHiddenDuring,
+        modalRootRemainsActive,
+        appInertRestored,
+        appHiddenRestored,
+        feedbackInertRestored,
+        feedbackHiddenRestored,
+        skipLinkInertRestored,
+        skipLinkHiddenRestored,
+        escapeBackgroundRestored,
         shiftWrapped,
         forwardWrapped,
         focusRestored,
@@ -176,14 +214,22 @@ function createServer() {
     assert.equal(result.restoredLabel, 'originalDeathTitle');
     assert.equal(result.initialFocus, true, 'opening the report must move focus into the dialog');
     assert.equal(result.modalDuring, 'true', 'the report must be announced as a modal dialog');
+    assert.equal(result.appInertDuring && result.appHiddenDuring, true, 'the game screen behind the report must be inert and hidden from assistive technology');
+    assert.equal(result.feedbackInertDuring && result.feedbackHiddenDuring, true, 'background feedback must be isolated while the report is open');
+    assert.equal(result.skipLinkInertDuring && result.skipLinkHiddenDuring, true, 'the bypass link must not remain reachable behind the modal');
+    assert.equal(result.modalRootRemainsActive, true, 'the active modal container must never be made inert');
     assert.equal(result.shiftWrapped, true, 'Shift+Tab from the first control must wrap to the last');
     assert.equal(result.forwardWrapped, true, 'Tab from the last control must wrap to the first');
     assert.equal(result.focusRestored, true, 'closing the report must return focus to its trigger');
+    assert.equal(result.appInertRestored && result.appHiddenRestored, true, 'the app background state must be restored after closing');
+    assert.equal(result.feedbackInertRestored && result.feedbackHiddenRestored, true, 'pre-existing feedback-root accessibility state must be preserved');
+    assert.equal(result.skipLinkInertRestored && result.skipLinkHiddenRestored, true, 'the bypass link state must be restored exactly');
     assert.equal(result.restoredModal, 'false', 'the original aria-modal value must be restored');
     assert.equal(result.restoredRole, 'dialog', 'the original dialog role must be preserved');
     assert.equal(result.escapeClosed, true, 'Escape must close the report');
     assert.equal(result.escapePrevented, true, 'Escape must be consumed by the report');
     assert.equal(result.escapeFocusRestored, true, 'Escape must restore focus to the trigger');
+    assert.equal(result.escapeBackgroundRestored, true, 'Escape must restore every background inert and aria-hidden state');
     assert.equal(result.unchanged, true, 'opening the report must not write to the save');
 
     assert.deepEqual(errors, [], 'life review should not create browser runtime errors');

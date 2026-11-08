@@ -122,6 +122,7 @@ function makeHarness(fetchImpl = async () => { throw new Error('offline'); }, ca
     ['hayah-shell-v224', new Map()],
     ['hayah-shell-v225', new Map()],
     ['hayah-shell-v226', new Map()],
+    ['hayah-shell-v227', new Map()],
     ['unrelated-cache', new Map()]
   ]);
   const cacheCalls = { added: [], addAllAttempts: [], deleted: [], skipped: 0, claimed: 0 };
@@ -195,7 +196,7 @@ function makeHarness(fetchImpl = async () => { throw new Error('offline'); }, ca
 }
 
 test('service worker installs a fresh shell cache and removes only obsolete Hayah caches', async () => {
-  assert.match(workerSource, /const CACHE_NAME = 'hayah-shell-v227'/);
+  assert.match(workerSource, /const CACHE_NAME = 'hayah-shell-v228'/);
   const harness = makeHarness();
   await harness.dispatchLifecycle('install');
 
@@ -221,7 +222,7 @@ test('service worker installs a fresh shell cache and removes only obsolete Haya
   ]);
 
   await harness.dispatchLifecycle('activate');
-  assert.deepEqual(harness.cacheCalls.deleted, ['hayah-shell-v60', 'hayah-shell-v61', 'hayah-shell-v62', 'hayah-shell-v63', 'hayah-shell-v64', 'hayah-shell-v65', 'hayah-shell-v66', 'hayah-shell-v67', 'hayah-shell-v68', 'hayah-shell-v69', 'hayah-shell-v70', 'hayah-shell-v71', 'hayah-shell-v72', 'hayah-shell-v75', 'hayah-shell-v77', 'hayah-shell-v78', 'hayah-shell-v79', 'hayah-shell-v80', 'hayah-shell-v81', 'hayah-shell-v82', 'hayah-shell-v83', 'hayah-shell-v84', 'hayah-shell-v85', 'hayah-shell-v86', 'hayah-shell-v87', 'hayah-shell-v88', 'hayah-shell-v89', 'hayah-shell-v90', 'hayah-shell-v91', 'hayah-shell-v92', 'hayah-shell-v93', 'hayah-shell-v94', 'hayah-shell-v95', 'hayah-shell-v96', 'hayah-shell-v97', 'hayah-shell-v98', 'hayah-shell-v99', 'hayah-shell-v100', 'hayah-shell-v101', 'hayah-shell-v102', 'hayah-shell-v103', 'hayah-shell-v104', 'hayah-shell-v105', 'hayah-shell-v106', 'hayah-shell-v107', 'hayah-shell-v108', 'hayah-shell-v109', 'hayah-shell-v110', 'hayah-shell-v111', 'hayah-shell-v112', 'hayah-shell-v113', 'hayah-shell-v114', 'hayah-shell-v115', 'hayah-shell-v116', 'hayah-shell-v117', 'hayah-shell-v118', 'hayah-shell-v119', 'hayah-shell-v120', 'hayah-shell-v121', 'hayah-shell-v122', 'hayah-shell-v123', 'hayah-shell-v124', 'hayah-shell-v125', 'hayah-shell-v130', 'hayah-shell-v131', 'hayah-shell-v132', 'hayah-shell-v133', 'hayah-shell-v134', 'hayah-shell-v135', 'hayah-shell-v136', 'hayah-shell-v137', 'hayah-shell-v138', 'hayah-shell-v139', 'hayah-shell-v140', 'hayah-shell-v141', 'hayah-shell-v142', 'hayah-shell-v143', 'hayah-shell-v144', 'hayah-shell-v145', 'hayah-shell-v147', 'hayah-shell-v148', 'hayah-shell-v150', 'hayah-shell-v151', 'hayah-shell-v152', 'hayah-shell-v153', 'hayah-shell-v158', 'hayah-shell-v159', 'hayah-shell-v160', 'hayah-shell-v161', 'hayah-shell-v162', 'hayah-shell-v163', 'hayah-shell-v164', 'hayah-shell-v166', 'hayah-shell-v167', 'hayah-shell-v168', 'hayah-shell-v170', 'hayah-shell-v173', 'hayah-shell-v174', 'hayah-shell-v175', 'hayah-shell-v176', 'hayah-shell-v177', 'hayah-shell-v178', 'hayah-shell-v179', 'hayah-shell-v187', 'hayah-shell-v194', 'hayah-shell-v201', 'hayah-shell-v202', 'hayah-shell-v214', 'hayah-shell-v224', 'hayah-shell-v225', 'hayah-shell-v226']);
+  assert.deepEqual(harness.cacheCalls.deleted, ['hayah-shell-v60', 'hayah-shell-v61', 'hayah-shell-v62', 'hayah-shell-v63', 'hayah-shell-v64', 'hayah-shell-v65', 'hayah-shell-v66', 'hayah-shell-v67', 'hayah-shell-v68', 'hayah-shell-v69', 'hayah-shell-v70', 'hayah-shell-v71', 'hayah-shell-v72', 'hayah-shell-v75', 'hayah-shell-v77', 'hayah-shell-v78', 'hayah-shell-v79', 'hayah-shell-v80', 'hayah-shell-v81', 'hayah-shell-v82', 'hayah-shell-v83', 'hayah-shell-v84', 'hayah-shell-v85', 'hayah-shell-v86', 'hayah-shell-v87', 'hayah-shell-v88', 'hayah-shell-v89', 'hayah-shell-v90', 'hayah-shell-v91', 'hayah-shell-v92', 'hayah-shell-v93', 'hayah-shell-v94', 'hayah-shell-v95', 'hayah-shell-v96', 'hayah-shell-v97', 'hayah-shell-v98', 'hayah-shell-v99', 'hayah-shell-v100', 'hayah-shell-v101', 'hayah-shell-v102', 'hayah-shell-v103', 'hayah-shell-v104', 'hayah-shell-v105', 'hayah-shell-v106', 'hayah-shell-v107', 'hayah-shell-v108', 'hayah-shell-v109', 'hayah-shell-v110', 'hayah-shell-v111', 'hayah-shell-v112', 'hayah-shell-v113', 'hayah-shell-v114', 'hayah-shell-v115', 'hayah-shell-v116', 'hayah-shell-v117', 'hayah-shell-v118', 'hayah-shell-v119', 'hayah-shell-v120', 'hayah-shell-v121', 'hayah-shell-v122', 'hayah-shell-v123', 'hayah-shell-v124', 'hayah-shell-v125', 'hayah-shell-v130', 'hayah-shell-v131', 'hayah-shell-v132', 'hayah-shell-v133', 'hayah-shell-v134', 'hayah-shell-v135', 'hayah-shell-v136', 'hayah-shell-v137', 'hayah-shell-v138', 'hayah-shell-v139', 'hayah-shell-v140', 'hayah-shell-v141', 'hayah-shell-v142', 'hayah-shell-v143', 'hayah-shell-v144', 'hayah-shell-v145', 'hayah-shell-v147', 'hayah-shell-v148', 'hayah-shell-v150', 'hayah-shell-v151', 'hayah-shell-v152', 'hayah-shell-v153', 'hayah-shell-v158', 'hayah-shell-v159', 'hayah-shell-v160', 'hayah-shell-v161', 'hayah-shell-v162', 'hayah-shell-v163', 'hayah-shell-v164', 'hayah-shell-v166', 'hayah-shell-v167', 'hayah-shell-v168', 'hayah-shell-v170', 'hayah-shell-v173', 'hayah-shell-v174', 'hayah-shell-v175', 'hayah-shell-v176', 'hayah-shell-v177', 'hayah-shell-v178', 'hayah-shell-v179', 'hayah-shell-v187', 'hayah-shell-v194', 'hayah-shell-v201', 'hayah-shell-v202', 'hayah-shell-v214', 'hayah-shell-v224', 'hayah-shell-v225', 'hayah-shell-v226', 'hayah-shell-v227']);
   assert.equal(harness.cacheCalls.claimed, 1);
   assert.equal(harness.cacheStore.has('hayah-shell-v113'), false);
   assert.equal(harness.cacheStore.has('hayah-shell-v114'), false);
@@ -255,10 +256,11 @@ test('service worker installs a fresh shell cache and removes only obsolete Haya
   assert.equal(harness.cacheStore.has('hayah-shell-v152'), false, 'the previous v152 shell cache should be removed');
   assert.equal(harness.cacheStore.has('hayah-shell-v153'), false, 'the previous v153 shell cache should be removed');
   assert.equal(harness.cacheStore.has('hayah-shell-v159'), false, 'the previous v159 shell cache should be removed');
-  assert.ok(harness.cacheStore.has('hayah-shell-v227'), 'the current shell cache should be retained');
+  assert.ok(harness.cacheStore.has('hayah-shell-v228'), 'the current shell cache should be retained');
   assert.equal(harness.cacheStore.has('hayah-shell-v224'), false, 'the previous v224 shell cache should be removed after v225 installs');
-  assert.equal(harness.cacheStore.has('hayah-shell-v225'), false, 'the previous v225 shell cache should be removed after v227 installs');
-  assert.equal(harness.cacheStore.has('hayah-shell-v226'), false, 'the previous v226 shell cache should be removed after v227 installs');
+  assert.equal(harness.cacheStore.has('hayah-shell-v225'), false, 'the previous v225 shell cache should be removed after v228 installs');
+  assert.equal(harness.cacheStore.has('hayah-shell-v226'), false, 'the previous v226 shell cache should be removed after v228 installs');
+  assert.equal(harness.cacheStore.has('hayah-shell-v227'), false, 'the previous v227 shell cache should be removed after v228 installs');
   assert.equal(harness.cacheStore.has('hayah-shell-v216'), false, 'the v216 shell cache should be retired after v217 installs');
   assert.equal(harness.cacheStore.has('hayah-shell-v201'), false, 'the previous v201 shell cache should be removed');
   assert.equal(harness.cacheStore.has('hayah-shell-v202'), false, 'the previous v202 shell cache should be removed');
@@ -339,7 +341,7 @@ test('optional shell asset failures fall back to the essential playable shell', 
   assert.deepEqual(harness.cacheCalls.added, coreShell);
   assert.equal(harness.cacheCalls.skipped, 1,
     'the worker should activate after the essential game files are cached');
-  const cache = harness.cacheStore.get('hayah-shell-v227');
+  const cache = harness.cacheStore.get('hayah-shell-v228');
   for (const url of coreShell) assert.ok(cache.has(url), 'essential shell asset should be cached: ' + url);
   assert.equal(cache.has(scope + 'accessibility.css'), false,
     'the failed optional asset should not block the playable shell');
@@ -624,7 +626,7 @@ test('optional shell fallback preserves older cached Hayah assets before cleanup
 
   await harness.dispatchLifecycle('install');
 
-  const currentShell = harness.cacheStore.get('hayah-shell-v227');
+  const currentShell = harness.cacheStore.get('hayah-shell-v228');
   assert.equal(
     await (await currentShell.get(scope + 'accessibility.css').clone()).text(),
     'previous accessibility stylesheet',
@@ -670,7 +672,7 @@ test('optional shell fallback prefers the newest available Hayah asset', async (
 
   await harness.dispatchLifecycle('install');
 
-  const currentShell = harness.cacheStore.get('hayah-shell-v227');
+  const currentShell = harness.cacheStore.get('hayah-shell-v228');
   assert.equal(
     await (await currentShell.get(scope + 'accessibility.css').clone()).text(),
     'newer accessibility stylesheet',
