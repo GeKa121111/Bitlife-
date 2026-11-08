@@ -188,6 +188,7 @@
   font-weight: 950;
 }
 
+#modalRoot .life-review-heading h2:focus,
 #modalRoot .life-review-close:focus-visible,
 #modalRoot .life-review-done:focus-visible {
   outline: 3px solid var(--hayah-focus-ring, #d4a16e);
