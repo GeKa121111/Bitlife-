@@ -11091,6 +11091,102 @@ function businessDividendReadinessMenu(entity,back){
  modal('💸','تقدير السيولة القابلة للتوزيع',detail,opts);
 }
 
+
+function businessDividendDistributionMenu(entity,back){
+ const fallbackId=state&&state.lifeId||state&&state.name||state&&state.legacy&&state.legacy.activeBeneficiaryId;
+ const snapshot=businessDividendReadinessSnapshot(entity,fallbackId,state&&state.name);
+ const ledger=normalizeBusinessDividendLedger(entity&&entity.dividendLedger);
+ const returnToOwnership=()=>businessOwnershipMenu(entity,back);
+ if(!snapshot.valid||!snapshot.ready||!ledger.valid||businessDividendEscrowBalance(entity)===null){
+  const reason=snapshot.reason==='shared-treasury'?'افصل خزينة النشاط أولًا قبل اعتماد أي توزيع.':snapshot.reason==='invalid-dividend-ledger'?'دفتر التوزيعات أو رصيد المبالغ المحجوزة يحتاج مراجعة؛ لم نغيّر أي رصيد.':'لا توجد بيانات مالية وملكية كافية لاعتماد توزيع آمن.';
+  modal('⚠️','تعذر اعتماد التوزيع',reason,[choice('↩️','رجوع لسجل الملكية','',returnToOwnership)]);
+  return;
+ }
+ const existing=ledger.ledger.entries.find(entry=>entry.year===snapshot.year);
+ if(existing){
+  const claimable=businessDividendClaimableSnapshot(entity,snapshot.activeBeneficiaryId);
+  const detail='تم اعتماد توزيع واحد للسنة المالية '+existing.year+' بإجمالي '+cash(existing.totalAmount)+'.\nالمصروف فعليًا '+cash(existing.paidAmount)+' · المحجوز لبقية المستحقين '+cash(existing.pendingAmount)+'.\nلا يمكن اعتماد توزيع ثانٍ للسنة نفسها.';
+  const opts=[];
+  if(claimable.valid&&claimable.amount>0)opts.push(choice('💰','استلام مستحقاتك '+cash(claimable.amount),'تحويل مستحقاتك من حساب التوزيعات المحجوز إلى رصيدك الشخصي.',()=>claimBusinessDividendPayments(entity,back),cash(claimable.amount)));
+  opts.push(choice('↩️','رجوع لسجل الملكية','',returnToOwnership));
+  modal('🧾','توزيع السنة معتمد بالفعل',detail,opts);
+  return;
+ }
+ if(snapshot.distributable<=0){
+  modal('💸','لا توجد سيولة للتوزيع','لا يوجد مبلغ موجب متاح بعد الضرائب والتمويل والاحتياطي التحفظي.',[choice('↩️','رجوع لسجل الملكية','',returnToOwnership)]);
+  return;
+ }
+ const opts=[.1,.25,.5,1].map(ratio=>{
+  const preview=applyBusinessDividendDistribution(entity,snapshot,ratio,snapshot.activeBeneficiaryId,state.age,state.bank);
+  if(!preview.ok)return null;
+  return choice('🧾','توزيع '+Math.round(ratio*100)+'% من السيولة المتاحة','إجمالي '+cash(preview.amount)+' · نصيبك الفوري '+cash(preview.ownerAmount)+' · محجوز لبقية الملاك '+cash(preview.pendingAmount),()=>confirmBusinessDividendDistribution(entity,ratio,back),cash(preview.amount));
+ }).filter(Boolean);
+ opts.push(choice('↩️','رجوع لسجل الملكية','',returnToOwnership));
+ modal('💸','اختيار نسبة توزيع الأرباح','توزيع واحد فقط لكل سنة مالية. نصيب المالك النشط يُصرف فورًا، وحصص بقية الملاك تُحجز في حساب منفصل عن الخزينة التشغيلية.',opts);
+}
+
+function confirmBusinessDividendDistribution(entity,ratio,back){
+ const fallbackId=state&&state.lifeId||state&&state.name||state&&state.legacy&&state.legacy.activeBeneficiaryId;
+ const snapshot=businessDividendReadinessSnapshot(entity,fallbackId,state&&state.name);
+ const preview=applyBusinessDividendDistribution(entity,snapshot,ratio,snapshot.activeBeneficiaryId,state.age,state.bank);
+ if(!preview.ok){
+  info('⚠️','تغيرت بيانات التوزيع','لم نعد نستطيع اعتماد نفس المبلغ بأمان؛ افتح تقدير السيولة من جديد.');
+  return;
+ }
+ const detail='السنة المالية '+preview.year+'\nإجمالي التوزيع '+cash(preview.amount)+'\nسيُضاف إلى رصيدك الآن '+cash(preview.ownerAmount)+'\nسيُحجز لبقية الملاك '+cash(preview.pendingAmount)+' في حساب منفصل عن الخزينة التشغيلية.\nلا يمكن اعتماد توزيع ثانٍ للسنة نفسها.';
+ modal('🧾','تأكيد توزيع الأرباح',detail,[
+  choice('✓','اعتماد التوزيع','سيتم حفظ الحركة والخزينة والحصص في معاملة واحدة.',()=>commitBusinessDividendDistribution(entity,ratio,back)),
+  choice('↩️','إلغاء','',()=>businessDividendDistributionMenu(entity,back))
+ ]);
+}
+
+function commitBusinessDividendDistribution(entity,ratio,back){
+ closeModal();
+ const fallbackId=state&&state.lifeId||state&&state.name||state&&state.legacy&&state.legacy.activeBeneficiaryId;
+ const snapshot=businessDividendReadinessSnapshot(entity,fallbackId,state&&state.name);
+ const result=applyBusinessDividendDistribution(entity,snapshot,ratio,snapshot.activeBeneficiaryId,state.age,state.bank);
+ if(!result.ok){
+  const message=result.reason==='already-distributed'?'تم اعتماد توزيع لهذه السنة بالفعل.':result.reason==='balance-limit'?'رصيدك أو حساب الحجز وصل إلى الحد الآمن.':result.reason==='invalid-dividend-escrow'?'حساب المبالغ المحجوزة لا يطابق دفتر المستحقات.':'تعذر التحقق من الخزينة أو الحصص؛ لم يتم اعتماد أي حركة.';
+  info('⚠️','لم يتم اعتماد التوزيع',message);return false;
+ }
+ const previousBank=state.bank,previousCash=entity.cashBalance,previousEscrow=entity.dividendEscrowBalance,previousLedger=entity.dividendLedger;
+ const previousLogLength=Array.isArray(state.log)?state.log.length:0;
+ state.bank=result.personalBalanceAfter;entity.cashBalance=result.cashBalanceAfter;entity.dividendEscrowBalance=result.escrowBalanceAfter;entity.dividendLedger=result.ledger;
+ log('💸','اعتماد توزيع أرباح · '+(entity.title||'النشاط'),'اعتمدت '+cash(result.amount)+' عن السنة '+result.year+'؛ صُرف لك '+cash(result.ownerAmount)+' وحُجز '+cash(result.pendingAmount)+' لبقية الملاك في حساب مستقل.','good');
+ if(!save()){
+  state.bank=previousBank;entity.cashBalance=previousCash;
+  if(previousEscrow===undefined)delete entity.dividendEscrowBalance;else entity.dividendEscrowBalance=previousEscrow;
+  if(previousLedger===undefined)delete entity.dividendLedger;else entity.dividendLedger=previousLedger;
+  if(Array.isArray(state.log))state.log.length=previousLogLength;
+  info('⚠️','لم يُحفظ التوزيع','تعذر حفظ المعاملة؛ أعدنا رصيدك والخزينة وحساب الحجز ودفتر التوزيعات إلى حالتهم السابقة.');
+  return false;
+ }
+ render();businessOwnershipMenu(entity,back);return true;
+}
+
+function claimBusinessDividendPayments(entity,back){
+ closeModal();
+ const ownership=businessOwnershipSnapshot(entity,state&&state.lifeId||state&&state.name||state&&state.legacy&&state.activeBeneficiaryId,state&&state.name);
+ if(!ownership.valid){info('⚠️','سجل الملكية يحتاج مراجعة','لم نستطع إثبات هوية المالك النشط؛ لم نصرف أي مستحقات.');return false;}
+ const result=applyBusinessDividendClaims(entity,ownership.activeBeneficiaryId,state.age,state.bank);
+ if(!result.ok){
+  const message=result.reason==='invalid-dividend-escrow'?'حساب الحجز لا يطابق المستحقات المسجلة.':result.reason==='escrow-insufficient'?'الرصيد المحجوز لا يكفي لتسوية المستحقات؛ أوقفنا الصرف.':'لا توجد مستحقات قابلة للاستلام لهذا المالك.';
+  info('⚠️','تعذر استلام المستحقات',message);return false;
+ }
+ const previousBank=state.bank,previousEscrow=entity.dividendEscrowBalance,previousLedger=entity.dividendLedger,previousLogLength=Array.isArray(state.log)?state.log.length:0;
+ state.bank=result.personalBalanceAfter;entity.dividendEscrowBalance=result.escrowBalanceAfter;entity.dividendLedger=result.ledger;
+ log('💰','استلام مستحقات توزيعات · '+(entity.title||'النشاط'),'استلمت '+cash(result.amount)+' من حساب التوزيعات المحجوز بعد مراجعة سجل الملكية.','good');
+ if(!save()){
+  state.bank=previousBank;
+  if(previousEscrow===undefined)delete entity.dividendEscrowBalance;else entity.dividendEscrowBalance=previousEscrow;
+  if(previousLedger===undefined)delete entity.dividendLedger;else entity.dividendLedger=previousLedger;
+  if(Array.isArray(state.log))state.log.length=previousLogLength;
+  info('⚠️','لم يُحفظ الاستلام','تعذر حفظ الحركة؛ أعدنا الرصيد وحساب الحجز ودفتر المستحقات إلى حالتهم السابقة.');
+  return false;
+ }
+ render();businessOwnershipMenu(entity,back);return true;
+}
+
 function businessOwnershipMenu(entity,back){
  const fallbackId=state&&state.lifeId||state&&state.name||state&&state.legacy&&state.legacy.activeBeneficiaryId;
  const snapshot=businessOwnershipSnapshot(entity,fallbackId,state&&state.name);
