@@ -97,19 +97,43 @@
     return true;
   }
 
+  function estimateRetainedSnapshots(snapshots, limit) {
+    // Mirror the import engine's count and serialized-size limits without mutating the save.
+    const candidates = snapshots.slice(-limit);
+    let retained = [];
+    for (let index = candidates.length - 1; index >= 0; index -= 1) {
+      const candidate = [candidates[index], ...retained];
+      if (JSON.stringify(candidate).length <= MAX_REWIND_SNAPSHOT_CHARS) {
+        retained = candidate;
+      }
+    }
+    return {
+      snapshots: retained,
+      count: retained.length,
+      droppedCount: snapshots.length - retained.length,
+      serializedChars: JSON.stringify(retained).length
+    };
+  }
+
   function inspectRewindHistory(life, warnings, currentAgeOverride) {
     const raw = isRecord(life) ? life.timeMachineSnapshots : undefined;
     if (raw === undefined || raw === null) {
       return {
         count: 0, serializedChars: 0, invalidCount: 0,
-        malformedJsonCount: 0, unusableCount: 0, usableCount: 0
+        malformedJsonCount: 0, unusableCount: 0, usableCount: 0,
+        baseRetainedCount: 0, expandedRetainedCount: 0,
+        baseRestorableCount: 0, expandedRestorableCount: 0,
+        baseDroppedCount: 0, expandedDroppedCount: 0
       };
     }
     if (!Array.isArray(raw)) {
       warnings.push('حقل نقاط الرجوع موجود لكنه ليس مصفوفة؛ قد يتجاهله المحرك عند الاستيراد.');
       return {
         count: 0, serializedChars: 0, invalidCount: 1,
-        malformedJsonCount: 0, unusableCount: 0, usableCount: 0
+        malformedJsonCount: 0, unusableCount: 0, usableCount: 0,
+        baseRetainedCount: 0, expandedRetainedCount: 0,
+        baseRestorableCount: 0, expandedRestorableCount: 0,
+        baseDroppedCount: 0, expandedDroppedCount: 0
       };
     }
 
@@ -119,6 +143,7 @@
     let malformedJsonCount = 0;
     let unusableCount = 0;
     let usableCount = 0;
+    const restorableSnapshotSet = new Set();
 
     if (invalidCount > 0) {
       warnings.push('يوجد ' + invalidCount + ' مدخل فارغ أو غير نصي في سجل الرجوع؛ قد يتجاهلها المحرك.');
@@ -132,8 +157,10 @@
         malformedJsonCount += 1;
         return;
       }
-      if (isRestorableRewindSnapshot(parsed, life, currentAgeOverride)) usableCount += 1;
-      else unusableCount += 1;
+      if (isRestorableRewindSnapshot(parsed, life, currentAgeOverride)) {
+        usableCount += 1;
+        restorableSnapshotSet.add(snapshot);
+      } else unusableCount += 1;
     });
 
     if (malformedJsonCount > 0) {
@@ -144,6 +171,12 @@
     }
 
     const serializedChars = snapshots.length ? JSON.stringify(snapshots).length : 0;
+    const baseRetention = estimateRetainedSnapshots(snapshots, BASE_REWIND_SNAPSHOT_LIMIT);
+    const expandedRetention = estimateRetainedSnapshots(snapshots, MAX_REWIND_SNAPSHOT_LIMIT);
+    const countRestorable = retained => retained.reduce(
+      (count, snapshot) => count + (restorableSnapshotSet.has(snapshot) ? 1 : 0),
+      0
+    );
     if (snapshots.length > MAX_REWIND_SNAPSHOT_LIMIT) {
       warnings.push('يتجاوز سجل الرجوع الحد الأقصى المدعوم (' + MAX_REWIND_SNAPSHOT_LIMIT + ' نقطة)؛ قد تُستبعد نقاط أقدم عند التطبيع.');
     } else if (snapshots.length > BASE_REWIND_SNAPSHOT_LIMIT) {
@@ -153,7 +186,20 @@
       warnings.push('يتجاوز سجل الرجوع ميزانية التخزين البالغة ' + MAX_REWIND_SNAPSHOT_CHARS + ' وحدة نصية؛ قد يستبعد المحرك بعض اللقطات لتقليل الحجم.');
     }
 
-    return { count: snapshots.length, serializedChars, invalidCount, malformedJsonCount, unusableCount, usableCount };
+    return {
+      count: snapshots.length,
+      serializedChars,
+      invalidCount,
+      malformedJsonCount,
+      unusableCount,
+      usableCount,
+      baseRetainedCount: baseRetention.count,
+      expandedRetainedCount: expandedRetention.count,
+      baseRestorableCount: countRestorable(baseRetention.snapshots),
+      expandedRestorableCount: countRestorable(expandedRetention.snapshots),
+      baseDroppedCount: baseRetention.droppedCount,
+      expandedDroppedCount: expandedRetention.droppedCount
+    };
   }
 
   function inspectBackup(data) {
@@ -211,6 +257,12 @@
       rewindMalformedSnapshotCount: rewind.malformedJsonCount,
       rewindUnusableSnapshotCount: rewind.unusableCount,
       rewindUsableSnapshotCount: rewind.usableCount,
+      rewindBaseRetainedCount: rewind.baseRetainedCount,
+      rewindExpandedRetainedCount: rewind.expandedRetainedCount,
+      rewindBaseRestorableCount: rewind.baseRestorableCount,
+      rewindExpandedRestorableCount: rewind.expandedRestorableCount,
+      rewindBaseDroppedCount: rewind.baseDroppedCount,
+      rewindExpandedDroppedCount: rewind.expandedDroppedCount,
       cemeteryCount,
       hasSettings,
       hasPerks,
@@ -315,7 +367,11 @@
         ['إصدار بيانات الحياة', report.lifeVersion === null ? 'غير متاح' : report.lifeVersion],
         ['نقاط الرجوع بالزمن', report.rewindSnapshotCount],
         ['طول سجل الرجوع', report.rewindSnapshotChars ? report.rewindSnapshotChars + ' وحدة نصية' : 'لا توجد نقاط محفوظة'],
-        ['نقاط قابلة للاستعادة', report.rewindUsableSnapshotCount],
+        ['نقاط صالحة بنيويًا قبل حدود السعة', report.rewindUsableSnapshotCount],
+        ['تقدير الصالح للاستعادة — حد 8 نقاط', report.rewindBaseRestorableCount + ' من ' + report.rewindBaseRetainedCount],
+        ['تقدير الصالح للاستعادة — حد 60 نقطة', report.rewindExpandedRestorableCount + ' من ' + report.rewindExpandedRetainedCount],
+        ['نقاط مستبعدة — الحد الأساسي', report.rewindBaseDroppedCount],
+        ['نقاط مستبعدة — الذاكرة الموسعة', report.rewindExpandedDroppedCount],
         ['نقاط JSON تالفة', report.rewindMalformedSnapshotCount],
         ['نقاط غير متوافقة مع الحياة الحالية', report.rewindUnusableSnapshotCount],
         ['مدخلات فارغة أو غير نصية', report.rewindInvalidSnapshotCount],
