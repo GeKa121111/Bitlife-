@@ -125,11 +125,10 @@
     if (isRecord(state.business)) businesses.push(state.business);
     list(state.companies).forEach(item => { if (isRecord(item)) businesses.push(item); });
     const seenBusinesses = new Set();
-    let anonymousIndex = 0;
     businesses.forEach(item => {
       const identity = [item.id, item.assetId, item.title, item.name].find(value => (typeof value === 'string' || typeof value === 'number') && String(value).trim());
-      const key = identity === undefined ? 'anonymous-' + anonymousIndex++ : String(identity).trim().toLocaleLowerCase();
-      seenBusinesses.add(key);
+      if (identity === undefined) return;
+      seenBusinesses.add(String(identity).trim().toLocaleLowerCase());
     });
     if (seenBusinesses.size > 0) highlights.push({ title: 'إدارة الأعمال', text: formatCount(seenBusinesses.size) + ' نشاط تجاري في سجل الملكية' });
     return highlights;
