@@ -181,19 +181,31 @@ test('لا يقارن الإيرادات عبر سنوات مفقودة حتى �
   assert.equal(JSON.stringify(business), before, 'analysis must remain read-only');
 });
 
-test('لا يقارن تقريرين من السنة نفسها حتى لو احتوى السجل على إدخال مكرر', () => {
+test('عند تكرار السنة يعتمد آخر تقرير مخزن ويقارنه بالسنة السابقة', () => {
   const business = {
+    id: 'duplicate-year-business',
     title: 'نشاط بسجل سنة مكرر',
     financialHistory: [
       report({ year: 2025, revenue: 100000, profit: 12000 }),
       report({ year: 2026, revenue: 140000, profit: 18000 }),
-      report({ year: 2026, revenue: 90000, profit: -5000 })
+      report({ year: '2026', revenue: 90000, profit: -5000 })
     ]
   };
+  const before = JSON.stringify(business);
   const result = analyzeBusiness(business);
-  assert.equal(result.revenueChangePercent, null);
-  assert.equal(result.revenueChangeUnavailableReason, 'nonconsecutive-year');
-  assert.equal(result.insights.some(item => item.code === 'revenue-drop'), false);
+  assert.equal(result.year, 2026);
+  assert.equal(result.revenue, 90000);
+  assert.equal(result.profit, -5000);
+  assert.equal(result.revenueChangePercent, -10);
+  assert.equal(result.revenueChangeUnavailableReason, null);
+  assert.ok(result.insights.some(item => item.code === 'revenue-drop'));
+
+  const portfolio = analyzeBusinessPortfolio({ business });
+  const annual2026 = portfolio.annualSummaries.find(item => item.year === 2026);
+  assert.ok(annual2026);
+  assert.equal(annual2026.totalRevenue, 90000,
+    'individual and portfolio analysis must select the same last stored report');
+  assert.equal(JSON.stringify(business), before, 'deduplication must remain read-only');
 });
 
 test('صفر إيرادات السنة السابقة لا يُعرض كأنه سنة مفقودة', () => {
