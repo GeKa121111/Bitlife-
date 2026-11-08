@@ -58,7 +58,7 @@
       version: life.version
     };
   }
-  function isRestorableRewindSnapshot(parsed, life) {
+  function isRestorableRewindSnapshot(parsed, life, currentAgeOverride) {
     let snapshotState = parsed;
     const wrapped = isRecord(parsed) && parsed.snapshotVersion === 1 &&
       parsed.state && typeof parsed.state === 'object';
@@ -78,7 +78,9 @@
     // snapshots must still carry the log array required by the rewind engine.
     if (!wrapped && !Array.isArray(snapshotState.log)) return false;
 
-    const currentAge = Number(life && life.age);
+    const currentAge = currentAgeOverride === undefined
+      ? Number(life && life.age)
+      : currentAgeOverride === null ? NaN : Number(currentAgeOverride);
     if (!Number.isFinite(currentAge) || age >= currentAge) return false;
 
     const currentLifeId = life && life.lifeId;
@@ -95,7 +97,7 @@
     return true;
   }
 
-  function inspectRewindHistory(life, warnings) {
+  function inspectRewindHistory(life, warnings, currentAgeOverride) {
     const raw = isRecord(life) ? life.timeMachineSnapshots : undefined;
     if (raw === undefined || raw === null) {
       return {
@@ -130,7 +132,7 @@
         malformedJsonCount += 1;
         return;
       }
-      if (isRestorableRewindSnapshot(parsed, life)) usableCount += 1;
+      if (isRestorableRewindSnapshot(parsed, life, currentAgeOverride)) usableCount += 1;
       else unusableCount += 1;
     });
 
@@ -196,7 +198,7 @@
     }
 
     const identity = inspectLife(life, errors, warnings);
-    const rewind = inspectRewindHistory(life, warnings);
+    const rewind = inspectRewindHistory(life, warnings, identity.age);
     return {
       valid: errors.length === 0,
       format,
