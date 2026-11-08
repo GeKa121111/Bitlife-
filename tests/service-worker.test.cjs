@@ -121,7 +121,7 @@ function makeHarness(fetchImpl = async () => { throw new Error('offline'); }, ca
     ['hayah-shell-v214', new Map()],
     ['hayah-shell-v224', new Map()],
     ['hayah-shell-v225', new Map()],
-    ['hayah-shell-v227', new Map()],
+    ['hayah-shell-v226', new Map()],
     ['unrelated-cache', new Map()]
   ]);
   const cacheCalls = { added: [], addAllAttempts: [], deleted: [], skipped: 0, claimed: 0 };
@@ -257,7 +257,7 @@ test('service worker installs a fresh shell cache and removes only obsolete Haya
   assert.equal(harness.cacheStore.has('hayah-shell-v159'), false, 'the previous v159 shell cache should be removed');
   assert.ok(harness.cacheStore.has('hayah-shell-v227'), 'the current shell cache should be retained');
   assert.equal(harness.cacheStore.has('hayah-shell-v224'), false, 'the previous v224 shell cache should be removed after v225 installs');
-  assert.equal(harness.cacheStore.has('hayah-shell-v225'), false, 'the previous v225 shell cache should be removed after v226 installs');
+  assert.equal(harness.cacheStore.has('hayah-shell-v225'), false, 'the previous v225 shell cache should be removed after v227 installs');
   assert.equal(harness.cacheStore.has('hayah-shell-v226'), false, 'the previous v226 shell cache should be removed after v227 installs');
   assert.equal(harness.cacheStore.has('hayah-shell-v216'), false, 'the v216 shell cache should be retired after v217 installs');
   assert.equal(harness.cacheStore.has('hayah-shell-v201'), false, 'the previous v201 shell cache should be removed');
