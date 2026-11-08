@@ -263,6 +263,21 @@ test('dividend readiness refuses missing or invalid financial baselines',()=>{
  },'owner','المالك');
  assert.equal(invalidCosts.ready,false);
  assert.equal(invalidCosts.reason,'invalid-financial-result');
+ const negativeCosts=api.businessDividendReadinessSnapshot({
+  treasuryMode:'separate',cashBalance:500000,financialHistory:[{year:2026,costs:-100}]
+ },'owner','المالك');
+ assert.equal(negativeCosts.ready,false);
+ assert.equal(negativeCosts.reason,'invalid-financial-result');
+ const blankCash=api.businessDividendReadinessSnapshot({
+  treasuryMode:'separate',cashBalance:' ',financialHistory:[{year:2026,costs:1000}]
+ },'owner','المالك');
+ assert.equal(blankCash.ready,false);
+ assert.equal(blankCash.reason,'invalid-treasury');
+ const booleanCash=api.businessDividendReadinessSnapshot({
+  treasuryMode:'separate',cashBalance:true,financialHistory:[{year:2026,costs:1000}]
+ },'owner','المالك');
+ assert.equal(booleanCash.ready,false);
+ assert.equal(booleanCash.reason,'invalid-treasury');
 });
 
 test('dividend readiness returns zero when liabilities and reserve consume available cash',()=>{

@@ -10718,8 +10718,11 @@ function businessDividendReadinessSnapshot(entity,fallbackBeneficiaryId,fallback
  const empty={valid:ownership.valid,ready:false,reason:null,year:null,cashBalance:0,availableCash:0,annualCosts:0,taxLiability:0,creditBalance:0,liabilities:0,reserve:0,distributable:0,activeBeneficiaryId:ownership.activeBeneficiaryId||null,activeShareAmount:0,invalidReportYearCount:0,shareholders:[]};
  if(!ownership.valid)return {...empty,valid:false,reason:'invalid-ownership'};
  if(!businessUsesSeparateTreasury(entity))return {...empty,reason:'shared-treasury'};
- const rawCash=Number(entity&&entity.cashBalance);
- if(!Number.isFinite(rawCash))return {...empty,reason:'invalid-treasury'};
+ const rawCashValue=entity&&entity.cashBalance;
+ const supportedCashType=typeof rawCashValue==='number'||typeof rawCashValue==='string';
+ const nonEmptyCashString=typeof rawCashValue!=='string'||rawCashValue.trim().length>0;
+ const rawCash=Number(rawCashValue);
+ if(!supportedCashType||!nonEmptyCashString||!Number.isFinite(rawCash))return {...empty,reason:'invalid-treasury'};
  const history=Array.isArray(entity&&entity.financialHistory)?entity.financialHistory:[];
  let latest=null,latestYear=-1,latestIndex=-1,invalidReportYearCount=0;
  history.forEach((report,index)=>{
@@ -10733,7 +10736,10 @@ function businessDividendReadinessSnapshot(entity,fallbackBeneficiaryId,fallback
  });
  if(!latest)return {...empty,reason:invalidReportYearCount?'invalid-report-year':'no-valid-report',invalidReportYearCount};
  const rawCosts=latest.costs;
- if(rawCosts===null||rawCosts===undefined||rawCosts===''||!Number.isFinite(Number(rawCosts)))return {...empty,reason:'invalid-financial-result',year:latestYear,invalidReportYearCount};
+ const supportedCostType=typeof rawCosts==='number'||typeof rawCosts==='string';
+ const nonEmptyCostString=typeof rawCosts!=='string'||rawCosts.trim().length>0;
+ const numericCosts=Number(rawCosts);
+ if(!supportedCostType||!nonEmptyCostString||!Number.isFinite(numericCosts)||numericCosts<0)return {...empty,reason:'invalid-financial-result',year:latestYear,invalidReportYearCount};
  const cashBalance=Math.max(-1000000000000,Math.min(1000000000000,Math.round(rawCash)));
  const availableCash=Math.max(0,cashBalance);
  const annualCosts=Math.max(0,Math.min(1000000000000,Math.round(Number(rawCosts))));
