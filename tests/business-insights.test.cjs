@@ -1,3 +1,5 @@
+const fs = require('node:fs');
+const path = require('node:path');
 'use strict';
 
 const test = require('node:test');
@@ -34,6 +36,7 @@ test('التقارير القديمة التي تفتقد مؤشرات السو�
   assert.equal(result.marketShare, null);
   assert.equal(result.marketShareChange, null);
   assert.equal(result.status, 'good');
+  assert.equal(result.revenueChangeUnavailableReason, 'no-previous-report');
   assert.ok(result.insights.some(item => item.code === 'healthy-result'));
 });
 
@@ -93,6 +96,7 @@ test('لا يقارن الإيرادات عبر سنوات مفقودة حتى �
   const before = JSON.stringify(business);
   const result = analyzeBusiness(business);
   assert.equal(result.revenueChangePercent, null);
+  assert.equal(result.revenueChangeUnavailableReason, 'nonconsecutive-year');
   assert.equal(result.insights.some(item => item.code === 'revenue-drop'), false);
   assert.equal(JSON.stringify(business), before, 'analysis must remain read-only');
 });
@@ -108,7 +112,24 @@ test('لا يقارن تقريرين من السنة نفسها حتى لو اح
   };
   const result = analyzeBusiness(business);
   assert.equal(result.revenueChangePercent, null);
+  assert.equal(result.revenueChangeUnavailableReason, 'nonconsecutive-year');
   assert.equal(result.insights.some(item => item.code === 'revenue-drop'), false);
+});
+
+test('صفر إيرادات السنة السابقة لا يُعرض كأنه سنة مفقودة', () => {
+  const business = {
+    title: 'نشاط بدأ تحقيق الإيرادات',
+    financialHistory: [
+      report({ year: 2025, revenue: 0, costs: 0, profit: 0, margin: 0 }),
+      report({ year: 2026, revenue: 50000, costs: 35000, profit: 15000, margin: 30 })
+    ]
+  };
+  const before = JSON.stringify(business);
+  const result = analyzeBusiness(business);
+  assert.equal(result.revenueChangePercent, null);
+  assert.equal(result.revenueChangeUnavailableReason, 'nonpositive-baseline');
+  assert.equal(result.insights.some(item => item.code === 'revenue-drop'), false);
+  assert.equal(JSON.stringify(business), before, 'analysis must remain read-only');
 });
 
 test('لوحة المحفظة تجمع أحدث تقرير لكل نشاط فقط وتتجنب تكرار الشركة ذات المعرّف نفسه', () => {
@@ -173,4 +194,11 @@ test('الحفظ القديم الذي يحتفظ بأصل الشركة دون �
   assert.equal(summary.businessCount, 1);
   assert.equal(summary.items[0].title, 'أصل تجاري قديم');
   assert.equal(summary.items[0].hasReport, false);
+});
+
+test('واجهة المؤشرات تشرح سبب تعذر حساب نسبة تغير الإيرادات بدقة', () => {
+  const source = fs.readFileSync(path.join(__dirname, '..', 'business-insights.js'), 'utf8');
+  assert.match(source, /إيرادات السنة السابقة غير موجبة؛ لا تُحسب نسبة التغير/);
+  assert.match(source, /لا توجد سنة مالية متتالية للمقارنة/);
+  assert.match(source, /لا يوجد تقرير سابق للمقارنة/);
 });
