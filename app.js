@@ -10708,36 +10708,82 @@ function businessOwnershipSnapshot(entity,fallbackBeneficiaryId,fallbackName){
 
 function businessOwnershipEarningsSnapshot(entity,fallbackBeneficiaryId,fallbackName){
  const ownership=businessOwnershipSnapshot(entity,fallbackBeneficiaryId,fallbackName);
- if(!ownership.valid)return {valid:false,hasReport:false,reason:'invalid-ownership',year:null,totalProfit:0,activeBeneficiaryId:null,activeShareAmount:0,invalidReportYearCount:0,shareholders:[]};
+ if(!ownership.valid)return {valid:false,hasReport:false,reason:'invalid-ownership',year:null,totalProfit:0,activeBeneficiaryId:null,activeShareAmount:0,invalidReportYearCount:0,invalidFinancialReportCount:0,shareholders:[]};
+
  const history=Array.isArray(entity&&entity.financialHistory)?entity.financialHistory:[];
- let latest=null,latestYear=-1,latestIndex=-1,invalidReportYearCount=0;
- history.forEach((report,index)=>{
+ let invalidReportYearCount=0;
+ const latestByYear=new Map();
+ history.forEach(report=>{
   if(!report||typeof report!=='object'||Array.isArray(report))return;
   const rawYear=report.year;
   const supportedYearType=typeof rawYear==='number'||typeof rawYear==='string';
   const nonEmptyYearString=typeof rawYear!=='string'||rawYear.trim().length>0;
   const year=Number(rawYear);
-  if(!supportedYearType||!nonEmptyYearString||!Number.isSafeInteger(year)||year<1||year>9999){invalidReportYearCount++;return;}
-  if(year>latestYear||(year===latestYear&&index>latestIndex)){latest=report;latestYear=year;latestIndex=index;}
+  if(!supportedYearType||!nonEmptyYearString||!Number.isSafeInteger(year)||year<1||year>9999){
+   invalidReportYearCount++;
+   return;
+  }
+  // Match business insights: the last stored report for a fiscal year is authoritative.
+  latestByYear.set(year,report);
  });
- const empty={valid:true,hasReport:false,year:null,totalProfit:0,activeBeneficiaryId:ownership.activeBeneficiaryId,activeShareAmount:0,invalidReportYearCount,shareholders:[]};
- if(!latest)return {...empty,reason:invalidReportYearCount?'invalid-report-year':'no-valid-report'};
- const finite=value=>value!==null&&value!==undefined&&value!==''&&Number.isFinite(Number(value));
- let profit;
- if(finite(latest.profit))profit=Number(latest.profit);
- else if(finite(latest.revenue)&&finite(latest.costs))profit=Number(latest.revenue)-Number(latest.costs);
- else return {...empty,reason:'invalid-financial-result'};
- const totalProfit=Math.max(-1000000000000,Math.min(1000000000000,Math.round(profit)));
+
+ const readNumeric=value=>{
+  if(typeof value==='number')return Number.isFinite(value)?value:null;
+  if(typeof value!=='string'||!value.trim())return null;
+  const parsed=Number(value.trim());
+  return Number.isFinite(parsed)?parsed:null;
+ };
+ const latestReports=Array.from(latestByYear.entries())
+  .sort((a,b)=>a[0]-b[0])
+  .map(([year,report])=>{
+   const revenue=readNumeric(report.revenue);
+   const declaredProfit=readNumeric(report.profit);
+   const costs=readNumeric(report.costs);
+   const hasCosts=costs!==null&&costs>=0;
+   const metrics=revenue===null||revenue<0||(
+    declaredProfit===null&&!hasCosts
+   )?null:{
+    revenue,
+    profit:declaredProfit!==null?declaredProfit:revenue-costs
+   };
+   return {year,report,metrics};
+  });
+ const invalidFinancialReportCount=latestReports.filter(item=>!item.metrics).length;
+ const validReports=latestReports.filter(item=>item.metrics);
+ const reportEntry=validReports.length?validReports[validReports.length-1]:null;
+ const empty={
+  valid:true,hasReport:false,year:null,totalProfit:0,
+  activeBeneficiaryId:ownership.activeBeneficiaryId,activeShareAmount:0,
+  invalidReportYearCount,invalidFinancialReportCount,shareholders:[]
+ };
+ if(!reportEntry){
+  const reason=invalidFinancialReportCount>0
+   ?'invalid-financial-report'
+   :invalidReportYearCount>0?'invalid-report-year':'no-valid-report';
+  return {...empty,reason};
+ }
+
+ const roundedProfit=Math.round(reportEntry.metrics.profit);
+ if(!Number.isFinite(roundedProfit))return {...empty,reason:'invalid-financial-result'};
+ const totalProfit=Math.max(-1000000000000,Math.min(1000000000000,roundedProfit));
  const absoluteProfit=Math.abs(totalProfit);
- const parts=ownership.shareholders.map((item,index)=>{const rawAmount=absoluteProfit*item.shareBps/10000;const amount=Math.floor(rawAmount);return {...item,amount,fraction:rawAmount-amount,index};});
+ const parts=ownership.shareholders.map((item,index)=>{
+  const rawAmount=absoluteProfit*item.shareBps/10000;
+  const amount=Math.floor(rawAmount);
+  return {...item,amount,fraction:rawAmount-amount,index};
+ });
  let remainder=absoluteProfit-parts.reduce((sum,item)=>sum+item.amount,0);
  const remainderOrder=parts.slice().sort((a,b)=>b.fraction-a.fraction||a.index-b.index);
  for(let index=0;remainder>0&&remainderOrder.length;index++,remainder--)remainderOrder[index%remainderOrder.length].amount++;
  const shareholders=parts.map(({amount,fraction,index,...item})=>({...item,resultShare:totalProfit<0?-amount:amount}));
  const active=shareholders.find(item=>item.beneficiaryId===ownership.activeBeneficiaryId);
- return {valid:true,hasReport:true,reason:null,year:latestYear,totalProfit,activeBeneficiaryId:ownership.activeBeneficiaryId,activeShareAmount:active?active.resultShare:0,invalidReportYearCount,shareholders};
+ return {
+  valid:true,hasReport:true,reason:null,year:reportEntry.year,totalProfit,
+  activeBeneficiaryId:ownership.activeBeneficiaryId,
+  activeShareAmount:active?active.resultShare:0,
+  invalidReportYearCount,invalidFinancialReportCount,shareholders
+ };
 }
-
 
 
 function normalizeBusinessDividendLedger(raw){
@@ -11048,11 +11094,22 @@ function businessOwnershipEarningsMenu(entity,back){
  const fallbackId=state&&state.lifeId||state&&state.name||state&&state.legacy&&state.legacy.activeBeneficiaryId;
  const snapshot=businessOwnershipEarningsSnapshot(entity,fallbackId,state&&state.name);
  const returnToOwnership=()=>businessOwnershipMenu(entity,back);
- if(!snapshot.valid){info('⚠️','تعذر إعداد كشف الملكية','سجل الحصص يحتاج مراجعة؛ لم نعرض أي توزيع حسابي حتى لا نعتمد على نسب غير متوازنة.');return;}
+ if(!snapshot.valid){
+  info('⚠️','تعذر إعداد كشف الملكية','سجل الحصص يحتاج مراجعة؛ لم نعرض أي توزيع حسابي حتى لا نعتمد على نسب غير متوازنة.');
+  return;
+ }
+ const invalidNotes=[];
+ if(snapshot.invalidFinancialReportCount>0)invalidNotes.push(
+  'تم تجاهل '+snapshot.invalidFinancialReportCount+' تقرير مالي غير مكتمل لعدم توافر إيرادات ونتيجة مالية رقمية صالحة.'
+ );
+ if(snapshot.invalidReportYearCount>0)invalidNotes.push(
+  'تم تجاهل '+snapshot.invalidReportYearCount+' سجل مالي بسنة غير صالحة.'
+ );
  if(!snapshot.hasReport){
   let message='لا يوجد تقرير مالي صالح لهذا النشاط حتى الآن.';
-  if(snapshot.reason==='invalid-financial-result')message='آخر التقارير لا يحتوي نتيجة مالية صالحة للتحليل.';
-  else if(snapshot.reason==='invalid-report-year')message='تم تجاهل '+snapshot.invalidReportYearCount+' سجل مالي بسنة غير صالحة؛ راجع سجل النشاط قبل الاعتماد على كشف الملكية.';
+  if(snapshot.reason==='invalid-financial-report')message='التقارير ذات السنوات الصالحة لا تحتوي على بيانات مالية مكتملة؛ لم نحوّل القيم الناقصة إلى أصفار.';
+  else if(snapshot.reason==='invalid-report-year')message='لا يوجد تقرير بسنة مالية صالحة للاعتماد في كشف الملكية.';
+  if(invalidNotes.length)message+='\n'+invalidNotes.join('\n');
   modal('📊','كشف نتيجة السنة حسب الملكية',message,[choice('↩️','رجوع لسجل الملكية','',returnToOwnership)]);
   return;
  }
@@ -11064,8 +11121,8 @@ function businessOwnershipEarningsMenu(entity,back){
  const hiddenCount=Math.max(0,snapshot.shareholders.length-lines.length);
  const active=snapshot.shareholders.find(item=>item.beneficiaryId===snapshot.activeBeneficiaryId);
  const activeDetail=active?'\nحصتك الحسابية: '+(active.resultShare<0?'نصيب من الخسارة ':'نصيب من صافي النتيجة ')+cash(Math.abs(active.resultShare)):'';
- const invalidYearNote=snapshot.invalidReportYearCount>0?'\nتم تجاهل '+snapshot.invalidReportYearCount+' سجل مالي بسنة غير صالحة من الكشف.':'';
- const detail='السنة المالية '+snapshot.year+' · '+resultLabel+' '+cash(Math.abs(snapshot.totalProfit))+activeDetail+invalidYearNote+'\n\n'+lines.join('\n')+(hiddenCount?'\nوملاك إضافيون: '+hiddenCount:'')+'\n\nهذا كشف محاسبي تقديري يوزع نتيجة السنة حسابيًا وفق الحصص المسجلة فقط؛ لا يحوّل أموالًا إلى أرصدة الملاك ولا ينشئ توزيعات نقدية.';
+ const notes=invalidNotes.length?'\n'+invalidNotes.join('\n'):'';
+ const detail='آخر سنة مالية صالحة '+snapshot.year+' · '+resultLabel+' '+cash(Math.abs(snapshot.totalProfit))+activeDetail+notes+'\n\n'+lines.join('\n')+(hiddenCount?'\nوملاك إضافيون: '+hiddenCount:'')+'\n\nهذا كشف محاسبي تقديري يوزع نتيجة السنة حسابيًا وفق الحصص المسجلة فقط؛ لا يحوّل أموالًا إلى أرصدة الملاك ولا ينشئ توزيعات نقدية.';
  modal('📊','كشف نتيجة السنة حسب الملكية',detail,[choice('↩️','رجوع لسجل الملكية','',returnToOwnership)]);
 }
 
