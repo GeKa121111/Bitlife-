@@ -10682,17 +10682,20 @@ function businessOwnershipSnapshot(entity,fallbackBeneficiaryId,fallbackName){
 
 function businessOwnershipEarningsSnapshot(entity,fallbackBeneficiaryId,fallbackName){
  const ownership=businessOwnershipSnapshot(entity,fallbackBeneficiaryId,fallbackName);
- if(!ownership.valid)return {valid:false,hasReport:false,reason:'invalid-ownership',year:null,totalProfit:0,activeBeneficiaryId:null,activeShareAmount:0,shareholders:[]};
+ if(!ownership.valid)return {valid:false,hasReport:false,reason:'invalid-ownership',year:null,totalProfit:0,activeBeneficiaryId:null,activeShareAmount:0,invalidReportYearCount:0,shareholders:[]};
  const history=Array.isArray(entity&&entity.financialHistory)?entity.financialHistory:[];
- let latest=null,latestYear=-1,latestIndex=-1;
+ let latest=null,latestYear=-1,latestIndex=-1,invalidReportYearCount=0;
  history.forEach((report,index)=>{
   if(!report||typeof report!=='object'||Array.isArray(report))return;
-  const year=Number(report.year);
-  if(!Number.isSafeInteger(year)||year<0)return;
+  const rawYear=report.year;
+  const supportedYearType=typeof rawYear==='number'||typeof rawYear==='string';
+  const nonEmptyYearString=typeof rawYear!=='string'||rawYear.trim().length>0;
+  const year=Number(rawYear);
+  if(!supportedYearType||!nonEmptyYearString||!Number.isSafeInteger(year)||year<1||year>9999){invalidReportYearCount++;return;}
   if(year>latestYear||(year===latestYear&&index>latestIndex)){latest=report;latestYear=year;latestIndex=index;}
  });
- const empty={valid:true,hasReport:false,year:null,totalProfit:0,activeBeneficiaryId:ownership.activeBeneficiaryId,activeShareAmount:0,shareholders:[]};
- if(!latest)return {...empty,reason:'no-valid-report'};
+ const empty={valid:true,hasReport:false,year:null,totalProfit:0,activeBeneficiaryId:ownership.activeBeneficiaryId,activeShareAmount:0,invalidReportYearCount,shareholders:[]};
+ if(!latest)return {...empty,reason:invalidReportYearCount?'invalid-report-year':'no-valid-report'};
  const finite=value=>value!==null&&value!==undefined&&value!==''&&Number.isFinite(Number(value));
  let profit;
  if(finite(latest.profit))profit=Number(latest.profit);
@@ -10700,17 +10703,13 @@ function businessOwnershipEarningsSnapshot(entity,fallbackBeneficiaryId,fallback
  else return {...empty,reason:'invalid-financial-result'};
  const totalProfit=Math.max(-1000000000000,Math.min(1000000000000,Math.round(profit)));
  const absoluteProfit=Math.abs(totalProfit);
- const parts=ownership.shareholders.map((item,index)=>{
-  const rawAmount=absoluteProfit*item.shareBps/10000;
-  const amount=Math.floor(rawAmount);
-  return {...item,amount,fraction:rawAmount-amount,index};
- });
+ const parts=ownership.shareholders.map((item,index)=>{const rawAmount=absoluteProfit*item.shareBps/10000;const amount=Math.floor(rawAmount);return {...item,amount,fraction:rawAmount-amount,index};});
  let remainder=absoluteProfit-parts.reduce((sum,item)=>sum+item.amount,0);
  const remainderOrder=parts.slice().sort((a,b)=>b.fraction-a.fraction||a.index-b.index);
  for(let index=0;remainder>0&&remainderOrder.length;index++,remainder--)remainderOrder[index%remainderOrder.length].amount++;
  const shareholders=parts.map(({amount,fraction,index,...item})=>({...item,resultShare:totalProfit<0?-amount:amount}));
  const active=shareholders.find(item=>item.beneficiaryId===ownership.activeBeneficiaryId);
- return {valid:true,hasReport:true,reason:null,year:latestYear,totalProfit,activeBeneficiaryId:ownership.activeBeneficiaryId,activeShareAmount:active?active.resultShare:0,shareholders};
+ return {valid:true,hasReport:true,reason:null,year:latestYear,totalProfit,activeBeneficiaryId:ownership.activeBeneficiaryId,activeShareAmount:active?active.resultShare:0,invalidReportYearCount,shareholders};
 }
 
 function buildInheritedBusinessOwnershipLedger(entity,beneficiaryAccounts,nextActiveBeneficiaryId,fallbackActiveBeneficiaryId,fallbackName,age){
@@ -10764,7 +10763,9 @@ function businessOwnershipEarningsMenu(entity,back){
  const returnToOwnership=()=>businessOwnershipMenu(entity,back);
  if(!snapshot.valid){info('⚠️','تعذر إعداد كشف الملكية','سجل الحصص يحتاج مراجعة؛ لم نعرض أي توزيع حسابي حتى لا نعتمد على نسب غير متوازنة.');return;}
  if(!snapshot.hasReport){
-  const message=snapshot.reason==='invalid-financial-result'?'آخر التقارير لا يحتوي نتيجة مالية صالحة للتحليل.':'لا يوجد تقرير مالي صالح لهذا النشاط حتى الآن.';
+  let message='لا يوجد تقرير مالي صالح لهذا النشاط حتى الآن.';
+  if(snapshot.reason==='invalid-financial-result')message='آخر التقارير لا يحتوي نتيجة مالية صالحة للتحليل.';
+  else if(snapshot.reason==='invalid-report-year')message='تم تجاهل '+snapshot.invalidReportYearCount+' سجل مالي بسنة غير صالحة؛ راجع سجل النشاط قبل الاعتماد على كشف الملكية.';
   modal('📊','كشف نتيجة السنة حسب الملكية',message,[choice('↩️','رجوع لسجل الملكية','',returnToOwnership)]);
   return;
  }
@@ -10776,7 +10777,8 @@ function businessOwnershipEarningsMenu(entity,back){
  const hiddenCount=Math.max(0,snapshot.shareholders.length-lines.length);
  const active=snapshot.shareholders.find(item=>item.beneficiaryId===snapshot.activeBeneficiaryId);
  const activeDetail=active?'\nحصتك الحسابية: '+(active.resultShare<0?'نصيب من الخسارة ':'نصيب من صافي النتيجة ')+cash(Math.abs(active.resultShare)):'';
- const detail='السنة المالية '+snapshot.year+' · '+resultLabel+' '+cash(Math.abs(snapshot.totalProfit))+activeDetail+'\n\n'+lines.join('\n')+(hiddenCount?'\nوملاك إضافيون: '+hiddenCount:'')+'\n\nهذا كشف محاسبي تقديري يوزع نتيجة السنة حسابيًا وفق الحصص المسجلة فقط؛ لا يحوّل أموالًا إلى أرصدة الملاك ولا ينشئ توزيعات نقدية.';
+ const invalidYearNote=snapshot.invalidReportYearCount>0?'\nتم تجاهل '+snapshot.invalidReportYearCount+' سجل مالي بسنة غير صالحة من الكشف.':'';
+ const detail='السنة المالية '+snapshot.year+' · '+resultLabel+' '+cash(Math.abs(snapshot.totalProfit))+activeDetail+invalidYearNote+'\n\n'+lines.join('\n')+(hiddenCount?'\nوملاك إضافيون: '+hiddenCount:'')+'\n\nهذا كشف محاسبي تقديري يوزع نتيجة السنة حسابيًا وفق الحصص المسجلة فقط؛ لا يحوّل أموالًا إلى أرصدة الملاك ولا ينشئ توزيعات نقدية.';
  modal('📊','كشف نتيجة السنة حسب الملكية',detail,[choice('↩️','رجوع لسجل الملكية','',returnToOwnership)]);
 }
 
