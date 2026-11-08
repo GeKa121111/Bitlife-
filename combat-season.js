@@ -245,6 +245,39 @@
     return 'السجل التراكمي لمنافسي المجتمع، وليس سجل لقب العالم الخاص باللاعب.\n\n' + lines.join('\n');
   }
 
+  function communityTitleStreakSummary(records) {
+    const leaders = (Array.isArray(records) ? records : [])
+      .filter(record => record && boundedInteger(record.titleStreak, 0, 0, 1000000) > 0)
+      .slice()
+      .sort((a, b) => {
+        const currentA = boundedInteger(a.titleStreak, 0, 0, 1000000);
+        const currentB = boundedInteger(b.titleStreak, 0, 0, 1000000);
+        if (currentB !== currentA) return currentB - currentA;
+        const bestA = boundedInteger(a.bestTitleStreak, 0, 0, 1000000);
+        const bestB = boundedInteger(b.bestTitleStreak, 0, 0, 1000000);
+        if (bestB !== bestA) return bestB - bestA;
+        const titlesA = boundedInteger(a.titles, 0, 0, 1000000);
+        const titlesB = boundedInteger(b.titles, 0, 0, 1000000);
+        if (titlesB !== titlesA) return titlesB - titlesA;
+        const idA = safeId(a.id);
+        const idB = safeId(b.id);
+        return idA < idB ? -1 : idA > idB ? 1 : 0;
+      })
+      .slice(0, 10);
+    if (!leaders.length) {
+      return 'لا توجد سلسلة ألقاب نشطة حاليًا. تظهر المنافسة هنا عندما يحتفظ منافس بصدارة الدوري في موسمين متتاليين أو أكثر.';
+    }
+    const lines = leaders.map((record, index) => {
+      const current = boundedInteger(record.titleStreak, 0, 0, 1000000);
+      const best = boundedInteger(record.bestTitleStreak, 0, 0, 1000000);
+      const titles = boundedInteger(record.titles, 0, 0, 1000000);
+      return (index + 1) + '. ' + safeName(record.name, 'منافس') +
+        ' — ' + current + ' موسم متتالٍ · أفضل سلسلة: ' + best +
+        ' · إجمالي ألقاب الدوري: ' + titles;
+    });
+    return 'أطول سلاسل ألقاب الدوري النشطة حاليًا (الأطول أولًا):\\n\\n' + lines.join('\\n');
+  }
+
   function communitySeasonAwardsSummary(history) {
     const recent = (Array.isArray(history) ? history : [])
       .slice(-HISTORY_LIMIT)
@@ -776,7 +809,7 @@
     return button;
   }
 
-  function renderFallbackSeasonModal(summary, careerSummary, awardsSummary, historySummary, onBack, challenge) {
+  function renderFallbackSeasonModal(summary, careerSummary, awardsSummary, historySummary, streakSummary, onBack, challenge) {
     const doc = global.document;
     const root = doc && typeof doc.getElementById === 'function' ? doc.getElementById('modalRoot') : null;
     if (!root || typeof doc.createElement !== 'function') return;
@@ -851,6 +884,13 @@
       'راجع متصدري الدوري وأفضل المراكز ونتائج التصفيات والجوائز المسجلة لكل موسم.',
       () => { description.textContent = historySummary; }
     );
+    const streaks = createFallbackChoice(
+      doc,
+      '🔥',
+      'سجل سلاسل السيطرة',
+      'تعرف على المنافسين الذين احتفظوا بصدارة الدوري عبر مواسم متتالية.',
+      () => { description.textContent = streakSummary; }
+    );
     const back = createFallbackChoice(
       doc,
       '↩️',
@@ -865,6 +905,7 @@
     grid.appendChild(career);
     grid.appendChild(awards);
     grid.appendChild(history);
+    grid.appendChild(streaks);
     grid.appendChild(back);
     body.appendChild(grid);
     panel.appendChild(header);
@@ -936,6 +977,7 @@
     career.communityLeague = league;
 
     const careerSummary = communityCareerRecordSummary(league.records);
+    const streakSummary = communityTitleStreakSummary(league.records);
     const awardsSummary = communitySeasonAwardsSummary(league.history);
     const historySummary = communitySeasonHistorySummary(league.history);
     const lines = league.standings.slice(0, 10).map(row =>
@@ -983,6 +1025,9 @@
         makeChoice('📚', 'سجل المسيرة التاريخي', 'أرقام تراكمية للمواسم والتصفيات والانتصارات والألقاب وأفضل مركز لكل منافس.', () => {
           showInfo('📚', 'سجل المسيرة التاريخي', careerSummary);
         }),
+        makeChoice('🔥', 'سجل سلاسل السيطرة', 'اعرض المنافسين أصحاب أطول سلاسل ألقاب الدوري النشطة.', () => {
+          showInfo('🔥', 'سجل سلاسل السيطرة', streakSummary);
+        }),
         makeChoice('🏅', 'سجل جوائز المواسم', 'راجع أصحاب أكبر تحسن في مؤشر الأداء عبر المواسم الأخيرة.', () => {
           showInfo('🏅', 'سجل جوائز المواسم', awardsSummary);
         }),
@@ -995,7 +1040,7 @@
       return;
     }
 
-    renderFallbackSeasonModal(summary, careerSummary, awardsSummary, historySummary, backToMenu, challenge);
+    renderFallbackSeasonModal(summary, careerSummary, awardsSummary, historySummary, streakSummary, backToMenu, challenge);
   }
 
   function injectSeasonMenuEntry(root) {
