@@ -152,6 +152,7 @@
       const names = [item.title, item.name]
         .filter(value => typeof value === 'string' && value.trim())
         .map(value => 'name:' + normalize(value));
+      if (!ids.length && !names.length) return;
       const duplicateById = ids.some(identity => seenBusinessIds.has(identity));
       const duplicateByName = ids.length
         ? names.some(identity => anonymousBusinessNames.has(identity))
