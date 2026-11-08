@@ -10776,13 +10776,15 @@ function normalizeBusinessDividendLedger(raw){
   ids.add(id);years.add(year);
   entries.push({id,year,declaredAtAge,createdBy:String(entry.createdBy||'').slice(0,120),totalAmount,paidAmount,pendingAmount,status:pendingAmount>0?'pending':'paid',allocations,claims});
  }
+ const aggregatePending=entries.reduce((sum,entry)=>sum+entry.pendingAmount,0);
+ if(!Number.isSafeInteger(aggregatePending)||aggregatePending>1000000000000)return invalid(['dividend_ledger_total_exceeds_limit']);
  return {valid:true,issues:[],ledger:{version:1,entries}};
 }
 
 function businessDividendPendingLiability(entity){
  const normalized=normalizeBusinessDividendLedger(entity&&entity.dividendLedger);
  if(!normalized.valid)return null;
- return Math.min(1000000000000,normalized.ledger.entries.reduce((sum,entry)=>sum+entry.pendingAmount,0));
+ return normalized.ledger.entries.reduce((sum,entry)=>sum+entry.pendingAmount,0);
 }
 
 function businessDividendEscrowBalance(entity){
