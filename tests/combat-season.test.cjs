@@ -575,6 +575,49 @@ test('سلسلة ألقاب الدوري تسجل الاستمرار والان�
   assert.equal(championRecord.bestTitleStreak, 4);
 });
 
+test('غياب المنافس عن موسم كامل ينهي سلسلة ألقابه حتى قبل عودته', () => {
+  const context = createContext();
+  const career = makeCareer();
+  const champion = {
+    id: 'rival-a', name: 'بطل الدوري', rating: 95, momentum: 0, respect: 95, tension: 0
+  };
+  const rival = {
+    id: 'rival-b', name: 'المنافس ب', rating: 20, momentum: 0, respect: 10, tension: 100
+  };
+  career.community = [champion, rival];
+
+  for (let age = 20; age < 24; age += 1) {
+    context.state.age = age;
+    assert.equal(context.HayahCombatSeason.simulate(career).leader.id, champion.id);
+  }
+
+  let record = career.communityLeague.records.find(item => item.id === champion.id);
+  assert.equal(record.titleStreak, 4);
+  assert.equal(record.bestTitleStreak, 4);
+
+  career.community = [
+    rival,
+    { id: 'rival-c', name: 'منافس بديل', rating: 25, momentum: 0, respect: 20, tension: 90 }
+  ];
+  context.state.age = 24;
+  assert.ok(context.HayahCombatSeason.simulate(career));
+
+  record = career.communityLeague.records.find(item => item.id === champion.id);
+  assert.equal(record.titleStreak, 0,
+    'a rival absent from a completed season must no longer show an active consecutive-title run');
+  assert.equal(record.bestTitleStreak, 4,
+    'absence must not erase the historical best streak');
+
+  career.community = [champion, rival];
+  context.state.age = 25;
+  assert.equal(context.HayahCombatSeason.simulate(career).leader.id, champion.id);
+
+  record = career.communityLeague.records.find(item => item.id === champion.id);
+  assert.equal(record.titleStreak, 1,
+    'a returning champion begins a new run rather than continuing across a missed season');
+  assert.equal(record.bestTitleStreak, 4);
+});
+
 test('واجهة سجل المسيرة تعرض الأرقام التراكمية وتفصلها عن لقب العالم', () => {
   const context = createContext();
   const career = makeCareer();
