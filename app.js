@@ -10778,8 +10778,6 @@ function normalizeBusinessDividendLedger(raw){
  }
  const aggregatePending=entries.reduce((sum,entry)=>sum+entry.pendingAmount,0);
  if(!Number.isSafeInteger(aggregatePending)||aggregatePending>1000000000000)return invalid(['dividend_ledger_total_exceeds_limit']);
- const aggregatePending=entries.reduce((sum,entry)=>sum+entry.pendingAmount,0);
- if(!Number.isSafeInteger(aggregatePending)||aggregatePending>1000000000000)return invalid(['dividend_ledger_total_exceeds_limit']);
  return {valid:true,issues:[],ledger:{version:1,entries}};
 }
 
