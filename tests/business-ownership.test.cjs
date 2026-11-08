@@ -166,9 +166,43 @@ test('legacy sole-owner fallback and missing reports remain safe',()=>{
  },'owner','مالك');
  assert.equal(missing.valid,true);
  assert.equal(missing.hasReport,false);
- assert.equal(missing.reason,'no-valid-report');
+ assert.equal(missing.reason,'invalid-report-year');
+ assert.equal(missing.invalidReportYearCount,1);
 });
 
+
+test('ownership earnings applies the same valid fiscal-year range as business insights',()=>{
+ const api=createApi();
+ const company={
+  value:300000,
+  ownershipLedger:api.createBusinessOwnershipLedger('owner','المالك',40),
+  financialHistory:[
+   {year:2026,revenue:100000,costs:60000,profit:40000},
+   {year:0,revenue:900000,costs:0,profit:900000},
+   {year:-1,revenue:800000,costs:0,profit:800000},
+   {year:10000,revenue:700000,costs:0,profit:700000},
+   {year:' ',revenue:600000,costs:0,profit:600000},
+   {year:true,revenue:500000,costs:0,profit:500000},
+   {year:'2026',revenue:120000,costs:70000,profit:50000}
+  ]
+ };
+ const before=JSON.stringify(company);
+ const result=api.businessOwnershipEarningsSnapshot(company,'owner','المالك');
+ assert.equal(result.valid,true);
+ assert.equal(result.hasReport,true);
+ assert.equal(result.year,2026);
+ assert.equal(result.totalProfit,50000,'the last valid report in the same year remains authoritative');
+ assert.equal(result.invalidReportYearCount,5);
+ assert.equal(result.shareholders[0].resultShare,50000);
+ assert.equal(JSON.stringify(company),before,'invalid report filtering must remain read-only');
+ const invalidOnly=api.businessOwnershipEarningsSnapshot({
+  ownershipLedger:api.createBusinessOwnershipLedger('owner','المالك',40),
+  financialHistory:[{year:0,revenue:10000,costs:0},{year:10000,revenue:20000,costs:0}]
+ },'owner','المالك');
+ assert.equal(invalidOnly.hasReport,false);
+ assert.equal(invalidOnly.reason,'invalid-report-year');
+ assert.equal(invalidOnly.invalidReportYearCount,2);
+});
 test('invalid ownership ledger never produces a shareholder earnings statement',()=>{
  const api=createApi();
  const result=api.businessOwnershipEarningsSnapshot({
@@ -190,4 +224,6 @@ test('ownership screen exposes the read-only annual statement and discloses that
  assert.match(menu,/كشف نتيجة السنة حسب الملكية/);
  assert.match(earningsMenu,/لا يحوّل أموالًا إلى أرصدة الملاك/);
  assert.match(earningsMenu,/لا ينشئ توزيعات نقدية/);
+  assert.match(earningsMenu,/invalid-report-year/);
+  assert.match(earningsMenu,/تم تجاهل/);
 });

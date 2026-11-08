@@ -10764,7 +10764,9 @@ function businessOwnershipEarningsMenu(entity,back){
  const returnToOwnership=()=>businessOwnershipMenu(entity,back);
  if(!snapshot.valid){info('⚠️','تعذر إعداد كشف الملكية','سجل الحصص يحتاج مراجعة؛ لم نعرض أي توزيع حسابي حتى لا نعتمد على نسب غير متوازنة.');return;}
  if(!snapshot.hasReport){
-  const message=snapshot.reason==='invalid-financial-result'?'آخر التقارير لا يحتوي نتيجة مالية صالحة للتحليل.':'لا يوجد تقرير مالي صالح لهذا النشاط حتى الآن.';
+  let message='لا يوجد تقرير مالي صالح لهذا النشاط حتى الآن.';
+  if(snapshot.reason==='invalid-financial-result')message='آخر التقارير لا يحتوي نتيجة مالية صالحة للتحليل.';
+  else if(snapshot.reason==='invalid-report-year')message='تم تجاهل '+snapshot.invalidReportYearCount+' سجل مالي بسنة غير صالحة؛ راجع سجل النشاط قبل الاعتماد على كشف الملكية.';
   modal('📊','كشف نتيجة السنة حسب الملكية',message,[choice('↩️','رجوع لسجل الملكية','',returnToOwnership)]);
   return;
  }
@@ -10776,7 +10778,8 @@ function businessOwnershipEarningsMenu(entity,back){
  const hiddenCount=Math.max(0,snapshot.shareholders.length-lines.length);
  const active=snapshot.shareholders.find(item=>item.beneficiaryId===snapshot.activeBeneficiaryId);
  const activeDetail=active?'\nحصتك الحسابية: '+(active.resultShare<0?'نصيب من الخسارة ':'نصيب من صافي النتيجة ')+cash(Math.abs(active.resultShare)):'';
- const detail='السنة المالية '+snapshot.year+' · '+resultLabel+' '+cash(Math.abs(snapshot.totalProfit))+activeDetail+'\n\n'+lines.join('\n')+(hiddenCount?'\nوملاك إضافيون: '+hiddenCount:'')+'\n\nهذا كشف محاسبي تقديري يوزع نتيجة السنة حسابيًا وفق الحصص المسجلة فقط؛ لا يحوّل أموالًا إلى أرصدة الملاك ولا ينشئ توزيعات نقدية.';
+ const invalidYearNote=snapshot.invalidReportYearCount>0?'\nتم تجاهل '+snapshot.invalidReportYearCount+' سجل مالي بسنة غير صالحة من الكشف.':'';
+ const detail='السنة المالية '+snapshot.year+' · '+resultLabel+' '+cash(Math.abs(snapshot.totalProfit))+activeDetail+invalidYearNote+'\n\n'+lines.join('\n')+(hiddenCount?'\nوملاك إضافيون: '+hiddenCount:'')+'\n\nهذا كشف محاسبي تقديري يوزع نتيجة السنة حسابيًا وفق الحصص المسجلة فقط؛ لا يحوّل أموالًا إلى أرصدة الملاك ولا ينشئ توزيعات نقدية.';
  modal('📊','كشف نتيجة السنة حسب الملكية',detail,[choice('↩️','رجوع لسجل الملكية','',returnToOwnership)]);
 }
 
