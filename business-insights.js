@@ -204,9 +204,8 @@
       });
     });
 
-    return Array.from(totalsByYear.values())
+    const summaries = Array.from(totalsByYear.values())
       .sort((a, b) => b.year - a.year)
-      .slice(0, 5)
       .map(annual => {
         const missingBusinessCount = Math.max(0, entries.length - annual.reportedCount);
         return {
@@ -216,6 +215,25 @@
           coverage: entries.length > 0 && missingBusinessCount === 0 ? 'complete' : 'partial'
         };
       });
+    const summariesByYear = new Map(summaries.map(annual => [annual.year, annual]));
+
+    // Compare like with like: both adjacent years must cover the same complete current portfolio.
+    return summaries.map(annual => {
+      const previous = summariesByYear.get(annual.year - 1);
+      let revenueChangePercent = null;
+      let comparisonUnavailableReason = 'no-consecutive-year';
+      if (previous) {
+        if (annual.coverage !== 'complete' || previous.coverage !== 'complete') {
+          comparisonUnavailableReason = 'incomplete-coverage';
+        } else if (previous.totalRevenue <= 0) {
+          comparisonUnavailableReason = 'nonpositive-baseline';
+        } else {
+          revenueChangePercent = (annual.totalRevenue - previous.totalRevenue) / previous.totalRevenue * 100;
+          comparisonUnavailableReason = null;
+        }
+      }
+      return { ...annual, revenueChangePercent, comparisonUnavailableReason };
+    }).slice(0, 5);
   }
 
   function analyzeBusinessPortfolio(state) {
@@ -358,6 +376,7 @@
           annualCard.dataset.coverage = annual.coverage;
           annualCard.dataset.reportedCount = String(annual.reportedCount);
           annualCard.dataset.businessCount = String(annual.businessCount);
+          annualCard.dataset.comparison = annual.comparisonUnavailableReason || 'available';
 
           const annualHeader = doc.createElement('div');
           annualHeader.className = 'business-insights-annual-header';
@@ -378,6 +397,17 @@
           createMetric(doc, annualMetrics, 'صافي النتيجة',
             formatMoney(annual.totalProfit, state.place && state.place.unit),
             annual.totalProfit < 0 ? 'business-insights-negative' : 'business-insights-metric-value');
+          const annualChangeLabel = annual.revenueChangePercent !== null
+            ? formatPercent(annual.revenueChangePercent, true)
+            : annual.comparisonUnavailableReason === 'incomplete-coverage'
+              ? 'لا تُحسب؛ تغطية إحدى السنتين جزئية'
+              : annual.comparisonUnavailableReason === 'nonpositive-baseline'
+                ? 'لا تُحسب؛ إيرادات السنة السابقة غير موجبة'
+                : 'لا توجد سنة مالية متتالية للمقارنة';
+          createMetric(doc, annualMetrics, 'تغير الإيرادات السنوي', annualChangeLabel,
+            annual.revenueChangePercent !== null && annual.revenueChangePercent < 0
+              ? 'business-insights-negative'
+              : 'business-insights-metric-value');
           annualCard.appendChild(annualMetrics);
 
           if (annual.missingBusinessCount > 0) {

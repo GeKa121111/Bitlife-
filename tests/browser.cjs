@@ -3219,17 +3219,20 @@ async function run() {
     assert.ok(businessInsightsText.includes('خزينة النشاط سالبة'));
     assert.ok(businessInsightsText.includes('التزامات ضريبية'));
     assert.ok(businessInsightsText.includes('سنوات مالية مختلفة'));
+    assert.ok(businessInsightsText.includes('لا تُحسب؛ تغطية إحدى السنتين جزئية'));
+    assert.ok(businessInsightsText.includes('لا توجد سنة مالية متتالية للمقارنة'));
     const annualCoverage = await page.locator('.business-insights-annual-card').evaluateAll(cards =>
       cards.map(card => ({
         year: card.dataset.year,
         coverage: card.dataset.coverage,
+        comparison: card.dataset.comparison,
         reportedCount: card.dataset.reportedCount,
         businessCount: card.dataset.businessCount
       }))
     );
     assert.deepEqual(annualCoverage, [
-      { year: '2026', coverage: 'partial', reportedCount: '1', businessCount: '2' },
-      { year: '2025', coverage: 'complete', reportedCount: '2', businessCount: '2' }
+      { year: '2026', coverage: 'partial', comparison: 'incomplete-coverage', reportedCount: '1', businessCount: '2' },
+      { year: '2025', coverage: 'complete', comparison: 'no-consecutive-year', reportedCount: '2', businessCount: '2' }
     ], 'the annual view should separate years and disclose each year\'s report coverage');
     const formattedReportYears = [2025, 2026].map(year =>
       new Intl.NumberFormat('ar-EG', { maximumFractionDigits: 0 }).format(year));
