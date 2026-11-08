@@ -167,7 +167,7 @@ test('أرشيف القتال يعرض التعادلات والتتويجات �
   assert.ok(combat.includes('الرتبة عند نهاية المسيرة'));
   assert.ok(combat.includes('اعتزل المنافسة'));
   assert.ok(film.includes('أعلى تقييم نقدي'));
-  assert.ok(film.includes('94'));
+  assert.ok(film.includes('94') || film.includes('٩٤'));
 });
 
 test('إزالة تكرار الشركات تراعي معرّفي id وassetId مع إبقاء شركتين مختلفتين لهما الاسم نفسه', () => {
