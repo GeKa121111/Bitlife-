@@ -287,14 +287,69 @@ test('ملخص السنوات يجمع تقارير السنة نفسها ويع
   assert.deepEqual(summary.annualSummaries, [
     {
       year: 2026, reportedCount: 2, totalRevenue: 180000, totalProfit: 35000,
-      businessCount: 3, missingBusinessCount: 1, coverage: 'partial'
+      businessCount: 3, missingBusinessCount: 1, coverage: 'partial',
+      revenueChangePercent: null, comparisonUnavailableReason: 'incomplete-coverage'
     },
     {
       year: 2025, reportedCount: 3, totalRevenue: 175000, totalProfit: 45000,
-      businessCount: 3, missingBusinessCount: 0, coverage: 'complete'
+      businessCount: 3, missingBusinessCount: 0, coverage: 'complete',
+      revenueChangePercent: null, comparisonUnavailableReason: 'no-consecutive-year'
     }
   ]);
   assert.equal(JSON.stringify(state), before, 'annual aggregation must not mutate saved financial histories');
+});
+
+test('نمو الإيرادات السنوي يُحسب فقط بين سنتين متتاليتين بتغطية كاملة', () => {
+  const state = {
+    business: {
+      id: 'growth-a',
+      financialHistory: [
+        report({ year: 2025, revenue: 100000, costs: 70000, profit: 30000 }),
+        report({ year: 2026, revenue: 120000, costs: 85000, profit: 35000 })
+      ]
+    },
+    companies: [{
+      id: 'growth-b',
+      financialHistory: [
+        report({ year: 2025, revenue: 50000, costs: 40000, profit: 10000 }),
+        report({ year: 2026, revenue: 60000, costs: 45000, profit: 15000 })
+      ]
+    }]
+  };
+  const before = JSON.stringify(state);
+  const summary = analyzeBusinessPortfolio(state);
+  assert.equal(summary.annualSummaries[0].year, 2026);
+  assert.equal(summary.annualSummaries[0].coverage, 'complete');
+  assert.equal(summary.annualSummaries[0].revenueChangePercent, 20);
+  assert.equal(summary.annualSummaries[0].comparisonUnavailableReason, null);
+  assert.equal(summary.annualSummaries[1].comparisonUnavailableReason, 'no-consecutive-year');
+  assert.equal(JSON.stringify(state), before, 'year-over-year analysis must remain read-only');
+});
+
+test('نمو الإيرادات لا يُحسب عند خط أساس صفري أو عند غياب سنة متتالية', () => {
+  const zeroBaseline = analyzeBusinessPortfolio({
+    business: {
+      id: 'zero-baseline',
+      financialHistory: [
+        report({ year: 2025, revenue: 0, costs: 0, profit: 0 }),
+        report({ year: 2026, revenue: 50000, costs: 30000, profit: 20000 })
+      ]
+    }
+  });
+  assert.equal(zeroBaseline.annualSummaries[0].revenueChangePercent, null);
+  assert.equal(zeroBaseline.annualSummaries[0].comparisonUnavailableReason, 'nonpositive-baseline');
+
+  const yearGap = analyzeBusinessPortfolio({
+    business: {
+      id: 'year-gap',
+      financialHistory: [
+        report({ year: 2024, revenue: 40000, profit: 5000 }),
+        report({ year: 2026, revenue: 60000, profit: 8000 })
+      ]
+    }
+  });
+  assert.equal(yearGap.annualSummaries[0].revenueChangePercent, null);
+  assert.equal(yearGap.annualSummaries[0].comparisonUnavailableReason, 'no-consecutive-year');
 });
 
 test('التقرير المكرر في السنة نفسها لا يضاعف مساهمة الشركة في ملخص المحفظة السنوي', () => {
