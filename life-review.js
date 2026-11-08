@@ -89,13 +89,24 @@
     if (combat) {
       const wins = Math.floor(readNonNegativeNumber(combat.wins, 1000000));
       const losses = Math.floor(readNonNegativeNumber(combat.losses, 1000000));
+      const draws = Math.floor(readNonNegativeNumber(combat.draws, 1000000));
       const knockouts = Math.floor(readNonNegativeNumber(combat.knockouts, 1000000));
+      const rank = Math.floor(readNonNegativeNumber(combat.rank, 100000));
+      const titleWins = list(combat.championshipHistory).filter(item =>
+        isRecord(item) && typeof item.opponent === 'string' && item.opponent.trim() &&
+        Number.isSafeInteger(item.age) && Number.isSafeInteger(item.year)
+      ).length;
       const defenses = list(combat.titleDefenseHistory).filter(item => isRecord(item) && item.result === 'defended').length;
       const parts = [];
-      if (wins + losses > 0) parts.push(formatCount(wins) + ' فوز و' + formatCount(losses) + ' خسارة');
+      if (wins + losses + draws > 0) {
+        parts.push(formatCount(wins) + ' فوز · ' + formatCount(losses) + ' خسارة · ' + formatCount(draws) + ' تعادل');
+      }
       if (knockouts > 0) parts.push(formatCount(knockouts) + ' انتصارًا بالضربة القاضية');
+      if (titleWins > 0) parts.push(formatCount(titleWins) + ' تتويج عالمي');
       if (defenses > 0) parts.push(formatCount(defenses) + ' دفاع ناجح عن اللقب');
+      if (rank > 0) parts.push('الرتبة عند نهاية المسيرة ' + formatCount(rank));
       if (combat.champion === true) parts.push('حامل اللقب عند نهاية الرحلة');
+      if (combat.retired === true) parts.push('اعتزل المنافسة');
       if (parts.length) highlights.push({ title: 'مسيرة القتال', text: parts.join(' · ') });
     }
 
@@ -104,9 +115,11 @@
       const filmCount = Math.max(Math.floor(readNonNegativeNumber(studio.projects, 1000000)), list(studio.filmography).filter(isRecord).length);
       const awards = Math.floor(readNonNegativeNumber(studio.awards, 1000000));
       const boxOffice = readNonNegativeNumber(studio.totalBoxOffice, 1000000000000000);
+      const bestCritic = Math.min(100, Math.floor(readNonNegativeNumber(studio.bestCritic, 100)));
       const parts = [];
       if (filmCount > 0) parts.push(formatCount(filmCount) + ' مشروع سينمائي');
       if (awards > 0) parts.push(formatCount(awards) + ' جائزة');
+      if (bestCritic > 0) parts.push('أعلى تقييم نقدي ' + formatCount(bestCritic) + '/100');
       if (boxOffice > 0) parts.push('إيرادات شباك التذاكر ' + formatMoney(boxOffice, isRecord(state.place) ? state.place.unit : 'ج.م'));
       if (parts.length) highlights.push({ title: 'استوديو الأفلام', text: parts.join(' · ') });
     }
@@ -116,21 +129,41 @@
       const tournaments = Math.floor(readNonNegativeNumber(esports.tournaments, 1000000));
       const wins = Math.floor(readNonNegativeNumber(esports.wins, 1000000));
       const losses = Math.floor(readNonNegativeNumber(esports.losses, 1000000));
+      const rank = Math.floor(readNonNegativeNumber(esports.rank, 100));
       if (tournaments + wins + losses > 0) {
-        highlights.push({ title: 'الألعاب الإلكترونية', text: formatCount(tournaments) + ' بطولة · ' + formatCount(wins) + ' فوز · ' + formatCount(losses) + ' خسارة' });
+        const parts = [formatCount(tournaments) + ' بطولة', formatCount(wins) + ' فوز', formatCount(losses) + ' خسارة'];
+        if (rank > 0) parts.push('الترتيب ' + formatCount(rank));
+        highlights.push({ title: 'الألعاب الإلكترونية', text: parts.join(' · ') });
       }
     }
 
     const businesses = [];
     if (isRecord(state.business)) businesses.push(state.business);
     list(state.companies).forEach(item => { if (isRecord(item)) businesses.push(item); });
-    const seenBusinesses = new Set();
+    const seenBusinessIds = new Set();
+    const seenBusinessNames = new Set();
+    const anonymousBusinessNames = new Set();
+    let businessCount = 0;
     businesses.forEach(item => {
-      const identity = [item.id, item.assetId, item.title, item.name].find(value => (typeof value === 'string' || typeof value === 'number') && String(value).trim());
-      if (identity === undefined) return;
-      seenBusinesses.add(String(identity).trim().toLocaleLowerCase());
+      const normalize = value => String(value).trim().toLocaleLowerCase();
+      const ids = [item.id, item.assetId]
+        .filter(value => (typeof value === 'string' || typeof value === 'number') && String(value).trim())
+        .map(value => 'id:' + normalize(value));
+      const names = [item.title, item.name]
+        .filter(value => typeof value === 'string' && value.trim())
+        .map(value => 'name:' + normalize(value));
+      if (!ids.length && !names.length) return;
+      const duplicateById = ids.some(identity => seenBusinessIds.has(identity));
+      const duplicateByName = ids.length
+        ? names.some(identity => anonymousBusinessNames.has(identity))
+        : names.some(identity => seenBusinessNames.has(identity));
+      if (duplicateById || duplicateByName) return;
+      businessCount++;
+      ids.forEach(identity => seenBusinessIds.add(identity));
+      names.forEach(identity => seenBusinessNames.add(identity));
+      if (!ids.length) names.forEach(identity => anonymousBusinessNames.add(identity));
     });
-    if (seenBusinesses.size > 0) highlights.push({ title: 'إدارة الأعمال', text: formatCount(seenBusinesses.size) + ' نشاط تجاري في سجل الملكية' });
+    if (businessCount > 0) highlights.push({ title: 'إدارة الأعمال', text: formatCount(businessCount) + ' نشاط تجاري في سجل الملكية' });
     return highlights;
   }
 

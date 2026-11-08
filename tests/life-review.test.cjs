@@ -146,3 +146,45 @@ test('جمع المسارات المتخصصة للقراءة فقط ولا يك
   assert.ok(highlights.find(item => item.title === 'إدارة الأعمال').text.includes('نشاط تجاري'));
   assert.equal(JSON.stringify(life), before);
 });
+test('أرشيف القتال يعرض التعادلات والتتويجات والرتبة والاعتزال، وتظهر أفضل مراجعة سينمائية', () => {
+  const highlights = collectSpecializedHighlights({
+    combatCareer: {
+      wins: 3,
+      losses: 2,
+      draws: 1,
+      knockouts: 2,
+      rank: 4,
+      retired: true,
+      championshipHistory: [{ age: 31, year: 2031, opponent: 'منافس' }],
+      titleDefenseHistory: [{ result: 'defended' }]
+    },
+    filmStudio: { projects: 2, awards: 1, bestCritic: 94, totalBoxOffice: 0, filmography: [] },
+    esportsCareer: { tournaments: 2, wins: 1, losses: 1, rank: 7 }
+  });
+  const combat = highlights.find(item => item.title === 'مسيرة القتال').text;
+  const film = highlights.find(item => item.title === 'استوديو الأفلام').text;
+  const esports = highlights.find(item => item.title === 'الألعاب الإلكترونية').text;
+  assert.ok(combat.includes('تعادل'));
+  assert.ok(combat.includes('تتويج عالمي'));
+  assert.ok(combat.includes('الرتبة عند نهاية المسيرة'));
+  assert.ok(combat.includes('اعتزل المنافسة'));
+  assert.ok(film.includes('أعلى تقييم نقدي'));
+  assert.ok(film.includes('94') || film.includes('٩٤'));
+  assert.ok(esports.includes('الترتيب'));
+});
+
+test('إزالة تكرار الشركات تراعي معرّفي id وassetId مع إبقاء شركتين مختلفتين لهما الاسم نفسه', () => {
+  const highlights = collectSpecializedHighlights({
+    business: { id: 'business-1', assetId: 'asset-1', title: 'اسم مشترك' },
+    companies: [
+      { id: 'asset-1', title: 'نسخة من النشاط الأول' },
+      { id: 'business-2', assetId: 'asset-2', title: 'اسم مشترك' },
+      { title: 'اسم مشترك' },
+      { name: 'نشاط بلا معرّف' },
+      { name: 'نشاط بلا معرّف' }
+    ]
+  });
+  const business = highlights.find(item => item.title === 'إدارة الأعمال');
+  assert.ok(business);
+  assert.ok(business.text.includes('3 نشاط تجاري') || business.text.includes('٣ نشاط تجاري'));
+});
