@@ -13,16 +13,36 @@
     return !!value && typeof value === 'object' && !Array.isArray(value);
   }
 
+  function isFiniteNumericValue(value) {
+    if (typeof value === 'number') return Number.isFinite(value);
+    if (typeof value !== 'string' || !value.trim()) return false;
+    return Number.isFinite(Number(value.trim()));
+  }
+
   function hasFinite(record, key) {
-    if (!isRecord(record) || record[key] === null || record[key] === undefined || record[key] === '') return false;
-    return Number.isFinite(Number(record[key]));
+    return isRecord(record) && isFiniteNumericValue(record[key]);
   }
 
   function number(value, fallback) {
-    if (value === null || value === undefined || value === '' || !Number.isFinite(Number(value))) {
-      return fallback === undefined ? 0 : fallback;
-    }
-    return Number(value);
+    if (!isFiniteNumericValue(value)) return fallback === undefined ? 0 : fallback;
+    return Number(typeof value === 'string' ? value.trim() : value);
+  }
+
+  function readFinancialMetrics(report) {
+    if (!isRecord(report) || !hasFinite(report, 'revenue')) return null;
+    const revenue = number(report.revenue, NaN);
+    if (revenue < 0) return null;
+
+    const hasProfit = hasFinite(report, 'profit');
+    const costs = hasFinite(report, 'costs') ? number(report.costs, NaN) : NaN;
+    const hasCosts = Number.isFinite(costs) && costs >= 0;
+    if (!hasProfit && !hasCosts) return null;
+
+    return {
+      revenue,
+      costs: hasCosts ? costs : null,
+      profit: hasProfit ? number(report.profit, 0) : revenue - costs
+    };
   }
 
   function isValidFiscalYear(value) {
@@ -75,11 +95,21 @@
       // Keep the last stored report for each year, matching the annual portfolio summary.
       latestByYear.set(Number(item.year), item);
     });
-    const history = Array.from(latestByYear.entries())
+    const latestReports = Array.from(latestByYear.entries())
       .sort((a, b) => a[0] - b[0])
-      .map(([, item]) => item);
-    const report = history.length ? history[history.length - 1] : null;
-    if (!report) {
+      .map(([year, report]) => ({ year, report, metrics: readFinancialMetrics(report) }));
+    const invalidFinancialReportCount = latestReports.filter(item => !item.metrics).length;
+    const history = latestReports.filter(item => item.metrics);
+    const reportEntry = history.length ? history[history.length - 1] : null;
+    if (!reportEntry) {
+      const reason = invalidFinancialReportCount > 0
+        ? 'invalid-financial-report'
+        : invalidReportYearCount > 0 ? 'invalid-report-year' : 'no-report';
+      const message = invalidFinancialReportCount > 0
+        ? 'توجد تقارير بسنة مالية صالحة، لكن الإيرادات أو صافي النتيجة والتكاليف لا تحتوي على قيم رقمية مكتملة؛ تم استبعادها من الحساب.'
+        : invalidReportYearCount > 0
+          ? 'توجد سجلات مالية بسنة غير صالحة؛ تم تجاهلها حتى لا تظهر كتقرير سنوي معتمد.'
+          : 'لم يصدر تقرير مالي محفوظ لهذا النشاط بعد؛ ستظهر القراءة بعد إكمال سنة مالية.';
       return {
         id: String(safeEntity.id || safeEntity.assetId || title),
         title,
@@ -90,31 +120,31 @@
         profit: 0,
         margin: null,
         revenueChangePercent: null,
-        revenueChangeUnavailableReason: invalidReportYearCount ? 'invalid-report-year' : 'no-report',
+        revenueChangeUnavailableReason: reason,
         invalidReportYearCount,
+        invalidFinancialReportCount,
         marketShare: null,
         marketShareChange: null,
         taxLiability: 0,
         loanBalance: 0,
         closingCashBalance: null,
         insights: [{
-          code: invalidReportYearCount ? 'invalid-report-year' : 'no-report',
+          code: reason,
           severity: 'info',
-          message: invalidReportYearCount
-            ? 'توجد سجلات مالية بسنة غير صالحة؛ تم تجاهلها حتى لا تظهر كتقرير سنوي معتمد.'
-            : 'لم يصدر تقرير مالي محفوظ لهذا النشاط بعد؛ ستظهر القراءة بعد إكمال سنة مالية.'
+          message
         }]
       };
     }
 
+    const report = reportEntry.report;
     const previous = history.length > 1 ? history[history.length - 2] : null;
-    const revenue = Math.max(0, number(report.revenue, 0));
-    const costs = Math.max(0, number(report.costs, 0));
-    const profit = hasFinite(report, 'profit') ? number(report.profit) : revenue - costs;
+    const revenue = reportEntry.metrics.revenue;
+    const costs = reportEntry.metrics.costs === null ? 0 : reportEntry.metrics.costs;
+    const profit = reportEntry.metrics.profit;
     const margin = hasFinite(report, 'margin') ? number(report.margin) : (revenue > 0 ? profit / revenue * 100 : 0);
-    const previousRevenue = previous ? Math.max(0, number(previous.revenue, 0)) : 0;
-    const reportYear = number(report.year, 0);
-    const previousYear = previous ? number(previous.year, 0) : null;
+    const previousRevenue = previous ? previous.metrics.revenue : 0;
+    const reportYear = reportEntry.year;
+    const previousYear = previous ? previous.year : null;
     const hasConsecutivePrevious = previous && previousYear === reportYear - 1;
     const revenueChangePercent = hasConsecutivePrevious && previousRevenue > 0
       ? (revenue - previousRevenue) / previousRevenue * 100
@@ -140,6 +170,10 @@
       insights.push({ code, severity, message });
     };
 
+    if (invalidFinancialReportCount > 0) {
+      addInsight('invalid-financial-report', 'warning',
+        'تم استبعاد ' + invalidFinancialReportCount + ' تقرير مالي غير مكتمل؛ يعرض التحليل آخر تقرير صالح فقط.');
+    }
     if (report.treasuryMode === 'separate' && closingCashBalance !== null && closingCashBalance < 0) {
       addInsight('negative-cash', 'danger', 'خزينة النشاط سالبة؛ راجع التحصيل والمصروفات والالتزامات قبل ضخ استثمارات جديدة.');
     }
@@ -184,7 +218,8 @@
       hasReport: true,
       status,
       invalidReportYearCount,
-      year: number(report.year, 0),
+      invalidFinancialReportCount,
+      year: reportYear,
       revenue,
       costs,
       profit,
@@ -215,27 +250,32 @@
       latestByYear.forEach((report, year) => {
         let annual = totalsByYear.get(year);
         if (!annual) {
-          annual = { year, reportedCount: 0, totalRevenue: 0, totalProfit: 0 };
+          annual = { year, reportedCount: 0, invalidReportCount: 0, totalRevenue: 0, totalProfit: 0 };
           totalsByYear.set(year, annual);
         }
-        const revenue = Math.max(0, number(report.revenue, 0));
-        const costs = Math.max(0, number(report.costs, 0));
-        const profit = hasFinite(report, 'profit') ? number(report.profit) : revenue - costs;
+        const metrics = readFinancialMetrics(report);
+        if (!metrics) {
+          annual.invalidReportCount += 1;
+          return;
+        }
         annual.reportedCount += 1;
-        annual.totalRevenue += revenue;
-        annual.totalProfit += profit;
+        annual.totalRevenue += metrics.revenue;
+        annual.totalProfit += metrics.profit;
       });
     });
 
     const summaries = Array.from(totalsByYear.values())
       .sort((a, b) => b.year - a.year)
       .map(annual => {
-        const missingBusinessCount = Math.max(0, entries.length - annual.reportedCount);
+        const missingBusinessCount = Math.max(0,
+          entries.length - annual.reportedCount - annual.invalidReportCount);
         return {
           ...annual,
           businessCount: entries.length,
           missingBusinessCount,
-          coverage: entries.length > 0 && missingBusinessCount === 0 ? 'complete' : 'partial'
+          coverage: entries.length > 0 &&
+            annual.reportedCount === entries.length &&
+            annual.invalidReportCount === 0 ? 'complete' : 'partial'
         };
       });
     const summariesByYear = new Map(summaries.map(annual => [annual.year, annual]));
@@ -271,6 +311,10 @@
       (sum, item) => sum + Math.max(0, number(item.invalidReportYearCount, 0)),
       0
     );
+    const invalidFinancialReportCount = items.reduce(
+      (sum, item) => sum + Math.max(0, number(item.invalidFinancialReportCount, 0)),
+      0
+    );
     const unknownReportYearCount = items.filter(item =>
       !item.hasReport && item.invalidReportYearCount > 0
     ).length;
@@ -285,6 +329,7 @@
       reportYears,
       unknownReportYearCount,
       invalidReportYearCount,
+      invalidFinancialReportCount,
       hasMixedReportYears: reportYears.length > 1 || unknownReportYearCount > 0,
       annualSummaries: annualPortfolioSummaries(entries),
       items
@@ -371,6 +416,7 @@
       createMetric(doc, totals, 'التزامات ضريبية', formatMoney(summary.taxLiability, state.place && state.place.unit));
       createMetric(doc, totals, 'تمويل قائم', formatMoney(summary.loanBalance, state.place && state.place.unit));
       createMetric(doc, totals, 'أنشطة سجلت خسارة', formatNumber(summary.lossCount));
+      createMetric(doc, totals, 'تقارير مالية مستبعدة', formatNumber(summary.invalidFinancialReportCount));
       body.appendChild(totals);
 
       if (summary.reportedCount) {
@@ -389,6 +435,11 @@
             formatNumber(summary.reportYears[0]) + '.';
         }
         appendText(doc, body, 'p', 'business-insights-period-note', periodMessage);
+      }
+      if (summary.invalidFinancialReportCount > 0) {
+        appendText(doc, body, 'p', 'business-insights-period-note',
+          'تم استبعاد ' + formatNumber(summary.invalidFinancialReportCount) +
+          ' تقرير مالي بسبب غياب الإيرادات أو عدم توافر صافي نتيجة وتكاليف رقمية صالحة.');
       }
 
       if (summary.annualSummaries.length) {
@@ -446,6 +497,11 @@
               'الإجمالي لا يشمل ' + formatNumber(annual.missingBusinessCount) +
               ' نشاط دون تقرير لهذه السنة.');
           }
+          if (annual.invalidReportCount > 0) {
+            appendText(doc, annualCard, 'p', 'business-insights-annual-note',
+              'تم استبعاد ' + formatNumber(annual.invalidReportCount) +
+              ' تقرير غير مكتمل لهذه السنة؛ لم يدخل في الإيرادات أو صافي النتيجة.');
+          }
           annualGrid.appendChild(annualCard);
         });
         annualSection.appendChild(annualGrid);
@@ -453,7 +509,11 @@
       }
 
       if (!summary.reportedCount) {
-        appendText(doc, body, 'p', 'business-insights-empty', 'لم تصدر تقارير مالية للأنشطة بعد. ستظهر المؤشرات بعد إكمال سنة مالية.');
+        const emptyMessage = summary.invalidFinancialReportCount > 0
+          ? 'توجد تقارير مالية، لكن لم يتوفر تقرير صالح للحساب؛ تم استبعاد ' +
+            formatNumber(summary.invalidFinancialReportCount) + ' تقرير غير مكتمل.'
+          : 'لم تصدر تقارير مالية للأنشطة بعد. ستظهر المؤشرات بعد إكمال سنة مالية.';
+        appendText(doc, body, 'p', 'business-insights-empty', emptyMessage);
       }
       summary.items.forEach(item => {
         const card = doc.createElement('article');
@@ -467,7 +527,12 @@
         card.appendChild(cardHeader);
 
         if (item.hasReport) {
-          appendText(doc, card, 'p', 'business-insights-meta', 'آخر سنة مالية: ' + formatNumber(item.year));
+          appendText(doc, card, 'p', 'business-insights-meta', 'آخر سنة مالية صالحة: ' + formatNumber(item.year));
+          if (item.invalidFinancialReportCount > 0) {
+            appendText(doc, card, 'p', 'business-insights-meta',
+              'تم استبعاد ' + formatNumber(item.invalidFinancialReportCount) +
+              ' تقرير مالي غير مكتمل؛ لا يدخل في المؤشرات.');
+          }
           const metrics = doc.createElement('div');
           metrics.className = 'business-insights-card-metrics';
           createMetric(doc, metrics, 'الإيرادات', formatMoney(item.revenue, state.place && state.place.unit));
@@ -483,9 +548,11 @@
           createMetric(doc, metrics, 'تغير الإيرادات', revenueChangeLabel);
           card.appendChild(metrics);
         } else {
-          const missingReportMessage = item.invalidReportYearCount > 0
-            ? 'لا يوجد تقرير بسنة مالية صالحة؛ تم تجاهل ' + formatNumber(item.invalidReportYearCount) + ' سجل غير صالح.'
-            : 'لا يوجد تقرير مالي محفوظ لهذا النشاط.';
+          const missingReportMessage = item.invalidFinancialReportCount > 0
+            ? 'لا يوجد تقرير مالي مكتمل؛ تم استبعاد ' + formatNumber(item.invalidFinancialReportCount) + ' سجل لا يحتوي على قيم مالية صالحة.'
+            : item.invalidReportYearCount > 0
+              ? 'لا يوجد تقرير بسنة مالية صالحة؛ تم تجاهل ' + formatNumber(item.invalidReportYearCount) + ' سجل غير صالح.'
+              : 'لا يوجد تقرير مالي محفوظ لهذا النشاط.';
           appendText(doc, card, 'p', 'business-insights-meta', missingReportMessage);
         }
 
