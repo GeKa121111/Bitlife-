@@ -62,6 +62,11 @@
     if (!Number.isSafeInteger(yearsRemaining) || yearsRemaining < 1 || yearsRemaining > termYears) return null;
     if (!isSafeNonNegativeInteger(annualRoyalty)) return null;
     if (!isSafeNonNegativeInteger(advancePaid) || !isSafeNonNegativeInteger(totalPaid)) return null;
+    const paidInstallments = lastPaidYear - startYear;
+    if (paidInstallments < 0 || paidInstallments > termYears) return null;
+    const expectedRemaining = termYears - paidInstallments;
+    const expectedTotal = advancePaid + annualRoyalty * paidInstallments;
+    if (yearsRemaining !== expectedRemaining || !Number.isSafeInteger(expectedTotal) || totalPaid !== expectedTotal) return null;
 
     return {
       id,
