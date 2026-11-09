@@ -164,6 +164,22 @@
         }
         transactionIds.add(id);
       }
+
+      // Rewind the retained audit trail from today's balances. This catches
+      // structurally valid receipts that could not have produced the current ledger.
+      const balances = new Map(shareholders.map(item => [item.beneficiaryId, item.shareBps]));
+      for (let index = raw.transactions.length - 1; index >= 0; index -= 1) {
+        const item = raw.transactions[index];
+        const fromId = String(item.fromBeneficiaryId || '').trim().slice(0, 120);
+        const toId = String(item.toBeneficiaryId || '').trim().slice(0, 120);
+        const shareBps = Number(item.shareBps);
+        const recipientBalance = balances.get(toId) || 0;
+        if (recipientBalance < shareBps) {
+          return invalid(['ownership_transaction_flow_invalid']);
+        }
+        balances.set(toId, recipientBalance - shareBps);
+        balances.set(fromId, (balances.get(fromId) || 0) + shareBps);
+      }
     }
 
     const active = shareholders.find(item => item.beneficiaryId === activeBeneficiaryId);
@@ -677,8 +693,12 @@
         ownershipSection.className = 'business-insights-ownership';
         appendText(doc, ownershipSection, 'h4', 'business-insights-ownership-title', 'هيكل الملكية');
         if (!item.ownership || !item.ownership.valid) {
+          const hasFlowMismatch = item.ownership && Array.isArray(item.ownership.auditIssues) &&
+            item.ownership.auditIssues.includes('ownership_transaction_flow_invalid');
           appendText(doc, ownershipSection, 'p', 'business-insights-ownership-warning',
-            'دفتر الملكية غير صالح أو يحتاج مراجعة؛ لم نعرض نسبًا قد تكون مضللة.');
+            hasFlowMismatch
+              ? 'سجل انتقال الحصص لا يتوافق حسابيًا مع الملكية الحالية؛ أوقفنا عرض النسب حتى مراجعة السجل.'
+              : 'دفتر الملكية غير صالح أو يحتاج مراجعة؛ لم نعرض نسبًا قد تكون مضللة.');
         } else {
           const activeShare = formatOwnershipShare(item.ownership.activeShareBps);
           appendText(doc, ownershipSection, 'p', 'business-insights-ownership-meta',

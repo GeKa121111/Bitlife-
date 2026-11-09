@@ -687,3 +687,74 @@ test('ملخص المحفظة يحصي الملكية المشتركة والس�
   assert.equal(summary.ownershipShareholderCount, 3);
   assert.equal(JSON.stringify(state), before);
 });
+
+
+test('سجل التحركات الذي لا يمكن عكسه من نسب الملاك الحالية يحتاج مراجعة', () => {
+  const business = {
+    ownershipLedger: {
+      version: 1,
+      activeBeneficiaryId: 'owner',
+      shareholders: [
+        { beneficiaryId: 'owner', name: 'المالك', shareBps: 9000 },
+        { beneficiaryId: 'child', name: 'الابن', shareBps: 1000 }
+      ],
+      transactions: [{
+        id: 'tx-overdrawn',
+        type: 'gift',
+        age: 40,
+        fromBeneficiaryId: 'owner',
+        fromName: 'المالك',
+        toBeneficiaryId: 'child',
+        toName: 'الابن',
+        shareBps: 2000
+      }]
+    }
+  };
+  const before = JSON.stringify(business);
+  const result = analyzeBusinessOwnership(business, 'owner', 'المالك');
+  assert.equal(result.valid, false);
+  assert.deepEqual(result.auditIssues, ['ownership_transaction_flow_invalid']);
+  assert.equal(JSON.stringify(business), before, 'history auditing must remain read-only');
+});
+
+test('سجل التحركات المتتابع يظل صالحًا عند إعادة بنائه عكسيًا من الملكية الحالية', () => {
+  const business = {
+    ownershipLedger: {
+      version: 1,
+      activeBeneficiaryId: 'owner',
+      shareholders: [
+        { beneficiaryId: 'owner', name: 'المالك', shareBps: 7000 },
+        { beneficiaryId: 'child-a', name: 'الابن الأول', shareBps: 2000 },
+        { beneficiaryId: 'child-b', name: 'الابن الثاني', shareBps: 1000 }
+      ],
+      transactions: [
+        {
+          id: 'tx-1', type: 'gift', age: 35,
+          fromBeneficiaryId: 'owner', fromName: 'المالك',
+          toBeneficiaryId: 'child-a', toName: 'الابن الأول', shareBps: 2000
+        },
+        {
+          id: 'tx-2', type: 'gift', age: 36,
+          fromBeneficiaryId: 'child-a', fromName: 'الابن الأول',
+          toBeneficiaryId: 'child-b', toName: 'الابن الثاني', shareBps: 1000
+        },
+        {
+          id: 'tx-3', type: 'inheritance', age: 60,
+          fromBeneficiaryId: 'owner', fromName: 'المالك',
+          toBeneficiaryId: 'child-a', toName: 'الابن الأول', shareBps: 1000
+        }
+      ]
+    }
+  };
+  const before = JSON.stringify(business);
+  const result = analyzeBusinessOwnership(business, 'owner', 'المالك');
+  assert.equal(result.valid, true);
+  assert.deepEqual(result.auditIssues, []);
+  assert.equal(JSON.stringify(business), before, 'valid history auditing must not mutate saved data');
+});
+
+test('واجهة التدقيق تشرح تعارض سجل التحركات دون كشف تفاصيل تقنية للمستخدم', () => {
+  const source = fs.readFileSync(path.join(__dirname, '..', 'business-insights.js'), 'utf8');
+  assert.match(source, /سجل انتقال الحصص لا يتوافق حسابيًا مع الملكية الحالية/);
+  assert.match(source, /ownership_transaction_flow_invalid/);
+});
