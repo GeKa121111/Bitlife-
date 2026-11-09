@@ -1,0 +1,40 @@
+.film-rights-forecast-button{min-width:44px}
+.film-rights-forecast-dialog{width:min(94vw,560px);max-width:560px;max-height:min(88dvh,800px);padding:0;border:1px solid var(--hayah-line,#dce9e4);border-radius:20px;background:var(--hayah-surface,#fff);color:var(--hayah-text,#263b3a);box-shadow:0 24px 70px rgba(18,48,70,.24);overflow:hidden}
+.film-rights-forecast-dialog::backdrop{background:rgba(18,48,70,.58);backdrop-filter:blur(3px)}
+.film-rights-forecast-shell{display:flex;flex-direction:column;max-height:min(88dvh,800px);direction:rtl}
+.film-rights-forecast-header{position:sticky;top:0;z-index:1;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:5px 12px;align-items:center;padding:15px 16px 12px;border-bottom:1px solid var(--hayah-line,#dce9e4);background:var(--hayah-surface,#fff)}
+.film-rights-forecast-title{margin:0;color:var(--hayah-navy,#1d3b53);font-size:17px;font-weight:950}
+.film-rights-forecast-subtitle{grid-column:1/-1;margin:0;color:var(--hayah-muted,#71827f);font-size:11px;line-height:1.7}
+.film-rights-forecast-close{grid-column:2;grid-row:1;min-width:58px;min-height:44px;padding:0 12px;border:1px solid var(--hayah-line,#dce9e4);border-radius:11px;background:var(--hayah-surface-soft,#f7faf9);color:var(--hayah-primary,#176b66);font-size:12px;font-weight:900}
+.film-rights-forecast-body{display:flex;flex-direction:column;gap:12px;padding:13px 14px 16px;overflow:auto;overscroll-behavior:contain}
+.film-rights-forecast-summary{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.film-rights-forecast-metric{display:flex;flex-direction:column;gap:5px;min-width:0;padding:10px;border:1px solid var(--hayah-line,#e2eae7);border-radius:12px;background:var(--hayah-surface-soft,#f7faf9)}
+.film-rights-forecast-label{color:var(--hayah-muted,#71827f);font-size:10px;font-weight:750}
+.film-rights-forecast-value{color:var(--hayah-navy,#1d3b53);font-size:13px;font-weight:950;overflow-wrap:anywhere}
+.film-rights-forecast-section{display:flex;flex-direction:column;gap:8px}
+.film-rights-forecast-section-title{margin:0;color:var(--hayah-navy,#1d3b53);font-size:13px;font-weight:950}
+.film-rights-forecast-years{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.film-rights-forecast-year{min-width:0;padding:11px;border:1px solid var(--hayah-line,#e2eae7);border-radius:13px;background:var(--hayah-surface,#fff)}
+.film-rights-forecast-year-title{margin:0 0 6px;color:var(--hayah-muted,#71827f);font-size:10px;font-weight:850}
+.film-rights-forecast-year-amount{display:block;color:var(--hayah-primary,#176b66);font-size:14px;font-weight:950;overflow-wrap:anywhere}
+.film-rights-forecast-year-meta{margin:6px 0 0;color:var(--hayah-muted,#71827f);font-size:9px}
+.film-rights-forecast-contracts{display:grid;gap:7px;margin:0;padding:0;list-style:none}
+.film-rights-forecast-contract{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 10px;padding:10px;border:1px solid var(--hayah-line,#e2eae7);border-radius:11px;background:var(--hayah-surface,#fff)}
+.film-rights-forecast-contract-title{min-width:0;color:var(--hayah-navy,#1d3b53);font-size:11px;font-weight:900;overflow-wrap:anywhere}
+.film-rights-forecast-contract-partner{color:var(--hayah-muted,#71827f);font-size:10px;text-align:left}
+.film-rights-forecast-contract-value{grid-column:1/-1;color:var(--hayah-primary,#176b66);font-size:10px;font-weight:800}
+.film-rights-forecast-empty,.film-rights-forecast-warning,.film-rights-forecast-note{margin:0;padding:12px;border:1px solid var(--hayah-line,#dce9e4);border-radius:11px;background:var(--hayah-surface-soft,#f7faf9);color:var(--hayah-muted,#71827f);font-size:11px;line-height:1.8}
+.film-rights-forecast-warning{border-color:#e4c17a;background:#fff9e9;color:#745d31}
+.film-rights-forecast-footnote{margin:0;padding:10px 14px calc(10px + env(safe-area-inset-bottom));border-top:1px solid var(--hayah-line,#e2eae7);background:var(--hayah-surface-soft,#f7faf9);color:var(--hayah-muted,#71827f);font-size:9px;line-height:1.7}
+.film-rights-forecast-button:focus-visible,.film-rights-forecast-close:focus-visible{outline:3px solid var(--hayah-accent,#e5b34b);outline-offset:3px}
+body.theme-dark .film-rights-forecast-dialog,body.theme-dark .film-rights-forecast-header,body.theme-dark .film-rights-forecast-year,body.theme-dark .film-rights-forecast-contract{background:#172b31;border-color:#3b5653;color:#e8f0ed}
+body.theme-dark .film-rights-forecast-title,body.theme-dark .film-rights-forecast-section-title,body.theme-dark .film-rights-forecast-contract-title{color:#e8f0ed}
+body.theme-dark .film-rights-forecast-metric,body.theme-dark .film-rights-forecast-close,body.theme-dark .film-rights-forecast-footnote,body.theme-dark .film-rights-forecast-empty,body.theme-dark .film-rights-forecast-note{background:#203b40;border-color:#3b5653;color:#dce9e4}
+body.theme-dark .film-rights-forecast-value,body.theme-dark .film-rights-forecast-year-amount,body.theme-dark .film-rights-forecast-contract-value{color:#bce5d8}
+body.theme-dark .film-rights-forecast-warning{background:#40351f;border-color:#80632f;color:#ffe8b5}
+body.theme-gold .film-rights-forecast-dialog,body.theme-gold .film-rights-forecast-header,body.theme-gold .film-rights-forecast-year,body.theme-gold .film-rights-forecast-contract{background:#fffaf0;border-color:#dfc78f}
+body.theme-gold .film-rights-forecast-title,body.theme-gold .film-rights-forecast-section-title,body.theme-gold .film-rights-forecast-contract-title{color:#594a2b}
+body.theme-gold .film-rights-forecast-metric,body.theme-gold .film-rights-forecast-close,body.theme-gold .film-rights-forecast-footnote,body.theme-gold .film-rights-forecast-empty,body.theme-gold .film-rights-forecast-note{background:#fff6df;border-color:#dfc78f;color:#715a2b}
+@media(max-width:380px){.film-rights-forecast-dialog{width:96vw;max-height:90dvh}.film-rights-forecast-shell{max-height:90dvh}.film-rights-forecast-body{padding:10px}.film-rights-forecast-years{grid-template-columns:1fr}.film-rights-forecast-button{padding:0 6px;font-size:9px}}
+@media(prefers-reduced-motion:reduce){.film-rights-forecast-dialog{scroll-behavior:auto}}
+@media(forced-colors:active){.film-rights-forecast-dialog,.film-rights-forecast-year,.film-rights-forecast-contract,.film-rights-forecast-metric{border:1px solid CanvasText}.film-rights-forecast-button:focus-visible,.film-rights-forecast-close:focus-visible{outline:2px solid Highlight}}
