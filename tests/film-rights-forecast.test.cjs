@@ -130,3 +130,96 @@ test('مدى التوقع محدود بخمس سنوات ويقبل تقليل �
   assert.equal(shorter.years.length, 2);
   assert.equal(shorter.totalForecast, 2000n);
 });
+
+
+class FakeElement {
+  constructor(tagName) {
+    this.tagName = tagName;
+    this.children = [];
+    this.attributes = {};
+    this.listeners = {};
+    this.textContent = '';
+    this.className = '';
+    this.open = false;
+  }
+  appendChild(child) { this.children.push(child); return child; }
+  replaceChildren(...children) { this.children = children; }
+  setAttribute(name, value) { this.attributes[name] = String(value); }
+  getAttribute(name) { return Object.prototype.hasOwnProperty.call(this.attributes, name) ? this.attributes[name] : null; }
+  removeAttribute(name) { delete this.attributes[name]; }
+  addEventListener(name, callback) { (this.listeners[name] ||= []).push(callback); }
+  showModal() { this.open = true; }
+  close() { this.open = false; }
+  click() { (this.listeners.click || []).forEach(callback => callback({ target: this })); }
+}
+
+function makeDocument() {
+  const body = new FakeElement('body');
+  const find = (node, id) => {
+    if (node.id === id) return node;
+    for (const child of node.children) {
+      const result = find(child, id);
+      if (result) return result;
+    }
+    return null;
+  };
+  return {
+    body,
+    createElement: tag => new FakeElement(tag),
+    getElementById: id => find(body, id)
+  };
+}
+
+function flattenText(node) {
+  return [node.textContent, ...node.children.flatMap(flattenText)].filter(Boolean).join(' ');
+}
+
+test('واجهة التوقعات تعرض السنوات والعقود داخل نافذة عربية قابلة للوصول دون تعديل الحفظ', () => {
+  const state = makeSave([makeContract({ annualRoyalty: 1250, yearsRemaining: 2 })]);
+  const before = JSON.stringify(state);
+  const doc = makeDocument();
+  const button = new FakeElement('button');
+  button.id = 'filmRightsForecastBtn';
+  doc.body.appendChild(button);
+  const host = {
+    localStorage: { getItem: key => key === forecast.SAVE_KEY ? JSON.stringify(state) : null }
+  };
+  const mounted = forecast.mount(doc, host);
+  assert.ok(mounted);
+  button.click();
+  const dialog = doc.getElementById('filmRightsForecastDialog');
+  assert.ok(dialog);
+  assert.equal(dialog.open, true);
+  assert.equal(dialog.getAttribute('aria-modal'), 'true');
+  const text = flattenText(dialog);
+  assert.match(text, /توقعات دخل حقوق الأفلام/);
+  assert.match(text, /التدفقات السنوية المتوقعة/);
+  assert.match(text, /حكاية على ضفاف النيل/);
+  assert.match(text, /السنة ١١|السنة 11/);
+  assert.equal(JSON.stringify(state), before);
+});
+
+test('زر الإغلاق يغلق نافذة التوقعات ولا يكتب إلى الحفظ', () => {
+  const doc = makeDocument();
+  const button = new FakeElement('button');
+  button.id = 'filmRightsForecastBtn';
+  doc.body.appendChild(button);
+  const host = { localStorage: { getItem: () => JSON.stringify(makeSave([makeContract()])) } };
+  forecast.mount(doc, host);
+  button.click();
+  const dialog = doc.getElementById('filmRightsForecastDialog');
+  const close = (() => {
+    const walk = node => {
+      if (node.className === 'film-rights-forecast-close') return node;
+      for (const child of node.children) {
+        const found = walk(child);
+        if (found) return found;
+      }
+      return null;
+    };
+    return walk(dialog);
+  })();
+  assert.ok(close);
+  close.click();
+  assert.equal(dialog.open, false);
+});
