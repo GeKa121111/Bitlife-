@@ -190,6 +190,14 @@ test('الحزم القديمة تظل قابلة للفحص، والبصمات 
   assert.equal(missingRequiredReport.integrityStatus, 'missing');
   assert.ok(missingRequiredReport.errors.some(message => message.includes('تتطلب بصمة داخلية')));
 
+  const malformedMarker = makePackage(makeLife());
+  malformedMarker.integrityRequired = 'true';
+  assert.equal(integrity.verifyIntegrity(malformedMarker).status, 'invalid-marker');
+  const malformedMarkerReport = inspectBackup(malformedMarker);
+  assert.equal(malformedMarkerReport.valid, false);
+  assert.equal(malformedMarkerReport.integrityStatus, 'invalid-marker');
+  assert.ok(malformedMarkerReport.errors.some(message => message.includes('علامة اشتراط البصمة')));
+
   const unsupported = makePackage(makeLife());
   unsupported.integrity = { algorithm: 'SHA-256', checksum: 'a'.repeat(64) };
   const report = inspectBackup(unsupported);
@@ -200,6 +208,7 @@ test('الحزم القديمة تظل قابلة للفحص، والبصمات 
 test('واجهة فاحص النسخ توضح حالة البصمة وحدودها', () => {
   assert.match(checkerSource, /سلامة الحزمة/);
   assert.match(checkerSource, /بصمة مفقودة من حزمة حديثة/);
+  assert.match(checkerSource, /علامة بصمة غير صالحة/);
   assert.match(checkerSource, /FNV-1a-32/);
   assert.match(checkerSource, /ليست توقيعًا أمنيًا/);
 });
