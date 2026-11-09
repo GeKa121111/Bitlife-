@@ -5898,7 +5898,7 @@ function resolveLifeConsequences(){
 function advanceAge(){
  if(!validState())return;
  const activeSpecialCareer=!!(state.specialCareer&&!(state.specialCareer.id==='fighter'&&state.combatCareer&&state.combatCareer.retired===true));
- state.age++;state.yearCount++;if(perkEnabled('hollywoodStar')&&(state.job||activeSpecialCareer))state.fame=100;
+ state.age++;state.yearCount++;settleFilmDistributionYear();if(perkEnabled('hollywoodStar')&&(state.job||activeSpecialCareer))state.fame=100;
  if(state.combatCareer&&state.combatCareer.retired!==true&&advanceCombatRecovery(state.combatCareer))log('🩹','التعافي من الإصابة','تعافيت من إصابة القتال وعدت جاهزًا للتدريب.','good');
  if(state.combatCareer){
   const cc=ensureCombatCareer();
@@ -9349,12 +9349,12 @@ function filmActorImpact(actor,genreId,actorDrama=false){
  };
 }
 function createFilmStudio(){
- return {filmography:[],projects:0,totalBudget:0,totalBoxOffice:0,awards:0,bestCritic:0,genreFocus:null,actorRoster:[],pendingAuditions:[],pendingAuditionGenre:null,pendingProject:null,festivalEntries:[]};
+ return {filmography:[],projects:0,totalBudget:0,totalBoxOffice:0,awards:0,bestCritic:0,genreFocus:null,actorRoster:[],pendingAuditions:[],pendingAuditionGenre:null,pendingProject:null,festivalEntries:[],distributionContracts:[]};
 }
 function ensureFilmStudio(){
  if(!state)return null;
  if(!state.filmStudio||typeof state.filmStudio!=='object'||Array.isArray(state.filmStudio))state.filmStudio=createFilmStudio();
- const studio=state.filmStudio,defaults={filmography:[],projects:0,totalBudget:0,totalBoxOffice:0,awards:0,bestCritic:0,genreFocus:null,actorRoster:[],pendingAuditions:[],pendingAuditionGenre:null,pendingProject:null,festivalEntries:[]};
+ const studio=state.filmStudio,defaults={filmography:[],projects:0,totalBudget:0,totalBoxOffice:0,awards:0,bestCritic:0,genreFocus:null,actorRoster:[],pendingAuditions:[],pendingAuditionGenre:null,pendingProject:null,festivalEntries:[],distributionContracts:[]};
  Object.keys(defaults).forEach(key=>{if(studio[key]===undefined||studio[key]===null)studio[key]=defaults[key];});
  if(!Array.isArray(studio.filmography))studio.filmography=[];
  if(!Array.isArray(studio.festivalEntries))studio.festivalEntries=[];
@@ -9372,6 +9372,7 @@ function ensureFilmStudio(){
  const projectBudget=project&&filmBudgetCatalog.find(budget=>budget.id===project.budgetId);
  const projectStyle=project&&filmCreativeCatalog.find(style=>style.id===project.creativeId);
  studio.pendingProject=projectGenre&&projectBudget&&projectStyle?{genreId:projectGenre.id,budgetId:projectBudget.id,creativeId:projectStyle.id}:null;
+ if(studio.distributionContracts===undefined||studio.distributionContracts===null)studio.distributionContracts=[];
  return studio;
 }
 
@@ -9488,14 +9489,183 @@ function selectFilmActor(genreId,budgetId,creativeId,actorId){
  save();
  filmCastMenu(genreId,budgetId,creativeId,actor.id);
 }
+
+const filmDistributionPartnerCatalog = [
+ {id:'streaming',title:'منصة السرد',termYears:3,royaltyBps:175,advanceBps:600,description:'توزيع رقمي متعدد السنوات مع دفعة مقدمة متوسطة.'},
+ {id:'regional-tv',title:'شبكة المتوسط',termYears:4,royaltyBps:125,advanceBps:900,description:'انتشار إقليمي أوسع ودفعة مقدمة أعلى مقابل عائد سنوي أقل.'},
+ {id:'theatrical',title:'دار العرض العربية',termYears:2,royaltyBps:230,advanceBps:350,description:'إعادة عرض محدودة المدة بعائد سنوي أعلى ودفعة مقدمة أقل.'}
+];
+function filmDistributionMoney(value){
+ const amount=Number(value);
+ if(!Number.isSafeInteger(amount)||amount<0||amount>1000000000000)return null;
+ return amount;
+}
+function normalizeFilmDistributionContract(raw){
+ if(!raw||typeof raw!=='object'||Array.isArray(raw))return null;
+ const filmId=(typeof raw.filmId==='string'||typeof raw.filmId==='number')?String(raw.filmId).trim().slice(0,96):'';
+ const id=typeof raw.id==='string'?raw.id.trim().slice(0,128):'';
+ const partner=filmDistributionPartnerCatalog.find(item=>item.id===raw.partnerId);
+ const startYear=Number(raw.startYear),lastPaidYear=Number(raw.lastPaidYear),termYears=Number(raw.termYears);
+ const annualRoyalty=filmDistributionMoney(raw.annualRoyalty),advancePaid=filmDistributionMoney(raw.advancePaid),totalPaid=filmDistributionMoney(raw.totalPaid);
+ if(!filmId||!id||!partner||!Number.isSafeInteger(startYear)||startYear<0||startYear>1000000||
+    !Number.isSafeInteger(lastPaidYear)||!Number.isSafeInteger(termYears)||termYears!==partner.termYears||
+    annualRoyalty===null||annualRoyalty<=0||advancePaid===null||totalPaid===null)return null;
+ const paidInstallments=lastPaidYear-startYear;
+ if(paidInstallments<0||paidInstallments>termYears)return null;
+ const yearsRemaining=termYears-paidInstallments,expectedStatus=yearsRemaining>0?'active':'expired';
+ const expectedTotal=advancePaid+annualRoyalty*paidInstallments;
+ if(!Number.isSafeInteger(expectedTotal)||expectedTotal!==totalPaid||
+    Number(raw.yearsRemaining)!==yearsRemaining||raw.status!==expectedStatus)return null;
+ return {id,filmId,filmTitle:typeof raw.filmTitle==='string'&&raw.filmTitle.trim()?raw.filmTitle.trim().slice(0,80):'فيلم بلا عنوان',
+  genre:typeof raw.genre==='string'&&raw.genre.trim()?raw.genre.trim().slice(0,48):'عام',
+  partnerId:partner.id,partnerTitle:partner.title,startYear,lastPaidYear,termYears,yearsRemaining,
+  annualRoyalty,advancePaid,totalPaid,status:expectedStatus};
+}
+function readFilmDistributionContracts(studio){
+ if(studio&&Object.prototype.hasOwnProperty.call(studio,'distributionContracts')&&studio.distributionContracts!==null&&studio.distributionContracts!==undefined&&!Array.isArray(studio.distributionContracts))return {entries:[],invalidCount:1};
+ const raw=studio&&Array.isArray(studio.distributionContracts)?studio.distributionContracts:[];
+ const parsed=raw.map(item=>({raw:item,contract:normalizeFilmDistributionContract(item)}));
+ const filmCounts=new Map(),idCounts=new Map();
+ raw.forEach(item=>{
+  if(!item||typeof item!=='object'||Array.isArray(item))return;
+  const filmId=(typeof item.filmId==='string'||typeof item.filmId==='number')?String(item.filmId).trim():'';
+  const id=typeof item.id==='string'?item.id.trim():'';
+  if(filmId)filmCounts.set(filmId,(filmCounts.get(filmId)||0)+1);
+  if(id)idCounts.set(id,(idCounts.get(id)||0)+1);
+ });
+ const entries=parsed.filter(entry=>entry.contract&&filmCounts.get(entry.contract.filmId)===1&&idCounts.get(entry.contract.id)===1);
+ return {entries,invalidCount:raw.length-entries.length};
+}
+function calculateFilmDistributionOffer(film,partnerId){
+ if(!film||typeof film!=='object'||Array.isArray(film))return null;
+ const partner=filmDistributionPartnerCatalog.find(item=>item.id===partnerId);
+ if(!partner)return null;
+ const gross=Number(film.boxOffice),rawNet=Number(film.net),critic=Number(film.criticScore);
+ if(!Number.isSafeInteger(gross)||gross<=0||gross>1000000000000)return null;
+ const net=Number.isFinite(rawNet)?Math.max(0,Math.min(1000000000000,Math.floor(rawNet))):0;
+ const criticScore=Number.isFinite(critic)?Math.max(0,Math.min(100,Math.floor(critic))):0;
+ const royaltyBps=partner.royaltyBps+Math.floor(criticScore/10)*5;
+ const annualRoyalty=Math.floor(gross*royaltyBps/10000),advancePaid=Math.floor(net*partner.advanceBps/10000);
+ const projectedTotal=advancePaid+annualRoyalty*partner.termYears;
+ if(!Number.isSafeInteger(annualRoyalty)||annualRoyalty<=0||!Number.isSafeInteger(advancePaid)||!Number.isSafeInteger(projectedTotal))return null;
+ return {partnerId:partner.id,partnerTitle:partner.title,termYears:partner.termYears,royaltyBps,annualRoyalty,advancePaid,projectedTotal,criticScore,grossAtSigning:gross};
+}
+function signFilmDistributionContract(filmId,partnerId){
+ if(!state||!state.specialCareer||state.specialCareer.id!=='director')return false;
+ const studio=ensureFilmStudio();
+ if(!studio||!Array.isArray(studio.distributionContracts)){
+  info('⚠️','دفتر عقود التوزيع يحتاج مراجعة','لم نتمكن من قراءة دفتر العقود بأمان؛ لم يتم توقيع عقد أو تغيير الرصيد.');return false;
+ }
+ const audit=readFilmDistributionContracts(studio);
+ if(audit.invalidCount>0){info('⚠️','توجد عقود تحتاج مراجعة','تم إيقاف توقيع عقود جديدة حتى لا تتكرر حقوق فيلم أو تُخفى بيانات عقد غير صالح.');return false;}
+ const id=String(filmId??'').trim();
+ const film=Array.isArray(studio.filmography)?studio.filmography.find(item=>item&&item.id!==undefined&&item.id!==null&&String(item.id)===id):null;
+ if(!film){info('🎞️','الفيلم غير موجود','قد يكون الفيلم خرج من الأرشيف أو لم يعد متاحًا للتوزيع.');return false;}
+ if(studio.distributionContracts.some(item=>item&&String(item.filmId)===id)||audit.entries.some(entry=>entry.contract.filmId===id)){
+  info('📄','حقوق الفيلم مرتبطة بعقد','لا يمكن توقيع عقد توزيع ثانٍ للفيلم نفسه.');return false;
+ }
+ if(studio.distributionContracts.length>=200){info('⚠️','سجل العقود ممتلئ','وصل سجل عقود التوزيع إلى 200 عقد؛ لم نحذف عقودًا قديمة أو نستبدلها.');return false;}
+ const offer=calculateFilmDistributionOffer(film,partnerId);
+ if(!offer){info('📄','لا يوجد عرض صالح','إيرادات الفيلم أو بياناته لا تسمح بحساب عائد توزيع آمن.');return false;}
+ const bank=Number(state.bank),nextBank=(Number.isFinite(bank)?bank:0)+offer.advancePaid;
+ if(!Number.isFinite(nextBank)||Math.abs(nextBank)>Number.MAX_SAFE_INTEGER){
+  info('⚠️','تعذر تسوية الدفعة المقدمة','قيمة الرصيد بعد الدفعة تتجاوز حدود الحساب الآمن؛ لم نغير الرصيد أو العقد.');return false;
+ }
+ const startYear=Number(state.yearCount);
+ if(!Number.isSafeInteger(startYear)||startYear<0)return false;
+ const contract={id:'film-distribution-'+id,filmId:id,filmTitle:String(film.title||'فيلم بلا عنوان').slice(0,80),
+  genre:String(film.genre||'عام').slice(0,48),partnerId:offer.partnerId,partnerTitle:offer.partnerTitle,
+  startYear,lastPaidYear:startYear,termYears:offer.termYears,yearsRemaining:offer.termYears,
+  annualRoyalty:offer.annualRoyalty,advancePaid:offer.advancePaid,totalPaid:offer.advancePaid,status:'active'};
+ if(studio.distributionContracts.some(item=>item&&item.id===contract.id))return false;
+ studio.distributionContracts.push(contract);state.bank=nextBank;
+ log('📺','توقيع عقد توزيع','تم توقيع عقد عرض «'+contract.filmTitle+'» مع '+contract.partnerTitle+' لمدة '+contract.termYears+' سنوات. الدفعة المقدمة '+cash(contract.advancePaid)+' والعائد السنوي المتفق عليه '+cash(contract.annualRoyalty)+'.','good');
+ save();render();closeModal();
+ info('📄','تم توقيع عقد التوزيع','سيبدأ تحصيل العائد السنوي عند التقدم للسنة التالية. إجمالي العائد المتوقع طوال مدة العقد '+cash(offer.projectedTotal)+'.',[choice('📺','عقود العرض والتوزيع','',filmDistributionMenu),choice('🎥','الاستوديو','',filmStudioMenu)]);
+ return true;
+}
+function settleFilmDistributionYear(){
+ if(!state||!state.filmStudio||typeof state.filmStudio!=='object'||Array.isArray(state.filmStudio))return 0;
+ const studio=ensureFilmStudio();
+ if(!studio||!Array.isArray(studio.distributionContracts))return 0;
+ const audit=readFilmDistributionContracts(studio),year=Number(state.yearCount),bank=Number(state.bank);
+ if(!Number.isSafeInteger(year)||!Number.isFinite(bank))return 0;
+ const due=audit.entries.filter(entry=>entry.contract.status==='active'&&entry.contract.yearsRemaining>0&&year>entry.contract.lastPaidYear);
+ const payout=due.reduce((sum,entry)=>sum+entry.contract.annualRoyalty,0),nextBank=bank+payout;
+ if(!due.length||!Number.isSafeInteger(payout)||!Number.isFinite(nextBank)||Math.abs(nextBank)>Number.MAX_SAFE_INTEGER){
+  if(audit.invalidCount>0)log('⚠️','عقود توزيع تحتاج مراجعة','تم تجاهل '+audit.invalidCount+' سجل غير صالح دون دفعه أو تعديله.','bad');
+  return 0;
+ }
+ let expired=0;
+ due.forEach(entry=>{
+  const raw=entry.raw,contract=entry.contract;
+  raw.lastPaidYear=contract.lastPaidYear+1;raw.yearsRemaining=contract.yearsRemaining-1;
+  raw.totalPaid=contract.totalPaid+contract.annualRoyalty;raw.status=raw.yearsRemaining>0?'active':'expired';
+  if(raw.status==='expired')expired++;
+ });
+ state.bank=nextBank;
+ log('📺','عائد حقوق العرض السنوي','استلمت '+cash(payout)+' من '+due.length+' عقد توزيع. '+(expired?'انتهت مدة '+expired+' عقد.':'العقود النشطة مستمرة.'),'good');
+ if(audit.invalidCount>0)log('⚠️','عقود توزيع تحتاج مراجعة','تم تجاهل '+audit.invalidCount+' سجل غير صالح دون دفعه أو تعديله.','bad');
+ return payout;
+}
+function filmDistributionMenu(){
+ if(!validState()||!state.specialCareer||state.specialCareer.id!=='director'){info('🎬','حقوق العرض والتوزيع','ابدأ مسار إخراج الأفلام من المهن الخاصة أولًا.');return;}
+ const studio=ensureFilmStudio(),audit=readFilmDistributionContracts(studio);
+ const active=audit.entries.filter(entry=>entry.contract.status==='active');
+ const annualIncome=active.reduce((sum,entry)=>sum+entry.contract.annualRoyalty,0);
+ const contractedIds=new Set((Array.isArray(studio.distributionContracts)?studio.distributionContracts:[]).map(item=>item&&item.filmId!==undefined?String(item.filmId):'').filter(Boolean));
+ const opts=[];
+ if(audit.invalidCount>0)opts.push(choice('⚠️','عقود تحتاج مراجعة','عدد السجلات غير الصالحة '+audit.invalidCount+'؛ تم إيقاف توقيع عقود جديدة.',()=>{closeModal();info('⚠️','مراجعة عقود التوزيع','لم نغير أي سجل غير صالح ولم ندفع عائدًا عنه. احتفظ بنسخة احتياطية قبل أي مراجعة يدوية.');}));
+ if(active.length){
+  opts.push({section:true,title:'عقود سارية'});
+  active.slice().reverse().slice(0,10).forEach(entry=>{
+   const contract=entry.contract;
+   opts.push(choice('📄',contract.filmTitle,contract.partnerTitle+' · متبقي '+contract.yearsRemaining+' سنوات · عائد سنوي '+cash(contract.annualRoyalty)+' · إجمالي المقبوض '+cash(contract.totalPaid),()=>{closeModal();info('📄',contract.filmTitle,'الشريك '+contract.partnerTitle+' · بدأ العقد في سنة '+contract.startYear+' · المدة الأصلية '+contract.termYears+' سنوات · المتبقي '+contract.yearsRemaining+' · الدفعة المقدمة '+cash(contract.advancePaid)+' · العائد السنوي '+cash(contract.annualRoyalty)+' · إجمالي المقبوض '+cash(contract.totalPaid)+'.');}));
+  });
+ }
+ const eligible=Array.isArray(studio.filmography)?studio.filmography.filter(film=>film&&film.id!==undefined&&film.id!==null&&!contractedIds.has(String(film.id))&&Number.isSafeInteger(Number(film.boxOffice))&&Number(film.boxOffice)>0):[];
+ if(eligible.length){
+  opts.push({section:true,title:'أفلام متاحة للتوزيع'});
+  eligible.slice().reverse().slice(0,10).forEach(film=>opts.push(choice('🎬',String(film.title||'فيلم بلا عنوان'),'إيرادات '+cash(film.boxOffice)+' · النقاد '+(Number(film.criticScore)||0)+'% · الصافي '+cash(film.net||0),()=>filmDistributionOffersMenu(film.id))));
+ }else opts.push(choice('🎞️','لا توجد أفلام متاحة','أنتج فيلمًا جديدًا أو راجع العقود الحالية؛ كل فيلم يحصل على عقد توزيع واحد فقط.',closeModal));
+ opts.push(choice('↩️','العودة إلى الاستوديو','',filmStudioMenu));
+ modal('📺','حقوق العرض والتوزيع','عقود سارية '+active.length+' · عائد سنوي متوقع '+cash(annualIncome)+' · كل عقد يدفع دفعة مقدمة ثم عائدًا سنويًا لمدة محددة. لا توجد مشاركة تلقائية في خزينة الاستوديو.',opts);
+}
+function filmDistributionOffersMenu(filmId){
+ const studio=ensureFilmStudio(),id=String(filmId??'').trim();
+ if(!studio||!Array.isArray(studio.distributionContracts)){closeModal();info('⚠️','دفتر عقود التوزيع يحتاج مراجعة','لم نتمكن من قراءة دفتر العقود بأمان؛ لم ننشئ عروضًا جديدة.');return;}
+ const film=Array.isArray(studio.filmography)?studio.filmography.find(item=>item&&item.id!==undefined&&item.id!==null&&String(item.id)===id):null;
+ if(!film){closeModal();info('🎞️','الفيلم غير موجود','لا يمكن إنشاء عرض لفيلم غير موجود في الأرشيف.');return;}
+ const audit=readFilmDistributionContracts(studio);
+ if(audit.invalidCount>0||studio.distributionContracts.some(item=>item&&String(item.filmId)===id)){closeModal();info('⚠️','تعذر إنشاء عروض جديدة','يوجد عقد سابق أو سجل غير صالح يحتاج مراجعة قبل توقيع عقد آخر.');return;}
+ const offers=filmDistributionPartnerCatalog.map(partner=>{
+  const offer=calculateFilmDistributionOffer(film,partner.id);
+  if(!offer)return null;
+  return choice('📺',partner.title,partner.description+' · '+offer.termYears+' سنوات · دفعة مقدمة '+cash(offer.advancePaid)+' · عائد سنوي '+cash(offer.annualRoyalty),()=>filmDistributionConfirmMenu(id,partner.id));
+ }).filter(Boolean);
+ if(!offers.length){info('📄','لا توجد عروض مناسبة','إيرادات الفيلم لا تسمح بحساب عائد توزيع موجب وآمن.');return;}
+ offers.push(choice('↩️','رجوع إلى حقوق التوزيع','',filmDistributionMenu));
+ modal('📺','عروض توزيع «'+String(film.title||'فيلم بلا عنوان')+'»','اختار الشريك المناسب. كل العروض ثابتة ومعلنة قبل التوقيع، ولا يوجد خصم من ميزانية الإنتاج.',offers);
+}
+function filmDistributionConfirmMenu(filmId,partnerId){
+ const studio=ensureFilmStudio(),id=String(filmId??'').trim();
+ const film=Array.isArray(studio.filmography)?studio.filmography.find(item=>item&&item.id!==undefined&&item.id!==null&&String(item.id)===id):null;
+ const offer=calculateFilmDistributionOffer(film,partnerId);
+ if(!film||!offer){info('📄','العرض لم يعد صالحًا','أعد فتح عروض التوزيع للتحقق من بيانات الفيلم.');return;}
+ const details='الشريك '+offer.partnerTitle+' · المدة '+offer.termYears+' سنوات · الدفعة المقدمة '+cash(offer.advancePaid)+' · العائد السنوي '+cash(offer.annualRoyalty)+' · إجمالي متوقع '+cash(offer.projectedTotal)+'. يبدأ العائد السنوي عند التقدم للسنة التالية.';
+ info('📄','مراجعة عقد التوزيع',details,[choice('✍️','توقيع العقد','تأكيد الدفعة المقدمة وتسجيل الحقوق.',()=>signFilmDistributionContract(id,partnerId)),choice('↩️','عروض أخرى','',()=>filmDistributionOffersMenu(id))]);
+}
+
 function filmStudioMenu(){
  if(!validState()||!state.specialCareer||state.specialCareer.id!=='director'){info('🎬','استوديو الأفلام','ابدأ مسار إخراج الأفلام من المهن الخاصة أولًا.');return;}
  const studio=ensureFilmStudio(),focus=filmGenreCatalog.find(g=>g.id===studio.genreFocus),r=state.specialCareer.record||{};
- const summary='الأفلام '+studio.projects+' · الجوائز '+studio.awards+' · مشاركات المهرجان '+studio.festivalEntries.length+' · إجمالي شباك التذاكر '+cash(studio.totalBoxOffice)+' · أفضل تقييم '+studio.bestCritic+'% · الممثلون '+studio.actorRoster.length+(focus?' · تخصص الاستوديو '+focus.title:' · من غير تخصص ثابت');
+ const distributionAudit=readFilmDistributionContracts(studio),activeDistribution=distributionAudit.entries.filter(entry=>entry.contract.status==='active'),annualDistribution=activeDistribution.reduce((sum,entry)=>sum+entry.contract.annualRoyalty,0);
+ const summary='الأفلام '+studio.projects+' · الجوائز '+studio.awards+' · مشاركات المهرجان '+studio.festivalEntries.length+' · إجمالي شباك التذاكر '+cash(studio.totalBoxOffice)+' · أفضل تقييم '+studio.bestCritic+'% · الممثلون '+studio.actorRoster.length+' · عقود العرض السارية '+activeDistribution.length+' · دخل التوزيع السنوي '+cash(annualDistribution)+(focus?' · تخصص الاستوديو '+focus.title:' · من غير تخصص ثابت');
  const opts=[
   choice('🎬','إنتاج فيلم جديد','اختار النوع والميزانية واتجاه القصة ثم اختبر الممثلين والطاقم والتسويق.',filmGenreMenu),
   choice('🎭','إدارة الممثلين','راجع المواهب المتعاقدة ومستويات الموهبة والانضباط والمشاركات.',filmActorRosterMenu),
   choice('🏆','مهرجان حكايات السينما','قدّم أفلامك مرة واحدة للمنافسة على جوائز وتقدير نقدي.',filmFestivalMenu),
+  choice('📺','حقوق العرض والتوزيع','وقّع عقود عرض لأفلامك واحصل على دفعة مقدمة وعوائد سنوية.',filmDistributionMenu),
   choice('🎭','تحديد تخصص الاستوديو','اختار نوعًا يمنحك خبرة إضافية عندما تنتج فيه.',filmFocusMenu),
   choice('🏆','سجل الأفلام','راجع الميزانيات والإيرادات وتقييم النقاد والجوائز والممثلين والمهرجان.',filmographyMenu),
   choice('📊','تقرير الاستوديو','المستوى الإخراجي '+fmt(state.specialCareer.level||1)+' · محاولات '+fmt(r.attempts||0)+' · نجاحات '+fmt(r.wins||0)+' · إخفاقات '+fmt(r.losses||0)+'.',()=>{closeModal();info('📊','تقرير الاستوديو',summary+' · دخل المسار المسجل '+cash(r.totalEarnings||0)+'.');}),
