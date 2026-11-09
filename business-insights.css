@@ -63,3 +63,21 @@ body.theme-gold .business-insights-annual-title,body.theme-gold .business-insigh
 body.theme-gold .business-insights-annual-coverage{background:#f4e7c2;color:#715a2b}
 body.theme-gold .business-insights-annual-card[data-coverage="partial"] .business-insights-annual-coverage{background:#f8ecd2;color:#805b13}
 @media(max-width:380px){.business-insights-annual-grid{grid-template-columns:1fr}}
+
+.business-insights-ownership{display:flex;flex-direction:column;gap:7px;margin-top:10px;padding:10px;border:1px solid var(--hayah-line,#e2eae7);border-radius:12px;background:var(--hayah-surface-soft,#f7faf9)}
+.business-insights-ownership-title{margin:0;color:var(--hayah-navy,#1d3b53);font-size:11px;font-weight:950}
+.business-insights-ownership-meta,.business-insights-ownership-note,.business-insights-ownership-warning{margin:0;color:var(--hayah-muted,#71827f);font-size:10px;line-height:1.7}
+.business-insights-ownership-warning{color:#9a4a35}
+.business-insights-owner-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;margin:0;padding:0;list-style:none}
+.business-insights-owner-row{display:flex;align-items:center;justify-content:space-between;gap:8px;min-width:0;padding:7px 8px;border:1px solid var(--hayah-line,#e2eae7);border-radius:9px;background:var(--hayah-surface,#fff)}
+.business-insights-owner-row[data-active="true"]{border-color:var(--hayah-primary,#176b66);background:rgba(23,107,102,.07)}
+.business-insights-owner-name{min-width:0;overflow-wrap:anywhere;color:var(--hayah-text,#263b3a);font-size:10px;font-weight:750}
+.business-insights-owner-share{flex:0 0 auto;color:var(--hayah-primary,#176b66);font-size:10px;font-variant-numeric:tabular-nums}
+body.theme-dark .business-insights-ownership{background:#172b31;border-color:#3b5653}
+body.theme-dark .business-insights-ownership-title,body.theme-dark .business-insights-owner-name{color:#e8f0ed}
+body.theme-dark .business-insights-ownership-meta,body.theme-dark .business-insights-ownership-note{color:#c0d2ce}
+body.theme-dark .business-insights-owner-row{background:#20383d;border-color:#3b5653}
+body.theme-gold .business-insights-ownership{background:#fffaf0;border-color:#dfc78f}
+body.theme-gold .business-insights-ownership-title,body.theme-gold .business-insights-owner-name{color:#594a2b}
+body.theme-gold .business-insights-owner-row{background:#fffdf7;border-color:#dfc78f}
+@media(max-width:380px){.business-insights-owner-list{grid-template-columns:1fr}}
