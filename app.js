@@ -10666,7 +10666,7 @@ function createBusinessOwnershipLedger(activeBeneficiaryId,activeName,age){
  return {version:1,activeBeneficiaryId:id,shareholders:[{beneficiaryId:id,name,kind:'owner',shareBps:10000}],transactions:[],updatedAtAge:Math.max(0,Math.min(120,Math.floor(Number(age)||0)))};
 }
 function normalizeBusinessOwnershipTransactions(raw){
- if(raw===undefined||raw===null)return {valid:true,transactions:[]};
+ if(raw===undefined)return {valid:true,transactions:[]};
  if(!Array.isArray(raw)||raw.length>200)return {valid:false,transactions:[]};
  const ids=new Set(),transactions=[];
  let invalid=false;

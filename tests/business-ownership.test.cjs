@@ -829,6 +829,9 @@ test('دفتر التحركات يتحقق من الهوية والنوع وال
  assert.equal(api.businessOwnershipSnapshot(malformed,'owner','المالك').valid,false);
  const duplicate={...company,ownershipLedger:{...company.ownershipLedger,transactions:[valid,{...valid}]}};
  assert.equal(api.businessOwnershipSnapshot(duplicate,'owner','المالك').valid,false);
+ const missingHistoryMarker={...company,ownershipLedger:{...company.ownershipLedger,transactions:null}};
+ assert.equal(api.businessOwnershipSnapshot(missingHistoryMarker,'owner','المالك').valid,false,
+  'an explicit null must not be mistaken for a legacy ledger with no history field');
 });
 
 test('كل إهداء جديد يضيف إيصالًا منظمًا ويحافظ على التحركات السابقة',()=>{
