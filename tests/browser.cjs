@@ -1665,6 +1665,34 @@ async function run() {
       'a new-format bundle missing its required checksum must leave all active save stores untouched');
     await page.locator('.choice').filter({ hasText: 'تمام' }).last().click();
 
+    // A malformed requirement marker must also be rejected instead of downgrading the bundle.
+    const beforeInvalidMarker = await page.evaluate(() => ({
+      save: localStorage.getItem('hekayat_hayah_save_v1'),
+      cemetery: localStorage.getItem('hekayat_hayah_cemetery_v1'),
+      cemeteryBackup: localStorage.getItem('hekayat_hayah_cemetery_backup_v1')
+    }));
+    const invalidMarkerBundle = JSON.parse(JSON.stringify(exported));
+    delete invalidMarkerBundle.integrity;
+    invalidMarkerBundle.integrityRequired = 'true';
+    const invalidMarkerChooserPromise = page.waitForEvent('filechooser');
+    await page.locator('#menuBtn').click();
+    await page.locator('.choice').filter({ hasText: 'تحميل حفظ' }).click();
+    const invalidMarkerChooser = await invalidMarkerChooserPromise;
+    await invalidMarkerChooser.setFiles({
+      name: 'invalid-hayah-backup-marker.json',
+      mimeType: 'application/json',
+      buffer: Buffer.from(JSON.stringify(invalidMarkerBundle))
+    });
+    await page.getByText('علامة البصمة غير صالحة', { exact: true }).waitFor();
+    const afterInvalidMarker = await page.evaluate(() => ({
+      save: localStorage.getItem('hekayat_hayah_save_v1'),
+      cemetery: localStorage.getItem('hekayat_hayah_cemetery_v1'),
+      cemeteryBackup: localStorage.getItem('hekayat_hayah_cemetery_backup_v1')
+    }));
+    assert.deepEqual(afterInvalidMarker, beforeInvalidMarker,
+      'a malformed checksum requirement marker must leave all active save stores untouched');
+    await page.locator('.choice').filter({ hasText: 'تمام' }).last().click();
+
     // Invalid JSON must be rejected without overwriting the current save.
     const beforeInvalidImport = await page.evaluate(() => {
       const saved = JSON.parse(localStorage.getItem('hekayat_hayah_save_v1') || 'null');
