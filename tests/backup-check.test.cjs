@@ -182,6 +182,14 @@ test('الحزم القديمة تظل قابلة للفحص، والبصمات 
   assert.equal(legacy.integrityStatus, 'legacy');
   assert.ok(legacy.warnings.some(message => message.includes('لا تحتوي على بصمة داخلية')));
 
+  const missingRequired = makePackage(makeLife());
+  missingRequired.integrityRequired = true;
+  assert.equal(integrity.verifyIntegrity(missingRequired).status, 'missing');
+  const missingRequiredReport = inspectBackup(missingRequired);
+  assert.equal(missingRequiredReport.valid, false);
+  assert.equal(missingRequiredReport.integrityStatus, 'missing');
+  assert.ok(missingRequiredReport.errors.some(message => message.includes('تتطلب بصمة داخلية')));
+
   const unsupported = makePackage(makeLife());
   unsupported.integrity = { algorithm: 'SHA-256', checksum: 'a'.repeat(64) };
   const report = inspectBackup(unsupported);
