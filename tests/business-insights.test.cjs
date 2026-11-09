@@ -326,6 +326,8 @@ test('الحفظ الفارغ أو التالف لا ينتج أنشطة أو أ
     hasMixedReportYears: false,
     sharedOwnershipCount: 0,
     ownershipNeedsReviewCount: 0,
+    duplicateOwnershipConflictCount: 0,
+    duplicateOwnershipConflicts: [],
     legacyOwnershipCount: 0,
     ownershipShareholderCount: 0,
     annualSummaries: [],
@@ -689,6 +691,144 @@ test('ملخص المحفظة يحصي الملكية المشتركة والس�
 });
 
 
+test('نسخ الشركة المتطابقة لا تنتج تعارضًا حتى مع اختلاف ترتيب الملاك وغياب مصفوفة الحركات القديمة', () => {
+  const state = {
+    lifeId: 'current-life',
+    name: 'صاحب الحياة',
+    business: {
+      id: 'mirrored-company',
+      title: 'شركة المدار',
+      ownershipLedger: {
+        version: 1,
+        activeBeneficiaryId: 'current-life',
+        shareholders: [
+          { beneficiaryId: 'current-life', name: 'صاحب الحياة', shareBps: 6000 },
+          { beneficiaryId: 'sibling', name: 'الشقيق', shareBps: 4000 }
+        ],
+        transactions: []
+      }
+    },
+    companies: [{
+      id: 'mirrored-company',
+      title: 'نسخة الشركة',
+      ownershipLedger: {
+        version: 1,
+        activeBeneficiaryId: 'current-life',
+        shareholders: [
+          { beneficiaryId: 'sibling', name: 'اسم قديم', shareBps: 4000 },
+          { beneficiaryId: 'current-life', name: 'اسم محدث', shareBps: 6000 }
+        ]
+      }
+    }]
+  };
+  const before = JSON.stringify(state);
+  const summary = analyzeBusinessPortfolio(state);
+  assert.equal(summary.businessCount, 1);
+  assert.equal(summary.duplicateOwnershipConflictCount, 0);
+  assert.equal(summary.items[0].ownershipConflict, false);
+  assert.equal(JSON.stringify(state), before);
+});
+
+test('تعارض نسب الملاك بين نسختين لهما المعرّف نفسه يوقف عرض النسب', () => {
+  const state = {
+    lifeId: 'current-life',
+    name: 'صاحب الحياة',
+    business: {
+      id: 'conflicting-company',
+      title: 'شركة متعارضة',
+      ownershipLedger: {
+        version: 1,
+        activeBeneficiaryId: 'current-life',
+        shareholders: [
+          { beneficiaryId: 'current-life', name: 'صاحب الحياة', shareBps: 6000 },
+          { beneficiaryId: 'sibling', name: 'الشقيق', shareBps: 4000 }
+        ],
+        transactions: []
+      }
+    },
+    companies: [{
+      id: 'conflicting-company',
+      title: 'نسخة قديمة',
+      ownershipLedger: {
+        version: 1,
+        activeBeneficiaryId: 'current-life',
+        shareholders: [
+          { beneficiaryId: 'current-life', name: 'صاحب الحياة', shareBps: 7000 },
+          { beneficiaryId: 'sibling', name: 'الشقيق', shareBps: 3000 }
+        ],
+        transactions: []
+      }
+    }]
+  };
+  const before = JSON.stringify(state);
+  const summary = analyzeBusinessPortfolio(state);
+  assert.equal(summary.businessCount, 1);
+  assert.equal(summary.duplicateOwnershipConflictCount, 1);
+  assert.equal(summary.duplicateOwnershipConflicts[0].title, 'شركة متعارضة');
+  assert.equal(summary.items[0].ownershipConflict, true);
+  assert.equal(summary.items[0].ownership.valid, true,
+    'each copy may be internally valid while the copies disagree');
+  assert.equal(JSON.stringify(state), before, 'conflict detection must remain read-only');
+});
+
+test('اختلاف تاريخ التحركات يُكشف حتى لو كانت نسب الملكية الحالية متطابقة', () => {
+  const shared = {
+    version: 1,
+    activeBeneficiaryId: 'current-life',
+    shareholders: [
+      { beneficiaryId: 'current-life', name: 'صاحب الحياة', shareBps: 6000 },
+      { beneficiaryId: 'sibling', name: 'الشقيق', shareBps: 4000 }
+    ],
+    transactions: []
+  };
+  const state = {
+    lifeId: 'current-life',
+    name: 'صاحب الحياة',
+    business: { id: 'history-conflict', title: 'شركة التاريخ', ownershipLedger: shared },
+    companies: [{
+      id: 'history-conflict',
+      title: 'نسخة أخرى',
+      ownershipLedger: {
+        ...shared,
+        transactions: [{
+          id: 'gift-history-only',
+          type: 'gift',
+          age: 35,
+          fromBeneficiaryId: 'current-life',
+          fromName: 'صاحب الحياة',
+          toBeneficiaryId: 'sibling',
+          toName: 'الشقيق',
+          shareBps: 1000
+        }]
+      }
+    }]
+  };
+  const summary = analyzeBusinessPortfolio(state);
+  assert.equal(summary.items[0].ownership.valid, true);
+  assert.equal(summary.duplicateOwnershipConflictCount, 1);
+  assert.equal(summary.items[0].ownershipConflict, true);
+});
+
+test('النسخة القديمة ذات المالك الوحيد تتطابق مع دفتر صريح مكافئ ولا تُرفع كتحذير', () => {
+  const state = {
+    lifeId: 'current-life',
+    name: 'صاحب الحياة',
+    business: { id: 'legacy-mirror', title: 'شركة قديمة' },
+    companies: [{
+      id: 'legacy-mirror',
+      title: 'نسخة الشركة',
+      ownershipLedger: {
+        version: 1,
+        activeBeneficiaryId: 'current-life',
+        shareholders: [{ beneficiaryId: 'current-life', name: 'صاحب الحياة', shareBps: 10000 }]
+      }
+    }]
+  };
+  const summary = analyzeBusinessPortfolio(state);
+  assert.equal(summary.duplicateOwnershipConflictCount, 0);
+  assert.equal(summary.items[0].ownership.legacyFallback, true);
+});
+
 test('سجل التحركات الذي لا يمكن عكسه من نسب الملاك الحالية يحتاج مراجعة', () => {
   const business = {
     ownershipLedger: {
@@ -757,4 +897,6 @@ test('واجهة التدقيق تشرح تعارض سجل التحركات دو
   const source = fs.readFileSync(path.join(__dirname, '..', 'business-insights.js'), 'utf8');
   assert.match(source, /سجل انتقال الحصص لا يتوافق حسابيًا مع الملكية الحالية/);
   assert.match(source, /ownership_transaction_flow_invalid/);
+  assert.match(source, /سجلات ملكية متعارضة/);
+  assert.match(source, /توجد نسخة أخرى للنشاط نفسه بمعرّف واحد/);
 });

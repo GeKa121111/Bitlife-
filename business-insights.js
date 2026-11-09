@@ -52,11 +52,10 @@
     return Number.isSafeInteger(year) && year >= 1 && year <= 9999;
   }
 
-  function businessEntries(state) {
+  function businessCandidates(state) {
     if (!isRecord(state)) return [];
-    const entries = [];
-    const seen = new Set();
-    const add = (entity, fallback, index) => {
+    const candidates = [];
+    const add = (entity, fallback, index, source) => {
       if (!isRecord(entity)) return;
       const rawId = entity.id !== undefined && entity.id !== null && String(entity.id).trim()
         ? String(entity.id)
@@ -65,24 +64,90 @@
           : '';
       const title = String(entity.title || entity.name || fallback || 'نشاط تجاري').trim().slice(0, 100);
       const key = rawId ? 'id:' + rawId : 'title:' + title + ':' + index;
-      if (seen.has(key)) return;
-      seen.add(key);
-      entries.push({ entity, title, id: rawId || key });
+      candidates.push({ entity, title, id: rawId || key, key, source, hasStableId: !!rawId });
     };
 
     const primary = state.business;
     if (isRecord(primary) && (primary.id || primary.assetId || primary.title || Array.isArray(primary.financialHistory))) {
-      add(primary, 'المشروع الرئيسي', 0);
+      add(primary, 'المشروع الرئيسي', 0, 'business');
     } else if (Array.isArray(state.assets)) {
       const legacyBusinessAsset = state.assets.find(asset => isRecord(asset) && asset.kind === 'business' && asset.companyPortfolio !== true);
-      if (legacyBusinessAsset) add(legacyBusinessAsset, 'المشروع الرئيسي', 0);
+      if (legacyBusinessAsset) add(legacyBusinessAsset, 'المشروع الرئيسي', 0, 'asset');
     }
     (Array.isArray(state.companies) ? state.companies : []).forEach((company, index) => {
-      add(company, 'شركة ' + (index + 1), index + 1);
+      add(company, 'شركة ' + (index + 1), index + 1, 'company');
+    });
+    return candidates;
+  }
+
+  function businessEntries(state) {
+    const entries = [];
+    const seen = new Set();
+    businessCandidates(state).forEach(candidate => {
+      if (seen.has(candidate.key)) return;
+      seen.add(candidate.key);
+      entries.push(candidate);
     });
     return entries.slice(0, MAX_BUSINESSES);
   }
 
+  function stableSerialize(value) {
+    if (Array.isArray(value)) return '[' + value.map(stableSerialize).join(',') + ']';
+    if (isRecord(value)) {
+      return '{' + Object.keys(value).sort().map(key =>
+        JSON.stringify(key) + ':' + stableSerialize(value[key])
+      ).join(',') + '}';
+    }
+    const encoded = JSON.stringify(value);
+    return encoded === undefined ? 'undefined' : encoded;
+  }
+
+  function ownershipFingerprint(entity, state) {
+    const ownership = analyzeBusinessOwnership(entity, state && state.lifeId, state && state.name);
+    if (!ownership.valid) {
+      return 'invalid:' + stableSerialize(entity && entity.ownershipLedger);
+    }
+    const ledger = isRecord(entity && entity.ownershipLedger) ? entity.ownershipLedger : {};
+    const transactions = Array.isArray(ledger.transactions) ? ledger.transactions.map(item => ({
+      type: item.type,
+      age: item.age,
+      fromBeneficiaryId: item.fromBeneficiaryId,
+      toBeneficiaryId: item.toBeneficiaryId,
+      shareBps: item.shareBps
+    })) : [];
+    const shareholders = ownership.shareholders
+      .map(item => ({ beneficiaryId: item.beneficiaryId, shareBps: item.shareBps }))
+      .sort((a, b) => a.beneficiaryId < b.beneficiaryId ? -1 : a.beneficiaryId > b.beneficiaryId ? 1 : 0);
+    return stableSerialize({
+      activeBeneficiaryId: ownership.activeBeneficiaryId,
+      shareholders,
+      transactions
+    });
+  }
+
+  function findDuplicateOwnershipConflicts(state, entries) {
+    if (!isRecord(state) || !Array.isArray(entries) || !entries.length) return [];
+    const includedKeys = new Set(entries.map(entry => entry.key));
+    const groups = new Map();
+    businessCandidates(state).forEach(candidate => {
+      if (!candidate.hasStableId || !includedKeys.has(candidate.key)) return;
+      if (!groups.has(candidate.key)) groups.set(candidate.key, []);
+      groups.get(candidate.key).push(candidate);
+    });
+    const conflicts = [];
+    groups.forEach((group, key) => {
+      if (group.length < 2) return;
+      const fingerprints = new Set(group.map(candidate => ownershipFingerprint(candidate.entity, state)));
+      if (fingerprints.size < 2) return;
+      conflicts.push({
+        id: group[0].id,
+        key,
+        title: group[0].title,
+        recordCount: group.length
+      });
+    });
+    return conflicts;
+  }
 
   function analyzeBusinessOwnership(entity, fallbackBeneficiaryId, fallbackName) {
     const safeEntity = isRecord(entity) ? entity : {};
@@ -423,7 +488,13 @@
 
   function analyzeBusinessPortfolio(state) {
     const entries = businessEntries(state);
-    const items = entries.map(entry => analyzeBusiness(entry.entity, entry.title, state));
+    const duplicateOwnershipConflicts = findDuplicateOwnershipConflicts(state, entries);
+    const conflictKeys = new Set(duplicateOwnershipConflicts.map(item => item.key));
+    const items = entries.map(entry => {
+      const item = analyzeBusiness(entry.entity, entry.title, state);
+      item.ownershipConflict = conflictKeys.has(entry.key);
+      return item;
+    });
     const reported = items.filter(item => item.hasReport);
     const reportYears = Array.from(new Set(reported
       .map(item => item.year)
@@ -459,6 +530,8 @@
       hasMixedReportYears: reportYears.length > 1 || unknownReportYearCount > 0,
       sharedOwnershipCount,
       ownershipNeedsReviewCount,
+      duplicateOwnershipConflictCount: duplicateOwnershipConflicts.length,
+      duplicateOwnershipConflicts,
       legacyOwnershipCount,
       ownershipShareholderCount,
       annualSummaries: annualPortfolioSummaries(entries),
@@ -549,7 +622,24 @@
       createMetric(doc, totals, 'تقارير مالية مستبعدة', formatNumber(summary.invalidFinancialReportCount));
       createMetric(doc, totals, 'أنشطة بملكية مشتركة', formatNumber(summary.sharedOwnershipCount));
       createMetric(doc, totals, 'دفاتر ملكية تحتاج مراجعة', formatNumber(summary.ownershipNeedsReviewCount), summary.ownershipNeedsReviewCount ? 'business-insights-negative' : 'business-insights-metric-value');
+      createMetric(doc, totals, 'سجلات ملكية متعارضة', formatNumber(summary.duplicateOwnershipConflictCount), summary.duplicateOwnershipConflictCount ? 'business-insights-negative' : 'business-insights-metric-value');
       body.appendChild(totals);
+
+      if (summary.duplicateOwnershipConflictCount > 0) {
+        const conflictSection = doc.createElement('section');
+        conflictSection.className = 'business-insights-duplicate-conflicts';
+        appendText(doc, conflictSection, 'h3', 'business-insights-duplicate-title', 'نسخ متعارضة لسجل الملكية');
+        appendText(doc, conflictSection, 'p', 'business-insights-duplicate-copy',
+          'وجدنا أكثر من سجل للنشاط نفسه بمعرّف واحد، لكن نسب الملاك أو تاريخ انتقال الحصص لا يتطابق. لم نعتمد نسخة بدل الأخرى؛ راجع السجل قبل أي تصرف في الملكية.');
+        const conflictList = doc.createElement('ul');
+        conflictList.className = 'business-insights-duplicate-list';
+        summary.duplicateOwnershipConflicts.forEach(conflict => {
+          appendText(doc, conflictList, 'li', 'business-insights-duplicate-item',
+            conflict.title + ' · ' + formatNumber(conflict.recordCount) + ' نسخ');
+        });
+        conflictSection.appendChild(conflictList);
+        body.appendChild(conflictSection);
+      }
 
       if (summary.reportedCount) {
         let periodMessage;
@@ -650,12 +740,12 @@
       summary.items.forEach(item => {
         const card = doc.createElement('article');
         card.className = 'business-insights-card';
-        card.setAttribute('data-status', item.status);
+        card.setAttribute('data-status', item.ownershipConflict ? 'warning' : item.status);
         const cardHeader = doc.createElement('div');
         cardHeader.className = 'business-insights-card-header';
         appendText(doc, cardHeader, 'h3', 'business-insights-card-title', item.title);
         const statusLabels = { danger: 'تحتاج تدخلًا', warning: 'تحتاج متابعة', good: 'مستقرة', unknown: 'لا يوجد تقرير' };
-        appendText(doc, cardHeader, 'span', 'business-insights-status', statusLabels[item.status] || 'مراجعة');
+        appendText(doc, cardHeader, 'span', 'business-insights-status', item.ownershipConflict ? 'مراجعة نسخ الملكية' : (statusLabels[item.status] || 'مراجعة'));
         card.appendChild(cardHeader);
 
         if (item.hasReport) {
@@ -692,7 +782,10 @@
         const ownershipSection = doc.createElement('section');
         ownershipSection.className = 'business-insights-ownership';
         appendText(doc, ownershipSection, 'h4', 'business-insights-ownership-title', 'هيكل الملكية');
-        if (!item.ownership || !item.ownership.valid) {
+        if (item.ownershipConflict) {
+          appendText(doc, ownershipSection, 'p', 'business-insights-ownership-warning',
+            'توجد نسخة أخرى للنشاط نفسه بمعرّف واحد لكن نسب الملاك أو سجل التحركات مختلف؛ أوقفنا عرض النسب حتى مراجعة السجلات.');
+        } else if (!item.ownership || !item.ownership.valid) {
           const hasFlowMismatch = item.ownership && Array.isArray(item.ownership.auditIssues) &&
             item.ownership.auditIssues.includes('ownership_transaction_flow_invalid');
           appendText(doc, ownershipSection, 'p', 'business-insights-ownership-warning',
