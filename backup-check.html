@@ -88,6 +88,7 @@
     .comparison-picker { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; margin-top: 16px; }
     .comparison-picker p { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.7; }
     .comparison-picker .button { min-height: 44px; }
+    .comparison-picker .is-disabled { opacity: .55; cursor: not-allowed; }
     .report-card { padding: 18px; }
     .report-valid { border-color: #8fc5a3; }
     .report-invalid { border-color: #e0a09b; }
@@ -172,7 +173,7 @@
       <div class="comparison-picker">
         <p id="comparisonNote">بعد فحص نسخة صالحة، يمكنك اختيار نسخة ثانية من الحياة نفسها لمقارنة العمر والأرصدة والإحصائيات وسجل الأحداث.</p>
         <input class="file-input" id="compareBackupFile" type="file" accept=".json,application/json" aria-describedby="comparisonNote" disabled>
-        <label class="button secondary" for="compareBackupFile">اختيار نسخة ثانية للمقارنة</label>
+        <label class="button secondary is-disabled" id="compareBackupLabel" for="compareBackupFile" aria-disabled="true">اختيار نسخة ثانية للمقارنة</label>
       </div>
       <p class="privacy-note" id="privacyNote">تُقرأ النسختان محليًا داخل المتصفح فقط؛ لا يتم تعديلهما أو حفظهما في اللعبة. الحد الأقصى لكل ملف 15 ميجابايت.</p>
       <div id="backupResult" role="region" aria-label="نتيجة فحص ملف الحفظ" aria-live="off">
