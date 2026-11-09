@@ -224,9 +224,14 @@
     if (isRecord(data) && data.format === 'hayah-backup') {
       format = 'حزمة حفظ حياة كاملة';
       if (!Object.prototype.hasOwnProperty.call(data, 'integrity')) {
-        if (data.integrityRequired === true) {
-          integrityStatus = 'missing';
-          errors.push('الحزمة الحديثة تعلن أنها تتطلب بصمة داخلية لكنها لا تحتوي عليها؛ ربما حُذف سجل البصمة.');
+        if (Object.prototype.hasOwnProperty.call(data, 'integrityRequired')) {
+          if (data.integrityRequired === true) {
+            integrityStatus = 'missing';
+            errors.push('الحزمة الحديثة تعلن أنها تتطلب بصمة داخلية لكنها لا تحتوي عليها؛ ربما حُذف سجل البصمة.');
+          } else {
+            integrityStatus = 'invalid-marker';
+            errors.push('علامة اشتراط البصمة الداخلية غير صالحة؛ لم نعتمد الحزمة.');
+          }
         } else {
           integrityStatus = 'legacy';
           warnings.push('هذه الحزمة لا تحتوي على بصمة داخلية؛ فحصنا البنية فقط. أعد تصديرها من إصدار حديث للحصول على فحص إضافي ضد التلف العرضي.');
@@ -240,7 +245,9 @@
         if (!integrityCheck.valid) {
           errors.push(integrityCheck.status === 'mismatch'
             ? 'البصمة الداخلية لا تطابق محتوى الحزمة؛ قد يكون الملف تالفًا أو عُدّل بعد التصدير.'
-            : 'نوع البصمة الداخلية غير مدعوم؛ لم نعتمد سلامة الحزمة.');
+            : integrityCheck.status === 'invalid-marker'
+              ? 'علامة اشتراط البصمة الداخلية غير صالحة؛ لم نعتمد الحزمة.'
+              : 'نوع البصمة الداخلية غير مدعوم؛ لم نعتمد سلامة الحزمة.');
         }
       }
       if (data.backupVersion !== 1) {
@@ -398,7 +405,7 @@
         ['حجم الملف', formatBytes(file.size)],
         ['بصمة SHA-256', report.sha256 || 'غير متاحة في هذا المتصفح'],
         ['نوع الملف', report.format],
-        ['سلامة الحزمة', report.integrityStatus === 'verified' ? 'البصمة الداخلية سليمة' : report.integrityStatus === 'missing' ? 'بصمة مفقودة من حزمة حديثة' : report.integrityStatus === 'legacy' ? 'نسخة قديمة بلا بصمة داخلية' : report.integrityStatus === 'mismatch' ? 'البصمة لا تطابق المحتوى' : report.integrityStatus === 'unsupported' ? 'بصمة غير مدعومة' : report.integrityStatus === 'unavailable' ? 'تعذر التحقق' : 'غير مطبق'],
+        ['سلامة الحزمة', report.integrityStatus === 'verified' ? 'البصمة الداخلية سليمة' : report.integrityStatus === 'missing' ? 'بصمة مفقودة من حزمة حديثة' : report.integrityStatus === 'invalid-marker' ? 'علامة بصمة غير صالحة' : report.integrityStatus === 'legacy' ? 'نسخة قديمة بلا بصمة داخلية' : report.integrityStatus === 'mismatch' ? 'البصمة لا تطابق المحتوى' : report.integrityStatus === 'unsupported' ? 'بصمة غير مدعومة' : report.integrityStatus === 'unavailable' ? 'تعذر التحقق' : 'غير مطبق'],
         ['الشخصية', report.name || 'غير متاحة'],
         ['العمر بعد التطبيع', report.age === null ? 'غير متاح' : report.age + ' سنة'],
         ['إصدار بيانات الحياة', report.lifeVersion === null ? 'غير متاح' : report.lifeVersion],
