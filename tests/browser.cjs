@@ -1637,6 +1637,33 @@ async function run() {
       'a checksum mismatch must leave the active save and cemetery stores untouched');
     await page.locator('.choice').filter({ hasText: 'تمام' }).last().click();
 
+    // Removing the checksum from a new-format bundle must not downgrade it to a legacy import.
+    const beforeMissingIntegrity = await page.evaluate(() => ({
+      save: localStorage.getItem('hekayat_hayah_save_v1'),
+      cemetery: localStorage.getItem('hekayat_hayah_cemetery_v1'),
+      cemeteryBackup: localStorage.getItem('hekayat_hayah_cemetery_backup_v1')
+    }));
+    const missingIntegrityBundle = JSON.parse(JSON.stringify(exported));
+    delete missingIntegrityBundle.integrity;
+    const missingIntegrityChooserPromise = page.waitForEvent('filechooser');
+    await page.locator('#menuBtn').click();
+    await page.locator('.choice').filter({ hasText: 'تحميل حفظ' }).click();
+    const missingIntegrityChooser = await missingIntegrityChooserPromise;
+    await missingIntegrityChooser.setFiles({
+      name: 'missing-hayah-backup-checksum.json',
+      mimeType: 'application/json',
+      buffer: Buffer.from(JSON.stringify(missingIntegrityBundle))
+    });
+    await page.getByText('بصمة النسخة مفقودة', { exact: true }).waitFor();
+    const afterMissingIntegrity = await page.evaluate(() => ({
+      save: localStorage.getItem('hekayat_hayah_save_v1'),
+      cemetery: localStorage.getItem('hekayat_hayah_cemetery_v1'),
+      cemeteryBackup: localStorage.getItem('hekayat_hayah_cemetery_backup_v1')
+    }));
+    assert.deepEqual(afterMissingIntegrity, beforeMissingIntegrity,
+      'a new-format bundle missing its required checksum must leave all active save stores untouched');
+    await page.locator('.choice').filter({ hasText: 'تمام' }).last().click();
+
     // Invalid JSON must be rejected without overwriting the current save.
     const beforeInvalidImport = await page.evaluate(() => {
       const saved = JSON.parse(localStorage.getItem('hekayat_hayah_save_v1') || 'null');
