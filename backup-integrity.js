@@ -48,11 +48,20 @@
 
   function verifyIntegrity(bundle) {
     if (!isRecord(bundle)) return { present: false, valid: false, status: 'invalid-bundle' };
-    if (!Object.prototype.hasOwnProperty.call(bundle, 'integrity')) {
-      if (bundle.integrityRequired === true) {
-        return { present: false, valid: false, status: 'missing' };
+    const hasIntegrity = Object.prototype.hasOwnProperty.call(bundle, 'integrity');
+    const hasRequirementMarker = Object.prototype.hasOwnProperty.call(bundle, 'integrityRequired');
+    if (!hasIntegrity) {
+      if (hasRequirementMarker) {
+        return {
+          present: false,
+          valid: false,
+          status: bundle.integrityRequired === true ? 'missing' : 'invalid-marker'
+        };
       }
       return { present: false, valid: true, status: 'legacy' };
+    }
+    if (hasRequirementMarker && bundle.integrityRequired !== true) {
+      return { present: true, valid: false, status: 'invalid-marker' };
     }
     const integrity = bundle.integrity;
     if (!isRecord(integrity) || integrity.algorithm !== 'FNV-1a-32' ||
