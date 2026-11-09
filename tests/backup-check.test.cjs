@@ -161,6 +161,21 @@ test('حزم النسخ الجديدة تحمل بصمة داخلية وتكشف
   assert.ok(tamperedReport.errors.some(message => message.includes('البصمة الداخلية لا تطابق')));
 });
 
+test('البصمة تشمل مفتاح __proto__ العادي دون السماح بتجاوزه عبر خاصية النموذج الأولي', () => {
+  const bundle = JSON.parse(JSON.stringify(makePackage(makeLife())));
+  Object.defineProperty(bundle, '__proto__', {
+    value: { marker: 'original' },
+    enumerable: true,
+    configurable: true,
+    writable: true
+  });
+  bundle.integrity = integrity.createIntegrity(bundle);
+  assert.equal(integrity.verifyIntegrity(bundle).valid, true);
+  bundle.__proto__.marker = 'changed';
+  assert.equal(integrity.verifyIntegrity(bundle).valid, false,
+    'special JSON keys must be included in the integrity calculation');
+});
+
 test('الحزم القديمة تظل قابلة للفحص، والبصمات غير المدعومة تُرفض بوضوح', () => {
   const legacy = inspectBackup(makePackage(makeLife()));
   assert.equal(legacy.valid, true);
