@@ -64,7 +64,10 @@
           : '';
       const title = String(entity.title || entity.name || fallback || 'نشاط تجاري').trim().slice(0, 100);
       const key = rawId ? 'id:' + rawId : 'title:' + title + ':' + index;
-      candidates.push({ entity, title, id: rawId || key, key, source, hasStableId: !!rawId });
+      const sourceLabel = source === 'company'
+        ? 'شركة ' + index
+        : source === 'asset' ? 'أصل تجاري قديم' : 'المشروع الرئيسي';
+      candidates.push({ entity, title, id: rawId || key, key, source, sourceLabel, hasStableId: !!rawId });
     };
 
     const primary = state.business;
@@ -125,6 +128,49 @@
     });
   }
 
+  function ownershipConflictDetails(group, state) {
+    const snapshots = group.map(candidate => {
+      const ownership = analyzeBusinessOwnership(candidate.entity, state && state.lifeId, state && state.name);
+      if (!ownership.valid) return { valid: false };
+
+      const ledger = isRecord(candidate.entity && candidate.entity.ownershipLedger)
+        ? candidate.entity.ownershipLedger
+        : {};
+      const transactions = Array.isArray(ledger.transactions) ? ledger.transactions.map(item => ({
+        type: item.type,
+        age: item.age,
+        fromBeneficiaryId: item.fromBeneficiaryId,
+        toBeneficiaryId: item.toBeneficiaryId,
+        shareBps: item.shareBps
+      })) : [];
+      const shareholders = ownership.shareholders
+        .map(item => ({ beneficiaryId: item.beneficiaryId, shareBps: item.shareBps }))
+        .sort((a, b) => a.beneficiaryId < b.beneficiaryId ? -1 : a.beneficiaryId > b.beneficiaryId ? 1 : 0);
+
+      return {
+        valid: true,
+        activeBeneficiaryId: ownership.activeBeneficiaryId,
+        shareholdersSignature: stableSerialize(shareholders),
+        transactionsSignature: stableSerialize(transactions)
+      };
+    });
+
+    const validSnapshots = snapshots.filter(snapshot => snapshot.valid);
+    const distinctCount = key => new Set(validSnapshots.map(snapshot => snapshot[key])).size;
+    const reasons = [];
+    if (validSnapshots.length !== snapshots.length) reasons.push('invalid-ledger');
+    if (distinctCount('activeBeneficiaryId') > 1) reasons.push('active-owner-mismatch');
+    if (distinctCount('shareholdersSignature') > 1) reasons.push('share-distribution-mismatch');
+    if (distinctCount('transactionsSignature') > 1) reasons.push('history-mismatch');
+    if (!reasons.length) reasons.push('record-mismatch');
+
+    return {
+      reasons,
+      sources: group.map(candidate => candidate.sourceLabel),
+      invalidRecordCount: snapshots.length - validSnapshots.length
+    };
+  }
+
   function findDuplicateOwnershipConflicts(state, entries) {
     if (!isRecord(state) || !Array.isArray(entries) || !entries.length) return [];
     const includedKeys = new Set(entries.map(entry => entry.key));
@@ -143,7 +189,8 @@
         id: group[0].id,
         key,
         title: group[0].title,
-        recordCount: group.length
+        recordCount: group.length,
+        ...ownershipConflictDetails(group, state)
       });
     });
     return conflicts;
@@ -633,9 +680,26 @@
           'وجدنا أكثر من سجل للنشاط نفسه بمعرّف واحد، لكن نسب الملاك أو تاريخ انتقال الحصص لا يتطابق. لم نعتمد نسخة بدل الأخرى؛ راجع السجل قبل أي تصرف في الملكية.');
         const conflictList = doc.createElement('ul');
         conflictList.className = 'business-insights-duplicate-list';
+        const conflictReasonLabels = {
+          'invalid-ledger': 'دفتر ملكية غير صالح',
+          'active-owner-mismatch': 'اختلاف المالك النشط',
+          'share-distribution-mismatch': 'اختلاف نسب الملكية',
+          'history-mismatch': 'اختلاف سجل التحركات',
+          'record-mismatch': 'اختلاف يحتاج مراجعة'
+        };
         summary.duplicateOwnershipConflicts.forEach(conflict => {
-          appendText(doc, conflictList, 'li', 'business-insights-duplicate-item',
-            conflict.title + ' · ' + formatNumber(conflict.recordCount) + ' نسخ');
+          const reasons = Array.isArray(conflict.reasons) ? conflict.reasons : [];
+          const reasonText = reasons.map(reason => conflictReasonLabels[reason] || 'اختلاف يحتاج مراجعة').join('، ');
+          const sources = Array.isArray(conflict.sources) ? conflict.sources.join('، ') : '';
+          const invalidText = Number(conflict.invalidRecordCount) > 0
+            ? ' · دفاتر غير صالحة: ' + formatNumber(conflict.invalidRecordCount)
+            : '';
+          const details = [
+            conflict.title + ' · ' + formatNumber(conflict.recordCount) + ' نسخ',
+            reasonText || 'اختلاف يحتاج مراجعة',
+            sources ? 'المصادر: ' + sources : ''
+          ].filter(Boolean).join(' · ') + invalidText;
+          appendText(doc, conflictList, 'li', 'business-insights-duplicate-item', details);
         });
         conflictSection.appendChild(conflictList);
         body.appendChild(conflictSection);
