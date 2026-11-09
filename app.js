@@ -11254,6 +11254,109 @@ function claimBusinessDividendPayments(entity,back){
  render();businessOwnershipMenu(entity,back);return true;
 }
 
+function isCurrentBusinessEntity(entity){
+ return !!(entity&&state&&(state.business===entity||(Array.isArray(state.companies)&&state.companies.includes(entity))));
+}
+function buildBusinessShareGiftLedger(entity,fromBeneficiaryId,child,shareBps,age){
+ const fromId=String(fromBeneficiaryId||'').trim().slice(0,120);
+ const ownership=businessOwnershipSnapshot(entity,fromId,child&&child.name);
+ if(!ownership.valid)return {ok:false,reason:'invalid-ownership'};
+ if(!fromId||ownership.activeBeneficiaryId!==fromId)return {ok:false,reason:'not-active-owner'};
+ if(!child||typeof child!=='object'||Array.isArray(child))return {ok:false,reason:'invalid-beneficiary'};
+ const childId=String(child.id||child.name||'').trim().slice(0,120),childName=String(child.name||'').trim().slice(0,80);
+ if(!childId||!childName)return {ok:false,reason:'invalid-beneficiary'};
+ if(childId===fromId)return {ok:false,reason:'self-transfer'};
+ const amount=Number(shareBps);
+ if(!Number.isSafeInteger(amount)||amount<=0)return {ok:false,reason:'invalid-share-amount'};
+ const shareholders=ownership.shareholders.map(item=>({...item}));
+ const owner=shareholders.find(item=>item.beneficiaryId===fromId);
+ if(!owner||owner.shareBps-amount<1)return {ok:false,reason:'owner-share-must-remain'};
+ const recipient=shareholders.find(item=>item.beneficiaryId===childId);
+ if(recipient){
+  if(recipient.shareBps+amount>10000)return {ok:false,reason:'recipient-share-overflow'};
+  recipient.shareBps+=amount;recipient.name=childName;recipient.kind='child';
+ }else{
+  if(shareholders.length>=100)return {ok:false,reason:'shareholder-limit'};
+  shareholders.push({beneficiaryId:childId,name:childName,kind:'child',shareBps:amount});
+ }
+ owner.shareBps-=amount;
+ const total=shareholders.reduce((sum,item)=>sum+item.shareBps,0),recipientAfter=shareholders.find(item=>item.beneficiaryId===childId);
+ if(total!==10000||!recipientAfter||!shareholders.some(item=>item.beneficiaryId===fromId&&item.shareBps>0))return {ok:false,reason:'ownership-total-invalid'};
+ const numericAge=Number(age);
+ return {ok:true,amountBps:amount,fromShareBpsBefore:owner.shareBps+amount,fromShareBpsAfter:owner.shareBps,recipientShareBpsAfter:recipientAfter.shareBps,ledger:{version:1,activeBeneficiaryId:fromId,shareholders,updatedAtAge:Number.isFinite(numericAge)?Math.max(0,Math.min(120,Math.floor(numericAge))):0}};
+}
+function businessShareGiftMenu(entity,back){
+ if(!isCurrentBusinessEntity(entity)){info('⚠️','لا يمكن تعديل سجل قديم','إهداء الحصص متاح من سجل الشركة داخل الحياة الحالية فقط.');return;}
+ const fallbackId=state.lifeId||state.name||state.legacy&&state.legacy.activeBeneficiaryId;
+ const ownership=businessOwnershipSnapshot(entity,fallbackId,state.name);
+ if(!ownership.valid){info('⚠️','سجل الملكية يحتاج مراجعة','لم نتمكن من إثبات توازن الحصص؛ لم نغيّر أي ملكية.');return;}
+ const active=ownership.shareholders.find(item=>item.beneficiaryId===ownership.activeBeneficiaryId);
+ if(!active||active.shareBps<=1){info('🔒','لا توجد حصة قابلة للإهداء','يجب الاحتفاظ بحصة نشطة لا تقل عن 0.01% بعد الإهداء.');return;}
+ const seen=new Set();
+ const children=(Array.isArray(state.children)?state.children:[]).filter(child=>child&&typeof child==='object'&&!Array.isArray(child)).map(child=>({id:String(child.id||child.name||'').trim().slice(0,120),name:String(child.name||'ابن/ابنة').trim().slice(0,80),age:Number(child.age)||0})).filter(child=>{
+  if(!child.id||child.id===ownership.activeBeneficiaryId||!child.name||seen.has(child.id))return false;
+  seen.add(child.id);return true;
+ });
+ if(!children.length){info('👨‍👩‍👧','لا يوجد مستفيد مؤهل','أضف ابنًا أو ابنة إلى شجرة العائلة أولًا، ثم يمكنك تسجيل حصة لهم.');return;}
+ const options=children.map(child=>{
+  const current=ownership.shareholders.find(item=>item.beneficiaryId===child.id),currentShare=current?current.shareBps:0;
+  return choice('🧒',child.name+' · '+child.age+' سنة','الحصة المسجلة حاليًا '+formatBusinessOwnershipPercent(currentShare)+'% · اختر نسبة من حصتك لإهدائها.',()=>businessShareGiftAmountMenu(entity,child.id,back));
+ });
+ options.push(choice('↩️','رجوع لسجل الملكية','',()=>businessOwnershipMenu(entity,back)));
+ modal('🎁','اختيار الابن أو الابنة','الإهداء بلا مقابل. لا يتغير رصيدك الشخصي أو خزينة الشركة، ويُحفظ التغيير داخل ملف الحياة الحالي فقط دون مزامنة تلقائية لملفات الورثة المستقلة.',options);
+}
+function businessShareGiftAmountMenu(entity,childId,back){
+ if(!isCurrentBusinessEntity(entity)){info('⚠️','تعذر فتح سجل الشركة','افتح سجل الملكية من الشركة في الحياة الحالية.');return;}
+ const fallbackId=state.lifeId||state.name||state.legacy&&state.legacy.activeBeneficiaryId;
+ const ownership=businessOwnershipSnapshot(entity,fallbackId,state.name);
+ const child=(Array.isArray(state.children)?state.children:[]).find(item=>item&&String(item.id||item.name||'').trim()===String(childId||''));
+ const active=ownership.valid?ownership.shareholders.find(item=>item.beneficiaryId===ownership.activeBeneficiaryId):null;
+ if(!ownership.valid||!active||!child){info('⚠️','تغيرت بيانات الملكية','أعد فتح سجل الشركة واختيار المستفيد؛ لم نغيّر أي حصة.');return;}
+ const available=active.shareBps-1;
+ const amounts=Array.from(new Set([100,500,1000,2500,5000,available].filter(value=>Number.isSafeInteger(value)&&value>0&&value<=available))).sort((a,b)=>a-b);
+ const options=amounts.map(amount=>{
+  const preview=buildBusinessShareGiftLedger(entity,fallbackId,child,amount,state.age);
+  if(!preview.ok)return null;
+  const title=amount===available?'إهداء أكبر حصة ممكنة ('+formatBusinessOwnershipPercent(amount)+'%)':'إهداء '+formatBusinessOwnershipPercent(amount)+'% من الشركة';
+  const description='حصتك بعد الإهداء '+formatBusinessOwnershipPercent(preview.fromShareBpsAfter)+'% · حصة '+child.name+' بعد الإهداء '+formatBusinessOwnershipPercent(preview.recipientShareBpsAfter)+'%. لا يتم تحويل أموال.';
+  return choice('📊',title,description,()=>confirmBusinessShareGift(entity,childId,amount,back));
+ }).filter(Boolean);
+ if(!options.length){info('🔒','لا توجد نسبة متاحة','لا يمكن نقل حصة مع الاحتفاظ بملكية نشطة لا تقل عن 0.01%.');return;}
+ options.push(choice('↩️','رجوع لاختيار المستفيد','',()=>businessShareGiftMenu(entity,back)));
+ modal('📊','اختيار نسبة الإهداء','حصتك الحالية '+formatBusinessOwnershipPercent(active.shareBps)+'%. إجمالي ملكية الشركة سيظل 100%.',options);
+}
+function confirmBusinessShareGift(entity,childId,shareBps,back){
+ if(!isCurrentBusinessEntity(entity)){info('⚠️','تعذر تأكيد الإهداء','سجل الشركة لم يعد ضمن الحياة الحالية.');return;}
+ const fallbackId=state.lifeId||state.name||state.legacy&&state.legacy.activeBeneficiaryId;
+ const child=(Array.isArray(state.children)?state.children:[]).find(item=>item&&String(item.id||item.name||'').trim()===String(childId||''));
+ const preview=buildBusinessShareGiftLedger(entity,fallbackId,child,shareBps,state.age);
+ if(!preview.ok){info('⚠️','تغيرت بيانات الملكية','لم نعد نستطيع تنفيذ النسبة نفسها بأمان. افتح سجل الملكية من جديد.');return;}
+ const detail='سيتم إهداء '+formatBusinessOwnershipPercent(preview.amountBps)+'% من الشركة إلى '+child.name+' دون مقابل.\nحصتك ستصبح '+formatBusinessOwnershipPercent(preview.fromShareBpsAfter)+'%، وحصة المستفيد ستصبح '+formatBusinessOwnershipPercent(preview.recipientShareBpsAfter)+'%.\nلن يتغير رصيدك الشخصي أو خزينة الشركة. التعديل محلي في ملف الحياة الحالي فقط.';
+ modal('🎁','تأكيد إهداء حصة',detail,[choice('✓','تأكيد الإهداء','احفظ نقل الحصة في سجل الملكية.',()=>commitBusinessShareGift(entity,childId,shareBps,back)),choice('↩️','تعديل النسبة','',()=>businessShareGiftAmountMenu(entity,childId,back))]);
+}
+function commitBusinessShareGift(entity,childId,shareBps,back){
+ closeModal();
+ if(!isCurrentBusinessEntity(entity)){info('⚠️','تعذر إتمام الإهداء','سجل الشركة لم يعد ضمن الحياة الحالية.');return false;}
+ const fallbackId=state.lifeId||state.name||state.legacy&&state.legacy.activeBeneficiaryId;
+ const child=(Array.isArray(state.children)?state.children:[]).find(item=>item&&String(item.id||item.name||'').trim()===String(childId||''));
+ const result=buildBusinessShareGiftLedger(entity,fallbackId,child,shareBps,state.age);
+ if(!result.ok){info('⚠️','لم يتم إهداء الحصة','بيانات المستفيد أو الحصص غير صالحة، أو أن النقل سيزيل حصتك النشطة. لم نغيّر أي رصيد.');return false;}
+ const hadLedger=Object.prototype.hasOwnProperty.call(entity,'ownershipLedger'),previousLedger=entity.ownershipLedger;
+ const previousLog=Array.isArray(state.log)?state.log.slice():[];
+ entity.ownershipLedger=result.ledger;
+ state.log=previousLog.slice();
+ state.log.push({age:state.age,icon:'🎁',title:'إهداء حصة من شركة',text:'أهديت '+formatBusinessOwnershipPercent(result.amountBps)+'% من '+String(entity.title||'النشاط التجاري')+' إلى '+String(child.name||'أحد الأبناء')+' دون مقابل. لا تتغير خزينة الشركة، ويسجل النقل داخل ملف الحياة الحالي فقط.',tone:'good'});
+ if(state.log.length>360)state.log=state.log.slice(-360);
+ if(!save()){
+  if(hadLedger)entity.ownershipLedger=previousLedger;else delete entity.ownershipLedger;
+  state.log=previousLog;
+  info('⚠️','لم يُحفظ الإهداء','تعذر حفظ العملية؛ أعدنا سجل الملكية واليوميات إلى حالتهما السابقة.');
+  return false;
+ }
+ render();
+ businessOwnershipMenu(entity,back);
+ return true;
+}
 function businessOwnershipMenu(entity,back){
  const fallbackId=state&&state.lifeId||state&&state.name||state&&state.legacy&&state.legacy.activeBeneficiaryId;
  const snapshot=businessOwnershipSnapshot(entity,fallbackId,state&&state.name);
@@ -11264,6 +11367,8 @@ function businessOwnershipMenu(entity,back){
  const opts=visibleShareholders.map(item=>choice(item.beneficiaryId===activeId?'👑':'👤',item.name+' · '+formatBusinessOwnershipPercent(item.shareBps)+'%','حصة ملكية مسجلة '+formatBusinessOwnershipPercent(item.shareBps)+'%'+(item.beneficiaryId===activeId?' · حصتك الحالية':' · مستفيد آخر مسجل'),()=>info('📑','تفاصيل المالك',item.name+' يملك '+formatBusinessOwnershipPercent(item.shareBps)+'% من النشاط حسب سجل الملكية المحلي.')));
  const hiddenShareholderCount=snapshot.shareholders.length-visibleShareholders.length;
  if(hiddenShareholderCount>0)opts.push(choice('👥','ملاك إضافيون ('+hiddenShareholderCount+')','يوجد ملاك آخرون محفوظون في الدفتر. افتح السجل الكامل من ملف الحفظ عند الحاجة.',()=>info('👥','بقية الملاك','يوجد '+hiddenShareholderCount+' مستفيدًا إضافيًا محفوظًا ضمن سجل الملكية.')));
+ const hasGiftRecipient=isCurrentBusinessEntity(entity)&&snapshot.activeShareBps>1&&Array.isArray(state.children)&&state.children.some(child=>child&&typeof child==='object'&&String(child.id||child.name||'').trim()&&String(child.name||'').trim()&&String(child.id||child.name)!==String(activeId));
+ if(hasGiftRecipient)opts.push(choice('🎁','إهداء حصة لأحد الأبناء','انقل جزءًا من حصتك إلى ابن أو ابنة دون مقابل؛ لا تتغير خزينة الشركة، ولا تتم مزامنة ملفات الورثة المستقلة تلقائيًا.',()=>businessShareGiftMenu(entity,back)));
  opts.push(choice('📊','كشف نتيجة السنة حسب الملكية','اعرض نصيب كل مالك حسابيًا من أحدث نتيجة مالية دون تحويل أموال.',()=>businessOwnershipEarningsMenu(entity,back)));
  opts.push(choice('💸','تقدير السيولة القابلة للتوزيع','اعرض الخزينة التشغيلية والمبالغ المحجوزة قبل اعتماد أي حركة.',()=>businessDividendReadinessMenu(entity,back)));
  const dividendLedgerState=normalizeBusinessDividendLedger(entity&&entity.dividendLedger);

@@ -21,21 +21,22 @@ function findFunction(name){
  }
  throw new Error('unterminated function: '+name);
 }
-const names=['createBusinessOwnershipLedger','normalizeBusinessOwnershipLedger','formatBusinessOwnershipPercent','businessOwnershipSnapshot','businessOwnershipEarningsSnapshot','businessDividendReadinessSnapshot','businessCreditBalance','businessTaxLiability','businessUsesSeparateTreasury','businessTreasuryBalance','normalizeBusinessDividendLedger','businessDividendPendingLiability','businessDividendEscrowBalance','allocateBusinessDividendShares','businessDividendClaimableSnapshot','applyBusinessDividendDistribution','applyBusinessDividendClaims','inheritBusinessDividendClaims','calculateEstateSnapshot','buildInheritedBusinessOwnershipLedger','applyInheritedBusinessOwnership'];
+const names=['createBusinessOwnershipLedger','normalizeBusinessOwnershipLedger','formatBusinessOwnershipPercent','businessOwnershipSnapshot','businessOwnershipEarningsSnapshot','businessDividendReadinessSnapshot','businessCreditBalance','businessTaxLiability','businessUsesSeparateTreasury','businessTreasuryBalance','normalizeBusinessDividendLedger','businessDividendPendingLiability','businessDividendEscrowBalance','allocateBusinessDividendShares','businessDividendClaimableSnapshot','applyBusinessDividendDistribution','applyBusinessDividendClaims','inheritBusinessDividendClaims','calculateEstateSnapshot','buildInheritedBusinessOwnershipLedger','applyInheritedBusinessOwnership','isCurrentBusinessEntity','buildBusinessShareGiftLedger','commitBusinessShareGift'];
 const runtime=names.map(findFunction).join('\n');
 function createApi(){
  const context={state:{bank:0}};
  vm.runInNewContext(runtime+'\nthis.api={'+names.join(',')+'};',context);
  return context.api;
 }
-function createMenuApi(){
- const calls={modal:null};
+function createMenuApi(business=null,children=[]){
+ const calls={modal:null,shareGiftArgs:null};
  const context={
-  state:{lifeId:'owner',name:'الوارث',age:45},
+  state:{lifeId:'owner',name:'الوارث',age:45,business,companies:[],children},
   cash:value=>String(value),
   choice:(icon,title,description,callback,amount)=>({icon,title,description,callback,amount}),
   modal:(...args)=>{calls.modal=args;},
   info:()=>{},
+  businessShareGiftMenu:(...args)=>{calls.shareGiftArgs=args;},
   businessOwnershipEarningsMenu:()=>{},
   businessDividendReadinessMenu:()=>{},
   businessDividendDistributionMenu:()=>{},
@@ -43,9 +44,25 @@ function createMenuApi(){
   companyPortfolioMenu:()=>{}
  };
  vm.runInNewContext(runtime+'\n'+findFunction('businessOwnershipMenu')+'\nthis.api={businessOwnershipMenu};',context);
- return {api:context.api,calls};
+ return {api:context.api,calls,context};
 }
 function totalShares(ledger){return ledger.shareholders.reduce((sum,item)=>sum+item.shareBps,0);}
+function createGiftCommitHarness(saveResult){
+ const company={value:500000,title:'شركة العائلة',ownershipLedger:{version:1,activeBeneficiaryId:'owner',shareholders:[
+  {beneficiaryId:'owner',name:'المالك',kind:'owner',shareBps:4000},
+  {beneficiaryId:'sibling',name:'الأخ',kind:'child',shareBps:6000}
+ ]}};
+ const calls={save:0,render:0,menu:0,close:0,info:[]};
+ const context={
+  state:{lifeId:'owner',name:'المالك',age:45,business:company,companies:[],children:[{id:'child-1',name:'الابن',age:20}],bank:12345,log:[]},
+  closeModal:()=>{calls.close++;},info:(...args)=>{calls.info.push(args);},
+  save:()=>{calls.save++;return saveResult;},render:()=>{calls.render++;},
+  businessOwnershipMenu:()=>{calls.menu++;}
+ };
+ const transferNames=['createBusinessOwnershipLedger','normalizeBusinessOwnershipLedger','businessOwnershipSnapshot','formatBusinessOwnershipPercent','isCurrentBusinessEntity','buildBusinessShareGiftLedger','commitBusinessShareGift'];
+ vm.runInNewContext(transferNames.map(findFunction).join('\n')+'\nthis.api={commitBusinessShareGift};',context,{timeout:15000});
+ return {api:context.api,context,company,calls};
+}
 test('legacy businesses receive a read-only sole-owner fallback',()=>{
  const api=createApi(),company={title:'شركة قديمة',value:500000},before=JSON.stringify(company);
  const snapshot=api.businessOwnershipSnapshot(company,'heir-1','الوارث');
@@ -715,4 +732,77 @@ test('واجهة كشف الملكية توضح استبعاد التقارير 
  assert.match(earningsMenu,/invalidFinancialReportCount/);
  assert.match(earningsMenu,/تقرير مالي غير مكتمل/);
  assert.match(earningsMenu,/لم نحوّل القيم الناقصة إلى أصفار/);
+});
+
+
+test('إهداء حصة إلى ابن يضيفه إلى سجل الملاك ويحافظ على إجمالي 100%',()=>{
+ const api=createApi();
+ const company={value:500000,ownershipLedger:{version:1,activeBeneficiaryId:'owner',shareholders:[
+  {beneficiaryId:'owner',name:'المالك',kind:'owner',shareBps:4000},
+  {beneficiaryId:'sibling',name:'الأخ',kind:'child',shareBps:6000}
+ ]}};
+ const child={id:'child-1',name:'الابن',age:20},before=JSON.stringify(company);
+ const result=api.buildBusinessShareGiftLedger(company,'owner',child,1000,45);
+ assert.equal(result.ok,true);assert.equal(result.fromShareBpsAfter,3000);assert.equal(result.recipientShareBpsAfter,1000);
+ assert.equal(totalShares(result.ledger),10000);
+ assert.deepEqual(Array.from(result.ledger.shareholders,item=>[item.beneficiaryId,item.shareBps]),[['owner',3000],['sibling',6000],['child-1',1000]]);
+ assert.equal(result.ledger.activeBeneficiaryId,'owner');assert.equal(JSON.stringify(company),before);
+});
+
+test('إهداء حصة إلى ابن يملك أسهمًا يضيف إلى حصته الحالية دون إنشاء سجل مكرر',()=>{
+ const api=createApi(),company={value:500000,ownershipLedger:{version:1,activeBeneficiaryId:'owner',shareholders:[
+  {beneficiaryId:'owner',name:'المالك',kind:'owner',shareBps:4000},{beneficiaryId:'child-1',name:'الابن',kind:'child',shareBps:1000},{beneficiaryId:'sibling',name:'الأخ',kind:'child',shareBps:5000}
+ ]}};
+ const result=api.buildBusinessShareGiftLedger(company,'owner',{id:'child-1',name:'الابن',age:20},500,45);
+ assert.equal(result.ok,true);assert.equal(result.ledger.shareholders.length,3);assert.equal(result.recipientShareBpsAfter,1500);assert.equal(result.fromShareBpsAfter,3500);assert.equal(totalShares(result.ledger),10000);
+});
+
+test('إهداء الحصص يرفض المالك نفسه والنسب غير الصحيحة وإزالة آخر حصة نشطة',()=>{
+ const api=createApi(),company={value:500000,ownershipLedger:{version:1,activeBeneficiaryId:'owner',shareholders:[
+  {beneficiaryId:'owner',name:'المالك',kind:'owner',shareBps:4000},{beneficiaryId:'sibling',name:'الأخ',kind:'child',shareBps:6000}
+ ]}};
+ assert.equal(api.buildBusinessShareGiftLedger(company,'owner',{id:'owner',name:'المالك'},100,45).reason,'self-transfer');
+ assert.equal(api.buildBusinessShareGiftLedger(company,'owner',{id:'child-1',name:'الابن'},1.5,45).reason,'invalid-share-amount');
+ assert.equal(api.buildBusinessShareGiftLedger(company,'owner',{id:'child-1',name:'الابن'},4000,45).reason,'owner-share-must-remain');
+ assert.equal(api.buildBusinessShareGiftLedger(company,'other',{id:'child-1',name:'الابن'},100,45).reason,'not-active-owner');
+});
+
+test('الحصة المهداه تبقى مستقلة عند انتقال حصة المالك النشط إلى الجيل التالي',()=>{
+ const api=createApi(),company={value:1000000,ownershipLedger:{version:1,activeBeneficiaryId:'owner',shareholders:[
+  {beneficiaryId:'owner',name:'المالك',kind:'owner',shareBps:4000},{beneficiaryId:'sibling',name:'الأخ',kind:'child',shareBps:6000}
+ ]}};
+ const gift=api.buildBusinessShareGiftLedger(company,'owner',{id:'child-a',name:'الابن الأول'},1000,45);
+ const next=api.buildInheritedBusinessOwnershipLedger({value:company.value,ownershipLedger:gift.ledger},{accounts:[
+  {beneficiaryId:'child-a',name:'الابن الأول',kind:'child',share:.5},{beneficiaryId:'child-b',name:'الابن الثاني',kind:'child',share:.5}
+ ]},'child-a','owner','المالك',70);
+ assert.equal(next.auditStatus,'balanced');assert.equal(totalShares(next),10000);
+ const shares=Object.fromEntries(next.shareholders.map(item=>[item.beneficiaryId,item.shareBps]));
+ assert.equal(shares['sibling'],6000);assert.equal(shares['child-a'],2500);assert.equal(shares['child-b'],1500);
+});
+
+test('واجهة سجل الملكية تعرض إهداء الحصة فقط للشركة الحالية مع وجود ابن مؤهل',()=>{
+ const company={value:300000,ownershipLedger:{version:1,activeBeneficiaryId:'owner',shareholders:[
+  {beneficiaryId:'owner',name:'المالك',kind:'owner',shareBps:4000},{beneficiaryId:'sibling',name:'الأخ',kind:'child',shareBps:6000}
+ ]}};
+ const menu=createMenuApi(company,[{id:'child-1',name:'الابن',age:20}]);menu.api.businessOwnershipMenu(company);
+ const options=menu.calls.modal[3],gift=options.find(item=>item.title==='إهداء حصة لأحد الأبناء');
+ assert.ok(gift);gift.callback();assert.equal(menu.calls.shareGiftArgs[0],company);
+ const historical=createMenuApi(null,[{id:'child-1',name:'الابن',age:20}]);historical.api.businessOwnershipMenu(company);
+ assert.equal(historical.calls.modal[3].some(item=>item.title==='إهداء حصة لأحد الأبناء'),false);
+});
+
+test('فشل حفظ إهداء الحصة يعيد دفتر الملكية واليوميات ولا يغير الرصيد الشخصي',()=>{
+ const harness=createGiftCommitHarness(false),before=JSON.stringify(harness.company.ownershipLedger),bank=harness.context.state.bank;
+ assert.equal(harness.api.commitBusinessShareGift(harness.company,'child-1',1000),false);
+ assert.equal(JSON.stringify(harness.company.ownershipLedger),before);assert.deepEqual(Array.from(harness.context.state.log),[]);
+ assert.equal(harness.context.state.bank,bank);assert.equal(harness.calls.save,1);assert.equal(harness.calls.render,0);assert.equal(harness.calls.info.length,1);
+});
+
+test('نجاح حفظ إهداء الحصة يسجل العملية دون تغيير أي رصيد نقدي',()=>{
+ const harness=createGiftCommitHarness(true),bank=harness.context.state.bank;
+ assert.equal(harness.api.commitBusinessShareGift(harness.company,'child-1',1000),true);
+ assert.equal(totalShares(harness.company.ownershipLedger),10000);
+ assert.equal(harness.company.ownershipLedger.shareholders.find(item=>item.beneficiaryId==='owner').shareBps,3000);
+ assert.equal(harness.company.ownershipLedger.shareholders.find(item=>item.beneficiaryId==='child-1').shareBps,1000);
+ assert.equal(harness.context.state.bank,bank);assert.equal(harness.context.state.log.length,1);assert.equal(harness.calls.render,1);assert.equal(harness.calls.menu,1);
 });
