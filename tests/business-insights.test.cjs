@@ -324,6 +324,10 @@ test('الحفظ الفارغ أو التالف لا ينتج أنشطة أو أ
     unknownReportYearCount: 0,
     invalidReportYearCount: 0,
     hasMixedReportYears: false,
+    sharedOwnershipCount: 0,
+    ownershipNeedsReviewCount: 0,
+    legacyOwnershipCount: 0,
+    ownershipShareholderCount: 0,
     annualSummaries: [],
     items: []
   });
