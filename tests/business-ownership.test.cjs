@@ -21,7 +21,7 @@ function findFunction(name){
  }
  throw new Error('unterminated function: '+name);
 }
-const names=['createBusinessOwnershipLedger','normalizeBusinessOwnershipTransactions','normalizeBusinessOwnershipLedger','formatBusinessOwnershipPercent','businessOwnershipSnapshot','businessOwnershipValuationSnapshot','businessOwnershipEarningsSnapshot','businessDividendReadinessSnapshot','businessCreditBalance','businessTaxLiability','businessUsesSeparateTreasury','businessTreasuryBalance','normalizeBusinessDividendLedger','businessDividendPendingLiability','businessDividendEscrowBalance','allocateBusinessDividendShares','businessDividendClaimableSnapshot','applyBusinessDividendDistribution','applyBusinessDividendClaims','inheritBusinessDividendClaims','calculateEstateSnapshot','buildInheritedBusinessOwnershipLedger','applyInheritedBusinessOwnership','isCurrentBusinessEntity','buildBusinessShareGiftLedger','businessOwnershipHistoryMenu','commitBusinessShareGift'];
+const names=['createBusinessOwnershipLedger','normalizeBusinessOwnershipTransactions','normalizeBusinessOwnershipLedger','formatBusinessOwnershipPercent','estimateBusinessWholeValue','allocateBusinessOwnershipValue','businessOwnershipSnapshot','businessOwnershipValuationSnapshot','businessOwnershipEarningsSnapshot','businessDividendReadinessSnapshot','businessCreditBalance','businessTaxLiability','businessUsesSeparateTreasury','businessTreasuryBalance','normalizeBusinessDividendLedger','businessDividendPendingLiability','businessDividendEscrowBalance','allocateBusinessDividendShares','businessDividendClaimableSnapshot','applyBusinessDividendDistribution','applyBusinessDividendClaims','inheritBusinessDividendClaims','calculateEstateSnapshot','buildInheritedBusinessOwnershipLedger','applyInheritedBusinessOwnership','isCurrentBusinessEntity','buildBusinessShareGiftLedger','businessOwnershipHistoryMenu','commitBusinessShareGift'];
 const runtime=names.map(findFunction).join('\n');
 function createApi(){
  const context={state:{bank:0}};
@@ -1005,4 +1005,48 @@ test('شاشة تقييم الحصص تعرض الإجمالي وتظل للقر
  assert.match(calls.modal[2],/1,000,000|1000000/);
  assert.ok(calls.modal[3].some(item=>item.title==='طريقة حساب التقدير'));
  assert.equal(JSON.stringify(company),before);
+});
+
+
+test('تقدير قيمة النشاط يستخدم قسمة صحيحة دون فقد وحدات عند القيم الكبيرة',()=>{
+ const api=createApi();
+ const company={value:999899999997,ownershipLedger:{version:1,activeBeneficiaryId:'owner',shareholders:[
+  {beneficiaryId:'owner',name:'المالك',kind:'owner',shareBps:9999},
+  {beneficiaryId:'partner',name:'الشريك',kind:'child',shareBps:1}
+ ]}};
+ const before=JSON.stringify(company);
+ const report=api.businessOwnershipValuationSnapshot(company,'owner','المالك');
+ assert.equal(report.valid,true);
+ assert.equal(report.totalValue,999999999997);
+ assert.deepEqual(Array.from(report.shareholders,item=>item.estimatedValue),[999899999997,100000000]);
+ assert.equal(report.shareholders.reduce((sum,item)=>sum+item.estimatedValue,0),report.totalValue);
+ assert.equal(JSON.stringify(company),before);
+});
+
+test('توزيع تقييم الحصص يستخدم حسابًا صحيحًا تمامًا بدل كسور الفاصلة العائمة',()=>{
+ const api=createApi();
+ const shareholders=[
+  {beneficiaryId:'a',name:'الأول',shareBps:5158},
+  {beneficiaryId:'b',name:'الثاني',shareBps:2757},
+  {beneficiaryId:'c',name:'الثالث',shareBps:158},
+  {beneficiaryId:'d',name:'الرابع',shareBps:1927}
+ ];
+ const result=api.allocateBusinessOwnershipValue(212156502558,shareholders);
+ assert.deepEqual(Array.from(result,item=>item.estimatedValue),[
+  109430324020,58491547755,3352072740,40882558043
+ ]);
+ assert.equal(result.reduce((sum,item)=>sum+item.estimatedValue,0),212156502558);
+ assert.deepEqual(shareholders.map(item=>item.shareBps),[5158,2757,158,1927],'the source ledger must not be mutated');
+});
+
+test('توزيع البواقي المتساوية حتمي ويرفض نسب الملكية غير المتوازنة',()=>{
+ const api=createApi();
+ const tied=api.allocateBusinessOwnershipValue(2,[
+  {beneficiaryId:'a',name:'الأول',shareBps:3334},
+  {beneficiaryId:'b',name:'الثاني',shareBps:3333},
+  {beneficiaryId:'c',name:'الثالث',shareBps:3333}
+ ]);
+ assert.deepEqual(Array.from(tied,item=>item.estimatedValue),[1,1,0]);
+ assert.equal(api.allocateBusinessOwnershipValue(100,[{beneficiaryId:'a',name:'مالك',shareBps:9000}]),null);
+ assert.equal(api.allocateBusinessOwnershipValue(Number.MAX_SAFE_INTEGER+1,[{beneficiaryId:'a',name:'مالك',shareBps:10000}]),null);
 });
