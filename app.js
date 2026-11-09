@@ -11274,7 +11274,11 @@ function businessOwnershipMenu(entity,back){
  }else{
   const claimable=businessDividendClaimableSnapshot(entity,activeId);
   if(claimable.valid&&claimable.amount>0)opts.push(choice('💰','استلام مستحقاتك '+cash(claimable.amount),'تحويل مستحقاتك من حساب التوزيعات المحجوز إلى رصيدك الشخصي.',()=>claimBusinessDividendPayments(entity,back),cash(claimable.amount)));
-  opts.push(choice('🧾','اعتماد توزيع أرباح سنوي','توزيع واحد لكل سنة؛ نصيبك يُصرف فورًا وحصص بقية الملاك تُحجز منفصلًا.',()=>businessDividendDistributionMenu(entity,back)));
+  if(entity&&entity.dividendTreasuryScope==='inherited-stake'){
+   opts.push(choice('🔒','التوزيعات الجديدة متوقفة مؤقتًا','هذا السجل يمثل حصتك الموروثة فقط، وليس خزينة الشركة كاملة. لا يمكن اعتماد توزيع جديد قبل تسوية موحدة لجميع الملاك؛ تظل المستحقات السابقة متاحة للاستلام.',()=>info('🔒','التوزيعات الجديدة متوقفة مؤقتًا','لم نعتمد أي توزيع جديد ولم نغيّر الخزينة. يمكنك استلام المطالبات السابقة المسجلة ما دامت صالحة.')));
+  }else{
+   opts.push(choice('🧾','اعتماد توزيع أرباح سنوي','توزيع واحد لكل سنة؛ نصيبك يُصرف فورًا وحصص بقية الملاك تُحجز منفصلًا.',()=>businessDividendDistributionMenu(entity,back)));
+  }
  }
  opts.push(choice('ℹ️','حدود السجل','دفتر التوزيعات محفوظ داخل ملف الشركة الحالي. لا توجد مزامنة تلقائية بين ملفات مستقلة للورثة أو أجهزة مختلفة.',()=>info('ℹ️','حدود الملكية المشتركة','تُحفظ مستحقات الملاك في حساب حجز داخل الشركة، وتنتقل مطالبة المالك النشط إلى ورثته عند نجاح نقل الملكية. لا تتم مزامنة ملفات حياة منفصلة تلقائيًا.')));
  opts.push(choice('↩️','رجوع','',typeof back==='function'?back:companyPortfolioMenu));

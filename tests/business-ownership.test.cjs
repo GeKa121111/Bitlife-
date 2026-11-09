@@ -28,6 +28,23 @@ function createApi(){
  vm.runInNewContext(runtime+'\nthis.api={'+names.join(',')+'};',context);
  return context.api;
 }
+function createMenuApi(){
+ const calls={modal:null};
+ const context={
+  state:{lifeId:'owner',name:'الوارث',age:45},
+  cash:value=>String(value),
+  choice:(icon,title,description,callback,amount)=>({icon,title,description,callback,amount}),
+  modal:(...args)=>{calls.modal=args;},
+  info:()=>{},
+  businessOwnershipEarningsMenu:()=>{},
+  businessDividendReadinessMenu:()=>{},
+  businessDividendDistributionMenu:()=>{},
+  claimBusinessDividendPayments:()=>{},
+  companyPortfolioMenu:()=>{}
+ };
+ vm.runInNewContext(runtime+'\n'+findFunction('businessOwnershipMenu')+'\nthis.api={businessOwnershipMenu};',context);
+ return {api:context.api,calls};
+}
 function totalShares(ledger){return ledger.shareholders.reduce((sum,item)=>sum+item.shareBps,0);}
 test('legacy businesses receive a read-only sole-owner fallback',()=>{
  const api=createApi(),company={title:'شركة قديمة',value:500000},before=JSON.stringify(company);
@@ -250,6 +267,62 @@ test('dividend readiness never treats the shared personal wallet as company trea
  assert.equal(result.reason,'shared-treasury');
  assert.equal(result.distributable,0);
  assert.equal(JSON.stringify(company),before);
+});
+
+
+test('inherited-stake treasury keeps prior claims available but blocks new dividend declarations',()=>{
+ const api=createApi();
+ const company={
+  value:150000,
+  treasuryMode:'separate',
+  dividendTreasuryScope:'inherited-stake',
+  cashBalance:25000,
+  dividendEscrowBalance:800,
+  ownershipLedger:{version:1,activeBeneficiaryId:'owner',shareholders:[
+   {beneficiaryId:'owner',name:'الوارث الحالي',kind:'child',shareBps:5000},
+   {beneficiaryId:'partner',name:'الشريك',kind:'partner',shareBps:5000}
+  ]},
+  dividendLedger:{version:1,entries:[{
+   id:'dividend-2026',year:2026,declaredAtAge:40,createdBy:'owner',totalAmount:1000,
+   allocations:[
+    {beneficiaryId:'owner',name:'الوارث الحالي',kind:'child',shareBps:5000,amount:500},
+    {beneficiaryId:'partner',name:'الشريك',kind:'partner',shareBps:5000,amount:500}
+   ],
+   claims:[
+    {beneficiaryId:'owner',name:'الوارث الحالي',amount:500,paidAmount:200,paidAtAge:39},
+    {beneficiaryId:'partner',name:'الشريك',amount:500,paidAmount:0,paidAtAge:null}
+   ]
+  }]},
+  financialHistory:[{year:2026,costs:10000}]
+ };
+ const before=JSON.stringify(company);
+ const readiness=api.businessDividendReadinessSnapshot(company,'owner','الوارث الحالي');
+ assert.equal(readiness.ready,false);
+ assert.equal(readiness.reason,'inherited-stake-treasury');
+ const claimable=api.businessDividendClaimableSnapshot(company,'owner');
+ assert.equal(claimable.valid,true);
+ assert.equal(claimable.amount,300,'the inherited active owner can still collect an already-recorded claim');
+ const claim=api.applyBusinessDividendClaims(company,'owner',45,1000);
+ assert.equal(claim.ok,true);
+ assert.equal(claim.amount,300);
+ assert.equal(claim.escrowBalanceAfter,500);
+ assert.equal(JSON.stringify(company),before,'readiness and claim previews must not mutate the inherited record');
+
+ const menu=createMenuApi();
+ menu.api.businessOwnershipMenu(company);
+ const inheritedTitles=Array.from(menu.calls.modal[3],item=>item.title);
+ assert.ok(inheritedTitles.includes('استلام مستحقاتك 300'));
+ assert.ok(inheritedTitles.includes('التوزيعات الجديدة متوقفة مؤقتًا'));
+ assert.ok(!inheritedTitles.includes('اعتماد توزيع أرباح سنوي'),'the inherited stake must not advertise a declaration action');
+
+ const normalCompany={...company};
+ delete normalCompany.dividendTreasuryScope;
+ delete normalCompany.dividendLedger;
+ delete normalCompany.dividendEscrowBalance;
+ const normalMenu=createMenuApi();
+ normalMenu.api.businessOwnershipMenu(normalCompany);
+ const normalTitles=Array.from(normalMenu.calls.modal[3],item=>item.title);
+ assert.ok(normalTitles.includes('اعتماد توزيع أرباح سنوي'),'normal company treasuries retain the annual declaration action');
 });
 
 test('dividend readiness refuses missing or invalid financial baselines',()=>{
