@@ -13274,6 +13274,14 @@ function importSave(){
    try{
     const parsed=JSON.parse(String(reader.result||''));
     const isBundle=!!(parsed&&parsed.format===BACKUP_FORMAT);
+    if(isBundle&&(Object.prototype.hasOwnProperty.call(parsed,'integrity')||Object.prototype.hasOwnProperty.call(parsed,'integrityRequired'))){
+     const integrityApi=typeof globalThis!=='undefined'&&globalThis.HayahBackupIntegrity?globalThis.HayahBackupIntegrity:typeof window!=='undefined'?window.HayahBackupIntegrity:null;
+     const integrityCheck=integrityApi&&integrityApi.verifyIntegrity(parsed);
+     if(!integrityCheck||!integrityCheck.valid){
+      const integrityError=integrityCheck&&integrityCheck.status==='missing'?'missing-bundle-integrity':integrityCheck&&integrityCheck.status==='invalid-marker'?'invalid-bundle-integrity-marker':'invalid-bundle-integrity';
+      throw new Error(integrityError);
+     }
+    }
     if(isBundle&&(parsed.backupVersion!==BACKUP_VERSION||!validateCemeteryBackup(parsed.cemetery)||!parsed.settings||typeof parsed.settings!=='object'||Array.isArray(parsed.settings)||!parsed.perks||typeof parsed.perks!=='object'||Array.isArray(parsed.perks)))throw new Error('invalid-bundle');
     const data=isBundle?parsed.life:parsed;
     const importedAux=isBundle?{cemetery:normalizeCemetery(parsed.cemetery),settings:normalizeUiSettings(parsed.settings),perks:normalizePermanentPerks(parsed.perks)}:null;
@@ -13314,7 +13322,7 @@ function importSave(){
      if(previousState){try{render();}catch(e){}}
      throw importError;
     }
-   }catch(e){info('⚠️','ملف حفظ غير صالح','اختار ملف JSON تم تصديره من لعبة حياة. الحفظ الحالي لم يتغير.');}
+   }catch(e){if(e&&e.message==='missing-bundle-integrity')info('⚠️','بصمة النسخة مفقودة','الحزمة تعلن أنها تتطلب بصمة سلامة لكنها لا تحتوي عليها؛ ربما حُذف سجل البصمة. لم نغيّر الحفظ الحالي.');else if(e&&e.message==='invalid-bundle-integrity-marker')info('⚠️','علامة البصمة غير صالحة','قيمة علامة اشتراط البصمة غير مدعومة؛ لم نغيّر الحفظ الحالي.');else if(e&&e.message==='invalid-bundle-integrity')info('⚠️','بصمة النسخة غير متطابقة','محتوى الحزمة لا يطابق بصمة السلامة المسجلة؛ ربما تعرض الملف لتلف أو تعديل. لم نغيّر الحفظ الحالي.');else info('⚠️','ملف حفظ غير صالح','اختار ملف JSON تم تصديره من لعبة حياة. الحفظ الحالي لم يتغير.');}
   };
   reader.onerror=()=>info('⚠️','تعذرت قراءة الملف','جرّب ملفًا آخر.');
   reader.readAsText(file);
@@ -13361,15 +13369,20 @@ function readCemeteryForBackup(){
 }
 function createBackupBundle(){
  const cemetery=readCemeteryForBackup();
- return {
+ const bundle={
   format:BACKUP_FORMAT,
   backupVersion:BACKUP_VERSION,
   exportedAt:new Date().toISOString(),
   life:JSON.parse(JSON.stringify(state)),
   cemetery,
   settings:normalizeUiSettings(uiSettings),
-  perks:normalizePermanentPerks(permanentPerks)
+  perks:normalizePermanentPerks(permanentPerks),
+  integrityRequired:true
  };
+ const integrityApi=typeof globalThis!=='undefined'&&globalThis.HayahBackupIntegrity?globalThis.HayahBackupIntegrity:typeof window!=='undefined'?window.HayahBackupIntegrity:null;
+ if(!integrityApi||typeof integrityApi.createIntegrity!=='function')throw new Error('backup-integrity-unavailable');
+ bundle.integrity=integrityApi.createIntegrity(bundle);
+ return bundle;
 }
 function exportSave(){
  if(!state){info('⚠️','لا توجد حياة للتصدير','ابدأ حياة أو حمّل ملف حفظ أولًا.');return;}
@@ -13385,7 +13398,8 @@ function exportSave(){
   if(anchor&&typeof anchor.remove==='function')anchor.remove();
   if(url){try{URL.revokeObjectURL(url);}catch(_){}}
   closeModal();
-  if(e&&e.message==='cemetery-recovery-write-failed')info('⚠️','تعذر تثبيت النسخة المستعادة','وجدنا نسخة محلية سليمة، لكن المتصفح لم يسمح بكتابتها إلى سجل المقبرة. لم نكمل التصدير ولم نمسح النسخة الاحتياطية؛ وفّر مساحة ثم حاول مرة أخرى.');
+  if(e&&e.message==='backup-integrity-unavailable')info('⚠️','تعذر فحص سلامة النسخة','مكوّن فحص سلامة النسخ غير متاح في هذه الجلسة؛ لم ننشئ ملفًا غير مفحوص. حدّث التطبيق ثم حاول مرة أخرى.');
+  else if(e&&e.message==='cemetery-recovery-write-failed')info('⚠️','تعذر تثبيت النسخة المستعادة','وجدنا نسخة محلية سليمة، لكن المتصفح لم يسمح بكتابتها إلى سجل المقبرة. لم نكمل التصدير ولم نمسح النسخة الاحتياطية؛ وفّر مساحة ثم حاول مرة أخرى.');
   else if(e&&e.message==='cemetery-unreadable')info('⚠️','سجل الحيوات السابقة غير قابل للقراءة','لم نعثر على نسخة محلية سليمة يمكن استعادتها، لذلك لم نصدر نسخة ناقصة. لم يتم تعديل بيانات المقبرة أو الحياة الحالية. لا تمسح بيانات الموقع؛ استورد نسخة خارجية سليمة إن كانت لديك.');
   else if(e&&e.message==='cemetery-invalid')info('⚠️','سجل الحيوات السابقة يحتاج مراجعة','لم نعثر على نسخة محلية سليمة يمكن استعادتها من السجل غير الصالح. لم نُسقط أي بيانات من التخزين.');
   else info('⚠️','تعذر تصدير الحفظ','ما قدرناش نجهز الملف في المتصفح الحالي. الحفظ المحلي لم يتغير؛ جرّب متصفحًا أحدث.');

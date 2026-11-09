@@ -23,6 +23,7 @@ const routes = new Map([
   ['/pwa-update.css', 'pwa-update.css'],
   ['/pwa-update.js', 'pwa-update.js'],
   ['/app.js', 'app.js'],
+  ['/backup-integrity.js', 'backup-integrity.js'],
   ['/combat-season.js', 'combat-season.js'],
   ['/sw.js', 'sw.js'],
   ['/manifest.webmanifest', 'manifest.webmanifest'],
@@ -1527,6 +1528,9 @@ async function run() {
     assert.equal(exported.cemetery[0].id, 'browser-legacy-life', 'export must include the previous-life cemetery');
     assert.equal(exported.settings.textScale, 'normal', 'export must include display preferences');
     assert.equal(exported.perks.owned.fighterPack, true, 'export must include locally owned permanent perks');
+    assert.equal(exported.integrityRequired, true, 'new full exports should mark their checksum as mandatory');
+    assert.equal(exported.integrity.algorithm, 'FNV-1a-32', 'full exports should carry an internal integrity checksum');
+    assert.equal(require('../backup-integrity.js').verifyIntegrity(exported).valid, true, 'the downloaded export checksum should verify');
 
     // The first complete export seeds a same-device recovery copy of the cemetery.
     const seededCemeteryBackup = await page.evaluate(() => JSON.parse(localStorage.getItem('hekayat_hayah_cemetery_backup_v1') || 'null'));
@@ -1586,10 +1590,14 @@ async function run() {
     await page.locator('#menuBtn').click();
     await page.locator('.choice').filter({ hasText: 'تحميل حفظ' }).click();
     const invalidBundleChooser = await invalidBundleChooserPromise;
+    const malformedCemeteryBundle = { ...exported, cemetery: [null] };
+    // Keep this test focused on structural validation: refresh the checksum after
+    // deliberately introducing the malformed cemetery entry.
+    malformedCemeteryBundle.integrity = require('../backup-integrity.js').createIntegrity(malformedCemeteryBundle);
     await invalidBundleChooser.setFiles({
       name: 'invalid-cemetery-bundle.json',
       mimeType: 'application/json',
-      buffer: Buffer.from(JSON.stringify({ ...exported, cemetery: [null] }))
+      buffer: Buffer.from(JSON.stringify(malformedCemeteryBundle))
     });
     await page.getByText('ملف حفظ غير صالح', { exact: true }).waitFor();
     const afterInvalidBundle = await page.evaluate(() => {
@@ -1601,6 +1609,88 @@ async function run() {
     });
     assert.deepEqual(afterInvalidBundle, beforeInvalidBundle,
       'a bundle with malformed cemetery data must not replace the current life');
+    await page.locator('.choice').filter({ hasText: 'تمام' }).last().click();
+
+    // A modified bundle with its old checksum must be rejected before storage changes.
+    const beforeInvalidIntegrity = await page.evaluate(() => ({
+      save: localStorage.getItem('hekayat_hayah_save_v1'),
+      cemetery: localStorage.getItem('hekayat_hayah_cemetery_v1'),
+      cemeteryBackup: localStorage.getItem('hekayat_hayah_cemetery_backup_v1')
+    }));
+    const corruptedIntegrityBundle = JSON.parse(JSON.stringify(exported));
+    corruptedIntegrityBundle.life.bank = Number(corruptedIntegrityBundle.life.bank || 0) + 1;
+    const integrityChooserPromise = page.waitForEvent('filechooser');
+    await page.locator('#menuBtn').click();
+    await page.locator('.choice').filter({ hasText: 'تحميل حفظ' }).click();
+    const integrityChooser = await integrityChooserPromise;
+    await integrityChooser.setFiles({
+      name: 'modified-hayah-backup.json',
+      mimeType: 'application/json',
+      buffer: Buffer.from(JSON.stringify(corruptedIntegrityBundle))
+    });
+    await page.getByText('بصمة النسخة غير متطابقة', { exact: true }).waitFor();
+    const afterInvalidIntegrity = await page.evaluate(() => ({
+      save: localStorage.getItem('hekayat_hayah_save_v1'),
+      cemetery: localStorage.getItem('hekayat_hayah_cemetery_v1'),
+      cemeteryBackup: localStorage.getItem('hekayat_hayah_cemetery_backup_v1')
+    }));
+    assert.deepEqual(afterInvalidIntegrity, beforeInvalidIntegrity,
+      'a checksum mismatch must leave the active save and cemetery stores untouched');
+    await page.locator('.choice').filter({ hasText: 'تمام' }).last().click();
+
+    // Removing the checksum from a new-format bundle must not downgrade it to a legacy import.
+    const beforeMissingIntegrity = await page.evaluate(() => ({
+      save: localStorage.getItem('hekayat_hayah_save_v1'),
+      cemetery: localStorage.getItem('hekayat_hayah_cemetery_v1'),
+      cemeteryBackup: localStorage.getItem('hekayat_hayah_cemetery_backup_v1')
+    }));
+    const missingIntegrityBundle = JSON.parse(JSON.stringify(exported));
+    delete missingIntegrityBundle.integrity;
+    const missingIntegrityChooserPromise = page.waitForEvent('filechooser');
+    await page.locator('#menuBtn').click();
+    await page.locator('.choice').filter({ hasText: 'تحميل حفظ' }).click();
+    const missingIntegrityChooser = await missingIntegrityChooserPromise;
+    await missingIntegrityChooser.setFiles({
+      name: 'missing-hayah-backup-checksum.json',
+      mimeType: 'application/json',
+      buffer: Buffer.from(JSON.stringify(missingIntegrityBundle))
+    });
+    await page.getByText('بصمة النسخة مفقودة', { exact: true }).waitFor();
+    const afterMissingIntegrity = await page.evaluate(() => ({
+      save: localStorage.getItem('hekayat_hayah_save_v1'),
+      cemetery: localStorage.getItem('hekayat_hayah_cemetery_v1'),
+      cemeteryBackup: localStorage.getItem('hekayat_hayah_cemetery_backup_v1')
+    }));
+    assert.deepEqual(afterMissingIntegrity, beforeMissingIntegrity,
+      'a new-format bundle missing its required checksum must leave all active save stores untouched');
+    await page.locator('.choice').filter({ hasText: 'تمام' }).last().click();
+
+    // A malformed requirement marker must also be rejected instead of downgrading the bundle.
+    const beforeInvalidMarker = await page.evaluate(() => ({
+      save: localStorage.getItem('hekayat_hayah_save_v1'),
+      cemetery: localStorage.getItem('hekayat_hayah_cemetery_v1'),
+      cemeteryBackup: localStorage.getItem('hekayat_hayah_cemetery_backup_v1')
+    }));
+    const invalidMarkerBundle = JSON.parse(JSON.stringify(exported));
+    delete invalidMarkerBundle.integrity;
+    invalidMarkerBundle.integrityRequired = 'true';
+    const invalidMarkerChooserPromise = page.waitForEvent('filechooser');
+    await page.locator('#menuBtn').click();
+    await page.locator('.choice').filter({ hasText: 'تحميل حفظ' }).click();
+    const invalidMarkerChooser = await invalidMarkerChooserPromise;
+    await invalidMarkerChooser.setFiles({
+      name: 'invalid-hayah-backup-marker.json',
+      mimeType: 'application/json',
+      buffer: Buffer.from(JSON.stringify(invalidMarkerBundle))
+    });
+    await page.getByText('علامة البصمة غير صالحة', { exact: true }).waitFor();
+    const afterInvalidMarker = await page.evaluate(() => ({
+      save: localStorage.getItem('hekayat_hayah_save_v1'),
+      cemetery: localStorage.getItem('hekayat_hayah_cemetery_v1'),
+      cemeteryBackup: localStorage.getItem('hekayat_hayah_cemetery_backup_v1')
+    }));
+    assert.deepEqual(afterInvalidMarker, beforeInvalidMarker,
+      'a malformed checksum requirement marker must leave all active save stores untouched');
     await page.locator('.choice').filter({ hasText: 'تمام' }).last().click();
 
     // Invalid JSON must be rejected without overwriting the current save.

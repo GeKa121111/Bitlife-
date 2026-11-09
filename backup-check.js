@@ -1,10 +1,13 @@
 (function (root, factory) {
   'use strict';
-  const api = factory();
+  const integrityApi = root && root.HayahBackupIntegrity
+    ? root.HayahBackupIntegrity
+    : typeof require === 'function' ? require('./backup-integrity.js') : null;
+  const api = factory(integrityApi);
   if (typeof module === 'object' && module.exports) module.exports = api;
   if (root) root.HayahBackupCheck = api;
   if (root && root.document) api.mount(root.document, root);
-})(typeof globalThis === 'object' ? globalThis : this, function () {
+})(typeof globalThis === 'object' ? globalThis : this, function (integrityApi) {
   'use strict';
 
   const MAX_FILE_BYTES = 15 * 1024 * 1024;
@@ -211,6 +214,7 @@
   function inspectBackup(data) {
     const errors = [];
     const warnings = [];
+    let integrityStatus = 'not-applicable';
     let format = 'ملف غير معروف';
     let life = null;
     let cemeteryCount = null;
@@ -219,6 +223,33 @@
 
     if (isRecord(data) && data.format === 'hayah-backup') {
       format = 'حزمة حفظ حياة كاملة';
+      if (!Object.prototype.hasOwnProperty.call(data, 'integrity')) {
+        if (Object.prototype.hasOwnProperty.call(data, 'integrityRequired')) {
+          if (data.integrityRequired === true) {
+            integrityStatus = 'missing';
+            errors.push('الحزمة الحديثة تعلن أنها تتطلب بصمة داخلية لكنها لا تحتوي عليها؛ ربما حُذف سجل البصمة.');
+          } else {
+            integrityStatus = 'invalid-marker';
+            errors.push('علامة اشتراط البصمة الداخلية غير صالحة؛ لم نعتمد الحزمة.');
+          }
+        } else {
+          integrityStatus = 'legacy';
+          warnings.push('هذه الحزمة لا تحتوي على بصمة داخلية؛ فحصنا البنية فقط. أعد تصديرها من إصدار حديث للحصول على فحص إضافي ضد التلف العرضي.');
+        }
+      } else if (!integrityApi || typeof integrityApi.verifyIntegrity !== 'function') {
+        integrityStatus = 'unavailable';
+        errors.push('تعذر التحقق من بصمة الحزمة الداخلية في هذه الصفحة.');
+      } else {
+        const integrityCheck = integrityApi.verifyIntegrity(data);
+        integrityStatus = integrityCheck.status;
+        if (!integrityCheck.valid) {
+          errors.push(integrityCheck.status === 'mismatch'
+            ? 'البصمة الداخلية لا تطابق محتوى الحزمة؛ قد يكون الملف تالفًا أو عُدّل بعد التصدير.'
+            : integrityCheck.status === 'invalid-marker'
+              ? 'علامة اشتراط البصمة الداخلية غير صالحة؛ لم نعتمد الحزمة.'
+              : 'نوع البصمة الداخلية غير مدعوم؛ لم نعتمد سلامة الحزمة.');
+        }
+      }
       if (data.backupVersion !== 1) {
         errors.push('إصدار حزمة النسخ الاحتياطي غير مدعوم؛ الإصدار المتوقع هو 1.');
       }
@@ -254,6 +285,7 @@
     return {
       valid: errors.length === 0,
       format,
+      integrityStatus,
       name: identity.name,
       age: identity.age,
       lifeVersion: identity.version,
@@ -373,6 +405,7 @@
         ['حجم الملف', formatBytes(file.size)],
         ['بصمة SHA-256', report.sha256 || 'غير متاحة في هذا المتصفح'],
         ['نوع الملف', report.format],
+        ['سلامة الحزمة', report.integrityStatus === 'verified' ? 'البصمة الداخلية سليمة' : report.integrityStatus === 'missing' ? 'بصمة مفقودة من حزمة حديثة' : report.integrityStatus === 'invalid-marker' ? 'علامة بصمة غير صالحة' : report.integrityStatus === 'legacy' ? 'نسخة قديمة بلا بصمة داخلية' : report.integrityStatus === 'mismatch' ? 'البصمة لا تطابق المحتوى' : report.integrityStatus === 'unsupported' ? 'بصمة غير مدعومة' : report.integrityStatus === 'unavailable' ? 'تعذر التحقق' : 'غير مطبق'],
         ['الشخصية', report.name || 'غير متاحة'],
         ['العمر بعد التطبيع', report.age === null ? 'غير متاح' : report.age + ' سنة'],
         ['إصدار بيانات الحياة', report.lifeVersion === null ? 'غير متاح' : report.lifeVersion],
@@ -507,7 +540,7 @@
         panel.appendChild(warnings);
       }
       appendText(panel, 'p', 'report-disclaimer',
-        'يمكن مقارنة بصمة SHA-256 قبل نقل الملف وبعده؛ تطابق البصمة لا يثبت مصدر الملف ولا يضمن سلامة كل تفاصيل الحياة. هذا فحص أولي فقط، فاحتفظ بالملف الأصلي ولا تستبدل حفظك الحالي اعتمادًا على النتيجة وحدها.');
+        'البصمة الداخلية FNV-1a-32 تساعد على اكتشاف التلف أو التغيير العرضي، لكنها ليست توقيعًا أمنيًا ولا تثبت مصدر الملف. بصمة SHA-256 الخارجية تساعد على مقارنة الملف قبل النقل وبعده. احتفظ دائمًا بالنسخة الأصلية.');
       resultNode.replaceChildren(panel);
       clearButton.disabled = false;
       announce(report.valid

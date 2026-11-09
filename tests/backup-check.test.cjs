@@ -13,6 +13,7 @@ const {
   MAX_REWIND_SNAPSHOT_CHARS
 } = require('../backup-check.js');
 const checkerSource = fs.readFileSync(path.join(__dirname, '..', 'backup-check.js'), 'utf8');
+const integrity = require('../backup-integrity.js');
 
 function makeLife(overrides = {}) {
   return {
@@ -131,6 +132,85 @@ test('حقل سجل الرجوع غير المصفوفي يعطي تحذيرًا
   assert.equal(report.rewindBaseDroppedCount, 0);
   assert.equal(report.rewindExpandedDroppedCount, 0);
   assert.ok(report.warnings.some(message => message.includes('ليس مصفوفة')));
+});
+
+
+test('حزم النسخ الجديدة تحمل بصمة داخلية وتكشف تغيير المحتوى دون تعديل الحزمة', () => {
+  const bundle = makePackage(makeLife({ bank: 125000, log: ['حدث محفوظ'] }));
+  const before = JSON.stringify(bundle);
+  const integrityRecord = integrity.createIntegrity(bundle);
+  assert.equal(JSON.stringify(bundle), before, 'creating a checksum must not mutate the source bundle');
+  bundle.integrity = integrityRecord;
+  const withIntegrity = JSON.stringify(bundle);
+  const report = inspectBackup(bundle);
+
+  assert.equal(report.valid, true);
+  assert.equal(report.integrityStatus, 'verified');
+  assert.equal(JSON.stringify(bundle), withIntegrity, 'verification must remain read-only');
+
+  const reordered = JSON.parse(withIntegrity);
+  const reversed = Object.fromEntries(Object.entries(reordered).reverse());
+  assert.equal(integrity.verifyIntegrity(reversed).valid, true,
+    'canonical key ordering must not invalidate a semantically identical JSON bundle');
+
+  const tampered = JSON.parse(withIntegrity);
+  tampered.life.bank += 1;
+  const tamperedReport = inspectBackup(tampered);
+  assert.equal(tamperedReport.valid, false);
+  assert.equal(tamperedReport.integrityStatus, 'mismatch');
+  assert.ok(tamperedReport.errors.some(message => message.includes('البصمة الداخلية لا تطابق')));
+});
+
+test('البصمة تشمل مفتاح __proto__ العادي دون السماح بتجاوزه عبر خاصية النموذج الأولي', () => {
+  const bundle = JSON.parse(JSON.stringify(makePackage(makeLife())));
+  Object.defineProperty(bundle, '__proto__', {
+    value: { marker: 'original' },
+    enumerable: true,
+    configurable: true,
+    writable: true
+  });
+  bundle.integrity = integrity.createIntegrity(bundle);
+  assert.equal(integrity.verifyIntegrity(bundle).valid, true);
+  bundle.__proto__.marker = 'changed';
+  assert.equal(integrity.verifyIntegrity(bundle).valid, false,
+    'special JSON keys must be included in the integrity calculation');
+});
+
+test('الحزم القديمة تظل قابلة للفحص، والبصمات غير المدعومة تُرفض بوضوح', () => {
+  const legacy = inspectBackup(makePackage(makeLife()));
+  assert.equal(legacy.valid, true);
+  assert.equal(legacy.integrityStatus, 'legacy');
+  assert.ok(legacy.warnings.some(message => message.includes('لا تحتوي على بصمة داخلية')));
+
+  const missingRequired = makePackage(makeLife());
+  missingRequired.integrityRequired = true;
+  assert.equal(integrity.verifyIntegrity(missingRequired).status, 'missing');
+  const missingRequiredReport = inspectBackup(missingRequired);
+  assert.equal(missingRequiredReport.valid, false);
+  assert.equal(missingRequiredReport.integrityStatus, 'missing');
+  assert.ok(missingRequiredReport.errors.some(message => message.includes('تتطلب بصمة داخلية')));
+
+  const malformedMarker = makePackage(makeLife());
+  malformedMarker.integrityRequired = 'true';
+  assert.equal(integrity.verifyIntegrity(malformedMarker).status, 'invalid-marker');
+  const malformedMarkerReport = inspectBackup(malformedMarker);
+  assert.equal(malformedMarkerReport.valid, false);
+  assert.equal(malformedMarkerReport.integrityStatus, 'invalid-marker');
+  assert.ok(malformedMarkerReport.errors.some(message => message.includes('علامة اشتراط البصمة')));
+
+  const unsupported = makePackage(makeLife());
+  unsupported.integrity = { algorithm: 'SHA-256', checksum: 'a'.repeat(64) };
+  const report = inspectBackup(unsupported);
+  assert.equal(report.valid, false);
+  assert.equal(report.integrityStatus, 'unsupported');
+});
+
+test('واجهة فاحص النسخ توضح حالة البصمة وحدودها', () => {
+  assert.match(checkerSource, /سلامة الحزمة/);
+  assert.match(checkerSource, /بصمة مفقودة من حزمة حديثة/);
+  assert.match(checkerSource, /علامة بصمة غير صالحة/);
+  assert.match(checkerSource, /FNV-1a-32/);
+  assert.match(checkerSource, /ليست توقيعًا أمنيًا/);
 });
 
 test('حزمة hayah-backup الكاملة تعرض بيانات الرجوع مثل ملف الحياة المنفرد', () => {
@@ -345,7 +425,7 @@ test('تعذر Web Crypto لا يمنع فحص ملف الحفظ', async () => {
 test('واجهة فاحص الحفظ تعرض البصمة وتوضح أنها ليست إثباتًا لمصدر الملف', () => {
   assert.match(checkerSource, /بصمة SHA-256/);
   assert.match(checkerSource, /sha256Fingerprint\(file, runtime\.crypto\)/);
-  assert.match(checkerSource, /تطابق البصمة لا يثبت مصدر الملف/);
+  assert.match(checkerSource, /ليست توقيعًا أمنيًا ولا تثبت مصدر الملف/);
 });
 
 
