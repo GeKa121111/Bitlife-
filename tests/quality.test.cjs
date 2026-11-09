@@ -550,6 +550,7 @@ test('النسخة الاحتياطية الكاملة تجمع الحياة و�
     functionSource('createBackupBundle', 'exportSave')
   ].join('\n');
   const bundleContext = {
+    HayahBackupIntegrity: require('../backup-integrity.js'),
     window: { HayahBackupIntegrity: require('../backup-integrity.js') },
     BACKUP_FORMAT: 'hayah-backup',
     BACKUP_VERSION: 1,
