@@ -634,6 +634,7 @@ test('واجهة فاحص النسخ تتيح اختيار نسخة ثانية �
   const nodes = new Map([
     ['backupFile', new FakeNode()],
     ['compareBackupFile', new FakeNode()],
+    ['compareBackupLabel', new FakeNode()],
     ['backupDropZone', new FakeNode()],
     ['backupResult', new FakeNode()],
     ['backupComparisonResult', new FakeNode()],
@@ -666,6 +667,7 @@ test('واجهة فاحص النسخ تتيح اختيار نسخة ثانية �
   nodes.get('backupFile').listeners.change({ target: { files: [toFile('الأولى.json', first)] } });
   await readers[0].onload();
   assert.equal(nodes.get('compareBackupFile').disabled, false);
+  assert.equal(nodes.get('compareBackupLabel').attributes['aria-disabled'], 'false');
 
   nodes.get('compareBackupFile').listeners.change({ target: { files: [toFile('الثانية.json', second)] } });
   await readers[1].onload();
@@ -673,4 +675,13 @@ test('واجهة فاحص النسخ تتيح اختيار نسخة ثانية �
   assert.match(nodes.get('backupComparisonResult').textContent, /فرق الرصيد البنكي/);
   assert.match(nodes.get('backupComparisonResult').textContent, /النسخة الأولى/);
   assert.match(nodes.get('backupAnnouncement').textContent, /اكتملت مقارنة نسختين/);
+});
+
+
+test('معرّف الحياة يجب أن يكون نصًا أو رقمًا ثابتًا ولا تُقبل كائنات متشابهة كتطابق هوية', () => {
+  const first = makeLife({ lifeId: { id: 'same' }, age: 40 });
+  const second = makeLife({ lifeId: { id: 'same' }, age: 41 });
+  const result = compareBackupSnapshots(first, second);
+  assert.equal(result.comparable, false);
+  assert.equal(result.reason, 'identity-unavailable');
 });
