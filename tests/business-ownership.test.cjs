@@ -21,7 +21,7 @@ function findFunction(name){
  }
  throw new Error('unterminated function: '+name);
 }
-const names=['createBusinessOwnershipLedger','normalizeBusinessOwnershipLedger','formatBusinessOwnershipPercent','businessOwnershipSnapshot','businessOwnershipEarningsSnapshot','businessDividendReadinessSnapshot','businessCreditBalance','businessTaxLiability','businessUsesSeparateTreasury','businessTreasuryBalance','normalizeBusinessDividendLedger','businessDividendPendingLiability','businessDividendEscrowBalance','allocateBusinessDividendShares','businessDividendClaimableSnapshot','applyBusinessDividendDistribution','applyBusinessDividendClaims','inheritBusinessDividendClaims','calculateEstateSnapshot','buildInheritedBusinessOwnershipLedger','applyInheritedBusinessOwnership','isCurrentBusinessEntity','buildBusinessShareGiftLedger','commitBusinessShareGift'];
+const names=['createBusinessOwnershipLedger','normalizeBusinessOwnershipTransactions','normalizeBusinessOwnershipLedger','formatBusinessOwnershipPercent','businessOwnershipSnapshot','businessOwnershipEarningsSnapshot','businessDividendReadinessSnapshot','businessCreditBalance','businessTaxLiability','businessUsesSeparateTreasury','businessTreasuryBalance','normalizeBusinessDividendLedger','businessDividendPendingLiability','businessDividendEscrowBalance','allocateBusinessDividendShares','businessDividendClaimableSnapshot','applyBusinessDividendDistribution','applyBusinessDividendClaims','inheritBusinessDividendClaims','calculateEstateSnapshot','buildInheritedBusinessOwnershipLedger','applyInheritedBusinessOwnership','isCurrentBusinessEntity','buildBusinessShareGiftLedger','businessOwnershipHistoryMenu','commitBusinessShareGift'];
 const runtime=names.map(findFunction).join('\n');
 function createApi(){
  const context={state:{bank:0}};
@@ -59,7 +59,7 @@ function createGiftCommitHarness(saveResult){
   save:()=>{calls.save++;return saveResult;},render:()=>{calls.render++;},
   businessOwnershipMenu:()=>{calls.menu++;}
  };
- const transferNames=['createBusinessOwnershipLedger','normalizeBusinessOwnershipLedger','businessOwnershipSnapshot','formatBusinessOwnershipPercent','isCurrentBusinessEntity','buildBusinessShareGiftLedger','commitBusinessShareGift'];
+ const transferNames=['createBusinessOwnershipLedger','normalizeBusinessOwnershipTransactions','normalizeBusinessOwnershipLedger','businessOwnershipSnapshot','formatBusinessOwnershipPercent','isCurrentBusinessEntity','buildBusinessShareGiftLedger','commitBusinessShareGift'];
  vm.runInNewContext(transferNames.map(findFunction).join('\n')+'\nthis.api={commitBusinessShareGift};',context,{timeout:15000});
  return {api:context.api,context,company,calls};
 }
@@ -805,4 +805,98 @@ test('نجاح حفظ إهداء الحصة يسجل العملية دون تغ�
  assert.equal(harness.company.ownershipLedger.shareholders.find(item=>item.beneficiaryId==='owner').shareBps,3000);
  assert.equal(harness.company.ownershipLedger.shareholders.find(item=>item.beneficiaryId==='child-1').shareBps,1000);
  assert.equal(harness.context.state.bank,bank);assert.equal(harness.context.state.log.length,1);assert.equal(harness.calls.render,1);assert.equal(harness.calls.menu,1);
+});
+
+test('دفاتر الملكية القديمة بلا سجل تحركات تظل صالحة وتُطبّع إلى سجل فارغ',()=>{
+ const api=createApi(),company={value:250000,ownershipLedger:{version:1,activeBeneficiaryId:'owner',shareholders:[
+  {beneficiaryId:'owner',name:'المالك',kind:'owner',shareBps:10000}
+ ]}};
+ const snapshot=api.businessOwnershipSnapshot(company,'owner','المالك');
+ assert.equal(snapshot.valid,true);
+ assert.deepEqual(Array.from(snapshot.transactions),[]);
+ assert.equal(company.ownershipLedger.transactions,undefined,'opening a legacy ledger must not write new fields');
+});
+
+test('دفتر التحركات يتحقق من الهوية والنوع والنسبة ويرفض السجل المشوه',()=>{
+ const api=createApi();
+ const valid={id:'tx-1',type:'gift',age:40,fromBeneficiaryId:'owner',fromName:'المالك',toBeneficiaryId:'child',toName:'الابن',shareBps:500};
+ const company={value:250000,ownershipLedger:{version:1,activeBeneficiaryId:'owner',shareholders:[
+  {beneficiaryId:'owner',name:'المالك',kind:'owner',shareBps:9500},
+  {beneficiaryId:'child',name:'الابن',kind:'child',shareBps:500}
+ ],transactions:[valid]}};
+ assert.equal(api.businessOwnershipSnapshot(company,'owner','المالك').valid,true);
+ const malformed={...company,ownershipLedger:{...company.ownershipLedger,transactions:[{...valid,type:'sale'}]}};
+ assert.equal(api.businessOwnershipSnapshot(malformed,'owner','المالك').valid,false);
+ const duplicate={...company,ownershipLedger:{...company.ownershipLedger,transactions:[valid,{...valid}]}};
+ assert.equal(api.businessOwnershipSnapshot(duplicate,'owner','المالك').valid,false);
+ const missingHistoryMarker={...company,ownershipLedger:{...company.ownershipLedger,transactions:null}};
+ assert.equal(api.businessOwnershipSnapshot(missingHistoryMarker,'owner','المالك').valid,false,
+  'an explicit null must not be mistaken for a legacy ledger with no history field');
+});
+
+test('كل إهداء جديد يضيف إيصالًا منظمًا ويحافظ على التحركات السابقة',()=>{
+ const api=createApi();
+ const firstLedger={version:1,activeBeneficiaryId:'owner',shareholders:[
+  {beneficiaryId:'owner',name:'المالك',kind:'owner',shareBps:4000},
+  {beneficiaryId:'sibling',name:'الأخ',kind:'child',shareBps:6000}
+ ],transactions:[{id:'tx-old',type:'gift',age:30,fromBeneficiaryId:'owner',fromName:'المالك',toBeneficiaryId:'sibling',toName:'الأخ',shareBps:100}]};
+ const company={value:500000,ownershipLedger:firstLedger};
+ const gift=api.buildBusinessShareGiftLedger(company,'owner',{id:'child-1',name:'الابن'},500,45);
+ assert.equal(gift.ok,true);
+ assert.equal(gift.ledger.transactions.length,2);
+ assert.deepEqual(Array.from(gift.ledger.transactions,item=>item.type),['gift','gift']);
+ const last=gift.ledger.transactions[1];
+ assert.equal(last.fromBeneficiaryId,'owner');
+ assert.equal(last.toBeneficiaryId,'child-1');
+ assert.equal(last.shareBps,500);
+ assert.equal(last.age,45);
+ assert.equal(gift.ledger.shareholders.reduce((sum,item)=>sum+item.shareBps,0),10000);
+});
+
+test('الميراث يحتفظ بتاريخ التحركات السابق ويضيف إيصالًا لكل مستفيد',()=>{
+ const api=createApi();
+ const company={value:400000,ownershipLedger:{version:1,activeBeneficiaryId:'parent',shareholders:[
+  {beneficiaryId:'parent',name:'الوالد',kind:'owner',shareBps:4000},
+  {beneficiaryId:'older-sibling',name:'الأخ الأكبر',kind:'child',shareBps:6000}
+ ],transactions:[{id:'tx-gift-old',type:'gift',age:35,fromBeneficiaryId:'parent',fromName:'الوالد',toBeneficiaryId:'older-sibling',toName:'الأخ الأكبر',shareBps:1000}]}};
+ const next=api.buildInheritedBusinessOwnershipLedger(company,{accounts:[
+  {beneficiaryId:'child-a',name:'الوارث',kind:'child',share:.5},
+  {beneficiaryId:'child-b',name:'الأخت',kind:'child',share:.5}
+ ]},'child-a','parent','الوالد',70);
+ assert.equal(next.auditStatus,'balanced');
+ assert.equal(next.transactions.length,3);
+ assert.equal(next.transactions[0].id,'tx-gift-old');
+ assert.deepEqual(Array.from(next.transactions).slice(1).map(item=>item.type),['inheritance','inheritance']);
+ assert.deepEqual(Array.from(next.transactions).slice(1).map(item=>item.shareBps),[2000,2000]);
+ assert.equal(totalShares(next),10000);
+});
+
+test('واجهة سجل الملكية تفتح تاريخ التحركات دون تعديل دفتر الشركة',()=>{
+ const company={value:300000,ownershipLedger:{version:1,activeBeneficiaryId:'owner',shareholders:[
+  {beneficiaryId:'owner',name:'المالك',kind:'owner',shareBps:9000},
+  {beneficiaryId:'child-1',name:'الابن',kind:'child',shareBps:1000}
+ ],transactions:[{id:'tx-1',type:'gift',age:42,fromBeneficiaryId:'owner',fromName:'المالك',toBeneficiaryId:'child-1',toName:'الابن',shareBps:1000}]}};
+ const before=JSON.stringify(company);
+ const menu=createMenuApi(company,[]);
+ menu.api.businessOwnershipMenu(company);
+ const history=menu.calls.modal[3].find(item=>item.title==='تاريخ تحركات الحصص');
+ assert.ok(history);
+ history.callback();
+ assert.equal(menu.calls.modal[1],'تاريخ تحركات الحصص');
+ assert.match(menu.calls.modal[2],/حركة محفوظة/);
+ assert.match(menu.calls.modal[3][0].title,/إهداء حصة/);
+ assert.equal(JSON.stringify(company),before);
+});
+
+test('بلوغ الحد الأقصى لسجل التحركات يوقف الإهداء بدل إسقاط تاريخ قديم',()=>{
+ const api=createApi();
+ const transactions=Array.from({length:200},(_,index)=>({id:'tx-'+index,type:'gift',age:30,fromBeneficiaryId:'owner',fromName:'المالك',toBeneficiaryId:'sibling',toName:'الأخ',shareBps:1}));
+ const company={value:500000,ownershipLedger:{version:1,activeBeneficiaryId:'owner',shareholders:[
+  {beneficiaryId:'owner',name:'المالك',kind:'owner',shareBps:4000},
+  {beneficiaryId:'sibling',name:'الأخ',kind:'child',shareBps:6000}
+ ],transactions}};
+ const result=api.buildBusinessShareGiftLedger(company,'owner',{id:'child-1',name:'الابن'},100,45);
+ assert.equal(result.ok,false);
+ assert.equal(result.reason,'transaction-history-limit');
+ assert.equal(company.ownershipLedger.transactions.length,200);
 });

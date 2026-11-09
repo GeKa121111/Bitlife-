@@ -76,6 +76,7 @@ const runtime = [
   'businessDividendPendingLiability',
   'businessDividendEscrowBalance',
   'createBusinessOwnershipLedger',
+  'normalizeBusinessOwnershipTransactions',
   'normalizeBusinessOwnershipLedger',
   'formatBusinessOwnershipPercent',
   'businessOwnershipSnapshot',
