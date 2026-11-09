@@ -326,6 +326,8 @@ test('الحفظ الفارغ أو التالف لا ينتج أنشطة أو أ
     hasMixedReportYears: false,
     sharedOwnershipCount: 0,
     ownershipNeedsReviewCount: 0,
+    duplicateOwnershipConflictCount: 0,
+    duplicateOwnershipConflicts: [],
     legacyOwnershipCount: 0,
     ownershipShareholderCount: 0,
     annualSummaries: [],
