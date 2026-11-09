@@ -765,6 +765,8 @@ test('تعارض نسب الملاك بين نسختين لهما المعرّف
   assert.equal(summary.businessCount, 1);
   assert.equal(summary.duplicateOwnershipConflictCount, 1);
   assert.equal(summary.duplicateOwnershipConflicts[0].title, 'شركة متعارضة');
+  assert.deepEqual(summary.duplicateOwnershipConflicts[0].reasons, ['share-distribution-mismatch']);
+  assert.deepEqual(summary.duplicateOwnershipConflicts[0].sources, ['المشروع الرئيسي', 'شركة 1']);
   assert.equal(summary.items[0].ownershipConflict, true);
   assert.equal(summary.items[0].ownership.valid, true,
     'each copy may be internally valid while the copies disagree');
@@ -807,6 +809,57 @@ test('اختلاف تاريخ التحركات يُكشف حتى لو كانت �
   assert.equal(summary.items[0].ownership.valid, true);
   assert.equal(summary.duplicateOwnershipConflictCount, 1);
   assert.equal(summary.items[0].ownershipConflict, true);
+  assert.deepEqual(summary.duplicateOwnershipConflicts[0].reasons, ['history-mismatch']);
+});
+
+test('تشخيص اختلاف المالك النشط لا يخلطه باختلاف توزيع الحصص', () => {
+  const shareholders = [
+    { beneficiaryId: 'current-life', name: 'صاحب الحياة', shareBps: 6000 },
+    { beneficiaryId: 'sibling', name: 'الشقيق', shareBps: 4000 }
+  ];
+  const state = {
+    lifeId: 'current-life',
+    name: 'صاحب الحياة',
+    business: { id: 'active-owner-conflict', title: 'شركة الإدارة', ownershipLedger: {
+      version: 1, activeBeneficiaryId: 'current-life', shareholders, transactions: []
+    } },
+    companies: [{ id: 'active-owner-conflict', title: 'نسخة أخرى', ownershipLedger: {
+      version: 1, activeBeneficiaryId: 'sibling', shareholders, transactions: []
+    } }]
+  };
+  const summary = analyzeBusinessPortfolio(state);
+  assert.deepEqual(summary.duplicateOwnershipConflicts[0].reasons, ['active-owner-mismatch']);
+  assert.deepEqual(summary.duplicateOwnershipConflicts[0].sources, ['المشروع الرئيسي', 'شركة 1']);
+});
+
+test('تشخيص النسخة التالفة يحدد وجود دفتر غير صالح ومصدره', () => {
+  const state = {
+    lifeId: 'current-life',
+    name: 'صاحب الحياة',
+    business: { id: 'invalid-copy', title: 'شركة تحتاج مراجعة', ownershipLedger: {
+      version: 1, activeBeneficiaryId: 'current-life', shareholders: [
+        { beneficiaryId: 'current-life', name: 'صاحب الحياة', shareBps: 10000 }
+      ], transactions: []
+    } },
+    companies: [{ id: 'invalid-copy', title: 'نسخة تالفة', ownershipLedger: {
+      version: 2, activeBeneficiaryId: 'current-life', shareholders: [
+        { beneficiaryId: 'current-life', name: 'صاحب الحياة', shareBps: 10000 }
+      ], transactions: []
+    } }]
+  };
+  const summary = analyzeBusinessPortfolio(state);
+  const conflict = summary.duplicateOwnershipConflicts[0];
+  assert.deepEqual(conflict.reasons, ['invalid-ledger']);
+  assert.equal(conflict.invalidRecordCount, 1);
+  assert.deepEqual(conflict.sources, ['المشروع الرئيسي', 'شركة 1']);
+});
+
+test('واجهة تدقيق الملكية تعرض أسباب التعارض ومصادر النسخ بالعربية', () => {
+  const source = fs.readFileSync(path.join(__dirname, '../business-insights.js'), 'utf8');
+  assert.match(source, /اختلاف نسب الملكية/);
+  assert.match(source, /اختلاف سجل التحركات/);
+  assert.match(source, /المصادر:/);
+  assert.match(source, /دفاتر غير صالحة/);
 });
 
 test('النسخة القديمة ذات المالك الوحيد تتطابق مع دفتر صريح مكافئ ولا تُرفع كتحذير', () => {
