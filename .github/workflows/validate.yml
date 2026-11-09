@@ -36,6 +36,10 @@ jobs:
         run: node --check tests/film-distribution.test.cjs
       - name: Run film distribution contract tests
         run: node --test tests/film-distribution.test.cjs
+      - name: Check film rights forecast syntax
+        run: node --check film-rights-forecast.js
+      - name: Run film rights forecast tests
+        run: node --test tests/film-rights-forecast.test.cjs
       - name: Run game smoke tests
         run: node tests/smoke.cjs
       - name: Check required game files
@@ -44,6 +48,8 @@ jobs:
           test -s style.css
           test -s app.js
           test -s backup-integrity.js
+          test -s film-rights-forecast.js
+          test -s film-rights-forecast.css
           grep -q 'id="lifeFeed"' index.html
           grep -q 'id="ageUpBtn"' index.html
           grep -q 'function ageUp' app.js
