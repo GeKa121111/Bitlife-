@@ -13274,10 +13274,12 @@ function importSave(){
    try{
     const parsed=JSON.parse(String(reader.result||''));
     const isBundle=!!(parsed&&parsed.format===BACKUP_FORMAT);
-    if(isBundle&&parsed.integrity!==undefined){
+    if(isBundle&&(parsed.integrity!==undefined||parsed.integrityRequired===true)){
      const integrityApi=typeof globalThis!=='undefined'&&globalThis.HayahBackupIntegrity?globalThis.HayahBackupIntegrity:typeof window!=='undefined'?window.HayahBackupIntegrity:null;
      const integrityCheck=integrityApi&&integrityApi.verifyIntegrity(parsed);
-     if(!integrityCheck||!integrityCheck.valid)throw new Error('invalid-bundle-integrity');
+     if(!integrityCheck||!integrityCheck.valid){
+      throw new Error(integrityCheck&&integrityCheck.status==='missing'?'missing-bundle-integrity':'invalid-bundle-integrity');
+     }
     }
     if(isBundle&&(parsed.backupVersion!==BACKUP_VERSION||!validateCemeteryBackup(parsed.cemetery)||!parsed.settings||typeof parsed.settings!=='object'||Array.isArray(parsed.settings)||!parsed.perks||typeof parsed.perks!=='object'||Array.isArray(parsed.perks)))throw new Error('invalid-bundle');
     const data=isBundle?parsed.life:parsed;
@@ -13319,7 +13321,7 @@ function importSave(){
      if(previousState){try{render();}catch(e){}}
      throw importError;
     }
-   }catch(e){if(e&&e.message==='invalid-bundle-integrity')info('⚠️','بصمة النسخة غير متطابقة','محتوى الحزمة لا يطابق بصمة السلامة المسجلة؛ ربما تعرض الملف لتلف أو تعديل. لم نغيّر الحفظ الحالي.');else info('⚠️','ملف حفظ غير صالح','اختار ملف JSON تم تصديره من لعبة حياة. الحفظ الحالي لم يتغير.');}
+   }catch(e){if(e&&e.message==='missing-bundle-integrity')info('⚠️','بصمة النسخة مفقودة','الحزمة تعلن أنها تتطلب بصمة سلامة لكنها لا تحتوي عليها؛ ربما حُذف سجل البصمة. لم نغيّر الحفظ الحالي.');else if(e&&e.message==='invalid-bundle-integrity')info('⚠️','بصمة النسخة غير متطابقة','محتوى الحزمة لا يطابق بصمة السلامة المسجلة؛ ربما تعرض الملف لتلف أو تعديل. لم نغيّر الحفظ الحالي.');else info('⚠️','ملف حفظ غير صالح','اختار ملف JSON تم تصديره من لعبة حياة. الحفظ الحالي لم يتغير.');}
   };
   reader.onerror=()=>info('⚠️','تعذرت قراءة الملف','جرّب ملفًا آخر.');
   reader.readAsText(file);
@@ -13373,7 +13375,8 @@ function createBackupBundle(){
   life:JSON.parse(JSON.stringify(state)),
   cemetery,
   settings:normalizeUiSettings(uiSettings),
-  perks:normalizePermanentPerks(permanentPerks)
+  perks:normalizePermanentPerks(permanentPerks),
+  integrityRequired:true
  };
  const integrityApi=typeof globalThis!=='undefined'&&globalThis.HayahBackupIntegrity?globalThis.HayahBackupIntegrity:typeof window!=='undefined'?window.HayahBackupIntegrity:null;
  if(!integrityApi||typeof integrityApi.createIntegrity!=='function')throw new Error('backup-integrity-unavailable');
