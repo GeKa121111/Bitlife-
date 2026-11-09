@@ -4199,17 +4199,17 @@ test('حزم النسخ الجديدة تتحقق من البصمة قبل تط�
   const importEnd = appSource.indexOf('function validateCemeteryBackup', importStart);
   assert.ok(importStart >= 0 && importEnd > importStart, 'the import flow should remain discoverable');
   const importSource = appSource.slice(importStart, importEnd);
-  assert.match(integritySource, /function checksumBundle\\(bundle\\)/);
+  assert.match(integritySource, /function checksumBundle[(]bundle[)]/);
   assert.match(integritySource, /FNV-1a-32/);
-  assert.match(appSource, /bundle\\.integrity=integrityApi\\.createIntegrity\\(bundle\\)/);
-  assert.match(importSource, /verifyIntegrity\\(parsed\\)/);
+  assert.match(appSource, /bundle[.]integrity=integrityApi[.]createIntegrity[(]bundle[)]/);
+  assert.match(importSource, /verifyIntegrity[(]parsed[)]/);
   assert.ok(importSource.indexOf('verifyIntegrity(parsed)') < importSource.indexOf('normalizeCoreState(data)'),
     'integrity must be checked before imported state is normalized or written');
   assert.match(importSource, /invalid-bundle-integrity/);
-  assert.match(mainPage, /backup-integrity\\.js/);
+  assert.match(mainPage, /backup-integrity[.]js/);
   assert.ok(mainPage.indexOf('backup-integrity.js') < mainPage.indexOf('app.js'),
     'the integrity helper must load before the game engine');
-  assert.match(checkerPage, /backup-integrity\\.js/);
+  assert.match(checkerPage, /backup-integrity[.]js/);
   assert.ok(checkerPage.indexOf('backup-integrity.js') < checkerPage.indexOf('backup-check.js'));
-  assert.match(checkerSource, /verifyIntegrity\\(data\\)/);
+  assert.match(checkerSource, /verifyIntegrity[(]data[)]/);
 });
