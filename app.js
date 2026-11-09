@@ -10727,12 +10727,42 @@ function formatBusinessOwnershipPercent(shareBps){
  const percent=Math.max(0,Math.min(10000,Math.round(Number(shareBps)||0)))/100;
  return percent.toFixed(2).replace(/\.?0+$/,'');
 }
+function estimateBusinessWholeValue(stakeValue,shareBps){
+ if(!Number.isSafeInteger(stakeValue)||stakeValue<0||!Number.isSafeInteger(shareBps)||shareBps<=0||shareBps>10000)return null;
+ const quotient=Math.floor(stakeValue/shareBps);
+ if(quotient>Math.floor(Number.MAX_SAFE_INTEGER/10000))return null;
+ const remainder=stakeValue%shareBps;
+ const totalValue=quotient*10000+Math.round(remainder*10000/shareBps);
+ return Number.isSafeInteger(totalValue)?totalValue:null;
+}
 function businessOwnershipSnapshot(entity,fallbackBeneficiaryId,fallbackName){
  const normalized=normalizeBusinessOwnershipLedger(entity&&entity.ownershipLedger,fallbackBeneficiaryId,fallbackName);
  if(!normalized.valid)return {valid:false,legacyFallback:false,issues:normalized.issues,shareholders:[],transactions:[],activeShareBps:0,stakeValue:Math.max(0,Math.round(Number(entity&&entity.value)||0)),wholeValueEstimate:0};
  const active=normalized.ledger.shareholders.find(item=>item.beneficiaryId===normalized.ledger.activeBeneficiaryId);
  const stakeValue=Math.max(0,Math.round(Number(entity&&entity.value)||0)),activeShareBps=active?active.shareBps:0;
- return {valid:!!active,legacyFallback:normalized.legacyFallback,issues:normalized.issues,activeBeneficiaryId:normalized.ledger.activeBeneficiaryId,activeShareBps,stakeValue,wholeValueEstimate:activeShareBps>0?Math.round(stakeValue*10000/activeShareBps):0,shareholders:normalized.ledger.shareholders.map(item=>({...item})),transactions:(normalized.ledger.transactions||[]).map(item=>({...item}))};
+ return {valid:!!active,legacyFallback:normalized.legacyFallback,issues:normalized.issues,activeBeneficiaryId:normalized.ledger.activeBeneficiaryId,activeShareBps,stakeValue,wholeValueEstimate:activeShareBps>0?estimateBusinessWholeValue(stakeValue,activeShareBps):0,shareholders:normalized.ledger.shareholders.map(item=>({...item})),transactions:(normalized.ledger.transactions||[]).map(item=>({...item}))};
+}
+
+function allocateBusinessOwnershipValue(totalValue,shareholders){
+ if(!Number.isSafeInteger(totalValue)||totalValue<0||!Array.isArray(shareholders)||!shareholders.length||shareholders.length>100)return null;
+ let totalShareBps=0;
+ for(const item of shareholders){
+  if(!item||typeof item!=='object'||Array.isArray(item)||!Number.isSafeInteger(item.shareBps)||item.shareBps<=0||item.shareBps>10000)return null;
+  totalShareBps+=item.shareBps;
+ }
+ if(totalShareBps!==10000)return null;
+ const wholeUnits=Math.floor(totalValue/10000),residualUnits=totalValue%10000;
+ const parts=shareholders.map((item,index)=>{
+  const weightedResidual=residualUnits*item.shareBps;
+  const estimatedValue=wholeUnits*item.shareBps+Math.floor(weightedResidual/10000);
+  return {...item,estimatedValue,remainderNumerator:weightedResidual%10000,index};
+ });
+ const remainder=totalValue-parts.reduce((sum,item)=>sum+item.estimatedValue,0);
+ if(!Number.isSafeInteger(remainder)||remainder<0||remainder>=parts.length)return null;
+ const remainderOrder=parts.slice().sort((a,b)=>b.remainderNumerator-a.remainderNumerator||a.index-b.index);
+ for(let index=0;index<remainder;index++)remainderOrder[index].estimatedValue++;
+ const result=parts.map(({remainderNumerator,index,...item})=>item);
+ return result.reduce((sum,item)=>sum+item.estimatedValue,0)===totalValue?result:null;
 }
 
 function businessOwnershipValuationSnapshot(entity,fallbackBeneficiaryId,fallbackName){
@@ -10747,17 +10777,9 @@ function businessOwnershipValuationSnapshot(entity,fallbackBeneficiaryId,fallbac
   !Number.isSafeInteger(roundedStakeValue)||roundedStakeValue>1000000000000)return {...empty,reason:'invalid-stake-value'};
  const totalValue=ownership.wholeValueEstimate;
  if(!Number.isSafeInteger(totalValue)||totalValue<0||totalValue>1000000000000)return {...empty,reason:'valuation-out-of-range'};
- const parts=ownership.shareholders.map((item,index)=>{
-  const rawValue=totalValue*item.shareBps/10000;
-  const estimatedValue=Math.floor(rawValue);
-  return {...item,estimatedValue,fraction:rawValue-estimatedValue,index};
- });
- let remainder=totalValue-parts.reduce((sum,item)=>sum+item.estimatedValue,0);
- const remainderOrder=parts.slice().sort((a,b)=>b.fraction-a.fraction||a.index-b.index);
- for(let index=0;remainder>0&&remainderOrder.length;index++,remainder--)remainderOrder[index%remainderOrder.length].estimatedValue++;
- const shareholders=parts.map(({fraction,index,...item})=>item);
+ const shareholders=allocateBusinessOwnershipValue(totalValue,ownership.shareholders);
+ if(!shareholders)return {...empty,reason:'valuation-allocation-invalid'};
  const active=shareholders.find(item=>item.beneficiaryId===ownership.activeBeneficiaryId);
- if(shareholders.reduce((sum,item)=>sum+item.estimatedValue,0)!==totalValue)return {...empty,reason:'valuation-allocation-invalid'};
  return {valid:true,reason:null,totalValue,activeBeneficiaryId:ownership.activeBeneficiaryId,activeShareValue:active?active.estimatedValue:0,shareholders};
 }
 
