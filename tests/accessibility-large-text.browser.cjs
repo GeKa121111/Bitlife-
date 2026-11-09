@@ -68,9 +68,14 @@ async function runMainScreenLargeTextCheck(browser) {
           viewport: window.innerWidth,
           documentWidth: document.documentElement.scrollWidth,
           heroDisplay: getComputedStyle(document.querySelector('#app .hero')).display,
+          heroGridColumns: getComputedStyle(document.querySelector('#app .hero')).gridTemplateColumns,
           hero: widthOf('#app .hero'),
           profile: widthOf('#app .profile'),
           wealth: widthOf('#app .wealth'),
+          nameWhiteSpace: getComputedStyle(document.querySelector('#app .name')).whiteSpace,
+          roleWhiteSpace: getComputedStyle(document.querySelector('#app .role-tag')).whiteSpace,
+          metaWhiteSpace: getComputedStyle(document.querySelector('#app .identity-meta span')).whiteSpace,
+          wealthWhiteSpace: getComputedStyle(document.querySelector('#app .wealthnum')).whiteSpace,
           story: widthOf('#app .story-heading'),
           nav: widthOf('#app .nav'),
           metaWrap: getComputedStyle(document.querySelector('#app .identity-meta')).flexWrap,
@@ -89,10 +94,19 @@ async function runMainScreenLargeTextCheck(browser) {
         'main-screen large text must not create document-level horizontal overflow at ' + width + 'px');
       assert.equal(result.heroDisplay, 'grid',
         'the narrow large-text identity card should use the two-column grid at ' + width + 'px');
-      for (const key of ['hero', 'profile', 'wealth', 'story', 'nav']) {
+      assert.notEqual(result.nameWhiteSpace, 'nowrap',
+        'the character name must wrap instead of being clipped at ' + width + 'px');
+      assert.notEqual(result.roleWhiteSpace, 'nowrap',
+        'the character role must wrap instead of being clipped at ' + width + 'px');
+      assert.notEqual(result.metaWhiteSpace, 'nowrap',
+        'identity metadata must wrap instead of being clipped at ' + width + 'px');
+      assert.notEqual(result.wealthWhiteSpace, 'nowrap',
+        'the bank balance must wrap instead of forcing a wide grid track at ' + width + 'px');
+      for (const key of ['profile', 'wealth', 'hero', 'story', 'nav']) {
         assert.ok(result[key].scroll <= result[key].client + 1,
           key + ' must wrap or fit without horizontal overflow at ' + width + 'px; ' +
-          JSON.stringify(result[key]));
+          JSON.stringify({measurement:result[key],grid:result.heroGridColumns,
+            profile:result.profile,wealth:result.wealth}));
       }
       assert.equal(result.metaWrap, 'wrap', 'identity metadata should wrap in large-text mode');
       assert.equal(result.storyWrap, 'wrap', 'the story heading should wrap in large-text mode');
