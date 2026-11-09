@@ -46,7 +46,7 @@ function makeContext(overrides = {}) {
     filmDistributionOffersMenu: () => {}, calls
   };
   vm.createContext(context);
-  const names = ['filmDistributionMoney','normalizeFilmDistributionContract','readFilmDistributionContracts','calculateFilmDistributionOffer','signFilmDistributionContract','settleFilmDistributionYear'];
+  const names = ['filmDistributionMoney','normalizeFilmDistributionContract','readFilmDistributionContracts','calculateFilmDistributionOffer','signFilmDistributionContract','settleFilmDistributionYear','filmDistributionHistoryMenu'];
   vm.runInContext([extractCatalog(), ...names.map(extractFunction)].join('\n') + '\nglobalThis.api={' + names.join(',') + '};', context);
   return context;
 }
@@ -95,4 +95,70 @@ test('الحفظ القديم يكتسب دفتر عقود فارغًا اختي
   assert.match(app, /return \{version:1,lifeId:/); assert.match(app, /const KEY = 'hekayat_hayah_save_v1';/);
   assert.match(app, /distributionContracts:\[\]/); assert.match(app, /function filmDistributionMenu\(\)/);
   assert.match(app, /حقوق العرض والتوزيع/); assert.match(app, /settleFilmDistributionYear\(\);if\(perkEnabled/);
+});
+
+
+test('أرشيف العقود يعرض السارية والمنتهية ويفصل إجمالي المقبوض دون تعديل الحفظ', () => {
+  const c = makeContext();
+  const active = {
+    id:'dist-active',filmId:'film-active',filmTitle:'فيلم مستمر',genre:'دراما',
+    partnerId:'streaming',partnerTitle:'منصة السرد',startYear:10,lastPaidYear:11,
+    termYears:3,yearsRemaining:2,annualRoyalty:100,advancePaid:20,totalPaid:120,status:'active'
+  };
+  const expired = {
+    id:'dist-expired',filmId:'film-expired',filmTitle:'فيلم منتهي',genre:'كوميديا',
+    partnerId:'theatrical',partnerTitle:'دار العرض العربية',startYear:5,lastPaidYear:7,
+    termYears:2,yearsRemaining:0,annualRoyalty:50,advancePaid:10,totalPaid:110,status:'expired'
+  };
+  c.state.filmStudio.distributionContracts = [active, expired];
+  const before = JSON.stringify(c.state.filmStudio.distributionContracts);
+  c.api.filmDistributionHistoryMenu('all', 0);
+  let dialog = c.calls.modal;
+  assert.equal(dialog[1], 'أرشيف عقود التوزيع');
+  assert.match(dialog[2], /كل العقود 2/);
+  assert.match(dialog[2], /إجمالي المقبوض 230/);
+  assert.match(dialog[2], /الدفعات المقدمة 30/);
+  assert.match(dialog[2], /العوائد السنوية المحصلة 200/);
+  let options = dialog[3];
+  assert.ok(options.some(option => option.args && option.args[1] === 'فيلم مستمر'));
+  assert.ok(options.some(option => option.args && option.args[1] === 'فيلم منتهي'));
+  const details = options.find(option => option.args && option.args[1] === 'فيلم منتهي');
+  details.args[3]();
+  assert.equal(c.calls.infos.at(-1)[1], 'تفاصيل عقد التوزيع');
+  assert.match(c.calls.infos.at(-1)[2], /الحالة: منتهي/);
+  assert.equal(c.calls.saved, 0);
+  assert.equal(JSON.stringify(c.state.filmStudio.distributionContracts), before);
+
+  c.api.filmDistributionHistoryMenu('active', 0);
+  options = c.calls.modal[3];
+  assert.ok(options.some(option => option.args && option.args[1] === 'فيلم مستمر'));
+  assert.ok(!options.some(option => option.args && option.args[1] === 'فيلم منتهي'));
+
+  c.api.filmDistributionHistoryMenu('expired', 0);
+  options = c.calls.modal[3];
+  assert.ok(!options.some(option => option.args && option.args[1] === 'فيلم مستمر'));
+  assert.ok(options.some(option => option.args && option.args[1] === 'فيلم منتهي'));
+  assert.equal(c.calls.saved, 0);
+  assert.match(app, /أرشيف العقود/);
+});
+
+test('أرشيف العقود يقسم السجل إلى صفحات من عشر سجلات دون إسقاط الإجماليات', () => {
+  const c = makeContext();
+  c.state.filmStudio.distributionContracts = Array.from({length:12}, (_, index) => ({
+    id:'dist-page-'+index,filmId:'film-page-'+index,filmTitle:'فيلم صفحة '+(index+1),genre:'دراما',
+    partnerId:'streaming',partnerTitle:'منصة السرد',startYear:10+index,lastPaidYear:10+index,
+    termYears:3,yearsRemaining:3,annualRoyalty:100,advancePaid:0,totalPaid:0,status:'active'
+  }));
+  c.api.filmDistributionHistoryMenu('all', 0);
+  let options = c.calls.modal[3];
+  const firstPageFilms = options.filter(option => option.args && /^فيلم صفحة /.test(option.args[1]));
+  assert.equal(firstPageFilms.length, 10);
+  assert.ok(options.some(option => option.args && option.args[1] === 'الصفحة التالية'));
+  assert.ok(!options.some(option => option.args && option.args[1] === 'الصفحة السابقة'));
+  options.find(option => option.args && option.args[1] === 'الصفحة التالية').args[3]();
+  options = c.calls.modal[3];
+  const secondPageFilms = options.filter(option => option.args && /^فيلم صفحة /.test(option.args[1]));
+  assert.equal(secondPageFilms.length, 2);
+  assert.ok(options.some(option => option.args && option.args[1] === 'الصفحة السابقة'));
+  assert.ok(!options.some(option => option.args && option.args[1] === 'الصفحة التالية'));
 });

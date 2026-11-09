@@ -9616,6 +9616,7 @@ function filmDistributionMenu(){
  const contractedIds=new Set((Array.isArray(studio.distributionContracts)?studio.distributionContracts:[]).map(item=>item&&item.filmId!==undefined?String(item.filmId):'').filter(Boolean));
  const opts=[];
  if(audit.invalidCount>0)opts.push(choice('⚠️','عقود تحتاج مراجعة','عدد السجلات غير الصالحة '+audit.invalidCount+'؛ تم إيقاف توقيع عقود جديدة.',()=>{closeModal();info('⚠️','مراجعة عقود التوزيع','لم نغير أي سجل غير صالح ولم ندفع عائدًا عنه. احتفظ بنسخة احتياطية قبل أي مراجعة يدوية.');}));
+  opts.push(choice('🗂️','أرشيف العقود','راجع العقود السارية والمنتهية، وإجمالي التحصيل، وتفاصيل كل عقد.',filmDistributionHistoryMenu));
  if(active.length){
   opts.push({section:true,title:'عقود سارية'});
   active.slice().reverse().slice(0,10).forEach(entry=>{
@@ -9630,6 +9631,70 @@ function filmDistributionMenu(){
  }else opts.push(choice('🎞️','لا توجد أفلام متاحة','أنتج فيلمًا جديدًا أو راجع العقود الحالية؛ كل فيلم يحصل على عقد توزيع واحد فقط.',closeModal));
  opts.push(choice('↩️','العودة إلى الاستوديو','',filmStudioMenu));
  modal('📺','حقوق العرض والتوزيع','عقود سارية '+active.length+' · عائد سنوي متوقع '+cash(annualIncome)+' · كل عقد يدفع دفعة مقدمة ثم عائدًا سنويًا لمدة محددة. لا توجد مشاركة تلقائية في خزينة الاستوديو.',opts);
+}
+function filmDistributionHistoryMenu(filter='all',page=0){
+ if(!validState()||!state.specialCareer||state.specialCareer.id!=='director'){
+  info('🎬','أرشيف عقود التوزيع','ابدأ مسار إخراج الأفلام من المهن الخاصة أولًا.');return;
+ }
+ const studio=ensureFilmStudio(),audit=readFilmDistributionContracts(studio);
+ const all=audit.entries.map(entry=>entry.contract);
+ const active=all.filter(contract=>contract.status==='active');
+ const expired=all.filter(contract=>contract.status==='expired');
+ const safeSum=values=>{
+  let total=0;
+  for(const value of values){
+   if(!Number.isSafeInteger(value)||!Number.isSafeInteger(total+value))return null;
+   total+=value;
+  }
+  return total;
+ };
+ const collected=safeSum(all.map(contract=>contract.totalPaid));
+ const advances=safeSum(all.map(contract=>contract.advancePaid));
+ const royalties=safeSum(all.map(contract=>contract.totalPaid-contract.advancePaid));
+ const annualIncome=safeSum(active.map(contract=>contract.annualRoyalty));
+ const moneyLabel=value=>value===null?'غير متاح لتجاوز حدود الحساب الآمن':cash(value);
+ const selectedFilter=['all','active','expired'].includes(filter)?filter:'all';
+ const pageSize=10,requestedPage=Number.isSafeInteger(page)&&page>=0?page:0;
+ const filtered=all.filter(contract=>selectedFilter==='all'||contract.status===selectedFilter)
+  .slice().sort((a,b)=>b.startYear-a.startYear||a.id.localeCompare(b.id));
+ const totalPages=Math.max(1,Math.ceil(filtered.length/pageSize));
+ const currentPage=Math.min(requestedPage,totalPages-1);
+ const visible=filtered.slice(currentPage*pageSize,(currentPage+1)*pageSize);
+ const filterOptions=[
+  ['all','كل العقود',all.length],
+  ['active','السارية',active.length],
+  ['expired','المنتهية',expired.length]
+ ];
+ const opts=filterOptions.map(([id,title,count])=>choice('📂',title,count+' عقد',()=>filmDistributionHistoryMenu(id,0)));
+ if(audit.invalidCount>0)opts.push(choice('⚠️','سجلات مستبعدة','عدد السجلات التي لم تجتز التحقق: '+audit.invalidCount+'. لم نعدلها أو نحذفها.',()=>{
+  closeModal();info('⚠️','سجلات عقود تحتاج مراجعة','تم استبعاد السجلات غير الصالحة من الإجماليات والتفاصيل، دون تعديل بيانات الحفظ.');
+ }));
+ opts.push({section:true,title:'العقود — صفحة '+(currentPage+1)+' من '+totalPages});
+ if(visible.length){
+  visible.forEach(contract=>{
+   const status=contract.status==='active'?'ساري':'منتهي';
+   const description=contract.partnerTitle+' · '+status+' · إجمالي المقبوض '+cash(contract.totalPaid);
+   opts.push(choice('📄',contract.filmTitle,description,()=>{
+    closeModal();
+    info('📄','تفاصيل عقد التوزيع',
+     'الشريك: '+contract.partnerTitle+' · الحالة: '+status+' · سنة التوقيع: '+contract.startYear+
+     ' · المدة الأصلية: '+contract.termYears+' سنوات · آخر سنة تمت تسويتها: '+contract.lastPaidYear+
+     ' · السنوات المتبقية: '+contract.yearsRemaining+' · الدفعة المقدمة: '+cash(contract.advancePaid)+
+     ' · العائد السنوي: '+cash(contract.annualRoyalty)+' · إجمالي المقبوض: '+cash(contract.totalPaid)+
+     ' · العوائد السنوية المحصلة: '+cash(contract.totalPaid-contract.advancePaid)+'.');
+   }));
+  });
+ }else{
+  opts.push(choice('📭','لا توجد عقود في هذا التصنيف','جرّب تصنيفًا آخر أو وقّع عقدًا لفيلم متاح.',closeModal));
+ }
+ if(currentPage>0)opts.push(choice('⬅️','الصفحة السابقة','العودة إلى العقود الأقدم.',()=>filmDistributionHistoryMenu(selectedFilter,currentPage-1)));
+ if(currentPage<totalPages-1)opts.push(choice('➡️','الصفحة التالية','عرض المزيد من العقود.',()=>filmDistributionHistoryMenu(selectedFilter,currentPage+1)));
+ opts.push(choice('↩️','العودة إلى حقوق العرض والتوزيع','',filmDistributionMenu));
+ const summary='كل العقود '+all.length+' · السارية '+active.length+' · المنتهية '+expired.length+
+  ' · إجمالي المقبوض '+moneyLabel(collected)+' · الدفعات المقدمة '+moneyLabel(advances)+
+  ' · العوائد السنوية المحصلة '+moneyLabel(royalties)+' · الدخل السنوي الجاري '+moneyLabel(annualIncome)+
+  (audit.invalidCount?' · سجلات مستبعدة '+audit.invalidCount:'');
+ modal('🗂️','أرشيف عقود التوزيع',summary,opts);
 }
 function filmDistributionOffersMenu(filmId){
  const studio=ensureFilmStudio(),id=String(filmId??'').trim();
