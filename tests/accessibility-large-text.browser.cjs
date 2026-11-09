@@ -9,6 +9,97 @@ const root = path.resolve(__dirname, '..');
 const style = fs.readFileSync(path.join(root, 'style.css'), 'utf8');
 const accessibility = fs.readFileSync(path.join(root, 'accessibility.css'), 'utf8');
 
+
+async function runMainScreenLargeTextCheck(browser) {
+  const page = await browser.newPage({
+    viewport: { width: 320, height: 640 },
+    isMobile: true,
+    hasTouch: true
+  });
+  try {
+    const html = [
+      '<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head><body>',
+      '<div id="app" class="app">',
+      '<header class="topbar"><button class="menu-trigger" type="button">☰</button><div class="brandlogo"><span class="brand-symbol">ح</span><strong>حياة</strong></div><div class="top-actions"><button class="header-action" type="button">⭐</button><button class="member-btn" type="button">عضوية مميزة</button></div></header>',
+      '<section class="hero"><div class="profile"><div class="avatar">👶</div><div class="identity"><div class="identity-line"><span class="identity-flag">🇪🇬</span><div class="name">مريم عبد الرحمن</div><button class="identity-info" type="button">i</button></div><div class="subline identity-role"><span class="role-tag">مديرة شركة عائلية</span></div><div class="subline identity-meta"><span>العمر ٣٨ سنة</span><span>القاهرة، مصر</span></div></div></div><div class="wealth"><div class="wealthnum">١٢٬٥٠٠٬٠٠٠ ج.م</div><div class="wealthlabel">الرصيد البنكي</div><div class="wealthsmall">بداية حكايتك</div></div></section>',
+      '<div class="story-heading"><div class="story-heading-copy"><span class="story-eyebrow">رحلة الشخصية</span><h1>حكايتك سنة ورا سنة</h1></div><div class="story-heading-actions"><span class="story-year">السنة الأربعون</span></div></div>',
+      '<main class="feed" id="lifeFeed">' + Array.from({ length: 12 }, (_, index) => '<article class="logcard"><div class="logtitle">حدث مهم رقم ' + (index + 1) + '</div><div class="logtext">تفصيل عربي طويل نسبيًا يشرح أثر الاختيار على الأسرة والعمل والمال، مع الحفاظ على التفاف النص داخل بطاقة اليوميات.</div></article>').join('') + '</main>',
+      '<div class="bottom-dock"><nav class="nav" aria-label="القائمة الرئيسية"><button class="navbtn" type="button"><span class="navico">👶</span><span>الحياة</span></button><button class="navbtn" type="button"><span class="navico">🏠</span><span>الأصول</span></button><button class="agebtn" type="button"><span>+</span><span>سنة</span></button><button class="navbtn" type="button"><span class="navico">❤️</span><span>العلاقات</span></button><button class="navbtn" type="button"><span class="navico">⋯</span><span>الأنشطة</span></button></nav><div class="stats"><div class="statrow"><div class="stathead"><span class="statlabel">السعادة</span><span class="statvalue">٨٥٪</span></div><div class="track"><div class="fill" style="width:85%"></div></div></div></div></div>',
+      '</div></body></html>'
+    ].join('');
+    await page.setContent(html);
+    await page.addStyleTag({ content: style });
+    await page.addStyleTag({ content: accessibility });
+
+    for (const width of [320, 375]) {
+      await page.setViewportSize({ width, height: 640 });
+      const result = await page.evaluate(() => {
+        const selectors = {
+          name: '#app .name',
+          role: '#app .role-tag',
+          identityMeta: '#app .identity-meta',
+          wealthValue: '#app .wealthnum',
+          wealthLabel: '#app .wealthlabel',
+          wealthNote: '#app .wealthsmall',
+          storyEyebrow: '#app .story-eyebrow',
+          storyTitle: '#app .story-heading h1',
+          storyYear: '#app .story-year',
+          logTitle: '#app .logtitle',
+          logText: '#app .logtext',
+          navLabel: '#app .navbtn',
+          statLabel: '#app .statlabel',
+          statValue: '#app .statvalue'
+        };
+        const measure = () => Object.fromEntries(Object.entries(selectors).map(([key, selector]) => {
+          const element = document.querySelector(selector);
+          return [key, parseFloat(getComputedStyle(element).fontSize)];
+        }));
+        const normal = measure();
+        document.body.classList.add('text-large');
+        const large = measure();
+        const widthOf = selector => {
+          const element = document.querySelector(selector);
+          return { client: element.clientWidth, scroll: element.scrollWidth };
+        };
+        const touch = selector => document.querySelector(selector).getBoundingClientRect().height;
+        return {
+          normal,
+          large,
+          viewport: window.innerWidth,
+          documentWidth: document.documentElement.scrollWidth,
+          hero: widthOf('#app .hero'),
+          story: widthOf('#app .story-heading'),
+          nav: widthOf('#app .nav'),
+          metaWrap: getComputedStyle(document.querySelector('#app .identity-meta')).flexWrap,
+          storyWrap: getComputedStyle(document.querySelector('#app .story-heading')).flexWrap,
+          feedOverflow: getComputedStyle(document.querySelector('#app .feed')).overflowY,
+          navButtonHeight: touch('#app .navbtn'),
+          ageButtonHeight: touch('#app .agebtn')
+        };
+      });
+
+      for (const key of Object.keys(result.normal)) {
+        assert.ok(result.large[key] > result.normal[key],
+          'main-screen large-text mode should increase ' + key + ' at ' + width + 'px');
+      }
+      assert.ok(result.documentWidth <= result.viewport,
+        'main-screen large text must not create document-level horizontal overflow at ' + width + 'px');
+      for (const key of ['hero', 'story', 'nav']) {
+        assert.ok(result[key].scroll <= result[key].client + 1,
+          key + ' must wrap or fit without horizontal overflow at ' + width + 'px');
+      }
+      assert.equal(result.metaWrap, 'wrap', 'identity metadata should wrap in large-text mode');
+      assert.equal(result.storyWrap, 'wrap', 'the story heading should wrap in large-text mode');
+      assert.equal(result.feedOverflow, 'auto', 'the life feed should remain vertically scrollable');
+      assert.ok(result.navButtonHeight >= 44, 'navigation buttons should remain touch-friendly');
+      assert.ok(result.ageButtonHeight >= 44, 'the age-up action should remain touch-friendly');
+    }
+    process.stdout.write('Main-screen large-text checks passed at 320px and 375px.\\n');
+  } finally {
+    await page.close();
+  }
+}
+
 async function run() {
   const browser = await chromium.launch({ headless: true });
   try {
@@ -104,7 +195,7 @@ async function run() {
       'long settings and detail content should remain scrollable');
     assert.equal(measurements.modalCanScroll, true,
       'the modal should scroll instead of clipping enlarged content');
-    process.stdout.write('Large-text browser checks passed at 320px.\n');
+    await runMainScreenLargeTextCheck(browser);\n    process.stdout.write('Large-text browser checks passed at 320px.\n');
   } finally {
     await browser.close();
   }
