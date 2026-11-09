@@ -35,10 +35,10 @@ function makeSave(contracts, yearCount = 10) {
 
 test('يتوقع العوائد السنوية للعقود السارية فقط خلال السنوات الخمس المقبلة', () => {
   const state = makeSave([
-    makeContract({ id: 'dist-a', filmId: 'film-a', annualRoyalty: 1000, yearsRemaining: 3 }),
-    makeContract({ id: 'dist-b', filmId: 'film-b', annualRoyalty: 500, yearsRemaining: 1 }),
+    makeContract({ id: 'dist-a', filmId: 'film-a', annualRoyalty: 1000, yearsRemaining: 3, startYear: 12, lastPaidYear: 12 }),
+    makeContract({ id: 'dist-b', filmId: 'film-b', annualRoyalty: 500, yearsRemaining: 1, startYear: 10, lastPaidYear: 12, totalPaid: 4000 }),
     makeContract({ id: 'dist-c', filmId: 'film-c', status: 'expired', annualRoyalty: 9000 })
-  ]);
+  ], 12);
   const result = forecast.buildForecast(state);
   assert.equal(result.available, true);
   assert.equal(result.activeContracts, 2);
@@ -48,19 +48,34 @@ test('يتوقع العوائد السنوية للعقود السارية فق�
   assert.equal(result.totalForecast, 3500n);
 });
 
-test('العقود التالفة أو المؤرخة في المستقبل لا تدخل في التوقع', () => {
+test('تنبيهات انتهاء الحقوق ترتب العقود وتلتزم بأفق التوقع المختار', () => {
+  const state = makeSave([
+    makeContract({ id: 'expires-later', filmId: 'film-later', yearsRemaining: 3, termYears: 3, startYear: 12, lastPaidYear: 12 }),
+    makeContract({ id: 'expires-first', filmId: 'film-first', yearsRemaining: 1, termYears: 3, startYear: 10, lastPaidYear: 12, totalPaid: 5000 }),
+    makeContract({ id: 'outside-horizon', filmId: 'film-outside', yearsRemaining: 4, termYears: 4, startYear: 12, lastPaidYear: 12 })
+  ], 12);
+  const result = forecast.buildForecast(state, 3);
+  assert.deepEqual(result.expiringContracts.map(contract => contract.id), ['expires-first', 'expires-later']);
+  assert.deepEqual(result.expiringContracts.map(contract => contract.yearsRemaining), [1, 3]);
+  assert.equal(result.expiringContracts.some(contract => contract.id === 'outside-horizon'), false);
+});
+
+test('العقود التالفة أو غير المتسقة محاسبيًا أو المؤرخة في المستقبل لا تدخل في التوقع', () => {
   const state = makeSave([
     makeContract({ id: 'bad-negative', filmId: 'film-negative', annualRoyalty: -1 }),
-    makeContract({ id: 'bad-future', filmId: 'film-future', lastPaidYear: 11 }),
+    makeContract({ id: 'bad-future', filmId: 'film-future', lastPaidYear: 12 }),
     makeContract({ id: 'bad-term', filmId: 'film-term', yearsRemaining: 4, termYears: 3 }),
-    makeContract({ id: 'bad-name', filmId: 'film-name', partnerTitle: '' })
-  ]);
+    makeContract({ id: 'bad-name', filmId: 'film-name', partnerTitle: '' }),
+    makeContract({ id: 'bad-remaining', filmId: 'film-remaining', lastPaidYear: 11, yearsRemaining: 3 }),
+    makeContract({ id: 'bad-total', filmId: 'film-total', lastPaidYear: 11, yearsRemaining: 2, totalPaid: 3000 })
+  ], 11);
   const result = forecast.buildForecast(state);
   assert.equal(result.available, true);
   assert.equal(result.activeContracts, 0);
-  assert.equal(result.excludedContracts, 4);
+  assert.equal(result.excludedContracts, 6);
   assert.equal(result.complete, false);
   assert.equal(result.totalForecast, 0n);
+  assert.deepEqual(result.expiringContracts, []);
 });
 
 test('التوقع يمنع تكرار العقد أو الفيلم حتى لا يضاعف الإيراد', () => {
@@ -90,6 +105,7 @@ test('الحفظ القديم بلا استوديو أفلام يعرض توقع
   assert.equal(result.available, true);
   assert.equal(result.activeContracts, 0);
   assert.equal(result.totalForecast, 0n);
+  assert.deepEqual(result.expiringContracts, []);
   assert.equal(JSON.stringify(legacy), before);
 });
 
@@ -175,7 +191,7 @@ function flattenText(node) {
 }
 
 test('واجهة التوقعات تعرض السنوات والعقود داخل نافذة عربية قابلة للوصول دون تعديل الحفظ', () => {
-  const state = makeSave([makeContract({ annualRoyalty: 1250, yearsRemaining: 2 })]);
+  const state = makeSave([makeContract({ annualRoyalty: 1250, yearsRemaining: 2, lastPaidYear: 11, totalPaid: 4250 })], 11);
   const before = JSON.stringify(state);
   const doc = makeDocument();
   const button = new FakeElement('button');
@@ -195,7 +211,7 @@ test('واجهة التوقعات تعرض السنوات والعقود داخ�
   assert.match(text, /توقعات دخل حقوق الأفلام/);
   assert.match(text, /التدفقات السنوية المتوقعة/);
   assert.match(text, /حكاية على ضفاف النيل/);
-  assert.match(text, /السنة ١١|السنة 11/);
+  assert.match(text, /السنة ١٢|السنة 12/);
   assert.equal(JSON.stringify(state), before);
 });
 

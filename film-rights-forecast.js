@@ -35,7 +35,8 @@
       complete: false,
       totalForecast: 0n,
       years: [],
-      contracts: []
+      contracts: [],
+      expiringContracts: []
     };
   }
 
@@ -61,6 +62,11 @@
     if (!Number.isSafeInteger(yearsRemaining) || yearsRemaining < 1 || yearsRemaining > termYears) return null;
     if (!isSafeNonNegativeInteger(annualRoyalty)) return null;
     if (!isSafeNonNegativeInteger(advancePaid) || !isSafeNonNegativeInteger(totalPaid)) return null;
+    const paidInstallments = lastPaidYear - startYear;
+    if (paidInstallments < 0 || paidInstallments > termYears) return null;
+    const expectedRemaining = termYears - paidInstallments;
+    const expectedTotal = advancePaid + annualRoyalty * paidInstallments;
+    if (yearsRemaining !== expectedRemaining || !Number.isSafeInteger(expectedTotal) || totalPaid !== expectedTotal) return null;
 
     return {
       id,
@@ -127,6 +133,10 @@
       if (first.annualRoyalty < second.annualRoyalty) return 1;
       return first.filmTitle.localeCompare(second.filmTitle, 'ar');
     });
+    const expiringContracts = contracts.filter(contract => contract.yearsRemaining <= horizon)
+      .slice()
+      .sort((first, second) => first.yearsRemaining - second.yearsRemaining ||
+        (first.annualRoyalty > second.annualRoyalty ? -1 : first.annualRoyalty < second.annualRoyalty ? 1 : 0));
 
     return {
       available: true,
@@ -138,7 +148,8 @@
       complete: excludedContracts === 0,
       totalForecast,
       years,
-      contracts
+      contracts,
+      expiringContracts
     };
   }
 
@@ -264,6 +275,35 @@
         });
         section.appendChild(grid);
         body.appendChild(section);
+
+        const renewalSection = doc.createElement('section');
+        renewalSection.className = 'film-rights-forecast-section';
+        appendText(doc, renewalSection, 'h3', 'film-rights-forecast-section-title', 'حقوق تقترب من الانتهاء');
+        if (forecast.expiringContracts.length) {
+          const renewalList = doc.createElement('ul');
+          renewalList.className = 'film-rights-forecast-contracts';
+          forecast.expiringContracts.slice(0, 12).forEach(contract => {
+            const item = doc.createElement('li');
+            item.className = 'film-rights-forecast-contract';
+            appendText(doc, item, 'strong', 'film-rights-forecast-contract-title', contract.filmTitle);
+            appendText(doc, item, 'span', 'film-rights-forecast-contract-partner', contract.partnerTitle);
+            appendText(doc, item, 'span', 'film-rights-forecast-contract-value',
+              'ينتهي بعد ' + formatNumber(contract.yearsRemaining) + ' سنة · العائد السنوي الحالي ' +
+              formatMoney(contract.annualRoyalty, unit));
+            renewalList.appendChild(item);
+          });
+          renewalSection.appendChild(renewalList);
+          if (forecast.expiringContracts.length > 12) {
+            appendText(doc, renewalSection, 'p', 'film-rights-forecast-note',
+              'يعرض التنبيه أقرب 12 عقدًا إلى الانتهاء.');
+          }
+        } else {
+          appendText(doc, renewalSection, 'p', 'film-rights-forecast-empty',
+            'لا توجد عقود تنتهي ضمن فترة التوقع الحالية.');
+        }
+        appendText(doc, renewalSection, 'p', 'film-rights-forecast-note',
+          'تنبيه تخطيطي فقط؛ تجديد العقد والتفاوض على شروط جديدة غير متاحين في هذا الإصدار.');
+        body.appendChild(renewalSection);
 
         const contractsSection = doc.createElement('section');
         contractsSection.className = 'film-rights-forecast-section';
