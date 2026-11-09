@@ -10663,7 +10663,31 @@ function calculateEstateSnapshot(previous){
 function createBusinessOwnershipLedger(activeBeneficiaryId,activeName,age){
  const id=String(activeBeneficiaryId||'current-owner').trim().slice(0,120)||'current-owner';
  const name=String(activeName||'المالك الحالي').trim().slice(0,80)||'المالك الحالي';
- return {version:1,activeBeneficiaryId:id,shareholders:[{beneficiaryId:id,name,kind:'owner',shareBps:10000}],updatedAtAge:Math.max(0,Math.min(120,Math.floor(Number(age)||0)))};
+ return {version:1,activeBeneficiaryId:id,shareholders:[{beneficiaryId:id,name,kind:'owner',shareBps:10000}],transactions:[],updatedAtAge:Math.max(0,Math.min(120,Math.floor(Number(age)||0)))};
+}
+function normalizeBusinessOwnershipTransactions(raw){
+ if(raw===undefined||raw===null)return {valid:true,transactions:[]};
+ if(!Array.isArray(raw)||raw.length>200)return {valid:false,transactions:[]};
+ const ids=new Set(),transactions=[];
+ let invalid=false;
+ raw.forEach(item=>{
+  if(!item||typeof item!=='object'||Array.isArray(item)){invalid=true;return;}
+  const id=String(item.id||'').trim().slice(0,160);
+  const type=item.type==='gift'||item.type==='inheritance'?item.type:'';
+  const age=Number(item.age),shareBps=Number(item.shareBps);
+  const fromBeneficiaryId=String(item.fromBeneficiaryId||'').trim().slice(0,120);
+  const toBeneficiaryId=String(item.toBeneficiaryId||'').trim().slice(0,120);
+  const fromName=String(item.fromName||'').trim().slice(0,80);
+  const toName=String(item.toName||'').trim().slice(0,80);
+  if(!id||ids.has(id)||!type||!Number.isSafeInteger(age)||age<0||age>150||
+   !fromBeneficiaryId||!toBeneficiaryId||fromBeneficiaryId===toBeneficiaryId||
+   !fromName||!toName||!Number.isSafeInteger(shareBps)||shareBps<=0||shareBps>10000){
+   invalid=true;return;
+  }
+  ids.add(id);
+  transactions.push({id,type,age,fromBeneficiaryId,fromName,toBeneficiaryId,toName,shareBps});
+ });
+ return {valid:!invalid&&transactions.length===raw.length,transactions};
 }
 function normalizeBusinessOwnershipLedger(raw,fallbackBeneficiaryId,fallbackName){
  const fallbackId=String(fallbackBeneficiaryId||'current-owner').trim().slice(0,120)||'current-owner';
@@ -10691,8 +10715,13 @@ function normalizeBusinessOwnershipLedger(raw,fallbackBeneficiaryId,fallbackName
   issues.push(invalid?'shareholder_entry_invalid':'ownership_total_or_active_owner_invalid');
   return {valid:false,legacyFallback:false,issues,ledger:{version:1,activeBeneficiaryId:activeId,shareholders,auditStatus:'needs_review',auditIssues:issues}};
  }
+ const transactionHistory=normalizeBusinessOwnershipTransactions(raw.transactions);
+ if(!transactionHistory.valid){
+  issues.push('ownership_transaction_history_invalid');
+  return {valid:false,legacyFallback:false,issues,ledger:{version:1,activeBeneficiaryId:activeId,shareholders,transactions:[],auditStatus:'needs_review',auditIssues:issues}};
+ }
  const updatedAtAge=Number(raw.updatedAtAge);
- return {valid:true,legacyFallback:false,issues:[],ledger:{version:1,activeBeneficiaryId:activeId,shareholders,updatedAtAge:Number.isFinite(updatedAtAge)?Math.max(0,Math.min(120,Math.floor(updatedAtAge))):0}};
+ return {valid:true,legacyFallback:false,issues:[],ledger:{version:1,activeBeneficiaryId:activeId,shareholders,transactions:transactionHistory.transactions,updatedAtAge:Number.isFinite(updatedAtAge)?Math.max(0,Math.min(120,Math.floor(updatedAtAge))):0}};
 }
 function formatBusinessOwnershipPercent(shareBps){
  const percent=Math.max(0,Math.min(10000,Math.round(Number(shareBps)||0)))/100;
@@ -10700,10 +10729,10 @@ function formatBusinessOwnershipPercent(shareBps){
 }
 function businessOwnershipSnapshot(entity,fallbackBeneficiaryId,fallbackName){
  const normalized=normalizeBusinessOwnershipLedger(entity&&entity.ownershipLedger,fallbackBeneficiaryId,fallbackName);
- if(!normalized.valid)return {valid:false,legacyFallback:false,issues:normalized.issues,shareholders:[],activeShareBps:0,stakeValue:Math.max(0,Math.round(Number(entity&&entity.value)||0)),wholeValueEstimate:0};
+ if(!normalized.valid)return {valid:false,legacyFallback:false,issues:normalized.issues,shareholders:[],transactions:[],activeShareBps:0,stakeValue:Math.max(0,Math.round(Number(entity&&entity.value)||0)),wholeValueEstimate:0};
  const active=normalized.ledger.shareholders.find(item=>item.beneficiaryId===normalized.ledger.activeBeneficiaryId);
  const stakeValue=Math.max(0,Math.round(Number(entity&&entity.value)||0)),activeShareBps=active?active.shareBps:0;
- return {valid:!!active,legacyFallback:normalized.legacyFallback,issues:normalized.issues,activeBeneficiaryId:normalized.ledger.activeBeneficiaryId,activeShareBps,stakeValue,wholeValueEstimate:activeShareBps>0?Math.round(stakeValue*10000/activeShareBps):0,shareholders:normalized.ledger.shareholders.map(item=>({...item}))};
+ return {valid:!!active,legacyFallback:normalized.legacyFallback,issues:normalized.issues,activeBeneficiaryId:normalized.ledger.activeBeneficiaryId,activeShareBps,stakeValue,wholeValueEstimate:activeShareBps>0?Math.round(stakeValue*10000/activeShareBps):0,shareholders:normalized.ledger.shareholders.map(item=>({...item})),transactions:(normalized.ledger.transactions||[]).map(item=>({...item}))};
 }
 
 function businessOwnershipEarningsSnapshot(entity,fallbackBeneficiaryId,fallbackName){
@@ -11034,7 +11063,8 @@ function businessDividendReadinessSnapshot(entity,fallbackBeneficiaryId,fallback
 function buildInheritedBusinessOwnershipLedger(entity,beneficiaryAccounts,nextActiveBeneficiaryId,fallbackActiveBeneficiaryId,fallbackName,age){
  const normalized=normalizeBusinessOwnershipLedger(entity&&entity.ownershipLedger,fallbackActiveBeneficiaryId,fallbackName);
  const nextId=String(nextActiveBeneficiaryId||'').trim().slice(0,120);
- const invalidLedger=issues=>({version:1,activeBeneficiaryId:nextId||normalized.ledger.activeBeneficiaryId,shareholders:normalized.ledger.shareholders.map(item=>({...item})),auditStatus:'needs_review',auditIssues:Array.isArray(issues)?issues:['ownership_transfer_invalid']});
+ const rawHistory=entity&&entity.ownershipLedger&&entity.ownershipLedger.transactions;
+ const invalidLedger=issues=>({version:1,activeBeneficiaryId:nextId||normalized.ledger.activeBeneficiaryId,shareholders:normalized.ledger.shareholders.map(item=>({...item})),transactions:Array.isArray(rawHistory)?rawHistory:[],auditStatus:'needs_review',auditIssues:Array.isArray(issues)?issues:['ownership_transfer_invalid']});
  if(!normalized.valid)return invalidLedger(normalized.issues);
  const currentOwner=normalized.ledger.shareholders.find(item=>item.beneficiaryId===normalized.ledger.activeBeneficiaryId);
  const rawAccounts=Array.isArray(beneficiaryAccounts)?beneficiaryAccounts:(beneficiaryAccounts&&Array.isArray(beneficiaryAccounts.accounts)?beneficiaryAccounts.accounts:[]);
@@ -11061,7 +11091,19 @@ function buildInheritedBusinessOwnershipLedger(entity,beneficiaryAccounts,nextAc
  });
  const shareholders=Array.from(merged.values()).filter(item=>item.shareBps>0),total=shareholders.reduce((sum,item)=>sum+item.shareBps,0);
  if(shareholders.length>100||total!==10000||!shareholders.some(item=>item.beneficiaryId===nextId&&item.shareBps>0))return invalidLedger(['ownership_transfer_total_or_active_heir_invalid']);
- return {version:1,activeBeneficiaryId:nextId,shareholders,updatedAtAge:Math.max(0,Math.min(120,Math.floor(Number(age)||0))),auditStatus:'balanced'};
+ const transactions=(normalized.ledger.transactions||[]).map(item=>({...item}));
+ const inheritedParts=parts.filter(part=>part.shareBps>0);
+ if(transactions.length+inheritedParts.length>200)return invalidLedger(['ownership_transaction_history_limit']);
+ const transferAge=Math.max(0,Math.min(150,Math.floor(Number(age)||0)));
+ inheritedParts.forEach(part=>{
+  transactions.push({
+   id:'tx-inheritance-'+transferAge+'-'+(transactions.length+1),
+   type:'inheritance',age:transferAge,
+   fromBeneficiaryId:currentOwner.beneficiaryId,fromName:currentOwner.name,
+   toBeneficiaryId:part.beneficiaryId,toName:part.name,shareBps:part.shareBps
+  });
+ });
+ return {version:1,activeBeneficiaryId:nextId,shareholders,transactions,updatedAtAge:Math.max(0,Math.min(120,Math.floor(Number(age)||0))),auditStatus:'balanced'};
 }
 function applyInheritedBusinessOwnership(previous,inheritance,beneficiaryAccounts,nextActiveBeneficiaryId){
  if(!previous||!inheritance)return false;
@@ -11282,8 +11324,16 @@ function buildBusinessShareGiftLedger(entity,fromBeneficiaryId,child,shareBps,ag
  owner.shareBps-=amount;
  const total=shareholders.reduce((sum,item)=>sum+item.shareBps,0),recipientAfter=shareholders.find(item=>item.beneficiaryId===childId);
  if(total!==10000||!recipientAfter||!shareholders.some(item=>item.beneficiaryId===fromId&&item.shareBps>0))return {ok:false,reason:'ownership-total-invalid'};
- const numericAge=Number(age);
- return {ok:true,amountBps:amount,fromShareBpsBefore:owner.shareBps+amount,fromShareBpsAfter:owner.shareBps,recipientShareBpsAfter:recipientAfter.shareBps,ledger:{version:1,activeBeneficiaryId:fromId,shareholders,updatedAtAge:Number.isFinite(numericAge)?Math.max(0,Math.min(120,Math.floor(numericAge))):0}};
+ const transactions=(ownership.transactions||[]).map(item=>({...item}));
+ if(transactions.length>=200)return {ok:false,reason:'transaction-history-limit'};
+ const numericAge=Number(age),transferAge=Number.isFinite(numericAge)?Math.max(0,Math.min(150,Math.floor(numericAge))):0;
+ transactions.push({
+  id:'tx-gift-'+transferAge+'-'+(transactions.length+1),
+  type:'gift',age:transferAge,
+  fromBeneficiaryId:fromId,fromName:owner.name,
+  toBeneficiaryId:childId,toName:childName,shareBps:amount
+ });
+ return {ok:true,amountBps:amount,fromShareBpsBefore:owner.shareBps+amount,fromShareBpsAfter:owner.shareBps,recipientShareBpsAfter:recipientAfter.shareBps,ledger:{version:1,activeBeneficiaryId:fromId,shareholders,transactions,updatedAtAge:Number.isFinite(numericAge)?Math.max(0,Math.min(120,Math.floor(numericAge))):0}};
 }
 function businessShareGiftMenu(entity,back){
  if(!isCurrentBusinessEntity(entity)){info('⚠️','لا يمكن تعديل سجل قديم','إهداء الحصص متاح من سجل الشركة داخل الحياة الحالية فقط.');return;}
@@ -11357,6 +11407,21 @@ function commitBusinessShareGift(entity,childId,shareBps,back){
  businessOwnershipMenu(entity,back);
  return true;
 }
+function businessOwnershipHistoryMenu(entity,back){
+ if(!isCurrentBusinessEntity(entity)){info('⚠️','السجل غير متاح','افتح تاريخ الحصص من الشركة داخل الحياة الحالية.');return;}
+ const fallbackId=state&&state.lifeId||state&&state.name||state&&state.legacy&&state.legacy.activeBeneficiaryId;
+ const snapshot=businessOwnershipSnapshot(entity,fallbackId,state&&state.name);
+ if(!snapshot.valid){info('⚠️','سجل الملكية يحتاج مراجعة','لا يمكن عرض تاريخ موثوق قبل مراجعة دفتر الحصص.');return;}
+ const records=snapshot.transactions.slice(-20).reverse();
+ const options=records.map(item=>{
+  const title=(item.type==='gift'?'إهداء حصة':'انتقال حصة بالميراث')+' · '+formatBusinessOwnershipPercent(item.shareBps)+'%';
+  const detail='من '+item.fromName+' إلى '+item.toName+' · عند عمر '+item.age+' سنة.';
+  return choice(item.type==='gift'?'🎁':'📜',title,detail,()=>info('📚',title,detail));
+ });
+ if(!records.length)options.push(choice('📚','لا توجد تحركات مسجلة','ستظهر هنا عمليات الإهداء وانتقال الحصص بالميراث التي تحدث بعد هذا التحديث.',()=>info('📚','سجل جديد','لا توجد تحركات ملكية مسجلة حتى الآن.')));
+ options.push(choice('↩️','رجوع لسجل الملكية','',()=>businessOwnershipMenu(entity,back)));
+ modal('📚','تاريخ تحركات الحصص','آخر '+records.length+' حركة محفوظة في ملف الحياة الحالي. السجل محلي ولا يزامن ملفات الورثة المستقلة.',options);
+}
 function businessOwnershipMenu(entity,back){
  const fallbackId=state&&state.lifeId||state&&state.name||state&&state.legacy&&state.legacy.activeBeneficiaryId;
  const snapshot=businessOwnershipSnapshot(entity,fallbackId,state&&state.name);
@@ -11369,6 +11434,7 @@ function businessOwnershipMenu(entity,back){
  if(hiddenShareholderCount>0)opts.push(choice('👥','ملاك إضافيون ('+hiddenShareholderCount+')','يوجد ملاك آخرون محفوظون في الدفتر. افتح السجل الكامل من ملف الحفظ عند الحاجة.',()=>info('👥','بقية الملاك','يوجد '+hiddenShareholderCount+' مستفيدًا إضافيًا محفوظًا ضمن سجل الملكية.')));
  const hasGiftRecipient=isCurrentBusinessEntity(entity)&&snapshot.activeShareBps>1&&Array.isArray(state.children)&&state.children.some(child=>child&&typeof child==='object'&&String(child.id||child.name||'').trim()&&String(child.name||'').trim()&&String(child.id||child.name)!==String(activeId));
  if(hasGiftRecipient)opts.push(choice('🎁','إهداء حصة لأحد الأبناء','انقل جزءًا من حصتك إلى ابن أو ابنة دون مقابل؛ لا تتغير خزينة الشركة، ولا تتم مزامنة ملفات الورثة المستقلة تلقائيًا.',()=>businessShareGiftMenu(entity,back)));
+ opts.push(choice('📚','تاريخ تحركات الحصص','راجع عمليات الإهداء وانتقال الحصص بالميراث المسجلة في هذا الملف.',()=>businessOwnershipHistoryMenu(entity,back)));
  opts.push(choice('📊','كشف نتيجة السنة حسب الملكية','اعرض نصيب كل مالك حسابيًا من أحدث نتيجة مالية دون تحويل أموال.',()=>businessOwnershipEarningsMenu(entity,back)));
  opts.push(choice('💸','تقدير السيولة القابلة للتوزيع','اعرض الخزينة التشغيلية والمبالغ المحجوزة قبل اعتماد أي حركة.',()=>businessDividendReadinessMenu(entity,back)));
  const dividendLedgerState=normalizeBusinessDividendLedger(entity&&entity.dividendLedger);
