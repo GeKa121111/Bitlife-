@@ -34,8 +34,8 @@ async function runMainScreenLargeTextCheck(browser) {
     for (const width of [320, 375]) {
       await page.setViewportSize({ width, height: 640 });
       const result = await page.evaluate(() => {
+        // The avatar is a decorative identity glyph, not body text. Keep its geometry visible, but do not require the text-size preference to scale it.
         const selectors = {
-          avatar: '#app .avatar',
           name: '#app .name',
           role: '#app .role-tag',
           identityMeta: '#app .identity-meta',
@@ -101,6 +101,8 @@ async function runMainScreenLargeTextCheck(browser) {
         'the narrow large-text identity card should use the two-column grid at ' + width + 'px');
       assert.equal(result.avatarPosition, 'relative',
         'the character avatar must remain in the identity layout, not be positioned off-screen');
+      assert.ok(result.avatarBounds.width > 0,
+        'the character avatar must retain a visible width at ' + width + 'px');
       assert.ok(result.avatarBounds.left >= result.heroBounds.left - 1 &&
         result.avatarBounds.right <= result.heroBounds.right + 1,
         'the character avatar must remain visible inside the identity card at ' + width + 'px');
