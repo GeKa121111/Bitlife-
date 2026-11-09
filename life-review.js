@@ -453,13 +453,9 @@
       dialog.setAttribute('aria-labelledby', 'lifeReviewTitle');
       const title = dialog.querySelector('.life-review-heading h2');
       if (title) title.id = 'lifeReviewTitle';
-      const description = dialog.querySelector('.life-review-heading p');
-      if (description) {
-        description.id = 'lifeReviewDescription';
-        dialog.setAttribute('aria-describedby', 'lifeReviewDescription');
-      } else {
-        dialog.removeAttribute('aria-describedby');
-      }
+      // The report contains structured sections and lists; keep its short intro visible
+      // without flattening the full report into one aria-describedby announcement.
+      dialog.removeAttribute('aria-describedby');
     } else {
       const panel = createElement(doc, 'div', 'life-review-panel');
       panel.setAttribute('data-life-review-panel', 'true');
@@ -478,6 +474,9 @@
       if (title) title.id = 'lifeReviewTitle';
       dialog.removeAttribute('aria-describedby');
     }
+
+    const initialFocusTarget = dialog.querySelector('[data-life-review-panel] h2');
+    if (initialFocusTarget) initialFocusTarget.setAttribute('tabindex', '-1');
 
     if (!hadRole) dialog.setAttribute('role', 'dialog');
     dialog.setAttribute('aria-modal', 'true');
@@ -498,10 +497,16 @@
           return;
         }
         const active = doc.activeElement;
-        if (event.shiftKey && (active === first || !dialog.contains(active))) {
+        if (event.shiftKey && (active === first || active === initialFocusTarget || !dialog.contains(active))) {
           event.preventDefault();
           event.stopPropagation();
           last.focus();
+        } else if (!event.shiftKey && active === initialFocusTarget) {
+          // A programmatically focused heading is outside the normal Tab order;
+          // move explicitly to the first control instead of relying on browser defaults.
+          event.preventDefault();
+          event.stopPropagation();
+          first.focus();
         } else if (!event.shiftKey && (active === last || !dialog.contains(active))) {
           event.preventDefault();
           event.stopPropagation();
@@ -516,7 +521,8 @@
     };
     doc.addEventListener('keydown', escapeHandler, true);
     const firstControl = dialog.querySelector('[data-life-review-close], .life-review-done');
-    if (firstControl && typeof firstControl.focus === 'function') firstControl.focus();
+    if (initialFocusTarget && typeof initialFocusTarget.focus === 'function') initialFocusTarget.focus();
+    else if (firstControl && typeof firstControl.focus === 'function') firstControl.focus();
 
     // A custom modal must make every background branch inert, not merely announce aria-modal.
     let branch = dialog;
