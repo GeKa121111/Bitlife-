@@ -84,7 +84,11 @@
     .file-input:focus-visible + .button { outline: 3px solid var(--brand); outline-offset: 3px; }
     .visually-hidden { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
     .privacy-note { margin: 16px 0 0; color: var(--muted); font-size: 13px; text-align: center; }
-    #backupResult { margin-top: 18px; }
+    #backupResult, #backupComparisonResult { margin-top: 18px; }
+    .comparison-picker { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; margin-top: 16px; }
+    .comparison-picker p { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.7; }
+    .comparison-picker .button { min-height: 44px; }
+    .comparison-picker .is-disabled { opacity: .55; cursor: not-allowed; }
     .report-card { padding: 18px; }
     .report-valid { border-color: #8fc5a3; }
     .report-invalid { border-color: #e0a09b; }
@@ -154,7 +158,7 @@
       <a class="back-link" href="./index.html">العودة إلى اللعبة</a>
     </div>
     <h1>فحص ملف الحفظ</h1>
-    <p class="intro">افحص بنية نسخة الحفظ قبل نقلها أو استيرادها. الأداة تقرأ الملف محليًا ولا ترفع محتواه إلى أي خادم، وتعرض النقاط القابلة للاستعادة بنيويًا، وتقدير ما سيبقى بعد حد 8 نقاط الأساسي أو 60 نقطة الموسع وميزانية التخزين، إلى جانب النقاط التالفة أو غير المتوافقة، والتحقق من بصمة داخلية في الحزم الحديثة لاكتشاف التلف العرضي.</p>
+    <p class="intro">افحص بنية نسخة الحفظ قبل نقلها أو استيرادها. الأداة تقرأ الملف محليًا ولا ترفع محتواه إلى أي خادم، وتعرض النقاط القابلة للاستعادة بنيويًا وتقدير حدود التخزين والبصمة الداخلية. بعد فحص نسخة صالحة، يمكنك مقارنة نسخة ثانية من معرّف الحياة نفسه لمعرفة الفروق دون تعديل أي ملف.</p>
 
     <section class="panel" aria-labelledby="dropTitle">
       <div class="drop-zone" id="backupDropZone" role="group" aria-label="منطقة اختيار ملف الحفظ">
@@ -166,9 +170,17 @@
           <button class="button secondary" id="clearBackupCheck" type="button" disabled>مسح الفحص</button>
         </div>
       </div>
-      <p class="privacy-note" id="privacyNote">لا يتم تعديل الملف أو حفظه في اللعبة. الحد الأقصى لحجم الملف 15 ميجابايت.</p>
+      <div class="comparison-picker">
+        <p id="comparisonNote">بعد فحص نسخة صالحة، يمكنك اختيار نسخة ثانية من الحياة نفسها لمقارنة العمر والأرصدة والإحصائيات وسجل الأحداث.</p>
+        <input class="file-input" id="compareBackupFile" type="file" accept=".json,application/json" aria-describedby="comparisonNote" disabled>
+        <label class="button secondary is-disabled" id="compareBackupLabel" for="compareBackupFile" aria-disabled="true">اختيار نسخة ثانية للمقارنة</label>
+      </div>
+      <p class="privacy-note" id="privacyNote">تُقرأ النسختان محليًا داخل المتصفح فقط؛ لا يتم تعديلهما أو حفظهما في اللعبة. الحد الأقصى لكل ملف 15 ميجابايت.</p>
       <div id="backupResult" role="region" aria-label="نتيجة فحص ملف الحفظ" aria-live="off">
         <p class="muted">لم يتم اختيار ملف بعد.</p>
+      </div>
+      <div id="backupComparisonResult" role="region" aria-label="مقارنة نسختين من الحياة" aria-live="off">
+        <p class="muted">لم يتم اختيار نسخة ثانية للمقارنة.</p>
       </div>
       <p id="backupAnnouncement" class="visually-hidden" role="status" aria-live="polite" aria-atomic="true"></p>
     </section>
