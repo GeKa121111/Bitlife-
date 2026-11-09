@@ -79,6 +79,7 @@ const runtime = [
   'normalizeBusinessOwnershipTransactions',
   'normalizeBusinessOwnershipLedger',
   'formatBusinessOwnershipPercent',
+  'estimateBusinessWholeValue',
   'businessOwnershipSnapshot',
   'buildInheritedBusinessOwnershipLedger',
   'applyInheritedBusinessOwnership',
