@@ -35,6 +35,7 @@ async function runMainScreenLargeTextCheck(browser) {
       await page.setViewportSize({ width, height: 640 });
       const result = await page.evaluate(() => {
         const selectors = {
+          avatar: '#app .avatar',
           name: '#app .name',
           role: '#app .role-tag',
           identityMeta: '#app .identity-meta',
@@ -72,6 +73,10 @@ async function runMainScreenLargeTextCheck(browser) {
           hero: widthOf('#app .hero'),
           profile: widthOf('#app .profile'),
           wealth: widthOf('#app .wealth'),
+          avatar: widthOf('#app .avatar'),
+          avatarPosition: getComputedStyle(document.querySelector('#app .avatar')).position,
+          avatarBounds: (() => { const r=document.querySelector('#app .avatar').getBoundingClientRect(); return {left:r.left,right:r.right,width:r.width}; })(),
+          heroBounds: (() => { const r=document.querySelector('#app .hero').getBoundingClientRect(); return {left:r.left,right:r.right}; })(),
           nameWhiteSpace: getComputedStyle(document.querySelector('#app .name')).whiteSpace,
           roleWhiteSpace: getComputedStyle(document.querySelector('#app .role-tag')).whiteSpace,
           metaWhiteSpace: getComputedStyle(document.querySelector('#app .identity-meta span')).whiteSpace,
@@ -94,6 +99,11 @@ async function runMainScreenLargeTextCheck(browser) {
         'main-screen large text must not create document-level horizontal overflow at ' + width + 'px');
       assert.equal(result.heroDisplay, 'grid',
         'the narrow large-text identity card should use the two-column grid at ' + width + 'px');
+      assert.equal(result.avatarPosition, 'relative',
+        'the character avatar must remain in the identity layout, not be positioned off-screen');
+      assert.ok(result.avatarBounds.left >= result.heroBounds.left - 1 &&
+        result.avatarBounds.right <= result.heroBounds.right + 1,
+        'the character avatar must remain visible inside the identity card at ' + width + 'px');
       assert.notEqual(result.nameWhiteSpace, 'nowrap',
         'the character name must wrap instead of being clipped at ' + width + 'px');
       assert.notEqual(result.roleWhiteSpace, 'nowrap',
@@ -102,7 +112,7 @@ async function runMainScreenLargeTextCheck(browser) {
         'identity metadata must wrap instead of being clipped at ' + width + 'px');
       assert.notEqual(result.wealthWhiteSpace, 'nowrap',
         'the bank balance must wrap instead of forcing a wide grid track at ' + width + 'px');
-      for (const key of ['profile', 'wealth', 'hero', 'story', 'nav']) {
+      for (const key of ['avatar', 'profile', 'wealth', 'hero', 'story', 'nav']) {
         assert.ok(result[key].scroll <= result[key].client + 1,
           key + ' must wrap or fit without horizontal overflow at ' + width + 'px; ' +
           JSON.stringify({measurement:result[key],grid:result.heroGridColumns,
