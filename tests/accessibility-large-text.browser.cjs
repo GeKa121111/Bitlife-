@@ -195,7 +195,8 @@ async function run() {
       'long settings and detail content should remain scrollable');
     assert.equal(measurements.modalCanScroll, true,
       'the modal should scroll instead of clipping enlarged content');
-    await runMainScreenLargeTextCheck(browser);\n    process.stdout.write('Large-text browser checks passed at 320px.\n');
+    await runMainScreenLargeTextCheck(browser);
+    process.stdout.write('Large-text browser checks passed at 320px.\n');
   } finally {
     await browser.close();
   }
