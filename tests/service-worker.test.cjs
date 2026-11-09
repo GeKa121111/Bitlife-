@@ -327,7 +327,7 @@ test('optional shell asset failures fall back to the essential playable shell', 
     scope + 'backup-check.html',
     scope + 'backup-check.js'
   ];
-  const coreShell = [scope + 'index.html', scope + 'style.css', scope + 'app.js'];
+  const coreShell = [scope + 'index.html', scope + 'style.css', scope + 'app.js', scope + 'backup-integrity.js'];
   const harness = makeHarness(
     undefined,
     null,
