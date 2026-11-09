@@ -22,6 +22,8 @@ assert.ok(index.indexOf('app.js') < index.indexOf('business-insights.js'), 'busi
 assert.match(businessInsightsCss, /\.business-insights-dialog/);
 assert.match(businessInsightsCss, /min-width:44px;min-height:44px/, 'the insights entry point must meet the 44px touch target');
 assert.match(businessInsights, /function analyzeBusinessPortfolio\(state\)/);
+assert.match(businessInsights, /function analyzeBusinessOwnership\(entity/);
+assert.match(businessInsights, /هيكل الملكية/);
 assert.match(businessInsights, /getItem\('hekayat_hayah_save_v1'\)/);
 assert.doesNotMatch(businessInsights, /setItem\s*\(/, 'business insights must remain read-only');
 assert.ok(browserTest.includes("['/business-insights.js', 'business-insights.js']"), 'the browser server must serve the new insights module');
