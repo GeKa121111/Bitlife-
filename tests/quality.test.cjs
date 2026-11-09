@@ -550,6 +550,7 @@ test('النسخة الاحتياطية الكاملة تجمع الحياة و�
     functionSource('createBackupBundle', 'exportSave')
   ].join('\n');
   const bundleContext = {
+    window: { HayahBackupIntegrity: require('../backup-integrity.js') },
     BACKUP_FORMAT: 'hayah-backup',
     BACKUP_VERSION: 1,
     CEMETERY_KEY: 'hekayat_hayah_cemetery_v1',
@@ -569,6 +570,8 @@ test('النسخة الاحتياطية الكاملة تجمع الحياة و�
   assert.equal(bundleContext.bundle.cemetery.length, 1);
   assert.equal(bundleContext.bundle.settings.textScale, 'large');
   assert.equal(bundleContext.bundle.perks.owned.fighterPack, true);
+  assert.equal(bundleContext.bundle.integrity.algorithm, 'FNV-1a-32');
+  assert.equal(require('../backup-integrity.js').verifyIntegrity(bundleContext.bundle).valid, true);
 
   const cemeteryStore = new Map();
   const integrityContext = {
