@@ -60,7 +60,7 @@ function createGiftCommitHarness(saveResult){
   save:()=>{calls.save++;return saveResult;},render:()=>{calls.render++;},
   businessOwnershipMenu:()=>{calls.menu++;}
  };
- const transferNames=['createBusinessOwnershipLedger','normalizeBusinessOwnershipTransactions','normalizeBusinessOwnershipLedger','businessOwnershipSnapshot','formatBusinessOwnershipPercent','isCurrentBusinessEntity','buildBusinessShareGiftLedger','commitBusinessShareGift'];
+ const transferNames=['createBusinessOwnershipLedger','normalizeBusinessOwnershipTransactions','normalizeBusinessOwnershipLedger','estimateBusinessWholeValue','businessOwnershipSnapshot','formatBusinessOwnershipPercent','isCurrentBusinessEntity','buildBusinessShareGiftLedger','commitBusinessShareGift'];
  vm.runInNewContext(transferNames.map(findFunction).join('\n')+'\nthis.api={commitBusinessShareGift};',context,{timeout:15000});
  return {api:context.api,context,company,calls};
 }
