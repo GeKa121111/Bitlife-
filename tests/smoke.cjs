@@ -607,6 +607,7 @@ assert.equal(exportClicked, true, 'export should trigger a download anchor');
 assert.equal(exportBlob.type, 'application/json', 'export should create a JSON file');
 assert.match(exportBlob.parts[0], /"version":\s*1/, 'export should serialize the current life state');
 const exportedBundle = JSON.parse(exportBlob.parts[0]);
+assert.equal(exportedBundle.integrityRequired, true, 'new full backups must retain a marker that makes their checksum mandatory');
 assert.equal(exportedBundle.integrity.algorithm, 'FNV-1a-32');
 assert.equal(require('../backup-integrity.js').verifyIntegrity(exportedBundle).valid, true);
 assert.equal(revokedExportUrl, null, 'export URL must not be revoked immediately after the click');
