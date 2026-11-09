@@ -55,6 +55,8 @@ async function runMainScreenLargeTextCheck(browser) {
           const element = document.querySelector(selector);
           return [key, parseFloat(getComputedStyle(element).fontSize)];
         }));
+        // Reset the preference for each viewport so the baseline is never inherited from the prior width.
+        document.body.classList.remove('text-large');
         const normal = measure();
         document.body.classList.add('text-large');
         const large = measure();
