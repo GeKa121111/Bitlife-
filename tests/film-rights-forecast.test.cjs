@@ -60,19 +60,22 @@ test('تنبيهات انتهاء الحقوق ترتب العقود وتلتز�
   assert.equal(result.expiringContracts.some(contract => contract.id === 'outside-horizon'), false);
 });
 
-test('العقود التالفة أو المؤرخة في المستقبل لا تدخل في التوقع', () => {
+test('العقود التالفة أو غير المتسقة محاسبيًا أو المؤرخة في المستقبل لا تدخل في التوقع', () => {
   const state = makeSave([
     makeContract({ id: 'bad-negative', filmId: 'film-negative', annualRoyalty: -1 }),
-    makeContract({ id: 'bad-future', filmId: 'film-future', lastPaidYear: 11 }),
+    makeContract({ id: 'bad-future', filmId: 'film-future', lastPaidYear: 12 }),
     makeContract({ id: 'bad-term', filmId: 'film-term', yearsRemaining: 4, termYears: 3 }),
-    makeContract({ id: 'bad-name', filmId: 'film-name', partnerTitle: '' })
-  ]);
+    makeContract({ id: 'bad-name', filmId: 'film-name', partnerTitle: '' }),
+    makeContract({ id: 'bad-remaining', filmId: 'film-remaining', lastPaidYear: 11, yearsRemaining: 3 }),
+    makeContract({ id: 'bad-total', filmId: 'film-total', lastPaidYear: 11, yearsRemaining: 2, totalPaid: 3000 })
+  ], 11);
   const result = forecast.buildForecast(state);
   assert.equal(result.available, true);
   assert.equal(result.activeContracts, 0);
-  assert.equal(result.excludedContracts, 4);
+  assert.equal(result.excludedContracts, 6);
   assert.equal(result.complete, false);
   assert.equal(result.totalForecast, 0n);
+  assert.deepEqual(result.expiringContracts, []);
 });
 
 test('التوقع يمنع تكرار العقد أو الفيلم حتى لا يضاعف الإيراد', () => {
