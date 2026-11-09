@@ -127,6 +127,7 @@ function makeHarness(fetchImpl = async () => { throw new Error('offline'); }, ca
     ['hayah-shell-v229', new Map()],
     ['hayah-shell-v230', new Map()],
     ['hayah-shell-v231', new Map()],
+    ['hayah-shell-v237', new Map()],
     ['unrelated-cache', new Map()]
   ]);
   const cacheCalls = { added: [], addAllAttempts: [], deleted: [], skipped: 0, claimed: 0 };
@@ -200,7 +201,7 @@ function makeHarness(fetchImpl = async () => { throw new Error('offline'); }, ca
 }
 
 test('service worker installs a fresh shell cache and removes only obsolete Hayah caches', async () => {
-  assert.match(workerSource, /const CACHE_NAME = 'hayah-shell-v237'/);
+  assert.match(workerSource, /const CACHE_NAME = 'hayah-shell-v238'/);
   assert.match(workerSource, /const CORE_SHELL = \['\.\/index\.html', '\.\/style\.css', '\.\/app\.js', '\.\/backup-integrity\.js'\]/);
   const harness = makeHarness();
   await harness.dispatchLifecycle('install');
@@ -262,7 +263,7 @@ test('service worker installs a fresh shell cache and removes only obsolete Haya
   assert.equal(harness.cacheStore.has('hayah-shell-v152'), false, 'the previous v152 shell cache should be removed');
   assert.equal(harness.cacheStore.has('hayah-shell-v153'), false, 'the previous v153 shell cache should be removed');
   assert.equal(harness.cacheStore.has('hayah-shell-v159'), false, 'the previous v159 shell cache should be removed');
-  assert.ok(harness.cacheStore.has('hayah-shell-v237'), 'the current shell cache should be retained');
+  assert.ok(harness.cacheStore.has('hayah-shell-v238'), 'the current shell cache should be retained');
   assert.equal(harness.cacheStore.has('hayah-shell-v224'), false, 'the previous v224 shell cache should be removed after v225 installs');
   assert.equal(harness.cacheStore.has('hayah-shell-v225'), false, 'the previous v225 shell cache should be removed after v228 installs');
   assert.equal(harness.cacheStore.has('hayah-shell-v226'), false, 'the previous v226 shell cache should be removed after v228 installs');
@@ -348,7 +349,7 @@ test('optional shell asset failures fall back to the essential playable shell', 
   assert.deepEqual(harness.cacheCalls.added, coreShell);
   assert.equal(harness.cacheCalls.skipped, 1,
     'the worker should activate after the essential game files are cached');
-  const cache = harness.cacheStore.get('hayah-shell-v237');
+  const cache = harness.cacheStore.get('hayah-shell-v238');
   for (const url of coreShell) assert.ok(cache.has(url), 'essential shell asset should be cached: ' + url);
   assert.equal(cache.has(scope + 'accessibility.css'), false,
     'the failed optional asset should not block the playable shell');
@@ -633,7 +634,7 @@ test('optional shell fallback preserves older cached Hayah assets before cleanup
 
   await harness.dispatchLifecycle('install');
 
-  const currentShell = harness.cacheStore.get('hayah-shell-v237');
+  const currentShell = harness.cacheStore.get('hayah-shell-v238');
   assert.equal(
     await (await currentShell.get(scope + 'accessibility.css').clone()).text(),
     'previous accessibility stylesheet',
@@ -679,7 +680,7 @@ test('optional shell fallback prefers the newest available Hayah asset', async (
 
   await harness.dispatchLifecycle('install');
 
-  const currentShell = harness.cacheStore.get('hayah-shell-v237');
+  const currentShell = harness.cacheStore.get('hayah-shell-v238');
   assert.equal(
     await (await currentShell.get(scope + 'accessibility.css').clone()).text(),
     'newer accessibility stylesheet',
