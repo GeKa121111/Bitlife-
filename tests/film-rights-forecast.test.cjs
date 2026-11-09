@@ -48,6 +48,18 @@ test('يتوقع العوائد السنوية للعقود السارية فق�
   assert.equal(result.totalForecast, 3500n);
 });
 
+test('تنبيهات انتهاء الحقوق ترتب العقود وتلتزم بأفق التوقع المختار', () => {
+  const state = makeSave([
+    makeContract({ id: 'expires-later', filmId: 'film-later', yearsRemaining: 3, termYears: 3 }),
+    makeContract({ id: 'expires-first', filmId: 'film-first', yearsRemaining: 1, termYears: 3 }),
+    makeContract({ id: 'outside-horizon', filmId: 'film-outside', yearsRemaining: 4, termYears: 4 })
+  ]);
+  const result = forecast.buildForecast(state, 3);
+  assert.deepEqual(result.expiringContracts.map(contract => contract.id), ['expires-first', 'expires-later']);
+  assert.deepEqual(result.expiringContracts.map(contract => contract.yearsRemaining), [1, 3]);
+  assert.equal(result.expiringContracts.some(contract => contract.id === 'outside-horizon'), false);
+});
+
 test('العقود التالفة أو المؤرخة في المستقبل لا تدخل في التوقع', () => {
   const state = makeSave([
     makeContract({ id: 'bad-negative', filmId: 'film-negative', annualRoyalty: -1 }),
@@ -90,6 +102,7 @@ test('الحفظ القديم بلا استوديو أفلام يعرض توقع
   assert.equal(result.available, true);
   assert.equal(result.activeContracts, 0);
   assert.equal(result.totalForecast, 0n);
+  assert.deepEqual(result.expiringContracts, []);
   assert.equal(JSON.stringify(legacy), before);
 });
 
