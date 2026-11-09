@@ -28,6 +28,10 @@ jobs:
         run: node --check tests/business-ownership.test.cjs
       - name: Run business ownership and inheritance tests
         run: node --test tests/business-ownership.test.cjs
+      - name: Check business insights syntax
+        run: node --check business-insights.js
+      - name: Run business insights and ownership audit tests
+        run: node --test tests/business-insights.test.cjs
       - name: Run game smoke tests
         run: node tests/smoke.cjs
       - name: Check required game files
