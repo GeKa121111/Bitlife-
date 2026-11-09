@@ -2221,6 +2221,8 @@ body{overflow:hidden!important;justify-content:center!important;align-items:stre
 }
 .profile{display:flex!important;flex-direction:row!important;align-items:center!important;gap:10px!important;min-width:0!important;height:auto!important;direction:rtl!important}
 .avatar{
+  /* Override the legacy visually-hidden avatar rule from the retired prototype. */
+  position:relative!important;inset:auto!important;clip:auto!important;overflow:visible!important;white-space:normal!important;
   width:50px!important;height:50px!important;flex:0 0 50px!important;display:grid!important;place-items:center!important;
   border:1px solid #d9e6e1!important;border-radius:16px!important;background:#fff!important;
   color:var(--hayah-navy)!important;font-size:28px!important;box-shadow:0 3px 10px rgba(29,59,83,.06)!important;
