@@ -375,7 +375,7 @@
     const readLifeId = life => {
       if (!life) return '';
       const value = life.lifeId;
-      if (typeof value === 'string') return value.trim().slice(0, 160);
+      if (typeof value === 'string') return value.trim();
       if (typeof value === 'number' && Number.isFinite(value)) return String(value);
       return '';
     };
