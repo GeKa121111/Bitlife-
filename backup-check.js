@@ -348,11 +348,110 @@
     return actualDigest === expectedDigest ? 'match' : 'mismatch';
   }
 
+
+  function comparableNumber(value) {
+    if (typeof value === 'number') return Number.isFinite(value) ? value : null;
+    if (typeof value !== 'string' || !value.trim()) return null;
+    const parsed = Number(value.trim());
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+
+  function compareBackupSnapshots(firstData, secondData) {
+    const firstReport = inspectBackup(firstData);
+    const secondReport = inspectBackup(secondData);
+    if (!firstReport.valid || !secondReport.valid) {
+      return {
+        comparable: false,
+        reason: 'invalid-backup',
+        firstErrors: firstReport.errors.slice(),
+        secondErrors: secondReport.errors.slice()
+      };
+    }
+
+    const firstLife = isRecord(firstData) && firstData.format === 'hayah-backup'
+      ? firstData.life : firstData;
+    const secondLife = isRecord(secondData) && secondData.format === 'hayah-backup'
+      ? secondData.life : secondData;
+    const firstId = firstLife && firstLife.lifeId !== undefined && firstLife.lifeId !== null
+      ? String(firstLife.lifeId).trim() : '';
+    const secondId = secondLife && secondLife.lifeId !== undefined && secondLife.lifeId !== null
+      ? String(secondLife.lifeId).trim() : '';
+    if (!firstId || !secondId) {
+      return { comparable: false, reason: 'identity-unavailable', firstErrors: [], secondErrors: [] };
+    }
+    if (firstId !== secondId) {
+      return { comparable: false, reason: 'different-life', firstErrors: [], secondErrors: [] };
+    }
+
+    const readStats = life => {
+      const source = isRecord(life && life.stats) ? life.stats : {};
+      const result = {};
+      ['happiness', 'health', 'smart', 'looks'].forEach(key => {
+        result[key] = comparableNumber(source[key]);
+      });
+      return result;
+    };
+    const count = value => Array.isArray(value) ? value.length : null;
+    const first = {
+      name: firstReport.name,
+      age: firstReport.age,
+      bank: comparableNumber(firstLife.bank),
+      debt: comparableNumber(firstLife.debt),
+      logCount: count(firstLife.log),
+      familyCount: count(firstLife.family),
+      cemeteryCount: firstReport.cemeteryCount,
+      stats: readStats(firstLife)
+    };
+    const second = {
+      name: secondReport.name,
+      age: secondReport.age,
+      bank: comparableNumber(secondLife.bank),
+      debt: comparableNumber(secondLife.debt),
+      logCount: count(secondLife.log),
+      familyCount: count(secondLife.family),
+      cemeteryCount: secondReport.cemeteryCount,
+      stats: readStats(secondLife)
+    };
+    const delta = (a, b) => a === null || b === null ? null : b - a;
+    const statsDelta = {};
+    Object.keys(first.stats).forEach(key => {
+      statsDelta[key] = delta(first.stats[key], second.stats[key]);
+    });
+    const warnings = [];
+    if (first.age !== null && second.age !== null && second.age < first.age) {
+      warnings.push('العمر في النسخة الثانية أقل؛ قد تكون أقدم أو ناتجة عن الرجوع بالزمن.');
+    }
+    if (first.name !== second.name) {
+      warnings.push('اسم الشخصية مختلف بين النسختين رغم تطابق معرّف الحياة.');
+    }
+
+    return {
+      comparable: true,
+      reason: 'same-life',
+      identityId: firstId,
+      first,
+      second,
+      deltas: {
+        age: delta(first.age, second.age),
+        bank: delta(first.bank, second.bank),
+        debt: delta(first.debt, second.debt),
+        logCount: delta(first.logCount, second.logCount),
+        familyCount: delta(first.familyCount, second.familyCount),
+        cemeteryCount: delta(first.cemeteryCount, second.cemeteryCount),
+        stats: statsDelta
+      },
+      currency: String(firstLife.place && firstLife.place.unit || secondLife.place && secondLife.place.unit || 'ج.م').slice(0, 12),
+      warnings
+    };
+  }
+
   function mount(doc, host) {
     if (!doc || !doc.getElementById) return;
     const input = doc.getElementById('backupFile');
+    const compareInput = doc.getElementById('compareBackupFile');
     const dropZone = doc.getElementById('backupDropZone');
     const resultNode = doc.getElementById('backupResult');
+    const comparisonResult = doc.getElementById('backupComparisonResult');
     const announcementNode = doc.getElementById('backupAnnouncement');
     const clearButton = doc.getElementById('clearBackupCheck');
     if (!input || !dropZone || !resultNode || !clearButton) return;
@@ -360,6 +459,9 @@
     const runtime = host || (typeof globalThis === 'object' ? globalThis : {});
     let activeReader = null;
     let inspectionSequence = 0;
+    let comparisonReader = null;
+    let comparisonSequence = 0;
+    let primaryParsedData = null;
     const announce = message => {
       if (announcementNode) announcementNode.textContent = String(message || '');
     };
@@ -376,6 +478,15 @@
       }
     };
 
+    const cancelComparisonRead = () => {
+      comparisonSequence += 1;
+      const pending = comparisonReader;
+      comparisonReader = null;
+      if (pending && typeof pending.abort === 'function') {
+        try { pending.abort(); } catch { /* The sequence guard rejects late callbacks. */ }
+      }
+    };
+
     const appendText = (parent, tag, className, value) => {
       const node = doc.createElement(tag);
       if (className) node.className = className;
@@ -384,7 +495,31 @@
       return node;
     };
 
+    const resetComparison = message => {
+      cancelComparisonRead();
+      if (compareInput) {
+        compareInput.value = '';
+        compareInput.disabled = true;
+      }
+      if (comparisonResult) {
+        comparisonResult.replaceChildren();
+        appendText(comparisonResult, 'p', 'muted',
+          message || 'افحص النسخة الأولى الصالحة، ثم اختر نسخة ثانية للمقارنة.');
+      }
+    };
+
+    const showComparisonMessage = (message, kind) => {
+      if (!comparisonResult) return;
+      const panel = doc.createElement('div');
+      panel.className = 'report-card ' + (kind || 'report-note');
+      appendText(panel, 'p', 'report-status', message);
+      comparisonResult.replaceChildren(panel);
+      announce(message);
+    };
+
     const showMessage = (message, kind) => {
+      primaryParsedData = null;
+      resetComparison('افحص نسخة أولى صالحة قبل اختيار نسخة ثانية للمقارنة.');
       const panel = doc.createElement('div');
       panel.className = 'report-card ' + (kind || 'report-note');
       appendText(panel, 'p', 'report-status', message);
@@ -543,6 +678,10 @@
         'البصمة الداخلية FNV-1a-32 تساعد على اكتشاف التلف أو التغيير العرضي، لكنها ليست توقيعًا أمنيًا ولا تثبت مصدر الملف. بصمة SHA-256 الخارجية تساعد على مقارنة الملف قبل النقل وبعده. احتفظ دائمًا بالنسخة الأصلية.');
       resultNode.replaceChildren(panel);
       clearButton.disabled = false;
+      resetComparison(report.valid
+        ? 'النسخة الأولى صالحة. اختر ملفًا ثانيًا لمقارنة التقدم دون تعديل أي ملف.'
+        : 'لا يمكن المقارنة قبل اجتياز النسخة الأولى للفحص.');
+      if (compareInput) compareInput.disabled = !report.valid;
       announce(report.valid
         ? (report.warnings.length
           ? 'اكتمل فحص ملف الحفظ: متوافق مبدئيًا مع ملاحظات.'
@@ -550,9 +689,85 @@
         : 'اكتمل فحص ملف الحفظ: توجد أخطاء تمنع اجتياز الشروط الأساسية.');
     };
 
+
+    const formatComparisonNumber = value => {
+      if (value === null || value === undefined || !Number.isFinite(Number(value))) return 'غير متاح';
+      try {
+        return new Intl.NumberFormat('ar-EG', { maximumFractionDigits: 2 }).format(Number(value));
+      } catch {
+        return String(value);
+      }
+    };
+    const formatComparisonDelta = value => {
+      if (value === null || value === undefined || !Number.isFinite(Number(value))) return 'غير متاح';
+      const number = Number(value);
+      return (number > 0 ? '+' : '') + formatComparisonNumber(number);
+    };
+
+    const renderComparisonReport = (file, comparison) => {
+      if (!comparisonResult) return;
+      const panel = doc.createElement('article');
+      panel.className = 'report-card ' + (comparison.comparable ? 'report-valid' : 'report-invalid');
+      if (!comparison.comparable) {
+        const messages = {
+          'invalid-backup': 'تعذرت المقارنة لأن إحدى النسختين لا تجتاز فحص البنية.',
+          'identity-unavailable': 'لا يمكن التأكد من أن الملفين يعودان إلى الحياة نفسها؛ أحدهما يفتقد معرّف حياة ثابتًا.',
+          'different-life': 'الملفان يعودان إلى حياتين مختلفتين، لذلك لم نقارن أرقامهما.'
+        };
+        appendText(panel, 'h2', 'report-status', messages[comparison.reason] || 'تعذرت مقارنة النسختين.');
+        if (comparison.secondErrors && comparison.secondErrors.length) {
+          const errors = doc.createElement('ul');
+          errors.className = 'report-errors';
+          comparison.secondErrors.forEach(message => appendText(errors, 'li', '', message));
+          panel.appendChild(errors);
+        }
+        appendText(panel, 'p', 'report-disclaimer',
+          'لم يتم تعديل أي ملف أو بيانات داخل اللعبة. استخدم نسختين سليمتين من الحياة نفسها للمقارنة.');
+        comparisonResult.replaceChildren(panel);
+        announce('اكتملت محاولة المقارنة: تعذر إثبات تطابق هوية الحياة.');
+        return;
+      }
+
+      appendText(panel, 'h2', 'report-status', 'النسختان تعودان إلى الحياة نفسها');
+      const first = comparison.first;
+      const second = comparison.second;
+      const deltas = comparison.deltas;
+      const unit = comparison.currency || 'ج.م';
+      const facts = [
+        ['الملف الثاني', file.name],
+        ['الشخصية في النسخة الأولى', first.name || 'غير متاحة'],
+        ['الشخصية في النسخة الثانية', second.name || 'غير متاحة'],
+        ['العمر: الأولى ← الثانية', formatComparisonNumber(first.age) + ' ← ' + formatComparisonNumber(second.age) + ' سنة'],
+        ['فرق العمر (الثانية ناقص الأولى)', formatComparisonDelta(deltas.age) + ' سنة'],
+        ['فرق الرصيد البنكي', formatComparisonDelta(deltas.bank) + ' ' + unit],
+        ['فرق الديون', formatComparisonDelta(deltas.debt) + ' ' + unit],
+        ['فرق أحداث اليوميات', formatComparisonDelta(deltas.logCount)],
+        ['فرق أفراد الأسرة', formatComparisonDelta(deltas.familyCount)],
+        ['فرق سجلات المقبرة', formatComparisonDelta(deltas.cemeteryCount)]
+      ];
+      Object.keys(deltas.stats).forEach(key => {
+        const labels = { happiness: 'السعادة', health: 'الصحة', smart: 'الذكاء', looks: 'المظهر' };
+        facts.push(['فرق ' + labels[key], formatComparisonDelta(deltas.stats[key])]);
+      });
+      const list = doc.createElement('dl');
+      list.className = 'report-facts';
+      facts.forEach(([label, value]) => {
+        appendText(list, 'dt', '', label);
+        appendText(list, 'dd', '', value);
+      });
+      panel.appendChild(list);
+      (comparison.warnings || []).forEach(message => appendText(panel, 'p', 'report-warnings-title', message));
+      appendText(panel, 'p', 'report-disclaimer',
+        'المقارنة تعرض الفرق بين الملف الأول والثاني بالترتيب الذي اخترته، ولا تفترض أن الثاني أحدث. لا يتم تعديل الملفين أو حفظ أي تغيير داخل اللعبة.');
+      comparisonResult.replaceChildren(panel);
+      announce('اكتملت مقارنة نسختين من الحياة نفسها.');
+    };
+
     const inspectFile = file => {
       if (!file) return;
       cancelPendingRead();
+      primaryParsedData = null;
+      resetComparison('جارٍ فحص النسخة الأولى؛ ستتاح المقارنة بعد اجتياز الفحص.');
       const sequence = inspectionSequence;
       if (file.size > MAX_FILE_BYTES) {
         showMessage('حجم الملف أكبر من الحد الآمن للفحص (15 ميجابايت). لم تتم قراءة محتواه.', 'report-invalid');
@@ -583,7 +798,9 @@
           const sha256 = await sha256Fingerprint(file, runtime.crypto);
           // A newer file selection or a clear action invalidates this async digest.
           if (sequence !== inspectionSequence) return;
-          renderReport(file, { ...inspectBackup(parsed), sha256 });
+          const report = inspectBackup(parsed);
+          primaryParsedData = report.valid ? parsed : null;
+          renderReport(file, { ...report, sha256 });
         } catch {
           if (sequence !== inspectionSequence) return;
           showMessage('الملف ليس JSON صالحًا أو تعذّرت قراءته.', 'report-invalid');
@@ -598,7 +815,61 @@
       }
     };
 
+
+    const inspectComparisonFile = file => {
+      if (!file || !compareInput || !comparisonResult) return;
+      cancelComparisonRead();
+      const sequence = comparisonSequence;
+      if (!primaryParsedData) {
+        showComparisonMessage('افحص النسخة الأولى واجعلها صالحة قبل اختيار نسخة ثانية.', 'report-invalid');
+        return;
+      }
+      if (file.size > MAX_FILE_BYTES) {
+        showComparisonMessage('حجم النسخة الثانية أكبر من الحد الآمن للفحص (15 ميجابايت). لم تتم قراءتها.', 'report-invalid');
+        return;
+      }
+      if (typeof runtime.FileReader !== 'function') {
+        showComparisonMessage('المتصفح الحالي لا يدعم قراءة الملفات محليًا.', 'report-invalid');
+        return;
+      }
+      announce('جارٍ فحص النسخة الثانية ومقارنتها محليًا.');
+      const reader = new runtime.FileReader();
+      comparisonReader = reader;
+      const isCurrentRead = () => sequence === comparisonSequence && comparisonReader === reader;
+      reader.onerror = () => {
+        if (!isCurrentRead()) return;
+        comparisonReader = null;
+        showComparisonMessage('تعذّرت قراءة النسخة الثانية من الجهاز.', 'report-invalid');
+      };
+      reader.onabort = () => {
+        if (isCurrentRead()) comparisonReader = null;
+      };
+      reader.onload = () => {
+        if (!isCurrentRead()) return;
+        comparisonReader = null;
+        try {
+          const parsed = JSON.parse(String(reader.result || ''));
+          if (sequence !== comparisonSequence) return;
+          renderComparisonReport(file, compareBackupSnapshots(primaryParsedData, parsed));
+        } catch {
+          if (sequence !== comparisonSequence) return;
+          showComparisonMessage('النسخة الثانية ليست JSON صالحًا أو تعذّرت قراءتها.', 'report-invalid');
+        }
+      };
+      try {
+        reader.readAsText(file, 'UTF-8');
+      } catch {
+        if (!isCurrentRead()) return;
+        comparisonReader = null;
+        showComparisonMessage('تعذّرت قراءة النسخة الثانية من الجهاز.', 'report-invalid');
+      }
+    };
+
     input.addEventListener('change', event => inspectFile(event.target.files && event.target.files[0]));
+    if (compareInput) {
+      compareInput.addEventListener('change', event =>
+        inspectComparisonFile(event.target.files && event.target.files[0]));
+    }
     dropZone.addEventListener('dragover', event => {
       event.preventDefault();
       dropZone.classList.add('is-dragging');
@@ -611,6 +882,8 @@
     });
     clearButton.addEventListener('click', () => {
       cancelPendingRead();
+      primaryParsedData = null;
+      resetComparison('افحص نسخة أولى صالحة، ثم اختر نسخة ثانية للمقارنة.');
       input.value = '';
       resultNode.replaceChildren();
       appendText(resultNode, 'p', 'muted', 'لم يتم اختيار ملف بعد.');
@@ -620,5 +893,5 @@
     });
   }
 
-  return { MAX_FILE_BYTES, MAX_REWIND_SNAPSHOT_CHARS, inspectRewindHistory, inspectBackup, formatBytes, sha256Fingerprint, normalizeSha256Fingerprint, compareSha256Fingerprints, mount };
+  return { MAX_FILE_BYTES, MAX_REWIND_SNAPSHOT_CHARS, inspectRewindHistory, inspectBackup, formatBytes, sha256Fingerprint, normalizeSha256Fingerprint, compareSha256Fingerprints, compareBackupSnapshots, mount };
 });
