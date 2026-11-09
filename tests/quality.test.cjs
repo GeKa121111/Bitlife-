@@ -4222,10 +4222,10 @@ test('حزم النسخ الجديدة تتحقق من البصمة قبل تط�
 test('فاحص الحفظ يقارن نسختين من معرّف الحياة نفسه دون الكتابة إلى التخزين', () => {
   const checker = read('backup-check.js');
   const page = read('backup-check.html');
-  assert.match(checker, /function compareBackupSnapshots\\(firstData, secondData\\)/);
+  assert.match(checker, /function compareBackupSnapshots\(firstData, secondData\)/);
   assert.match(checker, /identity-unavailable/);
   assert.match(checker, /different-life/);
   assert.match(page, /id="compareBackupFile"/);
   assert.match(page, /id="backupComparisonResult"/);
-  assert.doesNotMatch(checker, /localStorage|sessionStorage|fetch\\s*\\(|XMLHttpRequest/);
+  assert.doesNotMatch(checker, /localStorage|sessionStorage|fetch\s*\(|XMLHttpRequest/);
 });
