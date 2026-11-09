@@ -21,7 +21,7 @@ function findFunction(name){
  }
  throw new Error('unterminated function: '+name);
 }
-const names=['createBusinessOwnershipLedger','normalizeBusinessOwnershipTransactions','normalizeBusinessOwnershipLedger','formatBusinessOwnershipPercent','businessOwnershipSnapshot','businessOwnershipEarningsSnapshot','businessDividendReadinessSnapshot','businessCreditBalance','businessTaxLiability','businessUsesSeparateTreasury','businessTreasuryBalance','normalizeBusinessDividendLedger','businessDividendPendingLiability','businessDividendEscrowBalance','allocateBusinessDividendShares','businessDividendClaimableSnapshot','applyBusinessDividendDistribution','applyBusinessDividendClaims','inheritBusinessDividendClaims','calculateEstateSnapshot','buildInheritedBusinessOwnershipLedger','applyInheritedBusinessOwnership','isCurrentBusinessEntity','buildBusinessShareGiftLedger','businessOwnershipHistoryMenu','commitBusinessShareGift'];
+const names=['createBusinessOwnershipLedger','normalizeBusinessOwnershipTransactions','normalizeBusinessOwnershipLedger','formatBusinessOwnershipPercent','businessOwnershipSnapshot','businessOwnershipValuationSnapshot','businessOwnershipEarningsSnapshot','businessDividendReadinessSnapshot','businessCreditBalance','businessTaxLiability','businessUsesSeparateTreasury','businessTreasuryBalance','normalizeBusinessDividendLedger','businessDividendPendingLiability','businessDividendEscrowBalance','allocateBusinessDividendShares','businessDividendClaimableSnapshot','applyBusinessDividendDistribution','applyBusinessDividendClaims','inheritBusinessDividendClaims','calculateEstateSnapshot','buildInheritedBusinessOwnershipLedger','applyInheritedBusinessOwnership','isCurrentBusinessEntity','buildBusinessShareGiftLedger','businessOwnershipHistoryMenu','commitBusinessShareGift'];
 const runtime=names.map(findFunction).join('\n');
 function createApi(){
  const context={state:{bank:0}};
@@ -29,7 +29,7 @@ function createApi(){
  return context.api;
 }
 function createMenuApi(business=null,children=[]){
- const calls={modal:null,shareGiftArgs:null};
+ const calls={modal:null,shareGiftArgs:null,valuationArgs:null};
  const context={
   state:{lifeId:'owner',name:'الوارث',age:45,business,companies:[],children},
   cash:value=>String(value),
@@ -37,6 +37,7 @@ function createMenuApi(business=null,children=[]){
   modal:(...args)=>{calls.modal=args;},
   info:()=>{},
   businessShareGiftMenu:(...args)=>{calls.shareGiftArgs=args;},
+  businessOwnershipValuationMenu:(...args)=>{calls.valuationArgs=args;},
   businessOwnershipEarningsMenu:()=>{},
   businessDividendReadinessMenu:()=>{},
   businessDividendDistributionMenu:()=>{},
@@ -899,4 +900,109 @@ test('بلوغ الحد الأقصى لسجل التحركات يوقف الإه
  assert.equal(result.ok,false);
  assert.equal(result.reason,'transaction-history-limit');
  assert.equal(company.ownershipLedger.transactions.length,200);
+});
+
+
+test('تقييم الحصص يوزع القيمة الكاملة بدقة حسب نسب الملكية دون تعديل الشركة',()=>{
+ const api=createApi();
+ const company={value:400000,ownershipLedger:{version:1,activeBeneficiaryId:'owner',shareholders:[
+  {beneficiaryId:'owner',name:'المالك',kind:'owner',shareBps:4000},
+  {beneficiaryId:'partner',name:'الشريك',kind:'child',shareBps:6000}
+ ]}};
+ const before=JSON.stringify(company);
+ const report=api.businessOwnershipValuationSnapshot(company,'owner','المالك');
+ assert.equal(report.valid,true);
+ assert.equal(report.totalValue,1000000);
+ assert.equal(report.activeShareValue,400000);
+ assert.deepEqual(Array.from(report.shareholders,item=>[item.beneficiaryId,item.estimatedValue]),[['owner',400000],['partner',600000]]);
+ assert.equal(report.shareholders.reduce((sum,item)=>sum+item.estimatedValue,0),report.totalValue);
+ assert.equal(JSON.stringify(company),before,'the valuation report must remain read-only');
+});
+
+test('تقييم الحصص يوزع فروق التقريب بأكبر باقي ويحافظ على الإجمالي',()=>{
+ const api=createApi();
+ const company={value:41,ownershipLedger:{version:1,activeBeneficiaryId:'owner',shareholders:[
+  {beneficiaryId:'owner',name:'المالك',kind:'owner',shareBps:4000},
+  {beneficiaryId:'partner-a',name:'الشريك الأول',kind:'child',shareBps:3000},
+  {beneficiaryId:'partner-b',name:'الشريك الثاني',kind:'child',shareBps:3000}
+ ]}};
+ const report=api.businessOwnershipValuationSnapshot(company,'owner','المالك');
+ assert.equal(report.valid,true);
+ assert.equal(report.totalValue,103);
+ assert.deepEqual(Array.from(report.shareholders,item=>item.estimatedValue),[41,31,31]);
+ assert.equal(report.shareholders.reduce((sum,item)=>sum+item.estimatedValue,0),103);
+});
+
+test('تقييم الحصص يرفض سجل الملكية غير المتوازن والقيم التي تتجاوز حدود الأمان',()=>{
+ const api=createApi();
+ const invalid={value:100000,ownershipLedger:{version:1,activeBeneficiaryId:'owner',shareholders:[
+  {beneficiaryId:'owner',name:'المالك',shareBps:7000},{beneficiaryId:'partner',name:'الشريك',shareBps:2000}
+ ]}};
+ assert.equal(api.businessOwnershipValuationSnapshot(invalid,'owner','المالك').reason,'invalid-ownership');
+ const unsafe={value:1000000000000,ownershipLedger:{version:1,activeBeneficiaryId:'owner',shareholders:[
+  {beneficiaryId:'owner',name:'المالك',shareBps:1},{beneficiaryId:'partner',name:'الشريك',shareBps:9999}
+ ]}};
+ assert.equal(api.businessOwnershipValuationSnapshot(unsafe,'owner','المالك').reason,'valuation-out-of-range');
+ const missing={title:'شركة بلا قيمة',ownershipLedger:{version:1,activeBeneficiaryId:'owner',shareholders:[
+  {beneficiaryId:'owner',name:'المالك',shareBps:10000}
+ ]}};
+ assert.equal(api.businessOwnershipValuationSnapshot(missing,'owner','المالك').reason,'invalid-stake-value');
+ const negative={value:-100,ownershipLedger:{version:1,activeBeneficiaryId:'owner',shareholders:[
+  {beneficiaryId:'owner',name:'المالك',shareBps:10000}
+ ]}};
+ assert.equal(api.businessOwnershipValuationSnapshot(negative,'owner','المالك').reason,'invalid-stake-value');
+});
+
+test('دفتر الملكية القديم يحصل على تقييم آمن دون كتابة حقول جديدة',()=>{
+ const api=createApi();
+ const company={value:250000,title:'شركة قديمة'};
+ const before=JSON.stringify(company);
+ const report=api.businessOwnershipValuationSnapshot(company,'legacy-owner','مالك قديم');
+ assert.equal(report.valid,true);
+ assert.equal(report.totalValue,250000);
+ assert.equal(report.activeShareValue,250000);
+ assert.equal(company.ownershipLedger,undefined);
+ assert.equal(JSON.stringify(company),before);
+});
+
+test('واجهة سجل الملكية تعرض تقييم الحصص للشركة الحالية فقط',()=>{
+ const company={value:300000,ownershipLedger:{version:1,activeBeneficiaryId:'owner',shareholders:[
+  {beneficiaryId:'owner',name:'المالك',kind:'owner',shareBps:4000},
+  {beneficiaryId:'partner',name:'الشريك',kind:'child',shareBps:6000}
+ ]}};
+ const menu=createMenuApi(company,[]);
+ menu.api.businessOwnershipMenu(company);
+ const valuation=menu.calls.modal[3].find(item=>item.title==='تقييم حصص الملاك');
+ assert.ok(valuation);
+ valuation.callback();
+ assert.equal(menu.calls.valuationArgs[0],company);
+ const historical=createMenuApi(null,[]);
+ historical.api.businessOwnershipMenu(company);
+ assert.equal(historical.calls.modal[3].some(item=>item.title==='تقييم حصص الملاك'),false);
+});
+
+test('شاشة تقييم الحصص تعرض الإجمالي وتظل للقراءة فقط',()=>{
+ const api=createApi();
+ const company={value:400000,title:'شركة العائلة',ownershipLedger:{version:1,activeBeneficiaryId:'owner',shareholders:[
+  {beneficiaryId:'owner',name:'المالك',kind:'owner',shareBps:4000},
+  {beneficiaryId:'partner',name:'الشريك',kind:'child',shareBps:6000}
+ ]}};
+ const before=JSON.stringify(company),calls={modal:null,info:[]};
+ const context={
+  state:{lifeId:'owner',name:'المالك',business:company,companies:[],place:{unit:'ج.م'}},
+  cash:value=>String(value),
+  choice:(icon,title,description,callback)=>({icon,title,description,callback}),
+  modal:(...args)=>{calls.modal=args;},
+  info:(...args)=>{calls.info.push(args);},
+  isCurrentBusinessEntity:entity=>entity===company,
+  businessOwnershipValuationSnapshot:api.businessOwnershipValuationSnapshot,
+  formatBusinessOwnershipPercent:api.formatBusinessOwnershipPercent,
+  businessOwnershipMenu:()=>{}
+ };
+ vm.runInNewContext(findFunction('businessOwnershipValuationMenu'),context);
+ context.businessOwnershipValuationMenu(company);
+ assert.equal(calls.modal[1],'تقييم حصص شركة العائلة');
+ assert.match(calls.modal[2],/1,000,000|1000000/);
+ assert.ok(calls.modal[3].some(item=>item.title==='طريقة حساب التقدير'));
+ assert.equal(JSON.stringify(company),before);
 });

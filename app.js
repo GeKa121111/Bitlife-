@@ -10735,6 +10735,32 @@ function businessOwnershipSnapshot(entity,fallbackBeneficiaryId,fallbackName){
  return {valid:!!active,legacyFallback:normalized.legacyFallback,issues:normalized.issues,activeBeneficiaryId:normalized.ledger.activeBeneficiaryId,activeShareBps,stakeValue,wholeValueEstimate:activeShareBps>0?Math.round(stakeValue*10000/activeShareBps):0,shareholders:normalized.ledger.shareholders.map(item=>({...item})),transactions:(normalized.ledger.transactions||[]).map(item=>({...item}))};
 }
 
+function businessOwnershipValuationSnapshot(entity,fallbackBeneficiaryId,fallbackName){
+ const ownership=businessOwnershipSnapshot(entity,fallbackBeneficiaryId,fallbackName);
+ const empty={valid:false,reason:null,totalValue:0,activeBeneficiaryId:ownership.activeBeneficiaryId||null,activeShareValue:0,shareholders:[]};
+ if(!ownership.valid)return {...empty,reason:'invalid-ownership'};
+ const rawStakeValue=entity&&entity.value;
+ const supportedStakeType=typeof rawStakeValue==='number'||typeof rawStakeValue==='string';
+ const nonEmptyStakeString=typeof rawStakeValue!=='string'||rawStakeValue.trim().length>0;
+ const numericStakeValue=Number(rawStakeValue),roundedStakeValue=Math.round(numericStakeValue);
+ if(!supportedStakeType||!nonEmptyStakeString||!Number.isFinite(numericStakeValue)||numericStakeValue<0||
+  !Number.isSafeInteger(roundedStakeValue)||roundedStakeValue>1000000000000)return {...empty,reason:'invalid-stake-value'};
+ const totalValue=ownership.wholeValueEstimate;
+ if(!Number.isSafeInteger(totalValue)||totalValue<0||totalValue>1000000000000)return {...empty,reason:'valuation-out-of-range'};
+ const parts=ownership.shareholders.map((item,index)=>{
+  const rawValue=totalValue*item.shareBps/10000;
+  const estimatedValue=Math.floor(rawValue);
+  return {...item,estimatedValue,fraction:rawValue-estimatedValue,index};
+ });
+ let remainder=totalValue-parts.reduce((sum,item)=>sum+item.estimatedValue,0);
+ const remainderOrder=parts.slice().sort((a,b)=>b.fraction-a.fraction||a.index-b.index);
+ for(let index=0;remainder>0&&remainderOrder.length;index++,remainder--)remainderOrder[index%remainderOrder.length].estimatedValue++;
+ const shareholders=parts.map(({fraction,index,...item})=>item);
+ const active=shareholders.find(item=>item.beneficiaryId===ownership.activeBeneficiaryId);
+ if(shareholders.reduce((sum,item)=>sum+item.estimatedValue,0)!==totalValue)return {...empty,reason:'valuation-allocation-invalid'};
+ return {valid:true,reason:null,totalValue,activeBeneficiaryId:ownership.activeBeneficiaryId,activeShareValue:active?active.estimatedValue:0,shareholders};
+}
+
 function businessOwnershipEarningsSnapshot(entity,fallbackBeneficiaryId,fallbackName){
  const ownership=businessOwnershipSnapshot(entity,fallbackBeneficiaryId,fallbackName);
  if(!ownership.valid)return {valid:false,hasReport:false,reason:'invalid-ownership',year:null,totalProfit:0,activeBeneficiaryId:null,activeShareAmount:0,invalidReportYearCount:0,invalidFinancialReportCount:0,shareholders:[]};
@@ -11407,6 +11433,23 @@ function commitBusinessShareGift(entity,childId,shareBps,back){
  businessOwnershipMenu(entity,back);
  return true;
 }
+function businessOwnershipValuationMenu(entity,back){
+ if(!isCurrentBusinessEntity(entity)){info('⚠️','التقييم غير متاح','افتح تقييم الحصص من سجل الشركة داخل الحياة الحالية.');return false;}
+ const fallbackId=state&&state.lifeId||state&&state.name||state&&state.legacy&&state.legacy.activeBeneficiaryId;
+ const report=businessOwnershipValuationSnapshot(entity,fallbackId,state&&state.name);
+ if(!report.valid){info('⚠️','تعذر تقييم الحصص','سجل الملكية أو قيمة الحصة يحتاج مراجعة؛ لم نغيّر أي بيانات.');return false;}
+ const options=report.shareholders.slice().sort((a,b)=>b.estimatedValue-a.estimatedValue).map(item=>{
+  const title=item.name+' · '+formatBusinessOwnershipPercent(item.shareBps)+'%';
+  const detail='القيمة التقديرية للحصة '+cash(item.estimatedValue)+' · مستفيد مسجل في دفتر الملكية المحلي.';
+  return choice(item.beneficiaryId===report.activeBeneficiaryId?'👑':'👤',title,detail,()=>info('📑',title,detail));
+ });
+ options.push(choice('ℹ️','طريقة حساب التقدير','استنتجنا قيمة النشاط من قيمة الحصة النشطة ونسبتها، ثم وزعنا الإجمالي على الملاك مع ضبط فروق التقريب. هذا تقدير داخلي وليس سعر بيع أو تقييمًا سوقيًا ملزمًا.',()=>info('ℹ️','طريقة حساب التقدير','التقرير للقراءة فقط. لا يحرك أموالًا أو حصصًا ولا يحدّث خزينة الشركة أو الحفظ.')));
+ options.push(choice('↩️','رجوع لسجل الملكية','',()=>businessOwnershipMenu(entity,back)));
+ const detail='قيمة النشاط الكاملة التقديرية '+cash(report.totalValue)+' · قيمة حصتك المقدرة '+cash(report.activeShareValue)+'. التوزيع الحسابي يساوي إجمالي التقدير بعد التقريب.';
+ modal('💹','تقييم حصص '+String(entity&&entity.title||'النشاط'),detail,options);
+ return true;
+}
+
 function businessOwnershipHistoryMenu(entity,back){
  if(!isCurrentBusinessEntity(entity)){info('⚠️','السجل غير متاح','افتح تاريخ الحصص من الشركة داخل الحياة الحالية.');return;}
  const fallbackId=state&&state.lifeId||state&&state.name||state&&state.legacy&&state.legacy.activeBeneficiaryId;
@@ -11432,6 +11475,7 @@ function businessOwnershipMenu(entity,back){
  const opts=visibleShareholders.map(item=>choice(item.beneficiaryId===activeId?'👑':'👤',item.name+' · '+formatBusinessOwnershipPercent(item.shareBps)+'%','حصة ملكية مسجلة '+formatBusinessOwnershipPercent(item.shareBps)+'%'+(item.beneficiaryId===activeId?' · حصتك الحالية':' · مستفيد آخر مسجل'),()=>info('📑','تفاصيل المالك',item.name+' يملك '+formatBusinessOwnershipPercent(item.shareBps)+'% من النشاط حسب سجل الملكية المحلي.')));
  const hiddenShareholderCount=snapshot.shareholders.length-visibleShareholders.length;
  if(hiddenShareholderCount>0)opts.push(choice('👥','ملاك إضافيون ('+hiddenShareholderCount+')','يوجد ملاك آخرون محفوظون في الدفتر. افتح السجل الكامل من ملف الحفظ عند الحاجة.',()=>info('👥','بقية الملاك','يوجد '+hiddenShareholderCount+' مستفيدًا إضافيًا محفوظًا ضمن سجل الملكية.')));
+ if(isCurrentBusinessEntity(entity))opts.push(choice('💹','تقييم حصص الملاك','اعرض قيمة تقديرية لكل حصة مع توزيع فروق التقريب دون تغيير أي رصيد.',()=>businessOwnershipValuationMenu(entity,back)));
  const hasGiftRecipient=isCurrentBusinessEntity(entity)&&snapshot.activeShareBps>1&&Array.isArray(state.children)&&state.children.some(child=>child&&typeof child==='object'&&String(child.id||child.name||'').trim()&&String(child.name||'').trim()&&String(child.id||child.name)!==String(activeId));
  if(hasGiftRecipient)opts.push(choice('🎁','إهداء حصة لأحد الأبناء','انقل جزءًا من حصتك إلى ابن أو ابنة دون مقابل؛ لا تتغير خزينة الشركة، ولا تتم مزامنة ملفات الورثة المستقلة تلقائيًا.',()=>businessShareGiftMenu(entity,back)));
  opts.push(choice('📚','تاريخ تحركات الحصص','راجع عمليات الإهداء وانتقال الحصص بالميراث المسجلة في هذا الملف.',()=>businessOwnershipHistoryMenu(entity,back)));
