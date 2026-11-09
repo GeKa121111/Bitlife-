@@ -199,6 +199,7 @@ test('الحزم القديمة تظل قابلة للفحص، والبصمات 
 
 test('واجهة فاحص النسخ توضح حالة البصمة وحدودها', () => {
   assert.match(checkerSource, /سلامة الحزمة/);
+  assert.match(checkerSource, /بصمة مفقودة من حزمة حديثة/);
   assert.match(checkerSource, /FNV-1a-32/);
   assert.match(checkerSource, /ليست توقيعًا أمنيًا/);
 });
