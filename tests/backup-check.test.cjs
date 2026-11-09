@@ -10,6 +10,7 @@ const {
   sha256Fingerprint,
   normalizeSha256Fingerprint,
   compareSha256Fingerprints,
+  compareBackupSnapshots,
   MAX_REWIND_SNAPSHOT_CHARS
 } = require('../backup-check.js');
 const checkerSource = fs.readFileSync(path.join(__dirname, '..', 'backup-check.js'), 'utf8');
@@ -541,4 +542,135 @@ test('واجهة الفاحص تسمح بنسخ البصمة ومقارنتها 
 
   nodes.get('clearBackupCheck').listeners.click();
   assert.equal(nodes.get('backupAnnouncement').textContent, 'تم مسح نتيجة الفحص.');
+});
+
+
+test('مقارنة نسختين سليمتين من معرّف الحياة نفسه تعرض فروق العمر والمال والأسرة دون تعديلهما', () => {
+  const first = makePackage(makeLife({
+    lifeId: 'life-compare-1',
+    age: 40,
+    bank: 1000,
+    debt: 300,
+    log: [{ title: 'حدث 1' }, { title: 'حدث 2' }],
+    family: [{ name: 'ابن' }],
+    stats: { happiness: 70, health: 80, smart: 75, looks: 60 }
+  }));
+  first.cemetery = [{ name: 'حياة سابقة' }];
+  const second = makePackage(makeLife({
+    lifeId: 'life-compare-1',
+    age: 43,
+    bank: 1750,
+    debt: 100,
+    log: [{ title: 'حدث 1' }, { title: 'حدث 2' }, { title: 'حدث 3' }],
+    family: [{ name: 'ابن' }, { name: 'ابنة' }],
+    stats: { happiness: 75, health: 78, smart: 80, looks: 60 }
+  }));
+  second.cemetery = [{ name: 'حياة سابقة' }, { name: 'حياة أخرى' }];
+  const firstBefore = JSON.stringify(first);
+  const secondBefore = JSON.stringify(second);
+
+  const result = compareBackupSnapshots(first, second);
+  assert.equal(result.comparable, true);
+  assert.equal(result.reason, 'same-life');
+  assert.equal(result.deltas.age, 3);
+  assert.equal(result.deltas.bank, 750);
+  assert.equal(result.deltas.debt, -200);
+  assert.equal(result.deltas.logCount, 1);
+  assert.equal(result.deltas.familyCount, 1);
+  assert.equal(result.deltas.cemeteryCount, 1);
+  assert.equal(result.deltas.stats.health, -2);
+  assert.equal(result.deltas.stats.smart, 5);
+  assert.deepEqual(result.warnings, []);
+  assert.equal(JSON.stringify(first), firstBefore);
+  assert.equal(JSON.stringify(second), secondBefore);
+});
+
+test('مقارنة النسخ ترفض حياتين مختلفتين ولا تخمّن الهوية عند غياب معرّف ثابت', () => {
+  const first = makeLife({ lifeId: 'life-a', age: 40 });
+  const different = makeLife({ lifeId: 'life-b', age: 41 });
+  assert.equal(compareBackupSnapshots(first, different).reason, 'different-life');
+
+  const legacyWithoutId = makeLife({ age: 41 });
+  const otherLegacyWithoutId = makeLife({ age: 42 });
+  const result = compareBackupSnapshots(legacyWithoutId, otherLegacyWithoutId);
+  assert.equal(result.comparable, false);
+  assert.equal(result.reason, 'identity-unavailable');
+});
+
+test('مقارنة النسخ ترفض ملفًا غير صالح وتحذر من العمر الأقل دون اعتباره الأحدث', () => {
+  const valid = makeLife({ lifeId: 'life-c', age: 50, bank: 100 });
+  const invalid = makeLife({ lifeId: 'life-c', age: 'عمر غير صالح' });
+  assert.equal(compareBackupSnapshots(valid, invalid).reason, 'invalid-backup');
+
+  const earlierAge = makeLife({ lifeId: 'life-c', age: 45, bank: 80 });
+  const result = compareBackupSnapshots(valid, earlierAge);
+  assert.equal(result.comparable, true);
+  assert.equal(result.deltas.age, -5);
+  assert.ok(result.warnings.some(message => message.includes('الرجوع بالزمن')));
+});
+
+test('واجهة فاحص النسخ تتيح اختيار نسخة ثانية بعد اجتياز الأولى وتعرض مقارنة محلية', async () => {
+  const checker = require('../backup-check.js');
+  class FakeNode {
+    constructor() {
+      this.children = [];
+      this.listeners = {};
+      this.className = '';
+      this.value = '';
+      this.disabled = false;
+      this.attributes = {};
+    }
+    addEventListener(type, callback) { this.listeners[type] = callback; }
+    appendChild(child) { this.children.push(child); return child; }
+    replaceChildren(...children) { this.children = children; this._text = ''; }
+    setAttribute(name, value) { this.attributes[name] = value; }
+    focus() { this.focused = true; }
+    select() { this.selected = true; }
+    set textContent(value) { this._text = String(value); this.children = []; }
+    get textContent() {
+      return [this._text || '', ...this.children.map(child => child.textContent)].filter(Boolean).join(' ');
+    }
+  }
+  const nodes = new Map([
+    ['backupFile', new FakeNode()],
+    ['compareBackupFile', new FakeNode()],
+    ['backupDropZone', new FakeNode()],
+    ['backupResult', new FakeNode()],
+    ['backupComparisonResult', new FakeNode()],
+    ['backupAnnouncement', new FakeNode()],
+    ['clearBackupCheck', new FakeNode()]
+  ]);
+  const readers = [];
+  class FakeFileReader {
+    constructor() { this.result = ''; readers.push(this); }
+    readAsText(file) { this.file = file; this.result = file.text; }
+    abort() { this.aborted = true; if (this.onabort) this.onabort(); }
+  }
+  const doc = {
+    getElementById(id) { return nodes.get(id) || null; },
+    createElement() { return new FakeNode(); }
+  };
+  checker.mount(doc, { FileReader: FakeFileReader, crypto: webcrypto });
+
+  const toFile = (name, data) => {
+    const bytes = Buffer.from(JSON.stringify(data));
+    return {
+      name,
+      size: bytes.length,
+      text: bytes.toString('utf8'),
+      arrayBuffer: async () => bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength)
+    };
+  };
+  const first = makePackage(makeLife({ lifeId: 'life-ui', age: 30, bank: 500 }));
+  const second = makePackage(makeLife({ lifeId: 'life-ui', age: 32, bank: 700 }));
+  nodes.get('backupFile').listeners.change({ target: { files: [toFile('الأولى.json', first)] } });
+  await readers[0].onload();
+  assert.equal(nodes.get('compareBackupFile').disabled, false);
+
+  nodes.get('compareBackupFile').listeners.change({ target: { files: [toFile('الثانية.json', second)] } });
+  await readers[1].onload();
+  assert.match(nodes.get('backupComparisonResult').textContent, /النسختان تعودان إلى الحياة نفسها/);
+  assert.match(nodes.get('backupComparisonResult').textContent, /فرق الرصيد البنكي/);
+  assert.match(nodes.get('backupComparisonResult').textContent, /النسخة الأولى/);
+  assert.match(nodes.get('backupAnnouncement').textContent, /اكتملت مقارنة نسختين/);
 });
