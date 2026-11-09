@@ -261,7 +261,7 @@ assert.match(finalUi, /@media\(max-width:380px\)/);
 assert.doesNotMatch(css, /BitLife|--bitlife-/i);
 assert.match(serviceWorker, /hayah-shell-v231/, 'the app shell cache should refresh the new identity layer');
 assert.ok(fs.existsSync('backup-integrity.js'), 'backup integrity helper should ship with the game');
-assert.match(fs.readFileSync('index.html','utf8'), /backup-integrity\\.js/);
+assert.match(fs.readFileSync('index.html','utf8'), /backup-integrity[.]js/);
 assert.match(app, /function siblingEmploymentDecision\(relative,profile,year,age\)/, 'sibling job events should be simulated deterministically');
 assert.match(app, /function schoolHub\(\)/);
 assert.match(app, /function maintainAsset\(index\)/);
