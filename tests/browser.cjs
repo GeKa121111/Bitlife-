@@ -1589,10 +1589,14 @@ async function run() {
     await page.locator('#menuBtn').click();
     await page.locator('.choice').filter({ hasText: 'تحميل حفظ' }).click();
     const invalidBundleChooser = await invalidBundleChooserPromise;
+    const malformedCemeteryBundle = { ...exported, cemetery: [null] };
+    // Keep this test focused on structural validation: refresh the checksum after
+    // deliberately introducing the malformed cemetery entry.
+    malformedCemeteryBundle.integrity = require('../backup-integrity.js').createIntegrity(malformedCemeteryBundle);
     await invalidBundleChooser.setFiles({
       name: 'invalid-cemetery-bundle.json',
       mimeType: 'application/json',
-      buffer: Buffer.from(JSON.stringify({ ...exported, cemetery: [null] }))
+      buffer: Buffer.from(JSON.stringify(malformedCemeteryBundle))
     });
     await page.getByText('ملف حفظ غير صالح', { exact: true }).waitFor();
     const afterInvalidBundle = await page.evaluate(() => {
@@ -1604,6 +1608,33 @@ async function run() {
     });
     assert.deepEqual(afterInvalidBundle, beforeInvalidBundle,
       'a bundle with malformed cemetery data must not replace the current life');
+    await page.locator('.choice').filter({ hasText: 'تمام' }).last().click();
+
+    // A modified bundle with its old checksum must be rejected before storage changes.
+    const beforeInvalidIntegrity = await page.evaluate(() => ({
+      save: localStorage.getItem('hekayat_hayah_save_v1'),
+      cemetery: localStorage.getItem('hekayat_hayah_cemetery_v1'),
+      cemeteryBackup: localStorage.getItem('hekayat_hayah_cemetery_backup_v1')
+    }));
+    const corruptedIntegrityBundle = JSON.parse(JSON.stringify(exported));
+    corruptedIntegrityBundle.life.bank = Number(corruptedIntegrityBundle.life.bank || 0) + 1;
+    const integrityChooserPromise = page.waitForEvent('filechooser');
+    await page.locator('#menuBtn').click();
+    await page.locator('.choice').filter({ hasText: 'تحميل حفظ' }).click();
+    const integrityChooser = await integrityChooserPromise;
+    await integrityChooser.setFiles({
+      name: 'modified-hayah-backup.json',
+      mimeType: 'application/json',
+      buffer: Buffer.from(JSON.stringify(corruptedIntegrityBundle))
+    });
+    await page.getByText('بصمة النسخة غير متطابقة', { exact: true }).waitFor();
+    const afterInvalidIntegrity = await page.evaluate(() => ({
+      save: localStorage.getItem('hekayat_hayah_save_v1'),
+      cemetery: localStorage.getItem('hekayat_hayah_cemetery_v1'),
+      cemeteryBackup: localStorage.getItem('hekayat_hayah_cemetery_backup_v1')
+    }));
+    assert.deepEqual(afterInvalidIntegrity, beforeInvalidIntegrity,
+      'a checksum mismatch must leave the active save and cemetery stores untouched');
     await page.locator('.choice').filter({ hasText: 'تمام' }).last().click();
 
     // Invalid JSON must be rejected without overwriting the current save.
