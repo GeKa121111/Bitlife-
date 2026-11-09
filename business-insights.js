@@ -83,9 +83,113 @@
     return entries.slice(0, MAX_BUSINESSES);
   }
 
-  function analyzeBusiness(entity, fallbackTitle) {
+
+  function analyzeBusinessOwnership(entity, fallbackBeneficiaryId, fallbackName) {
+    const safeEntity = isRecord(entity) ? entity : {};
+    const fallbackId = String(fallbackBeneficiaryId || 'current-owner').trim().slice(0, 120) || 'current-owner';
+    const fallbackOwnerName = String(fallbackName || 'المالك الحالي').trim().slice(0, 80) || 'المالك الحالي';
+    const raw = safeEntity.ownershipLedger;
+
+    if (raw === undefined) {
+      return {
+        valid: true,
+        legacyFallback: true,
+        activeBeneficiaryId: fallbackId,
+        activeShareBps: 10000,
+        shareholders: [{ beneficiaryId: fallbackId, name: fallbackOwnerName, kind: 'owner', shareBps: 10000 }],
+        auditIssues: []
+      };
+    }
+
+    const invalid = issues => ({
+      valid: false,
+      legacyFallback: false,
+      activeBeneficiaryId: null,
+      activeShareBps: 0,
+      shareholders: [],
+      auditIssues: issues
+    });
+    if (!isRecord(raw) || raw.version !== 1 || !Array.isArray(raw.shareholders) ||
+      raw.shareholders.length < 1 || raw.shareholders.length > 100) {
+      return invalid(['ownership_ledger_shape_invalid']);
+    }
+
+    const ids = new Set();
+    const shareholders = [];
+    let totalShareBps = 0;
+    for (const item of raw.shareholders) {
+      if (!isRecord(item)) return invalid(['shareholder_entry_invalid']);
+      const beneficiaryId = String(item.beneficiaryId || '').trim().slice(0, 120);
+      const name = String(item.name || '').trim().slice(0, 80);
+      const shareBps = Number(item.shareBps);
+      if (!beneficiaryId || !name || ids.has(beneficiaryId) ||
+        !Number.isSafeInteger(shareBps) || shareBps <= 0 || shareBps > 10000) {
+        return invalid(['shareholder_entry_invalid']);
+      }
+      ids.add(beneficiaryId);
+      totalShareBps += shareBps;
+      shareholders.push({
+        beneficiaryId,
+        name,
+        kind: String(item.kind || 'other').trim().slice(0, 24) || 'other',
+        shareBps
+      });
+    }
+
+    const activeBeneficiaryId = String(raw.activeBeneficiaryId || '').trim().slice(0, 120);
+    if (totalShareBps !== 10000 || !ids.has(activeBeneficiaryId)) {
+      return invalid(['ownership_total_or_active_owner_invalid']);
+    }
+
+    if (raw.transactions !== undefined) {
+      if (!Array.isArray(raw.transactions) || raw.transactions.length > 200) {
+        return invalid(['ownership_transaction_history_invalid']);
+      }
+      const transactionIds = new Set();
+      for (const item of raw.transactions) {
+        if (!isRecord(item)) return invalid(['ownership_transaction_history_invalid']);
+        const id = String(item.id || '').trim().slice(0, 160);
+        const type = item.type === 'gift' || item.type === 'inheritance' ? item.type : '';
+        const age = Number(item.age);
+        const fromBeneficiaryId = String(item.fromBeneficiaryId || '').trim().slice(0, 120);
+        const toBeneficiaryId = String(item.toBeneficiaryId || '').trim().slice(0, 120);
+        const fromName = String(item.fromName || '').trim().slice(0, 80);
+        const toName = String(item.toName || '').trim().slice(0, 80);
+        const shareBps = Number(item.shareBps);
+        if (!id || transactionIds.has(id) || !type ||
+          !Number.isSafeInteger(age) || age < 0 || age > 150 ||
+          !fromBeneficiaryId || !toBeneficiaryId || fromBeneficiaryId === toBeneficiaryId ||
+          !fromName || !toName || !Number.isSafeInteger(shareBps) || shareBps <= 0 || shareBps > 10000) {
+          return invalid(['ownership_transaction_history_invalid']);
+        }
+        transactionIds.add(id);
+      }
+    }
+
+    const active = shareholders.find(item => item.beneficiaryId === activeBeneficiaryId);
+    return {
+      valid: !!active,
+      legacyFallback: false,
+      activeBeneficiaryId,
+      activeShareBps: active ? active.shareBps : 0,
+      shareholders,
+      auditIssues: []
+    };
+  }
+
+  function formatOwnershipShare(shareBps) {
+    const percent = Math.max(0, Math.min(10000, Number(shareBps) || 0)) / 100;
+    try {
+      return new Intl.NumberFormat('ar-EG', { maximumFractionDigits: 2 }).format(percent) + '%';
+    } catch {
+      return percent.toFixed(2) + '%';
+    }
+  }
+
+  function analyzeBusiness(entity, fallbackTitle, contextState) {
     const safeEntity = isRecord(entity) ? entity : {};
     const title = String(safeEntity.title || safeEntity.name || fallbackTitle || 'نشاط تجاري').trim().slice(0, 100);
+    const ownership = analyzeBusinessOwnership(safeEntity, contextState && contextState.lifeId, contextState && contextState.name);
     const rawHistory = (Array.isArray(safeEntity.financialHistory) ? safeEntity.financialHistory : [])
       .filter(isRecord);
     const invalidReportYearCount = rawHistory.filter(item => !isValidFiscalYear(item.year)).length;
@@ -113,6 +217,7 @@
       return {
         id: String(safeEntity.id || safeEntity.assetId || title),
         title,
+        ownership,
         hasReport: false,
         status: 'unknown',
         year: null,
@@ -215,6 +320,7 @@
     return {
       id: String(safeEntity.id || safeEntity.assetId || title),
       title,
+      ownership,
       hasReport: true,
       status,
       invalidReportYearCount,
@@ -301,7 +407,7 @@
 
   function analyzeBusinessPortfolio(state) {
     const entries = businessEntries(state);
-    const items = entries.map(entry => analyzeBusiness(entry.entity, entry.title));
+    const items = entries.map(entry => analyzeBusiness(entry.entity, entry.title, state));
     const reported = items.filter(item => item.hasReport);
     const reportYears = Array.from(new Set(reported
       .map(item => item.year)
@@ -318,6 +424,10 @@
     const unknownReportYearCount = items.filter(item =>
       !item.hasReport && item.invalidReportYearCount > 0
     ).length;
+    const sharedOwnershipCount = items.filter(item => item.ownership.valid && item.ownership.shareholders.length > 1).length;
+    const ownershipNeedsReviewCount = items.filter(item => !item.ownership.valid).length;
+    const legacyOwnershipCount = items.filter(item => item.ownership.valid && item.ownership.legacyFallback).length;
+    const ownershipShareholderCount = items.reduce((sum, item) => sum + (item.ownership.valid ? item.ownership.shareholders.length : 0), 0);
     return {
       businessCount: items.length,
       reportedCount: reported.length,
@@ -331,6 +441,10 @@
       invalidReportYearCount,
       invalidFinancialReportCount,
       hasMixedReportYears: reportYears.length > 1 || unknownReportYearCount > 0,
+      sharedOwnershipCount,
+      ownershipNeedsReviewCount,
+      legacyOwnershipCount,
+      ownershipShareholderCount,
       annualSummaries: annualPortfolioSummaries(entries),
       items
     };
@@ -417,6 +531,8 @@
       createMetric(doc, totals, 'تمويل قائم', formatMoney(summary.loanBalance, state.place && state.place.unit));
       createMetric(doc, totals, 'أنشطة سجلت خسارة', formatNumber(summary.lossCount));
       createMetric(doc, totals, 'تقارير مالية مستبعدة', formatNumber(summary.invalidFinancialReportCount));
+      createMetric(doc, totals, 'أنشطة بملكية مشتركة', formatNumber(summary.sharedOwnershipCount));
+      createMetric(doc, totals, 'دفاتر ملكية تحتاج مراجعة', formatNumber(summary.ownershipNeedsReviewCount), summary.ownershipNeedsReviewCount ? 'business-insights-negative' : 'business-insights-metric-value');
       body.appendChild(totals);
 
       if (summary.reportedCount) {
@@ -556,6 +672,41 @@
           appendText(doc, card, 'p', 'business-insights-meta', missingReportMessage);
         }
 
+
+        const ownershipSection = doc.createElement('section');
+        ownershipSection.className = 'business-insights-ownership';
+        appendText(doc, ownershipSection, 'h4', 'business-insights-ownership-title', 'هيكل الملكية');
+        if (!item.ownership || !item.ownership.valid) {
+          appendText(doc, ownershipSection, 'p', 'business-insights-ownership-warning',
+            'دفتر الملكية غير صالح أو يحتاج مراجعة؛ لم نعرض نسبًا قد تكون مضللة.');
+        } else {
+          const activeShare = formatOwnershipShare(item.ownership.activeShareBps);
+          appendText(doc, ownershipSection, 'p', 'business-insights-ownership-meta',
+            'عدد الملاك: ' + formatNumber(item.ownership.shareholders.length) +
+            ' · حصة صاحب الحياة الحالية: ' + activeShare);
+          if (item.ownership.legacyFallback) {
+            appendText(doc, ownershipSection, 'p', 'business-insights-ownership-note',
+              'سجل قديم بلا دفتر حصص صريح؛ يُعرض صاحب الحياة كمالك وحيد دون تعديل ملف الحفظ.');
+          }
+          const ownerList = doc.createElement('ul');
+          ownerList.className = 'business-insights-owner-list';
+          ownerList.setAttribute('aria-label', 'نسب ملاك النشاط');
+          item.ownership.shareholders.slice(0, 8).forEach(owner => {
+            const row = doc.createElement('li');
+            row.className = 'business-insights-owner-row';
+            row.dataset.active = owner.beneficiaryId === item.ownership.activeBeneficiaryId ? 'true' : 'false';
+            appendText(doc, row, 'span', 'business-insights-owner-name', owner.name);
+            appendText(doc, row, 'strong', 'business-insights-owner-share', formatOwnershipShare(owner.shareBps));
+            ownerList.appendChild(row);
+          });
+          ownershipSection.appendChild(ownerList);
+          if (item.ownership.shareholders.length > 8) {
+            appendText(doc, ownershipSection, 'p', 'business-insights-ownership-note',
+              'يوجد ' + formatNumber(item.ownership.shareholders.length - 8) + ' مالك إضافي في السجل الكامل.');
+          }
+        }
+        card.appendChild(ownershipSection);
+
         const list = doc.createElement('ul');
         list.className = 'business-insights-recommendations';
         item.insights.forEach(insight => appendText(doc, list, 'li', 'business-insights-recommendation', insight.message));
@@ -600,5 +751,5 @@
     return { open: () => button.click() };
   }
 
-  return { analyzeBusiness, analyzeBusinessPortfolio, formatMoney, formatPercent, mount };
+  return { analyzeBusiness, analyzeBusinessOwnership, analyzeBusinessPortfolio, formatMoney, formatPercent, mount };
 });

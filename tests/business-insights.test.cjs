@@ -5,7 +5,7 @@ const path = require('node:path');
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { analyzeBusiness, analyzeBusinessPortfolio } = require('../business-insights.js');
+const { analyzeBusiness, analyzeBusinessOwnership, analyzeBusinessPortfolio } = require('../business-insights.js');
 
 function report(overrides = {}) {
   return {
@@ -324,6 +324,10 @@ test('الحفظ الفارغ أو التالف لا ينتج أنشطة أو أ
     unknownReportYearCount: 0,
     invalidReportYearCount: 0,
     hasMixedReportYears: false,
+    sharedOwnershipCount: 0,
+    ownershipNeedsReviewCount: 0,
+    legacyOwnershipCount: 0,
+    ownershipShareholderCount: 0,
     annualSummaries: [],
     items: []
   });
@@ -568,4 +572,118 @@ test('التقارير القديمة التي تفتقد حقل الربح أو
   });
   assert.equal(savedProfit.hasReport, true);
   assert.equal(savedProfit.profit, 25000);
+});
+
+
+test('دفتر الملكية القديم يعرض صاحب الحياة كمالك وحيد دون ترحيل أو كتابة', () => {
+  const business = { title: 'نشاط قديم', value: 250000 };
+  const before = JSON.stringify(business);
+  const result = analyzeBusinessOwnership(business, 'life-legacy', 'صاحب الحياة');
+  assert.equal(result.valid, true);
+  assert.equal(result.legacyFallback, true);
+  assert.equal(result.activeBeneficiaryId, 'life-legacy');
+  assert.equal(result.activeShareBps, 10000);
+  assert.deepEqual(result.shareholders.map(item => [item.name, item.shareBps]), [['صاحب الحياة', 10000]]);
+  assert.equal(JSON.stringify(business), before);
+});
+
+test('هيكل الملكية المشتركة يعرض النسب والمالك النشط مع قبول سجل v1 القديم بلا معاملات', () => {
+  const business = {
+    title: 'شركة العائلة',
+    ownershipLedger: {
+      version: 1,
+      activeBeneficiaryId: 'owner-a',
+      shareholders: [
+        { beneficiaryId: 'owner-a', name: 'المالك الحالي', kind: 'owner', shareBps: 4000 },
+        { beneficiaryId: 'owner-b', name: 'الشريك', kind: 'child', shareBps: 3500 },
+        { beneficiaryId: 'owner-c', name: 'الأخت', kind: 'child', shareBps: 2500 }
+      ]
+    }
+  };
+  const before = JSON.stringify(business);
+  const result = analyzeBusinessOwnership(business, 'fallback', 'بديل');
+  assert.equal(result.valid, true);
+  assert.equal(result.legacyFallback, false);
+  assert.equal(result.activeBeneficiaryId, 'owner-a');
+  assert.equal(result.activeShareBps, 4000);
+  assert.equal(result.shareholders.reduce((sum, item) => sum + item.shareBps, 0), 10000);
+  assert.equal(JSON.stringify(business), before);
+});
+
+test('دفتر الملكية المكرر أو غير المتوازن أو بسجل معاملات تالف يحتاج مراجعة', () => {
+  const duplicate = analyzeBusinessOwnership({
+    ownershipLedger: {
+      version: 1,
+      activeBeneficiaryId: 'owner',
+      shareholders: [
+        { beneficiaryId: 'owner', name: 'مالك', shareBps: 5000 },
+        { beneficiaryId: 'owner', name: 'مالك مكرر', shareBps: 5000 }
+      ]
+    }
+  }, 'owner', 'مالك');
+  assert.equal(duplicate.valid, false);
+
+  const unbalanced = analyzeBusinessOwnership({
+    ownershipLedger: {
+      version: 1,
+      activeBeneficiaryId: 'owner',
+      shareholders: [
+        { beneficiaryId: 'owner', name: 'مالك', shareBps: 7000 },
+        { beneficiaryId: 'partner', name: 'شريك', shareBps: 2000 }
+      ]
+    }
+  }, 'owner', 'مالك');
+  assert.equal(unbalanced.valid, false);
+
+  const invalidTransactions = analyzeBusinessOwnership({
+    ownershipLedger: {
+      version: 1,
+      activeBeneficiaryId: 'owner',
+      shareholders: [
+        { beneficiaryId: 'owner', name: 'مالك', shareBps: 5000 },
+        { beneficiaryId: 'partner', name: 'شريك', shareBps: 5000 }
+      ],
+      transactions: [{ id: 'bad', type: 'sale', age: 40, fromBeneficiaryId: 'owner', fromName: 'مالك', toBeneficiaryId: 'partner', toName: 'شريك', shareBps: 1000 }]
+    }
+  }, 'owner', 'مالك');
+  assert.equal(invalidTransactions.valid, false);
+});
+
+test('ملخص المحفظة يحصي الملكية المشتركة والسجلات التي تحتاج مراجعة دون تعديل الحفظ', () => {
+  const state = {
+    lifeId: 'current-life',
+    name: 'صاحب الحياة',
+    business: { id: 'legacy', title: 'نشاط قديم', value: 100000 },
+    companies: [
+      {
+        id: 'shared',
+        title: 'شركة مشتركة',
+        ownershipLedger: {
+          version: 1,
+          activeBeneficiaryId: 'current-life',
+          shareholders: [
+            { beneficiaryId: 'current-life', name: 'صاحب الحياة', shareBps: 6000 },
+            { beneficiaryId: 'sibling', name: 'الشقيق', shareBps: 4000 }
+          ],
+          transactions: []
+        }
+      },
+      {
+        id: 'broken',
+        title: 'دفتر يحتاج مراجعة',
+        ownershipLedger: {
+          version: 1,
+          activeBeneficiaryId: 'current-life',
+          shareholders: [{ beneficiaryId: 'current-life', name: 'صاحب الحياة', shareBps: 9000 }]
+        }
+      }
+    ]
+  };
+  const before = JSON.stringify(state);
+  const summary = analyzeBusinessPortfolio(state);
+  assert.equal(summary.sharedOwnershipCount, 1);
+  assert.equal(summary.ownershipNeedsReviewCount, 1);
+  assert.equal(summary.legacyOwnershipCount, 1);
+  assert.equal(summary.ownershipShareholderCount, 3);
+  assert.equal(JSON.stringify(state), before);
 });
