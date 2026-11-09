@@ -13275,7 +13275,7 @@ function importSave(){
     const parsed=JSON.parse(String(reader.result||''));
     const isBundle=!!(parsed&&parsed.format===BACKUP_FORMAT);
     if(isBundle&&parsed.integrity!==undefined){
-     const integrityApi=typeof window!=='undefined'?window.HayahBackupIntegrity:null;
+     const integrityApi=typeof globalThis!=='undefined'&&globalThis.HayahBackupIntegrity?globalThis.HayahBackupIntegrity:typeof window!=='undefined'?window.HayahBackupIntegrity:null;
      const integrityCheck=integrityApi&&integrityApi.verifyIntegrity(parsed);
      if(!integrityCheck||!integrityCheck.valid)throw new Error('invalid-bundle-integrity');
     }
@@ -13375,7 +13375,7 @@ function createBackupBundle(){
   settings:normalizeUiSettings(uiSettings),
   perks:normalizePermanentPerks(permanentPerks)
  };
- const integrityApi=typeof window!=='undefined'?window.HayahBackupIntegrity:null;
+ const integrityApi=typeof globalThis!=='undefined'&&globalThis.HayahBackupIntegrity?globalThis.HayahBackupIntegrity:typeof window!=='undefined'?window.HayahBackupIntegrity:null;
  if(!integrityApi||typeof integrityApi.createIntegrity!=='function')throw new Error('backup-integrity-unavailable');
  bundle.integrity=integrityApi.createIntegrity(bundle);
  return bundle;
