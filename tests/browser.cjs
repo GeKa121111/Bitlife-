@@ -23,6 +23,7 @@ const routes = new Map([
   ['/pwa-update.css', 'pwa-update.css'],
   ['/pwa-update.js', 'pwa-update.js'],
   ['/app.js', 'app.js'],
+  ['/backup-integrity.js', 'backup-integrity.js'],
   ['/combat-season.js', 'combat-season.js'],
   ['/sw.js', 'sw.js'],
   ['/manifest.webmanifest', 'manifest.webmanifest'],
@@ -1527,6 +1528,8 @@ async function run() {
     assert.equal(exported.cemetery[0].id, 'browser-legacy-life', 'export must include the previous-life cemetery');
     assert.equal(exported.settings.textScale, 'normal', 'export must include display preferences');
     assert.equal(exported.perks.owned.fighterPack, true, 'export must include locally owned permanent perks');
+    assert.equal(exported.integrity.algorithm, 'FNV-1a-32', 'full exports should carry an internal integrity checksum');
+    assert.equal(require('../backup-integrity.js').verifyIntegrity(exported).valid, true, 'the downloaded export checksum should verify');
 
     // The first complete export seeds a same-device recovery copy of the cemetery.
     const seededCemeteryBackup = await page.evaluate(() => JSON.parse(localStorage.getItem('hekayat_hayah_cemetery_backup_v1') || 'null'));
