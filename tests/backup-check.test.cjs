@@ -407,7 +407,7 @@ test('تعذر Web Crypto لا يمنع فحص ملف الحفظ', async () => {
 test('واجهة فاحص الحفظ تعرض البصمة وتوضح أنها ليست إثباتًا لمصدر الملف', () => {
   assert.match(checkerSource, /بصمة SHA-256/);
   assert.match(checkerSource, /sha256Fingerprint\(file, runtime\.crypto\)/);
-  assert.match(checkerSource, /تطابق البصمة لا يثبت مصدر الملف/);
+  assert.match(checkerSource, /ليست توقيعًا أمنيًا ولا تثبت مصدر الملف/);
 });
 
 
