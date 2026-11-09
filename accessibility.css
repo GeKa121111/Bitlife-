@@ -352,31 +352,61 @@ body.text-large #app .statvalue {
 /* Keep the identity and wealth columns inside the narrow dashboard when text is enlarged. */
 @media (max-width: 380px) {
   body.text-large #app .hero {
-    /* The base stylesheet changes .hero back to flex; grid columns only work
-       when this narrow, enlarged layout explicitly switches the display mode. */
+    /* The active visual layer declares its grid template as !important.
+       Override that exact constraint so the wealth column can shrink safely. */
     display: grid !important;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 40%);
-    align-items: start;
-    gap: 8px;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 40%) !important;
+    align-items: start !important;
+    gap: 8px !important;
   }
 
   body.text-large #app .profile {
     width: 100%;
-    min-width: 0;
+    min-width: 0 !important;
     gap: 8px;
   }
 
+  body.text-large #app .name {
+    min-width: 0 !important;
+    white-space: normal !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
+    overflow-wrap: anywhere !important;
+  }
+
+  body.text-large #app .identity-role {
+    flex-wrap: wrap !important;
+  }
+
+  body.text-large #app .identity-role .role-tag,
+  body.text-large #app .identity-meta span {
+    white-space: normal !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
+    overflow-wrap: anywhere !important;
+  }
+
   body.text-large #app .wealth {
-    width: 100%;
+    width: 100% !important;
     min-width: 0 !important;
     max-width: 100% !important;
     flex: none !important;
-    padding-inline: 6px;
+    padding-inline: 6px !important;
   }
 
   body.text-large #app .wealthnum {
-    max-width: 100%;
-    overflow-wrap: anywhere;
+    max-width: 100% !important;
+    white-space: normal !important;
+    overflow-wrap: anywhere !important;
     font-size: 18px !important;
+  }
+
+  body.text-large #app .feed {
+    padding-inline: 12px !important;
+  }
+
+  body.text-large #app .navbtn {
+    gap: 2px;
+    padding-inline: 1px;
   }
 }
