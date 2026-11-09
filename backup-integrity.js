@@ -9,7 +9,8 @@
   function isRecord(value) {
     if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
     const prototype = Object.getPrototypeOf(value);
-    return prototype === Object.prototype || prototype === null;
+    // Accept plain objects created in another JavaScript realm (for example, the isolated VM used by regression tests).
+    return prototype === null || Object.getPrototypeOf(prototype) === null;
   }
 
   function stableJson(value) {
