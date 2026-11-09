@@ -81,3 +81,13 @@ body.theme-gold .business-insights-ownership{background:#fffaf0;border-color:#df
 body.theme-gold .business-insights-ownership-title,body.theme-gold .business-insights-owner-name{color:#594a2b}
 body.theme-gold .business-insights-owner-row{background:#fffdf7;border-color:#dfc78f}
 @media(max-width:380px){.business-insights-owner-list{grid-template-columns:1fr}}
+
+.business-insights-duplicate-conflicts{display:flex;flex-direction:column;gap:7px;padding:11px 12px;border:1px solid #e4c17a;border-radius:12px;background:#fff9e9;color:#674c1b}
+.business-insights-duplicate-title{margin:0;color:#76571d;font-size:12px;font-weight:950}
+.business-insights-duplicate-copy{margin:0;color:#745d31;font-size:10px;line-height:1.8}
+.business-insights-duplicate-list{display:grid;gap:5px;margin:0;padding:0 18px 0 0;font-size:10px;line-height:1.7}
+.business-insights-duplicate-item::marker{color:#a46c19}
+body.theme-dark .business-insights-duplicate-conflicts{background:#40351f;border-color:#80632f;color:#ffe8b5}
+body.theme-dark .business-insights-duplicate-title,body.theme-dark .business-insights-duplicate-copy{color:#ffe8b5}
+body.theme-gold .business-insights-duplicate-conflicts{background:#fff2d4;border-color:#d6b66e;color:#654d20}
+body.theme-gold .business-insights-duplicate-title,body.theme-gold .business-insights-duplicate-copy{color:#654d20}
