@@ -10739,6 +10739,12 @@ function businessOwnershipValuationSnapshot(entity,fallbackBeneficiaryId,fallbac
  const ownership=businessOwnershipSnapshot(entity,fallbackBeneficiaryId,fallbackName);
  const empty={valid:false,reason:null,totalValue:0,activeBeneficiaryId:ownership.activeBeneficiaryId||null,activeShareValue:0,shareholders:[]};
  if(!ownership.valid)return {...empty,reason:'invalid-ownership'};
+ const rawStakeValue=entity&&entity.value;
+ const supportedStakeType=typeof rawStakeValue==='number'||typeof rawStakeValue==='string';
+ const nonEmptyStakeString=typeof rawStakeValue!=='string'||rawStakeValue.trim().length>0;
+ const numericStakeValue=Number(rawStakeValue),roundedStakeValue=Math.round(numericStakeValue);
+ if(!supportedStakeType||!nonEmptyStakeString||!Number.isFinite(numericStakeValue)||numericStakeValue<0||
+  !Number.isSafeInteger(roundedStakeValue)||roundedStakeValue>1000000000000)return {...empty,reason:'invalid-stake-value'};
  const totalValue=ownership.wholeValueEstimate;
  if(!Number.isSafeInteger(totalValue)||totalValue<0||totalValue>1000000000000)return {...empty,reason:'valuation-out-of-range'};
  const parts=ownership.shareholders.map((item,index)=>{

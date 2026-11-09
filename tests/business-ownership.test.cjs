@@ -943,6 +943,14 @@ test('تقييم الحصص يرفض سجل الملكية غير المتواز
   {beneficiaryId:'owner',name:'المالك',shareBps:1},{beneficiaryId:'partner',name:'الشريك',shareBps:9999}
  ]}};
  assert.equal(api.businessOwnershipValuationSnapshot(unsafe,'owner','المالك').reason,'valuation-out-of-range');
+ const missing={title:'شركة بلا قيمة',ownershipLedger:{version:1,activeBeneficiaryId:'owner',shareholders:[
+  {beneficiaryId:'owner',name:'المالك',shareBps:10000}
+ ]}};
+ assert.equal(api.businessOwnershipValuationSnapshot(missing,'owner','المالك').reason,'invalid-stake-value');
+ const negative={value:-100,ownershipLedger:{version:1,activeBeneficiaryId:'owner',shareholders:[
+  {beneficiaryId:'owner',name:'المالك',shareBps:10000}
+ ]}};
+ assert.equal(api.businessOwnershipValuationSnapshot(negative,'owner','المالك').reason,'invalid-stake-value');
 });
 
 test('دفتر الملكية القديم يحصل على تقييم آمن دون كتابة حقول جديدة',()=>{
