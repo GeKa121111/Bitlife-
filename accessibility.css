@@ -352,11 +352,16 @@ body.text-large #app .statvalue {
 /* Keep the identity and wealth columns inside the narrow dashboard when text is enlarged. */
 @media (max-width: 380px) {
   body.text-large #app .hero {
+    /* The base stylesheet changes .hero back to flex; grid columns only work
+       when this narrow, enlarged layout explicitly switches the display mode. */
+    display: grid !important;
     grid-template-columns: minmax(0, 1fr) minmax(0, 40%);
+    align-items: start;
     gap: 8px;
   }
 
   body.text-large #app .profile {
+    width: 100%;
     min-width: 0;
     gap: 8px;
   }
