@@ -13274,7 +13274,7 @@ function importSave(){
    try{
     const parsed=JSON.parse(String(reader.result||''));
     const isBundle=!!(parsed&&parsed.format===BACKUP_FORMAT);
-    if(isBundle&&(parsed.integrity!==undefined||parsed.integrityRequired===true)){
+    if(isBundle&&(Object.prototype.hasOwnProperty.call(parsed,'integrity')||Object.prototype.hasOwnProperty.call(parsed,'integrityRequired'))){
      const integrityApi=typeof globalThis!=='undefined'&&globalThis.HayahBackupIntegrity?globalThis.HayahBackupIntegrity:typeof window!=='undefined'?window.HayahBackupIntegrity:null;
      const integrityCheck=integrityApi&&integrityApi.verifyIntegrity(parsed);
      if(!integrityCheck||!integrityCheck.valid){
