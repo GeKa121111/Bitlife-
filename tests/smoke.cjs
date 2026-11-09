@@ -957,11 +957,9 @@ assert.match(combatSeason, /دفاع عن لقب العالم أمام بطل ا
   'the latest playoff champion should be offered as an optional title-defense opponent');
 
 
-const backupChecker = fs.readFileSync('backup-check.js', 'utf8');
-const backupCheckerPage = fs.readFileSync('backup-check.html', 'utf8');
-assert.match(backupChecker, /function compareBackupSnapshots\\(firstData, secondData\\)/);
+assert.match(backupCheckerScript, /function compareBackupSnapshots\(firstData, secondData\)/);
 assert.match(backupCheckerPage, /id="compareBackupFile"/);
 assert.match(backupCheckerPage, /id="backupComparisonResult"/);
-assert.doesNotMatch(backupChecker, /localStorage|sessionStorage|fetch\\s*\\(|XMLHttpRequest/,
+assert.doesNotMatch(backupCheckerScript, /localStorage|sessionStorage|fetch\s*\(|XMLHttpRequest/,
   'backup comparison must remain local and read-only');
 assert.match(serviceWorker, /hayah-shell-v234/);
