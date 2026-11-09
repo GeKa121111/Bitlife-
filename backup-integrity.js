@@ -27,7 +27,7 @@
 
   function checksumBundle(bundle) {
     if (!isRecord(bundle)) return null;
-    const payload = {};
+    const payload = Object.create(null);
     Object.keys(bundle).forEach(key => {
       if (key !== 'integrity') payload[key] = bundle[key];
     });
