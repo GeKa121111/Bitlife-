@@ -572,6 +572,7 @@ const exportPanels = ['career','assets','relations','activities'].map(panel => {
   const el = new FakeElement(panel + 'ExportNav'); el.dataset.panel = panel; return el;
 });
 const exportContext = {
+  window: { HayahBackupIntegrity: require('../backup-integrity.js') },
   document: {
     body: exportBody,
     getElementById: exportGet,
@@ -604,6 +605,9 @@ vm.runInNewContext('globalThis.__testExportSave()', exportContext, { timeout: 30
 assert.equal(exportClicked, true, 'export should trigger a download anchor');
 assert.equal(exportBlob.type, 'application/json', 'export should create a JSON file');
 assert.match(exportBlob.parts[0], /"version":\s*1/, 'export should serialize the current life state');
+const exportedBundle = JSON.parse(exportBlob.parts[0]);
+assert.equal(exportedBundle.integrity.algorithm, 'FNV-1a-32');
+assert.equal(require('../backup-integrity.js').verifyIntegrity(exportedBundle).valid, true);
 assert.equal(revokedExportUrl, null, 'export URL must not be revoked immediately after the click');
 const exportCleanup = exportTimers.find(timer => timer.delay === 1000);
 assert.ok(exportCleanup, 'export should schedule delayed cleanup');
