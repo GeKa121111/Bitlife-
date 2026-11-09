@@ -67,7 +67,10 @@ async function runMainScreenLargeTextCheck(browser) {
           large,
           viewport: window.innerWidth,
           documentWidth: document.documentElement.scrollWidth,
+          heroDisplay: getComputedStyle(document.querySelector('#app .hero')).display,
           hero: widthOf('#app .hero'),
+          profile: widthOf('#app .profile'),
+          wealth: widthOf('#app .wealth'),
           story: widthOf('#app .story-heading'),
           nav: widthOf('#app .nav'),
           metaWrap: getComputedStyle(document.querySelector('#app .identity-meta')).flexWrap,
@@ -84,9 +87,12 @@ async function runMainScreenLargeTextCheck(browser) {
       }
       assert.ok(result.documentWidth <= result.viewport,
         'main-screen large text must not create document-level horizontal overflow at ' + width + 'px');
-      for (const key of ['hero', 'story', 'nav']) {
+      assert.equal(result.heroDisplay, 'grid',
+        'the narrow large-text identity card should use the two-column grid at ' + width + 'px');
+      for (const key of ['hero', 'profile', 'wealth', 'story', 'nav']) {
         assert.ok(result[key].scroll <= result[key].client + 1,
-          key + ' must wrap or fit without horizontal overflow at ' + width + 'px');
+          key + ' must wrap or fit without horizontal overflow at ' + width + 'px; ' +
+          JSON.stringify(result[key]));
       }
       assert.equal(result.metaWrap, 'wrap', 'identity metadata should wrap in large-text mode');
       assert.equal(result.storyWrap, 'wrap', 'the story heading should wrap in large-text mode');
