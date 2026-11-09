@@ -572,6 +572,7 @@ const exportPanels = ['career','assets','relations','activities'].map(panel => {
   const el = new FakeElement(panel + 'ExportNav'); el.dataset.panel = panel; return el;
 });
 const exportContext = {
+  HayahBackupIntegrity: require('../backup-integrity.js'),
   window: { HayahBackupIntegrity: require('../backup-integrity.js') },
   document: {
     body: exportBody,
