@@ -372,10 +372,15 @@
       ? firstData.life : firstData;
     const secondLife = isRecord(secondData) && secondData.format === 'hayah-backup'
       ? secondData.life : secondData;
-    const firstId = firstLife && firstLife.lifeId !== undefined && firstLife.lifeId !== null
-      ? String(firstLife.lifeId).trim() : '';
-    const secondId = secondLife && secondLife.lifeId !== undefined && secondLife.lifeId !== null
-      ? String(secondLife.lifeId).trim() : '';
+    const readLifeId = life => {
+      if (!life) return '';
+      const value = life.lifeId;
+      if (typeof value === 'string') return value.trim().slice(0, 160);
+      if (typeof value === 'number' && Number.isFinite(value)) return String(value);
+      return '';
+    };
+    const firstId = readLifeId(firstLife);
+    const secondId = readLifeId(secondLife);
     if (!firstId || !secondId) {
       return { comparable: false, reason: 'identity-unavailable', firstErrors: [], secondErrors: [] };
     }
@@ -449,6 +454,7 @@
     if (!doc || !doc.getElementById) return;
     const input = doc.getElementById('backupFile');
     const compareInput = doc.getElementById('compareBackupFile');
+    const compareLabel = doc.getElementById('compareBackupLabel');
     const dropZone = doc.getElementById('backupDropZone');
     const resultNode = doc.getElementById('backupResult');
     const comparisonResult = doc.getElementById('backupComparisonResult');
@@ -500,6 +506,10 @@
       if (compareInput) {
         compareInput.value = '';
         compareInput.disabled = true;
+      }
+      if (compareLabel) {
+        compareLabel.className = 'button secondary is-disabled';
+        compareLabel.setAttribute('aria-disabled', 'true');
       }
       if (comparisonResult) {
         comparisonResult.replaceChildren();
@@ -682,6 +692,10 @@
         ? 'النسخة الأولى صالحة. اختر ملفًا ثانيًا لمقارنة التقدم دون تعديل أي ملف.'
         : 'لا يمكن المقارنة قبل اجتياز النسخة الأولى للفحص.');
       if (compareInput) compareInput.disabled = !report.valid;
+      if (compareLabel) {
+        compareLabel.className = report.valid ? 'button secondary' : 'button secondary is-disabled';
+        compareLabel.setAttribute('aria-disabled', report.valid ? 'false' : 'true');
+      }
       announce(report.valid
         ? (report.warnings.length
           ? 'اكتمل فحص ملف الحفظ: متوافق مبدئيًا مع ملاحظات.'
