@@ -49,6 +49,9 @@
   function verifyIntegrity(bundle) {
     if (!isRecord(bundle)) return { present: false, valid: false, status: 'invalid-bundle' };
     if (!Object.prototype.hasOwnProperty.call(bundle, 'integrity')) {
+      if (bundle.integrityRequired === true) {
+        return { present: false, valid: false, status: 'missing' };
+      }
       return { present: false, valid: true, status: 'legacy' };
     }
     const integrity = bundle.integrity;
