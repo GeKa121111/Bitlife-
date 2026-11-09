@@ -1528,6 +1528,7 @@ async function run() {
     assert.equal(exported.cemetery[0].id, 'browser-legacy-life', 'export must include the previous-life cemetery');
     assert.equal(exported.settings.textScale, 'normal', 'export must include display preferences');
     assert.equal(exported.perks.owned.fighterPack, true, 'export must include locally owned permanent perks');
+    assert.equal(exported.integrityRequired, true, 'new full exports should mark their checksum as mandatory');
     assert.equal(exported.integrity.algorithm, 'FNV-1a-32', 'full exports should carry an internal integrity checksum');
     assert.equal(require('../backup-integrity.js').verifyIntegrity(exported).valid, true, 'the downloaded export checksum should verify');
 
