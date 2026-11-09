@@ -185,3 +185,166 @@ body.reduce-motion *::after {
     min-height: 44px !important;
   }
 }
+
+
+/* Expanded reading mode also covers the main life dashboard, not only dialogs. */
+body.text-large #app .name {
+  font-size: 16px !important;
+  line-height: 1.45 !important;
+  overflow-wrap: anywhere;
+}
+
+body.text-large #app .identity-role .role-tag {
+  font-size: 14px !important;
+  line-height: 1.5 !important;
+}
+
+body.text-large #app .identity-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 8px !important;
+  font-size: 12px !important;
+  line-height: 1.6 !important;
+}
+
+body.text-large #app .wealth {
+  min-width: 0 !important;
+  max-width: 44% !important;
+  flex: 0 1 44% !important;
+  align-items: flex-start;
+}
+
+body.text-large #app .wealthnum {
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  font-size: 20px !important;
+  line-height: 1.3 !important;
+  letter-spacing: normal;
+}
+
+body.text-large #app .wealthlabel {
+  font-size: 13px !important;
+  line-height: 1.5 !important;
+}
+
+body.text-large #app .wealthsmall {
+  font-size: 11px !important;
+  line-height: 1.5 !important;
+}
+
+body.text-large #app .story-heading {
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+body.text-large #app .story-heading-copy {
+  min-width: 0;
+  flex: 1 1 150px;
+}
+
+body.text-large #app .story-heading h1 {
+  font-size: 16px !important;
+  line-height: 1.5 !important;
+}
+
+body.text-large #app .story-eyebrow {
+  font-size: 12px !important;
+  line-height: 1.5 !important;
+}
+
+body.text-large #app .story-heading-actions {
+  min-width: 0;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+body.text-large #app .story-year {
+  max-width: 100%;
+  white-space: normal;
+  font-size: 12px !important;
+  line-height: 1.4 !important;
+}
+
+body.text-large #app .logtitle {
+  font-size: 16px !important;
+  line-height: 1.6 !important;
+}
+
+body.text-large #app .logtext {
+  font-size: 16px !important;
+  line-height: 1.85 !important;
+}
+
+body.text-large #app .sectiontitle {
+  font-size: 17px !important;
+  line-height: 1.5 !important;
+}
+
+body.text-large #app .sectionmeta {
+  font-size: 12px !important;
+  line-height: 1.5 !important;
+  white-space: normal;
+}
+
+body.text-large #app .navbtn {
+  font-size: 12px !important;
+  line-height: 1.3 !important;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  padding-block: 4px;
+}
+
+body.text-large #app .navbtn .navico {
+  font-size: 22px !important;
+}
+
+body.text-large #app .agebtn {
+  font-size: 12px !important;
+  line-height: 1.3 !important;
+}
+
+body.text-large #app .agebtn span:first-child {
+  font-size: 27px !important;
+}
+
+body.text-large #app .stathead {
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 4px 6px;
+}
+
+body.text-large #app .statlabel {
+  font-size: 13px !important;
+  line-height: 1.4 !important;
+}
+
+body.text-large #app .statvalue {
+  font-size: 12px !important;
+  line-height: 1.4 !important;
+}
+
+@media (max-width: 380px) {
+  body.text-large #app .hero {
+    align-items: flex-start;
+  }
+
+  body.text-large #app .identity {
+    min-width: 0;
+  }
+
+  body.text-large #app .identity-line {
+    min-width: 0;
+    flex-wrap: wrap;
+  }
+
+  body.text-large #app .feed {
+    padding-inline: 12px !important;
+  }
+
+  body.text-large #app .navbtn {
+    gap: 2px;
+    padding-inline: 1px;
+  }
+}
