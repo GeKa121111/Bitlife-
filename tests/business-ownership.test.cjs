@@ -841,7 +841,7 @@ test('كل إهداء جديد يضيف إيصالًا منظمًا ويحافظ
  const gift=api.buildBusinessShareGiftLedger(company,'owner',{id:'child-1',name:'الابن'},500,45);
  assert.equal(gift.ok,true);
  assert.equal(gift.ledger.transactions.length,2);
- assert.deepEqual(gift.ledger.transactions.map(item=>item.type),['gift','gift']);
+ assert.deepEqual(Array.from(gift.ledger.transactions,item=>item.type),['gift','gift']);
  const last=gift.ledger.transactions[1];
  assert.equal(last.fromBeneficiaryId,'owner');
  assert.equal(last.toBeneficiaryId,'child-1');
@@ -863,8 +863,8 @@ test('الميراث يحتفظ بتاريخ التحركات السابق وي�
  assert.equal(next.auditStatus,'balanced');
  assert.equal(next.transactions.length,3);
  assert.equal(next.transactions[0].id,'tx-gift-old');
- assert.deepEqual(next.transactions.slice(1).map(item=>item.type),['inheritance','inheritance']);
- assert.deepEqual(next.transactions.slice(1).map(item=>item.shareBps),[2000,2000]);
+ assert.deepEqual(Array.from(next.transactions).slice(1).map(item=>item.type),['inheritance','inheritance']);
+ assert.deepEqual(Array.from(next.transactions).slice(1).map(item=>item.shareBps),[2000,2000]);
  assert.equal(totalShares(next),10000);
 });
 
