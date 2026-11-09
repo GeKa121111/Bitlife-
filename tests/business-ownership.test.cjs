@@ -870,6 +870,9 @@ test('الميراث يحتفظ بتاريخ التحركات السابق وي�
  assert.deepEqual(Array.from(next.transactions).slice(1).map(item=>item.type),['inheritance','inheritance']);
  assert.deepEqual(Array.from(next.transactions).slice(1).map(item=>item.shareBps),[2000,2000]);
  assert.equal(totalShares(next),10000);
+ const audit=businessInsights.analyzeBusinessOwnership({ownershipLedger:next},'child-a','الوارث');
+ assert.equal(audit.valid,true,'a ledger produced by the real inheritance flow must pass the portfolio audit');
+ assert.deepEqual(audit.auditIssues,[]);
 });
 
 test('واجهة سجل الملكية تفتح تاريخ التحركات دون تعديل دفتر الشركة',()=>{
