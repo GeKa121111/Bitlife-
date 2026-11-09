@@ -1,6 +1,6 @@
 'use strict';
 
-const CACHE_NAME = 'hayah-shell-v230';
+const CACHE_NAME = 'hayah-shell-v231';
 const APP_SHELL = [
   './index.html',
   './style.css',
@@ -10,6 +10,7 @@ const APP_SHELL = [
   './life-review.css',
   './pwa-update.css',
   './app.js',
+  './backup-integrity.js',
   './life-review.js',
   './combat-season.js',
   './pwa-update.js',
@@ -22,7 +23,7 @@ const APP_SHELL = [
 ].map(path => new URL(path, self.registration.scope).href);
 
 // Keep the essential game usable if a non-critical shell asset is temporarily unavailable.
-const CORE_SHELL = ['./index.html', './style.css', './app.js']
+const CORE_SHELL = ['./index.html', './style.css', './app.js', './backup-integrity.js']
   .map(path => new URL(path, self.registration.scope).href);
 const OPTIONAL_SHELL = APP_SHELL.filter(url => !CORE_SHELL.includes(url));
 
